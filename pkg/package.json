@@ -1,0 +1,14 @@
+{
+	"name": "@hypercubed/kody-os",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": { ".": "./src/index.ts" },
+	"kody": {
+		"id": "kody-os",
+		"description": "Minimal shared Human/Agent OS shell — ReKindle-style blank slate for browser-first use.",
+		"category": "productivity",
+		"tags": ["os", "minimal", "rekindle", "shell", "eink"],
+		"app": { "entry": "./src/app.ts", "client": "./src/client/index.ts", "assets": "./public" }
+	}
+}

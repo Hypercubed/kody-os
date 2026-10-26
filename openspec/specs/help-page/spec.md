@@ -1,0 +1,14 @@
+# Help Page Specification
+
+## Purpose
+A static in-OS reference so a human holding the device (or an agent describing it) can answer "what is this, how do apps get here" without leaving the shell.
+
+## Requirements
+
+### Requirement: Static Help page in full chrome
+
+The shell SHALL serve a static Help page at `GET /help` in the full shell chrome explaining what the OS is and documenting how agents add apps via MCP `add_app`, pointing the reader to the README's recommended prompt. The page SHALL NOT list installed apps. The header SHALL link it as Help immediately after Apps.
+
+#### Scenario: Help explains adding apps
+- **WHEN** `/help` is opened
+- **THEN** it responds 200, omits an installed-apps list, and describes the agent add flow using the README prompt.

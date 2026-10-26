@@ -1,0 +1,63 @@
+{
+  "id": "hello-counter",
+  "name": "Counter",
+  "label": "Counter",
+  "icon": "#",
+  "category": "Tests",
+  "description": "Unified validation app: a shared counter proving bundle UI and MCP act on the same state through set actions.",
+  "bundle": {
+    "entry": "index.html",
+    "files": {
+      "index.html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<style>\n.counter-wrap { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color: #111; background: #fff; text-align: center; padding: 24px 16px; }\n.counter-num { font-size: 56px; line-height: 1.1; margin: 0 0 16px 0; font-variant-numeric: tabular-nums; }\n.counter-row { margin: 0; }\n.counter-step { font-family: inherit; font-size: 17px; min-width: 64px; min-height: 48px; padding: 10px 22px; margin: 0 6px; border: 2px solid #111; border-radius: 999px; background: #fff; color: #111; cursor: pointer; }\n.counter-hint { font-size: 13px; color: #444; margin: 12px 0 0 0; }\n</style>\n</head>\n<body>\n<div class=\"counter-wrap\">\n<p class=\"counter-num\">0</p>\n<p class=\"counter-row\"><button type=\"button\" class=\"counter-step\" data-delta=\"1\">+1</button><button type=\"button\" class=\"counter-step\" data-delta=\"-1\">-1</button></p>\n<p class=\"counter-hint\">Writes through the shared set_count action. The reset forms below do the same without script.</p>\n</div>\n<script>\nfunction readCount() {\n  var scope = document.querySelector('[data-field=\"count\"] [data-value]');\n  if (scope && scope.textContent !== null) {\n    var n = parseInt(scope.textContent, 10);\n    if (!isNaN(n)) { return n; }\n  }\n  return 0;\n}\nfunction paintCount(n) {\n  var nums = document.querySelectorAll('.counter-wrap .counter-num');\n  for (var i = 0; i < nums.length; i++) { nums[i].textContent = String(n); }\n  var scope = document.querySelector('[data-field=\"count\"] [data-value]');\n  if (scope) { scope.textContent = String(n); }\n}\nfunction codeParam() {\n  var m = new RegExp('[?&]k=([^&]*)').exec(window.location.search || '');\n  return m ? m[1] : '';\n}\nfunction stepCounter(delta) {\n  var next = readCount() + delta;\n  if (next < 0) { next = 0; }\n  if (next > 1000000) { next = 1000000; }\n  var url = window.location.pathname + '?action=set_count&value=' + String(next);\n  var k = codeParam();\n  if (k !== '') { url += '&k=' + k; }\n  if (window.fetch) {\n    window.fetch(url + '&format=json', { headers: { 'Accept': 'application/json' } }).then(\n      function (r) { return r.json(); }\n    ).then(\n      function (res) {\n        if (res && res.ok && res.state && typeof res.state.count === 'number') { paintCount(res.state.count); return; }\n        window.location.href = url;\n      },\n      function () { window.location.href = url; }\n    );\n  } else {\n    window.location.href = url;\n  }\n}\nfunction initCounter() {\n  paintCount(readCount());\n  var btns = document.querySelectorAll('.counter-wrap .counter-step');\n  for (var i = 0; i < btns.length; i++) {\n    (function (btn) {\n      if (btn && btn.addEventListener) {\n        btn.addEventListener('click', function () {\n          var d = parseInt(btn.getAttribute('data-delta') || '1', 10);\n          if (isNaN(d)) { d = 1; }\n          stepCounter(d);\n        });\n      }\n    })(btns[i]);\n  }\n}\nif (document.readyState === 'loading') {\n  if (document.addEventListener) { document.addEventListener('DOMContentLoaded', initCounter); }\n} else {\n  initCounter();\n}\n</script>\n</body>\n</html>\n"
+    }
+  },
+  "ui": {
+    "template": "hello",
+    "title": "Counter",
+    "actions": [
+      {
+        "action": "reset_count",
+        "label": "Reset count"
+      }
+    ]
+  },
+  "stateSchema": {
+    "type": "object",
+    "initial": {
+      "count": 0
+    },
+    "fields": {
+      "count": {
+        "type": "integer",
+        "min": 0,
+        "max": 1000000
+      }
+    }
+  },
+  "actions": {
+    "set_count": {
+      "description": "Set the counter to an explicit value.",
+      "args": {
+        "value": {
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 1000000
+        }
+      },
+      "effect": {
+        "op": "set",
+        "field": "count",
+        "fromArg": "value"
+      }
+    },
+    "reset_count": {
+      "description": "Reset the counter to zero.",
+      "effect": {
+        "op": "set",
+        "field": "count",
+        "value": 0
+      }
+    }
+  }
+}

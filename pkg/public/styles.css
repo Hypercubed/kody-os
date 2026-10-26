@@ -1,0 +1,873 @@
+/* kody-os shell theme — classic Mac-style desktop, e-ink safe.
+   Monochrome only: no colour, no gradients, no animation, no transitions.
+   Stripes are a tiny inline SVG tile (a 1px rule every 4px), not a gradient. */
+
+:root {
+	color-scheme: light;
+	font-family: Geneva, Verdana, 'DejaVu Sans', sans-serif;
+	font-size: 16px;
+	line-height: 1.4;
+	--paper: #fff;
+	--desk: #e8e8e8;
+	--shade: #f2f2f2;
+	--rule: 2px solid #000;
+	--lift: 3px 3px 0 #000;
+	--lift-lg: 5px 5px 0 #000;
+	--stripes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect y='2' width='4' height='1' fill='%23000'/%3E%3C/svg%3E");
+	--checker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23888'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23888'/%3E%3C/svg%3E");
+	background: var(--desk);
+	color: #000;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+/* E-ink discipline: never animate, never transition. */
+*,
+*::before,
+*::after {
+	animation: none !important;
+	transition: none !important;
+}
+
+:focus-visible {
+	outline: 3px solid #000;
+	outline-offset: 2px;
+}
+
+body {
+	min-height: 100vh;
+	margin: 0;
+	padding: 0 0 2rem;
+	background: var(--desk);
+	color: #000;
+}
+
+/* ---- System menu bar ---- */
+
+.os-menubar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	padding: 0 0.5rem;
+	background: var(--paper);
+	border-bottom: var(--rule);
+}
+
+.os-brand {
+	display: inline-flex;
+	align-items: center;
+	padding: 0 0.9rem 0 0.35rem;
+	border-right: 1px solid #000;
+	font-size: 1rem;
+	font-weight: bold;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+}
+
+/* Checkerboard mark drawn in CSS: no font glyph, nothing to go missing. */
+.os-mark {
+	position: relative;
+	display: inline-block;
+	width: 0.85rem;
+	height: 0.85rem;
+	margin-right: 0.45rem;
+	border: 2px solid #000;
+	background: #fff;
+}
+
+.os-mark::before,
+.os-mark::after {
+	content: "";
+	position: absolute;
+	width: 50%;
+	height: 50%;
+	background: #000;
+}
+
+.os-mark::before {
+	top: 0;
+	left: 0;
+}
+
+.os-mark::after {
+	right: 0;
+	bottom: 0;
+}
+
+/* Fork glyph mark from os-theme.json: replaces the checkerboard when set. */
+.os-mark-glyph {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 0.45rem;
+	padding: 0 0.15rem;
+	border: 2px solid #000;
+	background: #fff;
+	font-size: 0.85rem;
+	font-weight: bold;
+	line-height: 1;
+}
+
+.os-menubar nav {
+	display: flex;
+	flex-wrap: wrap;
+	margin-left: 0;
+}
+
+.os-menubar nav a {
+	min-height: 3rem;
+	padding: 0 0.75rem;
+	font-size: 0.9375rem;
+	font-weight: bold;
+	text-decoration: none;
+}
+
+.os-menubar nav a:hover {
+	background: var(--shade);
+}
+
+.os-menubar nav a:active {
+	background: #000;
+	color: #fff;
+}
+
+/* Server-rendered clock slot, far right of the bar. */
+.os-clock {
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+	min-height: 3rem;
+	padding: 0 0.75rem 0 0.25rem;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+}
+
+/* ---- Desktop window ---- */
+
+.os-window {
+	width: calc(100% - 2rem);
+	max-width: 48rem;
+	margin: 1.5rem auto 0;
+	background: var(--paper);
+	border: var(--rule);
+	box-shadow: var(--lift-lg);
+}
+
+/* Striped title bar with a white title plate, like a classic OS window. */
+.os-titlebar {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 3rem;
+	padding: 0.3rem 3.5rem;
+	border-bottom: var(--rule);
+	background-color: var(--paper);
+	background-image: var(--stripes);
+	background-repeat: repeat;
+}
+
+.os-title {
+	max-width: 100%;
+	margin: 0;
+	padding: 0.2rem 0.85rem;
+	border: var(--rule);
+	background: var(--paper);
+	font-size: 0.9375rem;
+	font-weight: bold;
+	letter-spacing: 0.04em;
+	line-height: 1.5;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Close box doubles as back-to-home, so the chrome is honest. */
+.os-box {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 100%;
+	min-height: 3rem;
+	padding: 0;
+	text-decoration: none;
+}
+
+.os-box::before {
+	content: "";
+	display: block;
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid #000;
+	background: #fff;
+	box-shadow: 1px 1px 0 #000;
+}
+
+.os-box:hover::before,
+.os-box:active::before {
+	background: #000;
+}
+
+.os-box:active::before {
+	box-shadow: none;
+	transform: translate(1px, 1px);
+}
+
+main {
+	padding: 1rem;
+}
+
+/* ---- Help page ---- */
+
+.app-body h3 {
+	margin: 1rem 0 0.6rem;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+/* ---- Launcher grid ---- */
+
+.category {
+	margin: 0;
+}
+
+/* Inverted category bar. */
+.category h2 {
+	margin: 0 0 0.9rem;
+	padding: 0.4rem 0.6rem;
+	border: var(--rule);
+	background: #000;
+	color: #fff;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+/* Section header: label left, action button inline upper right. */
+.section-head {
+	display: flex;
+	align-items: center;
+	margin: 0 0 0.9rem;
+	border: var(--rule);
+	background: #000;
+	color: #fff;
+}
+
+.section-head h2 {
+	flex: 1;
+	margin: 0;
+	padding: 0.4rem 0 0.4rem 0.6rem;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.section-head .section-clear,
+.section-head .section-edit {
+	margin: 0;
+}
+
+.section-head button {
+	margin: 0.3rem 0.35rem 0.3rem 0;
+	min-height: 3rem;
+}
+
+.tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+	gap: 0.85rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.tiles > li {
+	display: flex;
+	margin: 0;
+	padding: 0;
+}
+
+.tiles a.tile {
+	flex: 1;
+}
+
+.tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 6.5rem;
+	padding: 0.5rem;
+	background: var(--paper);
+	border: var(--rule);
+	box-shadow: var(--lift);
+	color: inherit;
+	text-align: center;
+	text-decoration: none;
+	font: inherit;
+}
+
+/* The icon is a small bordered plate, so glyphs are optional decoration. */
+.tile .tile-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	margin-bottom: 0.45rem;
+	border: var(--rule);
+	background: var(--paper);
+	font-size: 1.25rem;
+	font-weight: bold;
+	line-height: 1;
+}
+
+.tile .tile-label {
+	font-size: 0.8125rem;
+	font-weight: bold;
+	line-height: 1.15;
+}
+
+.tile-empty {
+	border-style: dashed;
+	box-shadow: none;
+	background: transparent;
+	color: #444;
+}
+
+.tile-empty .tile-icon {
+	border-style: dashed;
+	background: transparent;
+}
+
+.tile-empty .tile-label {
+	font-weight: normal;
+}
+
+a.tile:hover,
+button.tile:hover {
+	background: var(--shade);
+}
+
+a.tile:active,
+button.tile:active {
+	background: #000;
+	color: #fff;
+	box-shadow: none;
+	transform: translate(3px, 3px);
+}
+
+a.tile:active .tile-icon,
+button.tile:active .tile-icon {
+	border-color: #fff;
+	background: #000;
+	color: #fff;
+}
+
+.empty-hint {
+	margin: 1rem 0 0;
+	padding: 0.7rem 0.8rem;
+	border: 1px dashed #000;
+	background: var(--paper);
+	font-size: 0.875rem;
+}
+
+/* ---- App window: every app gets the same panel ---- */
+
+.app {
+	margin: 0;
+	background: var(--paper);
+	border: var(--rule);
+	box-shadow: var(--lift);
+}
+
+.app-titlebar.has-close {
+	position: relative;
+	padding-left: 3.5rem;
+	padding-right: 3.5rem;
+}
+
+.app-titlebar {
+	margin: 0;
+	padding: 0.3rem 0.5rem;
+	border-bottom: var(--rule);
+	background-color: var(--paper);
+	background-image: var(--stripes);
+	background-repeat: repeat;
+	text-align: center;
+	font-size: 0.9375rem;
+	line-height: 1.5;
+}
+
+.app-title-plate {
+	display: inline-block;
+	padding: 0.2rem 0.85rem;
+	border: var(--rule);
+	background: var(--paper);
+	font-size: 0.9375rem;
+	font-weight: bold;
+	letter-spacing: 0.04em;
+}
+
+.app-body {
+	padding: 1rem;
+	background: var(--paper);
+}
+
+/* State fields read as stacked readout rows. */
+.app-body > p {
+	margin: 0 0 0.6rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid #000;
+	background: var(--paper);
+	font-size: 1rem;
+	font-weight: bold;
+}
+
+.app-body > p[role="alert"] {
+	margin: 0 0 0.9rem;
+	padding: 0.6rem 0.7rem;
+	border: var(--rule);
+	background: #000;
+	color: #fff;
+	font-size: 0.9375rem;
+	font-weight: bold;
+}
+
+.app-body form {
+	display: inline-block;
+	margin: 0 0.6rem 0.6rem 0;
+}
+
+.app-back {
+	margin: 0;
+	padding: 0;
+	border-top: var(--rule);
+}
+
+.app-back a {
+	min-height: 3rem;
+	padding: 0 0.75rem;
+	font-size: 0.875rem;
+	font-weight: bold;
+}
+
+/* Clock face: borderless centered display, big time over the date. */
+.clock-display {
+	margin: 0;
+	padding: 0.5rem 0;
+	text-align: center;
+}
+
+.clock-display .clock-time,
+.clock-display .clock-date {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+
+.clock-display .clock-time {
+	margin-bottom: 0.4rem;
+	font-size: 2.5rem;
+	font-weight: bold;
+	line-height: 1.1;
+}
+
+.clock-display .clock-date {
+	font-size: 1.125rem;
+}
+
+/* ---- Home sections: Pinned / Recent / edit mode ---- */
+
+.category + .category {
+	margin-top: 1.2rem;
+}
+
+.section-clear,
+.section-edit {
+	margin: 0.9rem 0 0;
+}
+
+.section-clear button,
+.section-edit button {
+	min-height: 3rem;
+}
+
+.edit-list {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.6rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.edit-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	padding: 0.6rem 0.7rem;
+	border: var(--rule);
+	background: var(--paper);
+}
+
+.edit-label {
+	margin-right: auto;
+	padding-right: 0.6rem;
+	font-size: 0.875rem;
+	font-weight: bold;
+}
+
+.edit-toggle {
+	margin: 0 0 0 0.5rem;
+}
+
+.edit-toggle button {
+	min-height: 3rem;
+}
+
+/* ---- Widget dashboard: live homepage grid, no JS required ---- */
+
+.widgets {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+	gap: 0.85rem;
+	margin: 0;
+	padding: 0;
+}
+
+.widget {
+	margin: 0;
+	background: var(--paper);
+	border: var(--rule);
+	box-shadow: var(--lift);
+}
+
+.widget-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	margin: 0;
+	padding: 0.7rem 0.8rem;
+	border-top: var(--rule);
+}
+
+.widget-controls .widget-move {
+	margin: 0 0.5rem 0 0;
+}
+
+.widget-controls .widget-move button {
+	min-height: 3rem;
+}
+
+.widget-controls .widget-move button:disabled {
+	box-shadow: none;
+	opacity: 0.4;
+}
+
+.widget .app-titlebar {
+	position: relative;
+}
+
+/* Expand box mirrors the os-box close control, upper right with an icon. */
+.widget-expand {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 100%;
+	min-height: 3rem;
+	padding: 0;
+	text-decoration: none;
+}
+
+.widget-expand::before {
+	content: "";
+	display: block;
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid #000;
+	background: #fff;
+	box-shadow: 1px 1px 0 #000;
+}
+
+/* Expand arrow: an upward-outward corner bracket inside the box. */
+.widget-expand::after {
+	content: "";
+	position: absolute;
+	top: calc(50% - 0.32rem);
+	left: calc(50% + 0.02rem);
+	width: 0.28rem;
+	height: 0.28rem;
+	border-top: 2px solid #000;
+	border-right: 2px solid #000;
+}
+
+.widget-expand:hover::before,
+.widget-expand:active::before {
+	background: #000;
+}
+
+.widget-expand:hover::after,
+.widget-expand:active::after {
+	border-color: #fff;
+}
+
+.widget-expand:active::before {
+	box-shadow: none;
+}
+
+.dashboard-empty h2 {
+	margin: 0 0 0.9rem;
+	padding: 0.4rem 0.6rem;
+	border: var(--rule);
+	background: #000;
+	color: #fff;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+/* ---- Modal overlay: one document, :target-revealed, no JS ---- */
+
+.overlay {
+	display: none;
+}
+
+.overlay:target {
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 20;
+	padding: 1rem;
+	overflow: auto;
+	background-color: transparent;
+	background-image: var(--checker);
+	background-repeat: repeat;
+}
+
+.overlay-panel {
+	width: calc(100% - 2rem);
+	max-width: 48rem;
+	margin: 1.5rem auto 0;
+}
+
+.overlay .app-back a {
+	min-height: 3rem;
+}
+
+/* ---- Access gate: the locked 404 page ---- */
+
+.gate-lead {
+	margin: 0 0 0.9rem;
+	font-family: serif;
+	font-size: 0.9375rem;
+	font-style: italic;
+}
+
+.app-body form.gate-form {
+	display: block;
+	margin: 0 0 0.9rem;
+}
+
+.gate-form label {
+	display: block;
+	margin-bottom: 0.4rem;
+	font-size: 0.75rem;
+	font-weight: bold;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.gate-form input[type="text"] {
+	display: block;
+	width: 100%;
+	margin-bottom: 0.8rem;
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 1.125rem;
+	letter-spacing: 0.08em;
+}
+
+.gate-form button {
+	display: block;
+	width: 100%;
+}
+
+.gate-hint {
+	margin: 0;
+	padding: 0.7rem 0.8rem;
+	border: 1px dashed #000;
+	font-size: 0.875rem;
+}
+
+.gate-hint code {
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 0.9375rem;
+}
+
+/* ---- Status bar ---- */
+
+.os-statusbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	margin: 0;
+	padding: 0;
+	border-top: var(--rule);
+	background: var(--paper);
+	font-size: 0.75rem;
+}
+
+.os-statusbar p {
+	display: flex;
+	align-items: center;
+	margin: 0;
+	padding: 0 0.7rem;
+}
+
+.os-status-main {
+	background: #000;
+	color: #fff;
+	font-weight: bold;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.os-status-meta {
+	border-right: 1px solid #000;
+	color: #333;
+}
+
+.os-statusbar nav {
+	display: flex;
+	margin-left: auto;
+}
+
+.os-statusbar nav a {
+	min-height: 3rem;
+	padding: 0 0.8rem;
+	font-size: 0.8125rem;
+	font-weight: bold;
+	text-decoration: none;
+}
+
+.os-statusbar nav a:hover {
+	background: var(--shade);
+}
+
+.os-statusbar nav a:active {
+	background: #000;
+	color: #fff;
+}
+
+/* ---- Base controls: large tap targets, hard shadows, no gradients ---- */
+
+a,
+button,
+input,
+select,
+textarea {
+	min-height: 3rem;
+}
+
+a {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.5rem;
+	color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+	padding: 0.65rem 1rem;
+	font: inherit;
+	background: var(--paper);
+	color: #000;
+	border: var(--rule);
+}
+
+button {
+	font-weight: bold;
+	cursor: pointer;
+	box-shadow: var(--lift);
+}
+
+button:hover {
+	background: var(--shade);
+}
+
+button:active {
+	background: #000;
+	color: #fff;
+	box-shadow: none;
+	transform: translate(3px, 3px);
+}
+
+@media (prefers-contrast: more) {
+	.os-menubar,
+	.os-window,
+	.os-title,
+	.os-box::before,
+	.os-mark-glyph,
+	.widget-expand::before,
+	.category h2,
+	.tile,
+	.tile .tile-icon,
+	.app,
+	.widget,
+	.dashboard-empty h2,
+	.app-title-plate,
+	.app-body > p,
+	button,
+	input,
+	select,
+	textarea {
+		border-width: 3px;
+	}
+}
+
+@media (max-width: 30rem) {
+	body {
+		padding: 0 0 1.5rem;
+	}
+
+	.os-window {
+		width: 100%;
+		margin: 0;
+		border: 0;
+		box-shadow: none;
+	}
+
+	.tiles {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.widgets {
+		grid-template-columns: 1fr;
+	}
+}
