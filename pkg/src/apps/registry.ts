@@ -406,6 +406,7 @@ export function validateDefinition(def: unknown): string | null {
 			}
 		}
 	}
+	if (ui['hideState'] !== undefined && typeof ui['hideState'] !== 'boolean') return 'definition.ui.hideState must be a boolean'
 	if (!isRecord(def['stateSchema'])) return 'definition.stateSchema must be an object'
 	var schema = def['stateSchema'] as Record<string, unknown>
 	if (schema['type'] !== 'object') return 'definition.stateSchema.type must be "object"'
@@ -1016,6 +1017,7 @@ export function add_app(
 					title: definition.ui.title,
 					placements: placements,
 					actions: definition.ui.actions,
+					hideState: definition.ui.hideState,
 				},
 				stateSchema: definition.stateSchema,
 				actions: definition.actions,

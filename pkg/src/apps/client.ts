@@ -80,8 +80,12 @@ function inlineBundleAssets(entry: string, def: AppDefinition, used: string[]): 
  * Extra bundle .js/.css files not referenced by the entry are appended as
  * inline script/style blocks; extra .html files are ignored. Throws when the
  * stored entry is missing or unreadable so callers can degrade gracefully.
+ *
+ * When `actionBase` is given, the container carries it as
+ * `data-action-base` so bundle scripts can resolve action URLs against the
+ * owning app instead of the current page path.
  */
-export function renderBundleContent(def: AppDefinition): string {
+export function renderBundleContent(def: AppDefinition, actionBase?: string): string {
 	var entry = bundleFile(def, 'index.html')
 	if (typeof entry !== 'string' || entry === '') {
 		throw new Error('bundle "' + def.id + '" has no readable entry')
@@ -98,7 +102,11 @@ export function renderBundleContent(def: AppDefinition): string {
 		if (path.slice(-3) === '.js') extra += '\n<script>' + content + '</script>'
 		else if (path.slice(-4) === '.css') extra += '\n<style>' + content + '</style>'
 	}
-	return '<div class="bundle" data-bundle="' + escapeHtml(def.id) + '">\n' + inlined + extra + '\n</div>'
+	var baseAttr =
+		typeof actionBase === 'string' && actionBase !== ''
+			? ' data-action-base="' + escapeHtml(actionBase) + '"'
+			: ''
+	return '<div class="bundle" data-bundle="' + escapeHtml(def.id) + '"' + baseAttr + '>\n' + inlined + extra + '\n</div>'
 }
 
 /**
@@ -117,14 +125,17 @@ export function renderBundleContent(def: AppDefinition): string {
 export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, code?: string, fromPath?: string): string {
 	var bundleHtml: string
 	try {
-		bundleHtml = renderBundleContent(def)
+		bundleHtml = renderBundleContent(def, appBasePath + '/apps/' + def.id)
 	} catch (err) {
 		bundleHtml = '<p>This bundle could not be displayed. The stored definition is damaged; reinstall it with add_app.</p>'
 	}
-	var fields = Object.keys(def.stateSchema.fields)
+	var hideState = def.ui.hideState === true
+	var fieldNames: string[] = Object.keys(def.stateSchema.fields)
+	var hiddenAttr = hideState ? ' hidden' : ''
+	var fields = fieldNames
 		.map(function (field: string): string {
 			var value = str(state[field])
-			return '<p data-field="' + escapeHtml(field) + '">' + escapeHtml(field) + ': ' + '<span data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</span></p>'
+			return '<p data-field="' + escapeHtml(field) + '"' + hiddenAttr + '>' + escapeHtml(field) + ': ' + '<span data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</span></p>'
 		})
 		.join('\n')
 	var codeField =

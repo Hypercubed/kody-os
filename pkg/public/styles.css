@@ -510,6 +510,38 @@ button.tile:active .tile-icon {
 	font-size: 1.125rem;
 }
 
+/* Counter app: its single action sits under a centered bundle, so center
+   the action row too. Scoped by panel label so other apps keep their
+   left-aligned action rows. If the label ever changes this safely stops
+   applying instead of mis-centering. */
+.app[aria-label="Counter"] .app-body,
+.widget[aria-label="Counter"] .app-body {
+	text-align: center;
+}
+
+/* Clock, Counter, Eight Ball: vertically center body content so short
+   widgets stay balanced next to taller neighbors (grid stretch makes
+   the widget fill the row; the body then centers its content).
+   Scoped by panel label like the Counter rule above. */
+.widget[aria-label="Clock"],
+.widget[aria-label="Counter"],
+.widget[aria-label="Eight Ball"] {
+	display: flex;
+	flex-direction: column;
+}
+.widget[aria-label="Clock"] .app-body,
+.widget[aria-label="Counter"] .app-body,
+.widget[aria-label="Eight Ball"] .app-body,
+.app[aria-label="Clock"] .app-body,
+.app[aria-label="Counter"] .app-body,
+.app[aria-label="Eight Ball"] .app-body {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-height: 8rem;
+}
+
 /* ---- Home sections: Pinned / Recent / edit mode ---- */
 
 .category + .category {

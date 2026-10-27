@@ -121,6 +121,8 @@ export interface UiDef {
 	placements?: AppPlacement[]
 	/** Buttons the shell renders as plain forms. Empty = read-only app page. */
 	actions?: UiActionDef[]
+	/** Visually hide the server-rendered state readout (stays in the DOM so bundle scripts can read initial state). Use when the bundle already displays state. */
+	hideState?: boolean
 }
 
 export interface BundleManifest {
