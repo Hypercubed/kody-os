@@ -65,6 +65,12 @@ Not available to depend on:
 
 ReKindle is existence proof that guarded vanilla JS can run in a Kindle browser. It is not proof of modern APIs, storage, sockets, or timers. So: enhance where present, never require.
 
+### Access transport (device latch)
+
+Unlock is a 4-digit one-time code, single use, valid 10 minutes (owner mints it over MCP with `mint_otp`). The unlock form's inline script rewrites the submit to the path form `/unlock/<code>` — Kody's edge drops query strings before the fetch handler runs, so `?k=` in the browser never arrives; the code lives in the path for one request and the success redirect lands on the clean app home. A correct code burns on first use and mints a session: a random token whose SHA-256 hash is stored (30-day expiry) and carried in a `kody_os_auth` HttpOnly cookie (prefixed with the platform's `cookiePrefix` so the edge forwards it), mirrored to `localStorage` for the client enhancement's `fetch` (`format=json`) fast path; the enhancement attaches the stored token and falls back to native submit on any failure. Without JavaScript the plain GET still submits (works wherever the platform preserves the query string). Failed unlocks are capped at 10 per 10-minute window device-wide.
+
+The device gate is a latch, not multi-user auth: one shared gate per OS install, valid from any browser that completes it. Treat anyone holding an unlocked browser as holding the device. There is no per-user separation. A legacy derived device code (HMAC of the Kody `access-key` secret, UI-managed, never stored) and its stored-hash fallback remain in the handler as fallback paths; see [Device key](device-key.md).
+
 ### Bundle contract
 
 Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `example-apps/hello-counter.json`, `example-apps/eight-ball.bundle.json`, and `example-apps/clock.bundle.json` (modal placement) for installable shapes.
@@ -208,38 +214,55 @@ The local preview serves the working tree with `kody dev` (default target `mock`
 Local registry writes use a small file helper. Create `pkg/scripts/registry.ts` once:
 
 ```ts
-import { add_app, list_apps, remove_app, set_access_code } from '../src/index.ts'
+import { add_app, list_apps, remove_app } from '../src/index.ts'
 
 type Input =
   | { op: 'add'; definition: Parameters<typeof add_app>[0] }
   | { op: 'list' }
   | { op: 'remove'; id: string }
-  | { op: 'set-code'; code: string }
 
 export default async function main(input: Input) {
   if (input.op === 'add') return await add_app(input.definition)
   if (input.op === 'remove') return await remove_app(input.id)
-  if (input.op === 'set-code') return await set_access_code(input.code)
   return await list_apps()
+}
+```
+
+The local preview has no bound secret, so the derived path is empty there and
+the pre-secret stored-hash fallback applies. Seed a throwaway dev hash with a
+one-off local script (a mock-store test fixture, not key management — the
+hosted code is derived from the Kody secret and has no set path). Create
+`pkg/scripts/seed-dev-hash.ts` once:
+
+```ts
+import { ACCESS_HASH_KEY, hashCode, normalizeCode } from '../src/auth.ts'
+import { resolveStore } from '../src/apps/storage.ts'
+
+export default async function main(input: { code: string }) {
+  var store = await resolveStore()
+  await store.set(ACCESS_HASH_KEY, await hashCode(normalizeCode(input.code)))
+  return { ok: true }
 }
 ```
 
 Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the package bucket `local:kody-os`, the same bucket `kody dev` reads. `--code` with `kody:@...` uses the `local-default` mock bucket and will not appear in the preview.
 
 1. Stop `kody dev` if it is running. A running preview keeps its mock state in memory; start it after the writes, or restart it afterward.
-2. Set a local access code and add the app:
+2. Seed a throwaway local dev code and add the app:
 
    ```bash
    cd pkg
-   kody execute --target mock --file scripts/registry.ts \
-     --params '{"op":"set-code","code":"local-dev-code-123456"}'
+   kody execute --target mock --file scripts/seed-dev-hash.ts \
+     --params '{"code":"local-dev-code-123456"}'
 
    DEF="$(cat /tmp/preview-counter.json)"
    kody execute --target mock --file scripts/registry.ts \
      --params "{\"op\":\"add\",\"definition\":$DEF}"
    ```
 
-   `set-code` returns the normalized code (for example `local-devco-de123-456`). Either that value or the original input unlocks the shell.
+   The seed writes the dev hash straight to the mock store (local fixture
+   only). The normalized dev code (`local-devco-de123-456`) unlocks the shell;
+   the raw input works too.
 
 3. Start the preview:
 
@@ -276,7 +299,7 @@ The local mock session defaults to `default`; set `KODY_MOCK_SESSION_ID` to use 
 
 - **Read state:** `get_app_state(id)` returns the same state the app page renders.
 - **Run an action:** `act(id, action, args?)` returns `{ ok: true, state }` or `{ ok: false, error }`.
-- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); the shell adds the access code as a hidden `k` field on the bookmark path. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field`/`data-value` nodes update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. App authors do nothing special: the renderer adds `form.app-action`, `section[data-app-id]`, and `data-field`/`data-value` hooks automatically.
+- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); the shell adds the session or device code as a hidden `k` field only when the current session is query-authenticated, so cookie-authenticated pages render fully clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field`/`data-value` nodes update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. App authors do nothing special: the renderer adds `form.app-action`, `section[data-app-id]`, and `data-field`/`data-value` hooks automatically.
 - **Homepage:** Apps → Edit → **Add to home** / **Remove from home**. The home dashboard shows live widgets in homepage order. Homepage placement is a UI action in the current shell; there is no `set_home` MCP export.
 - **Pin and hide:** Apps → Edit → **Pin** / **Hide**. Hide is reversible. The UI has no Remove control.
 - **Export:** `export_app(id)` returns `{ format: "kody-os-app/2", exportedAt, definition, state }`. `import_app(payload, undefined, { overwrite: true })` restores it into the other target. Use this to copy between hosted and local, which have separate stores.
@@ -320,16 +343,19 @@ kody execute --target mock --file scripts/registry.ts \
 | `kody-os.apps.hidden` | Hidden ids, excluded from the All apps list and Recent. |
 | `kody-os.apps.recent` | Recently used ids for the Apps page. |
 | `kody-os.apps.homepage` | Homepage/widget order. |
-| `kody-os.auth.code_hash` | SHA-256 hash of the device access code. |
+| `kody-os.auth.code_hash` | Pre-secret fallback only: SHA-256 hash of the device code. Ignored once the Kody secret is bound. |
+| `kody-os.auth.otp` | Live OTP hashes: `{ h, exp }[]`, 10-minute TTL, max 5 outstanding, pruned on write. Burned (removed) on first correct use. |
+| `kody-os.auth.sessions` | Live session hashes: `{ h, exp }[]`, 30-day TTL, pruned on read. Deleted on logout. |
+| `kody-os.auth.fail` | Unlock rate-limit counter: `{ n, start }` for the 10-fails-per-10-minutes device-wide window. |
 
-The hosted and local stores are independent. Adding to one does not add to the other. The access code is never stored or logged raw.
+The hosted and local stores are independent. Adding to one does not add to the other. The access code is never stored or logged raw; on the derived path no auth secret lives in storage at all.
 
 ## Troubleshooting
 
 - **`{ ok: false, error }` from `add_app`:** validation failed and nothing was written. Fix the named field and retry.
 - **App is on Apps but not the home dashboard:** add it with Apps → Edit → **Add to home**. New apps are not automatically homepage widgets.
 - **App added to hosted but not local (or the reverse):** the stores are separate. Run the same add against the other target; use `list_apps()` in the target you are checking.
-- **Local preview shows the locked 404:** a fresh mock store has no access code. Run `set-code` before starting `kody dev`, then open `?k=<code>`. The one-time `POST /__access-code` route also works on localhost.
+- **Local preview shows the locked 404:** a fresh mock store has no dev hash. Run the `seed-dev-hash.ts` script before starting `kody dev`, then open `?k=<code>`. There is no in-app or MCP set path; the hosted code comes from the Kody secret (see [Device key](device-key.md)).
 - **Local add is missing in a running preview:** `kody dev` loaded the mock store at startup. Run the registry write before starting it, or stop and restart it. `kody dev fetch` attaches only to a server started without an explicit `--port`.
 - **`kody dev --target prod` throws `local:<kody.id>`:** it does not provide the hosted `packageStorage()`. Use the hosted MCP/execute path for the real app.
 - **`--invoke` with `add_app` fails:** this package exports only the root, so there is no `/add_app` subpath. Use the `--code`/`--file` wrappers shown here.
@@ -338,7 +364,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - **`format` appears in a request:** the UI/server fast path uses `?format=json` to ask for `ActResult` JSON. It is stripped before `actFromForm`, so it never becomes an action arg.
 - **Re-adding reset the state:** `add_app` overwrites an existing id and restores `initial`. Export before replacing if you need the old state.
 - **No remove button in the UI:** removal is MCP-only by design. Use `remove_app`; use Hide for a reversible action.
-- **Access code:** the hosted browser needs the existing bookmark/`?k=` code; MCP exports are not gated. Do not put the code in a definition, export, or log. The local code is a development code, not the hosted one.
+- **Access code:** the hosted browser needs a fresh OTP (owner mints with `mint_otp`, valid 10 minutes, single use, 4 digits); MCP exports are not gated. Do not put a code in a definition, export, or log. The local dev code (`?k=` on the local preview, which has no edge stripping) is a development code, not the hosted one.
 
 ## See also
 

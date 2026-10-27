@@ -1,7 +1,8 @@
 {
 	"name": "@hypercubed/kody-os",
-	"version": "0.1.0",
+	"version": "0.1.3",
 	"private": true,
+	"build": 2,
 	"type": "module",
 	"exports": { ".": "./src/index.ts" },
 	"kody": {
@@ -9,6 +10,13 @@
 		"description": "Minimal shared Human/Agent OS shell — ReKindle-style blank slate for browser-first use.",
 		"category": "productivity",
 		"tags": ["os", "minimal", "rekindle", "shell", "eink"],
-		"app": { "entry": "./src/app.ts", "client": "./src/client/index.ts", "assets": "./public" }
+		"app": { "entry": "./src/app.ts", "client": "./src/client/index.ts", "assets": "./public" },
+		"credentials": {
+			"access-key": {
+				"kind": "secret",
+				"description": "Device access key for the kody-os shell: the publisher (owner) holds random key material in a package secret, and the app derives the Scribe bookmark code from it via HMAC. No secret defined means Kody-login-only access.",
+				"ownerCredentialForVisitors": true
+			}
+		}
 	}
 }

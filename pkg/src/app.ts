@@ -1,5 +1,6 @@
 import { SHELL_CSS } from './shell-css.ts'
-import { accessCookie, authenticate, checkCode, getAccessStatus, isSecureRequest, setAccessCode } from './auth.ts'
+import { ACCESS_COOKIE, accessCookie, authenticate, authPathFor, checkCode, isKodyVerifiedVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
+import type { AuthPath } from './auth.ts'
 
 interface PackageContext {
 	appBasePath?: string
@@ -12,6 +13,7 @@ interface Chrome {
 	assetBasePath: string
 	clientModuleUrl: string
 	theme: ResolvedTheme
+	authPath?: AuthPath
 }
 
 /** Raw fork-editable theme file shape: every field optional strings. */
@@ -24,6 +26,8 @@ interface ThemeFile {
 
 /** Theme with defaults applied: today's rendering when the file is absent. */
 interface ResolvedTheme {
+	version?: string
+	build?: string
 	name: string
 	titlePrefix: string
 	icon: string
@@ -75,6 +79,40 @@ function str(v: unknown, fallback: string): string {
 
 /** Load the fork-editable theme file once per publish; missing or broken reads as {}. */
 var themePromise: Promise<ThemeFile> | null = null
+var packageMetaPromise: Promise<{ version: string; build: string }> | null = null
+function getPackageMeta(): Promise<{ version: string; build: string }> {
+	if (!packageMetaPromise) {
+		try {
+			// @ts-ignore optional manifest; the bundler inlines it when present.
+			var req = import('../package.json', { with: { type: 'json' } })
+			packageMetaPromise = req.then(
+				function (m: unknown): { version: string; build: string } {
+					var out = { version: '0.1.0', build: '' }
+					try {
+						var rec = m as { default?: unknown } | null
+						var body = rec && typeof rec === 'object' && 'default' in rec ? rec.default : m
+						if (body && typeof body === 'object') {
+							var v = (body as { version?: unknown }).version
+							if (typeof v === 'string' && v !== '') out.version = v
+							var b = (body as { build?: unknown }).build
+							if (typeof b === 'number' && isFinite(b)) out.build = 'b' + String(Math.floor(b))
+							else if (typeof b === 'string' && b !== '') out.build = b
+						}
+					} catch (err) {
+					}
+					return out
+				},
+				function (): { version: string; build: string } {
+					return { version: '0.1.0', build: '' }
+				}
+			)
+		} catch (err) {
+			packageMetaPromise = Promise.resolve({ version: '0.1.0', build: '' })
+		}
+	}
+	return packageMetaPromise
+}
+
 function getTheme(): Promise<ThemeFile> {
 	if (!themePromise) {
 		try {
@@ -154,6 +192,7 @@ function shellChrome(opts: {
 	body: string
 	theme: ResolvedTheme
 	current?: string
+	authPath?: AuthPath
 }): string {
 	var safeBase = escapeAttribute(opts.appBasePath)
 	var safeTitle = escapeAttribute(opts.title)
@@ -174,6 +213,8 @@ function shellChrome(opts: {
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
 		: ''
+	var authLabel: AuthPath = opts.authPath ? opts.authPath : 'locked'
+	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">' + escapeAttribute(authLabel) + ' \u00b7 v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + '\t\t</footer>\n'
 	return (
 		'<!doctype html>\n' +
 		'<html lang="en"\n' +
@@ -221,6 +262,9 @@ function shellChrome(opts: {
 		'/help"' +
 		(opts.current === 'help' ? ' aria-current="page"' : '') +
 		'>Help</a>\n' +
+			(opts.authPath === 'via cookie' || opts.authPath === 'via key'
+				? '\t\t<a href="' + safeBase + '/logout">Logout</a>\n'
+				: '') +
 		'\t\t</nav>\n' +
 		'\t\t<span class="os-clock" id="os-clock">' +
 		headerClock() +
@@ -236,8 +280,7 @@ function shellChrome(opts: {
 		'\t\t<main>\n' +
 		opts.body +
 		'\n\t\t</main>\n' +
-		'\t\t<footer class="os-statusbar">\n' +			'\t\t\t<p class="os-status-main">Private OS shell</p>\n' +
-			'\t\t</footer>\n' +
+		footerPath +
 		'\t</div>' +
 		clientScript +
 		'\n</body>\n</html>'
@@ -245,7 +288,7 @@ function shellChrome(opts: {
 }
 
 function notFoundPage(ctx: Chrome): Response {
-	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Not found', body: '\t\t<p>Not found.</p>' }), {
+	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Not found', authPath: ctx.authPath ? ctx.authPath : 'locked', body: '\t\t<p>Not found.</p>' }), {
 		status: 404,
 		headers: pageHeaders(),
 	})
@@ -261,23 +304,27 @@ function notFoundPage(ctx: Chrome): Response {
  */
 function lockedPage(ctx: Chrome, message: string, next: string): Response {
 	var action = escapeAttribute(safeNextPath(next, ctx.appBasePath))
+	var basePath = ctx.appBasePath && ctx.appBasePath.charAt(0) === '/' ? ctx.appBasePath : '/'
+	if (basePath.charAt(basePath.length - 1) !== '/') basePath += '/'
+	var safeBase = escapeAttribute(basePath)
 	var alert = message ? '\t\t\t\t\t<p role="alert">' + escapeAttribute(message) + '</p>\n' : ''
 	var body =
 		'\t\t\t<section class="app gate" aria-label="Locked">\n' +
 		'\t\t\t\t<div class="app-body">\n' +
-		'\t\t\t\t\t<p class="gate-lead">This OS is private. Open your bookmark, or enter the access code.</p>\n' +
+		'\t\t\t\t\t<p class="gate-lead">This OS is private. Ask your agent for a one-time code and enter it below.</p>\n' +
 		alert +
 		'\t\t\t\t\t<form class="gate-form" method="get" action="' +
 		action +
-		'">\n' +
+		'" data-base="' + safeBase + '">\n' +
 		'\t\t\t\t\t\t<label for="access-code">Access code</label>\n' +
 		'\t\t\t\t\t\t<input id="access-code" name="k" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required />\n' +
 		'\t\t\t\t\t\t<button type="submit">Unlock</button>\n' +
+		'\t\t\t\t\t\t<script>(function(){try{var f=document.querySelector("form.gate-form");if(!f||!f.addEventListener)return;f.addEventListener("submit",function(){try{var i=f.querySelector("input[name=k]");if(i&&i.value){try{localStorage.setItem("kody_os_auth",i.value)}catch(s){}try{var b=f.getAttribute("data-base")||"/";f.action=b+"unlock/"+encodeURIComponent(i.value)}catch(a){}}}catch(e){}})}catch(e){}})();</script>\n' +
 		'\t\t\t\t\t</form>\n' +
-		'\t\t\t\t\t<p class="gate-hint">No bookmark? The address can carry the code: <code>?k=your-code</code></p>\n' +
+		'\t\t\t\t\t<p class="gate-hint">Codes are 4 digits, single use, and expire after 10 minutes.</p>\n' +
 		'\t\t\t\t</div>\n' +
 		'\t\t\t</section>'
-	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Locked', body: body }), {
+	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Locked', authPath: 'locked', body: body }), {
 		status: 404,
 		headers: pageHeaders(),
 	})
@@ -329,12 +376,12 @@ function withAccessCodeInHtml(html: string, code: string): string {
 	})
 }
 
-/** Add the cookie, and on the code-in-URL path also stamp links and redirects. */
-function finishResponse(response: Response, code: string, hash: string, appBasePath: string, request: Request): Promise<Response> {
+/** Add the cookie on the query path; stamp links/redirects only when viaQuery. Kody- and cookie-authenticated responses pass stamp=false and render clean URLs; query-authenticated responses pass stamp=true (viaQuery) and keep `?k=` exactly as today. The branch is explicit so it never depends on code emptiness. */
+function finishResponse(response: Response, code: string, hash: string, appBasePath: string, request: Request, stamp: boolean): Promise<Response> {
 	var headers = new Headers(response.headers)
 	headers.set('Cache-Control', 'no-store')
 	headers.set('Referrer-Policy', 'no-referrer')
-	if (code === '') return Promise.resolve(new Response(response.body, { status: response.status, statusText: response.statusText, headers: headers }))
+	if (!stamp) return Promise.resolve(new Response(response.body, { status: response.status, statusText: response.statusText, headers: headers }))
 
 	headers.append('Set-Cookie', accessCookie(hash, appBasePath, isSecureRequest(request)))
 	var location = headers.get('Location')
@@ -348,7 +395,22 @@ function finishResponse(response: Response, code: string, hash: string, appBaseP
 	})
 }
 
-/** Plain HTML unlock form POST: verify, set the cookie, PRG back to `next`. */
+/** Clear the session cookie (logout): prefixed and legacy bare names, so one logout clears either. */
+function clearSessionCookies(appBasePath: string, secure: boolean): string[] {
+	var path = appBasePath && appBasePath.charAt(0) === '/' ? appBasePath : '/'
+	if (path.charAt(path.length - 1) !== '/') path += '/'
+	var names = [sessionCookieName()]
+	if (names[0] !== ACCESS_COOKIE) names.push(ACCESS_COOKIE)
+	var out: string[] = []
+	for (var i = 0; i < names.length; i++) {
+		var parts = [names[i] + '=deleted', 'Path=' + path, 'Max-Age=0', 'HttpOnly', 'SameSite=Lax']
+		if (secure) parts.push('Secure')
+		out.push(parts.join('; '))
+	}
+	return out
+}
+
+/** Plain HTML unlock form POST: verify, set the cookie, land on a `next` interstitial that stores the code in localStorage where available. */
 function unlock(request: Request, chrome: Chrome): Promise<Response> {
 	return request
 		.text()
@@ -363,55 +425,47 @@ function unlock(request: Request, chrome: Chrome): Promise<Response> {
 		.then(function (text: string): Promise<Response> {
 			var params = new URLSearchParams(text)
 			var next = safeNextPath(params.get('next') || '', chrome.appBasePath)
-			return checkCode(params.get('code') || '').then(function (check): Response {
-				if (!check.ok || check.hash === '') return lockedPage(chrome, 'Code not recognized.', next)
-				// Redirect with the code in the URL too: works even when the Scribe drops the cookie.
-				return new Response(null, {
-					status: 303,
-					headers: {
-						Location: withAccessCode(next, check.code),
-						'Set-Cookie': accessCookie(check.hash, chrome.appBasePath, isSecureRequest(request)),
-						'Cache-Control': 'no-store',
-						'Referrer-Policy': 'no-referrer',
-					},
+			return unlockAllowed().then(function (allowed): Promise<Response> {
+				if (!allowed) return Promise.resolve(lockedPage(chrome, 'Too many attempts. Try again in a few minutes.', next))
+				return checkCode(params.get('code') || '', undefined, request).then(function (check): Response {
+					if (!check.ok || check.hash === '') return lockedPage(chrome, 'Code not recognized.', next)
+					// Success lands on an interstitial, not a bare 303, so a guarded
+					// inline script can store the bearer in localStorage where available;
+					// later enhancement requests then authenticate with clean links.
+					// The cookie and the continue URL are the Scribe-safe path:
+					// absent or disabled storage never blocks the meta refresh or the
+					// plain Continue link below. OTP unlocks mint a session: the
+					// stored value is the session token (same key name) and the
+					// continue URL stays clean, since the OTP is already burned.
+					var isSession = check.sessionToken !== ''
+					var dest = isSession ? next : withAccessCode(next, check.code)
+					var stored = isSession ? check.sessionToken : check.code
+					var codeJs = JSON.stringify(stored)
+					var destJs = JSON.stringify(dest)
+					var unlockedBody =
+						'\t\t\t<section class="app gate" aria-label="Unlocked">\n' +
+						'\t\t\t\t<div class="app-body">\n' +
+						'\t\t\t\t\t<meta http-equiv="refresh" content="0;url=' + escapeAttribute(dest) + '" />\n' +
+						'\t\t\t\t\t<p class="gate-lead">Unlocked. Continuing...</p>\n' +
+						'\t\t\t\t\t<p class="gate-hint"><a href="' + escapeAttribute(dest) + '">Continue</a></p>\n' +
+						'\t\t\t\t</div>\n' +
+						'\t\t\t</section>' +
+						'<script>(function(){try{localStorage.setItem("kody_os_auth",' + codeJs + ')}catch(e){}try{location.replace(' + destJs + ')}catch(f){try{location.href=' + destJs + '}catch(g){}}})();</script>'
+					var cookie = isSession
+						? sessionCookie(check.sessionToken, chrome.appBasePath, isSecureRequest(request))
+						: accessCookie(check.hash, chrome.appBasePath, isSecureRequest(request))
+					return new Response(shellChrome({ appBasePath: chrome.appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Unlocked', authPath: isSession ? 'via cookie' : 'via key', body: unlockedBody }), {
+						status: 200,
+						headers: {
+							'Content-Type': 'text/html; charset=utf-8',
+							'Set-Cookie': cookie,
+							'Cache-Control': 'no-store',
+							'Referrer-Policy': 'no-referrer',
+						},
+					})
 				})
 			})
 		})
-}
-
-/**
- * One-shot bootstrap: mint the first access code after publish.
- * Refuses forever once a code exists, so it cannot rotate or reset the lock.
- * Safe because the package is private until the owner approves internet access,
- * and the code is set before that approval is requested.
- */
-function bootstrapAccess(request: Request, chrome: Chrome): Promise<Response> {
-	return getAccessStatus().then(function (status): Promise<Response> | Response {
-		if (status.configured) return lockedPage(chrome, '', joinPath(chrome.appBasePath, '/'))
-		return request.text().then(function (text: string): Promise<Response> {
-			var params = new URLSearchParams(text)
-			return setAccessCode(params.get('code') || '').then(function (result): Response {
-				if (!result.ok) return lockedPage(chrome, result.error || 'Could not set the access code.', joinPath(chrome.appBasePath, '/'))
-				var code = result.code || ''
-				var body =
-					'\t\t\t<section class="app" aria-label="Access code">\n' +
-					'\t\t\t\t<div class="app-body">\n' +
-					'\t\t\t\t\t<p class="gate-lead">One-time setup. This is the only time the code is shown.</p>\n' +
-					'\t\t\t\t\t<p class="gate-hint"><code>' +
-					escapeAttribute(code) +
-					'</code></p>\n' +
-					'\t\t\t\t\t<p class="gate-hint">Bookmark: <code>?k=' +
-					escapeAttribute(encodeURIComponent(code)) +
-					'</code></p>\n' +
-					'\t\t\t\t</div>\n' +
-					'\t\t\t</section>'
-				return new Response(shellChrome({ appBasePath: chrome.appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Access code', body: body }), {
-					status: 200,
-					headers: pageHeaders(),
-				})
-			})
-		})
-	})
 }
 
 function firstPathSegment(path: string, prefix: string): string {
@@ -426,7 +480,7 @@ function firstPathSegment(path: string, prefix: string): string {
 }
 
 /** Route dispatch for an authenticated request. */
-function dispatch(request: Request, chrome: Chrome, path: string, method: string, code: string): Promise<Response> {
+function dispatch(request: Request, chrome: Chrome, path: string, method: string, code: string, authPath: AuthPath): Promise<Response> {
 	var appBasePath = chrome.appBasePath
 	return import('./apps/index.ts').then(function (m): Promise<Response> {			var actFromForm = m.actFromForm
 			var clear_recent = m.clear_recent
@@ -491,7 +545,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							var indented = ''
 							for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
 							return new Response(
-								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Home', current: 'home', body: indented }),
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Home', current: 'home', authPath: authPath, body: indented }),
 								{ status: widgetError ? 400 : 200, headers: pageHeaders() },
 							)
 						})
@@ -507,7 +561,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -519,7 +573,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}
@@ -646,10 +700,21 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					'\t\t\t</section>'
 				return Promise.resolve(
 					new Response(
-						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Help', current: 'help', body: body }),
+						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Help', current: 'help', authPath: authPath, body: body }),
 						{ status: 200, headers: pageHeaders() },
 					),
 				)
+			}
+
+			// GET /logout — revoke this device's session on both sides, then land home.
+			if (method === 'GET' && path === '/logout') {
+				return revokeSession(request).then(function (): Response {
+					var headers = new Headers(pageHeaders())
+					var doomed = clearSessionCookies(appBasePath, isSecureRequest(request))
+					for (var ci = 0; ci < doomed.length; ci++) headers.append('Set-Cookie', doomed[ci])
+					headers.set('Location', appBasePath + '/')
+					return new Response(null, { status: 303, headers: headers })
+				})
 			}
 
 			// GET / — widget dashboard: live homepage widgets in homepage order.
@@ -712,7 +777,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					for (var bi = 0; bi < apps.length; bi++) byId[apps[bi].id] = bi
 					if (apps.length === 0) {
 						return Promise.resolve(new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', body:
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, body:
 							'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
 							'\t\t\t\t<h2>Apps</h2>\n' +
 							'\t\t\t\t<ul class="tiles">\n' +
@@ -785,7 +850,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								var olines = overlays[oii].split('\n')
 								for (var lj = 0; lj < olines.length; lj++) indentedSections += '\t\t\t' + olines[lj] + '\n'
 							}							return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', body: indentedSections }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, body: indentedSections }),
 								{ status: 200, headers: pageHeaders() },
 							)
 						})
@@ -806,7 +871,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
  * Every request passes the device gate first (see auth.ts). MCP exports are
  * not routed through fetch, so agents keep working while the browser is locked.
  *
- * ES2019 ceiling: no ?. and no ?? in this file (Chromium 75 crashes on them).
+ * ES2019 ceiling: no optional chaining and no nullish coalescing in this file (Chromium 75 crashes on them).
  */
 var app = {
 	fetch: async function (request: Request): Promise<Response> {
@@ -815,15 +880,41 @@ var app = {
 		var assetBasePath = str(context.assetBasePath, '/_assets')
 		var clientModuleUrl = str(context.clientModuleUrl, '')
 		var theme = resolveTheme(await getTheme())
+		try {
+			var meta = await getPackageMeta()
+			theme.version = meta.version
+			theme.build = meta.build
+		} catch (err) {
+			theme.version = '0.1.0'
+			theme.build = ''
+		}
 		var chrome: Chrome = { appBasePath: appBasePath, assetBasePath: assetBasePath, clientModuleUrl: clientModuleUrl, theme: theme }
 		var rawPath = new URL(request.url).pathname
 		var appsAt = rawPath.indexOf('/apps/')
 		var path = appsAt === -1 ? rawPath : rawPath.slice(appsAt)
 		var method = String(request.method || '').toUpperCase()
-
-		// One-shot bootstrap: mint the first code while none exists.
-		if (method === 'POST' && path === '/__access-code') {
-			return bootstrapAccess(request, chrome)
+		// Path-carried OTP: the edge drops query strings before the fetch
+		// handler runs, so /unlock/<code> carries the code in the path.
+		// Re-attach it as ?k= on a cloned request; everything downstream
+		// (auth, redirect, cookie, messages) then works unchanged.
+		var unlockAt = path.indexOf('/unlock/')
+		if (method === 'GET' && unlockAt !== -1) {
+			var seg = path.slice(unlockAt + 8)
+			var cutAt = seg.indexOf('/')
+			var rawCode = cutAt === -1 ? seg : seg.slice(0, cutAt)
+			var pathCode = ''
+			try {
+				pathCode = decodeURIComponent(rawCode)
+			} catch (err) {
+				pathCode = ''
+			}
+			if (pathCode !== '') {
+				try {
+					var sep = request.url.indexOf('?') === -1 ? '?' : '&'
+					request = new Request(request.url + sep + 'k=' + encodeURIComponent(pathCode), request)
+				} catch (err) {
+				}
+			}
 		}
 
 		// Unlock form: plain HTML POST, works with zero JavaScript.
@@ -831,13 +922,62 @@ var app = {
 			return unlock(request, chrome)
 		}
 
+		// Kody-login bypass: a platform-verified visitor skips the device gate.
+		// Anonymous (no header, or metaGetCurrentUser throws) falls through to
+		// the device gate; the Scribe never sends the header so its `?k=` flow
+		// is byte-identical to today. Never fails open.
+		var kodyVisitor = await isKodyVerifiedVisitor(request)
 		var access = await authenticate(request)
+		if (kodyVisitor) {
+			var kodyAccess = { ok: true, viaQuery: false, viaCookie: false, viaKody: true, code: '', hash: access.hash }
+			chrome.authPath = authPathFor(kodyAccess)
+			var kodyResponse = await dispatch(request, chrome, path, method, '', chrome.authPath)
+			return finishResponse(kodyResponse, '', access.hash, appBasePath, request, false)
+		}
 		if (!access.ok) {
-			return lockedPage(chrome, '', safeNextPath(joinPath(appBasePath, routePath(path, appBasePath)), appBasePath))
+			chrome.authPath = 'locked'
+			var triedCode = ''
+			try {
+				triedCode = new URL(request.url).searchParams.get('k') || ''
+			} catch (err) {
+				triedCode = ''
+			}
+			var lockedMsg = ''
+		if (triedCode !== '') {
+			var allowedNow = true
+			try {
+				allowedNow = await unlockAllowed()
+			} catch (err) {
+				allowedNow = true
+			}
+			lockedMsg = allowedNow ? 'Code not recognized. Ask your agent for a fresh code and try again.' : 'Too many attempts. Try again in a few minutes.'
+		}
+			return lockedPage(chrome, lockedMsg, safeNextPath(joinPath(appBasePath, routePath(path, appBasePath)), appBasePath))
 		}
 
-		var response = await dispatch(request, chrome, path, method, access.code)
-		return finishResponse(response, access.code, access.hash, appBasePath, request)
+		chrome.authPath = authPathFor(access)
+		if (access.sessionToken !== '' && method === 'GET') {
+			var cleanHeaders = new Headers(pageHeaders())
+			cleanHeaders.append('Set-Cookie', sessionCookie(access.sessionToken, appBasePath, isSecureRequest(request)))
+			// Land on the app home with a clean URL: the /unlock/<code> path
+			// must not linger (the code is single-use anyway), and deep-link
+			// resume is out of scope while query strings are stripped.
+			// Re-prefix the mount or the redirect escapes to the host root.
+			cleanHeaders.set('Location', joinPath(appBasePath, '/'))
+			return Promise.resolve(new Response(null, { status: 303, headers: cleanHeaders }))
+		}
+		var response = await dispatch(request, chrome, path, method, access.code, chrome.authPath)
+		return finishResponse(response, access.code, access.hash, appBasePath, request, access.viaQuery).then(function (finished): Promise<Response> {
+			// A fresh OTP session mints its bearer here (the GET-form path): the
+			// legacy finish never stamps or sets a cookie for it (clean URLs),
+			// so append the HttpOnly session cookie carrying the raw token.
+			if (access.sessionToken === '') return Promise.resolve(finished)
+			var outHeaders = new Headers(finished.headers)
+			outHeaders.append('Set-Cookie', sessionCookie(access.sessionToken, appBasePath, isSecureRequest(request)))
+			return finished.text().then(function (body): Response {
+				return new Response(body, { status: finished.status, statusText: finished.statusText, headers: outHeaders })
+			})
+		})
 	},
 }
 

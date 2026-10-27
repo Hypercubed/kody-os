@@ -83,7 +83,7 @@ The shell SHALL route mount-tolerantly: it slices the request path from the firs
 
 ### Requirement: Single shared chrome
 
-Every page SHALL use the same chrome: title bar with the page title and a close box (labeled `Home`, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home, Apps, and Help links (no Refresh link); main content; footer with status text and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box SHALL be the titlebar's way home; the dashboard at `GET /` SHALL omit it (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
+Every page SHALL use the same chrome: title bar with the page title and a close box (labeled `Home`, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home, Apps, and Help links (no Refresh link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, `via key`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box SHALL be the titlebar's way home; the dashboard at `GET /` SHALL omit it (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
 
 #### Scenario: Unknown routes keep the chrome
 - **WHEN** a request hits an unknown path
@@ -96,6 +96,10 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 #### Scenario: Defaults preserve current rendering
 - **WHEN** no theme file is present
 - **THEN** title, brand, and background are byte-identical to the pre-change shell.
+
+#### Scenario: Footer names the auth path
+- **WHEN** any page is fetched
+- **THEN** the footer states which path authenticated the request (`via kody`, `via cookie`, `via key`, or `locked`).
 
 ### Requirement: Scribe-ready styles, inlined
 The shell SHALL inline the full theme in a single `<style>` tag on every page and emit zero external stylesheet `<link>` tags. `src/shell-css.ts` is generated from `public/styles.css` (the authoring source of truth) and MUST be regenerated after any theme edit so the two stay byte-identical.
@@ -112,11 +116,15 @@ Shell and client code SHALL be ES2019 only: no `?.`, no `??`, no `replaceAll`, n
 - **THEN** zero matches are found outside comments, and every interactive element keeps a 3rem minimum target.
 
 ### Requirement: Pages are server-rendered
-Every action SHALL complete as a plain form submission + redirect. The client module (`src/client/index.ts`) MAY enhance forms in place when `fetch` is available and MUST fall back to native submit on any failure. The client module SHALL NOT import `kody:` or `node:` modules.
+Every action SHALL complete as a plain form submission + redirect. The client module (`src/client/index.ts`) MAY enhance forms in place when `fetch` is available and MUST fall back to native submit on any failure. The enhancement MAY read the access key from `localStorage` and attach it to enhancement requests; rendered links and forms SHALL NOT depend on it. The client module SHALL NOT import `kody:` or `node:` modules.
 
 #### Scenario: Plain increment round-trips without the fast path
 - **WHEN** the fetch fast path is unavailable or fails and the Increment form is submitted
 - **THEN** the form submits natively and the server responds 303 to the app page, which shows the incremented count.
+
+#### Scenario: Stored key keeps links clean
+- **WHEN** the enhancement runs with a stored key and the server accepts it
+- **THEN** subsequent pages render without `?k=` in links while native-submit fallback keeps working with `?k=` stamped.
 
 ### Requirement: Bundle hosting in shell chrome
 `GET /apps/:id` SHALL render the existing shell chrome (title, nav, inlined theme, single `<style>`, zero external assets) with the bundle's `index.html` content inlined into the app panel (or overlay for modal placement). Bundle `<script>` and `<style>` content SHALL be inlined with the entry. Any shell-side hosting code SHALL meet the ES2019 ceiling.

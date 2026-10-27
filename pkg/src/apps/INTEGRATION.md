@@ -44,8 +44,14 @@ Rules for every current and future app:
 4. Do not add a mutating `<form method="POST">` or a `fetch(..., { method:
    'POST' })` to the app UI. POST is only for programmatic clients that can
    send a same-origin `Origin`; the server route remains for them.
-5. The locked-page unlock form follows the same rule: it is a GET form that
-   navigates to the safe `next` path with `?k=<code>`.
+5. The locked-page unlock form follows the same rule, with one twist: Kody's
+   edge drops query strings before the fetch handler runs, so `?k=` never
+   arrives. The form is a GET form whose inline script rewrites the submit
+   to the path form `/unlock/<code>` (same-origin, no query string); the
+   server re-attaches it as `?k=` internally, burns the OTP, sets the
+   session cookie, and 303-redirects to the clean app home. Without
+   JavaScript the plain GET still works wherever the platform preserves
+   the query string.
 6. Keep the code out of storage and logs. `renderAppSection` receives the
    normalized code only for the hidden field; never write it to
    `packageStorage()`.

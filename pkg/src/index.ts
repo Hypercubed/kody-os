@@ -53,10 +53,7 @@ export default async function main(): Promise<{
 				name: 'export_app',
 				useWhen: 'Export one app as complete JSON for re-import into a blank install.',
 			},
-			{
-				name: 'set_access_code',
-				useWhen: 'Set or rotate the device access code for the Scribe gate; returns the code once.',
-			},
+	
 		],
 		note: 'Phase 2 app layer — data-driven apps via packageStorage.',
 	}
@@ -75,7 +72,7 @@ export {
 } from './apps/index.ts'
 export { actFromForm } from './apps/index.ts'
 export { helloCounterDefinition } from './apps/index.ts'
-export { getAccessStatus as get_access_status, setAccessCode as set_access_code } from './auth.ts'
+export { getAccessCode as get_access_code, getAccessStatus as get_access_status, mintOtp as mint_otp } from './auth.ts'
 export type {
 	ActionArgDef,
 	ActionDef,

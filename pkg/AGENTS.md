@@ -8,22 +8,31 @@ import main, { add_app, act, list_apps, get_app_state, export_app, remove_app } 
 
 ## Device access gate
 
-The browser shell is locked by a device access code.
-Only `src/app.ts` fetch requests are gated; MCP exports are not.
+The browser shell is locked by one-time codes; only `src/app.ts` fetch
+requests are gated, MCP exports are not. The owner mints a 4-digit OTP over
+MCP (`mint_otp`, single use, 10-minute TTL); typing it into the unlock form
+burns it and mints a session (random token, SHA-256 hash in
+`packageStorage()`, 30-day expiry, HttpOnly cookie named
+`<cookiePrefix>kody_os_auth` so the edge forwards it). Anonymous visitors
+can't read the Kody secret, so the secret-derived code is fallback-only,
+never the live device path.
 
 ```ts
-import { set_access_code, get_access_status } from 'kody:@hypercubed/kody-os'
+import { get_access_status, mint_otp } from 'kody:@hypercubed/kody-os'
 
-await get_access_status() // { configured: false } on a fresh install
-const res = await set_access_code() // { ok:true, code:'abcde-fghjk-…' } — the only copy
-// rotate later: await set_access_code() again; old bookmarks and cookies stop working
+await get_access_status() // { configured: true } once the secret is bound
+const otp = await mint_otp() // { ok: true, code: '4821' } — single use, 10 min
 ```
 
-- The store keeps only a SHA-256 hash under `kody-os.auth.code_hash`; the raw code is never stored or logged.
-- Browser paths: `?k=<code>` bookmark (Scribe-safe; the shell keeps the code on every link and form action) or the plain unlock form, which navigates to `?k=<code>` and sets the same one-year HttpOnly cookie.
-- Unauthenticated or invalid requests get the same 404 page; an unconfigured install authorizes nobody.
-- Omit the argument to generate a 25-character code; a supplied code must be at least 16 characters.
-- Fresh install: `POST /__access-code` (optional form field `code`) mints the first code once and shows it; the route refuses forever after a code exists, so it cannot rotate or reset the lock.
+- There is no MCP or in-app set path: the owner creates and rotates the code
+  only in the Kody UI (creation form `https://kody.codes/@<org>/-/credentials/new?kind=secret&name=access-key`).
+  Overwriting the secret value rotates the code at once: every bookmark and
+  cookie stops working. Steps: [Device key](docs/device-key.md).
+- The secret value never appears in code, storage, logs, or chat; the handler
+  recomputes the code per request. `packageStorage()` holds no auth secrets on
+  the derived path (the pre-secret `kody-os.auth.code_hash` is fallback-only).
+- Browser paths: the 4-digit OTP is typed into the unlock form, whose inline script rewrites the submit to the path form `/unlock/<code>` (Kody's edge drops query strings, so `?k=` never arrives); success burns the OTP, sets the session cookie, and 303-redirects to a clean URL. A wrong or expired code re-renders the locked page with an inline error; too many failures in 10 minutes yields a lockout notice instead. Logout (device sessions only, in the menu) revokes the server-side session and clears the cookie.
+- Unauthenticated or invalid requests get the same 404 page; with no secret bound and no stored hash, anonymous requests are denied and only Kody-logged-in visitors are served (login-only mode, no `internet_visible` needed).
 
 ## App actions and the package-app edge
 
@@ -34,10 +43,13 @@ when the browser reports a foreign or `null` `Origin`:
 
 Never render a mutating `<form method="POST">` or a UI `fetch(..., { method: 'POST' })`.
 UI actions must be GET forms: `GET /apps/:id?action=<name>`, with a hidden `k`
-field on the `?k=` path (a GET form discards the action's query string, so the
-code must be form data). The `POST /apps/:id` route stays for API clients that
-send a same-origin origin. The unlock form is also GET and navigates to the safe
-`next` path with `?k=<code>`. Full checklist: `src/apps/INTEGRATION.md`.
+field only when the current session is query-authenticated (a GET form discards
+the action's query string, so legacy query sessions keep the code as form data;
+cookie sessions render clean forms). The `POST /apps/:id` route stays for API
+clients that send a same-origin origin. The unlock form is a plain GET whose
+inline script rewrites the submit to `/unlock/<code>`; without JavaScript the
+plain GET still submits (works wherever the platform preserves the query
+string). Full checklist: `src/apps/INTEGRATION.md`.
 
 ## Adding an app
 
@@ -55,7 +67,7 @@ import main from 'kody:@hypercubed/kody-os'
 const info = await main()
 // => {
 //   package: '@hypercubed/kody-os',
-//   exports: [{ shell }, { list_apps }, { get_app_state }, { act }, { add_app }, { remove_app }, { export_app }, { set_access_code }],
+//   exports: [{ shell }, { list_apps }, { get_app_state }, { act }, { add_app }, { remove_app }, { export_app }],
 //   note: 'Phase 2 app layer — data-driven apps via packageStorage.'
 // }
 ```
@@ -84,6 +96,6 @@ await remove_app('hello-counter') // { ok:true, id } — definition, state, and 
 - Export v1 payloads (`kody-os-app/1`, name-keyed) import with id derived from name; v2 is id-keyed.
 - `remove_app` is the only destructive registry call: it validates the id is installed first, then deletes the definition + state and scrubs the registry, pinned, hidden, and recent lists. Unknown ids return `{ ok:false }` and write nothing. It is MCP-only: the browser UI exposes hide, never remove.
 - Missing runtime context falls back to shared in-memory storage starting empty with an honest "no apps yet" tile.
-- The page works without JavaScript through plain form submission and PRG; the browser client only enhances POST forms in place (currently none — app actions and the unlock form are GET).
+- The page works without JavaScript through plain form submission and PRG; the browser client only enhances GET `form.app-action` with `?format=json` in-place patching (Scribe-safe: guarded, falls back to native submit).
 - Kindle ceiling is ES2019: no `?.` or `??` in pkg/src (Chromium 75 crashes), no flexbox gap (grid gap OK), system fonts only, no emojis, 3rem (48px) minimum tap targets.
 - Styles are inlined (`src/shell-css.ts` generated from `public/styles.css`) — Scribe loads no external stylesheets. Regen after any theme edit.

@@ -6,18 +6,22 @@ Kody OS is a minimalist operating-system shell shared by humans and agents. Phas
 
 ## Prerequisites
 
-Nothing to install. The owner's agent configures a device access code over MCP
-(`set_access_code`), then opens `?k=<code>` or uses the unlock form. MCP exports
-are not gated, so agents keep working while the browser is locked.
+Nothing to install. To unlock a device, the owner mints a 4-digit one-time
+code via the package MCP export `mint_otp` and reads it to the device
+holder, who types it into the unlock form. A correct code burns on first
+use and sets a session cookie — no code ever appears in a URL. MCP exports
+are not gated, so agents keep working while the browser is locked. With no
+secret defined, the app serves Kody-logged-in visitors only and stays
+private.
 
 ## Access
 
-The browser shell is locked by a device access code so the Kindle Scribe can
-open it without Kody login. The code is stored only as a SHA-256 hash; rotating
-it invalidates every old bookmark and cookie at once. Bookmark
-`https://<username>.kody.run/kody-os/?k=<code>` on the device — the shell keeps
-the code on every link and in each app form's hidden `k` field, so no cookies
-are required.
+The browser shell is locked by one-time codes so the Kindle Scribe can
+open it without Kody login. Each code is 4 digits, single use, and valid
+10 minutes; entering it mints a session cookie (30-day expiry) and the
+browser stays unlocked with clean, code-free URLs. A derived device code
+(HMAC of the Kody `access-key` secret, UI-managed, never stored) remains
+as fallback. Full steps: [Device key](docs/device-key.md).
 
 ## How to know it is working
 
