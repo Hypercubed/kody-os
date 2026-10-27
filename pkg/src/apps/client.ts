@@ -461,28 +461,28 @@ export function renderWidgetSection(
 		'<div class="widget-controls">\n' +
 		'<form method="GET" action="' +
 		escapeHtml(appBasePath + '/') +
-		'" class="widget-move">' +
+		'" class="widget-move move-left">' +
 		codeField +
 		'<input type="hidden" name="home" value="' +
 			escapeHtml(def.id) +
 			'" /><input type="hidden" name="move" value="-1" />' +
-			'<button type="submit" aria-label="Move ' +
+			'<button type="submit" class="widget-arrow" aria-label="Move ' +
 		title +
-		' up"' +
+		' left"' +
 		upDisabled +
-		'>Up</button></form>\n' +
+		'><span class="wa-mark wa-left" aria-hidden="true"></span></button></form>\n' +
 		'<form method="GET" action="' +
 			escapeHtml(appBasePath + '/') +
-		'" class="widget-move">' +
+		'" class="widget-move move-right">' +
 		codeField +
 		'<input type="hidden" name="home" value="' +
 			escapeHtml(def.id) +
 			'" /><input type="hidden" name="move" value="1" />' +
-			'<button type="submit" aria-label="Move ' +
+			'<button type="submit" class="widget-arrow" aria-label="Move ' +
 		title +
-		' down"' +
+		' right"' +
 		downDisabled +
-		'>Down</button></form>\n' +
+		'><span class="wa-mark wa-right" aria-hidden="true"></span></button></form>\n' +
 		'</div>\n</section>'
 	)
 }
