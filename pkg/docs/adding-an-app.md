@@ -11,7 +11,7 @@ The browser shell has no add control. Agents add with the package's MCP `add_app
 | `id` | yes | Slug matching `^[a-z0-9][a-z0-9-]{0,63}$`. Routes and storage keys use it. |
 | `name` | yes | Non-empty display name. |
 | `label` | no | Tile label. Defaults to `name`. |
-| `icon` | no | Plain-text glyph or short mark. Never an emoji. |
+| `icon` | no | Plain-text glyph or short mark (never an emoji), OR a sanitized inline SVG starting with `<svg`. See [Tile icons](#tile-icons). |
 | `category` | no | Metadata string. The current shell lists all apps together. |
 | `description` | no | Help text shown on the app page. |
 | `ui.template` | yes | `hello` \| `generic` \| `clock`. Deprecated and frozen: no new values and no per-template render branches will be added. Use bundles for anything visual. |
@@ -85,6 +85,36 @@ Validation rejects bad bundles before any write and returns `{ ok: false, error 
 
 Effect validation accepts only `set` and `append` (`increment`, `toggle`, `reset` still validate as deprecated sugar until migration retires them; never author new uses). The `ui.template` set stays frozen at `hello | generic | clock`: it is required by the validator but ignored by the renderer, which always shows bundle UI plus live state plus action forms. Pick the closest frozen value and put anything visual in the bundle.
 
+### Tile icons
+
+`icon` takes either a plain-text glyph (system fonts only, never an emoji) or an inline SVG mark whose trimmed value starts with `<svg`. Plain text is escaped on render exactly as before. SVG is sanitized at validation, stored canonically, and then inserted unescaped inside the tile's `.tile-icon` plate.
+
+SVG icons are monochrome and Scribe-safe by construction:
+
+- Allowlisted elements only: `svg`, `path`, `circle`, `rect`, `line`, `polyline`, `polygon`, `g`, `title`. Any other element — including `script`, `foreignObject`, `use`, `image`, `style`, and animation elements — rejects the whole definition.
+- Geometry plus monochrome `fill`/`stroke` attributes only. `fill`/`stroke` values must be `none`, `currentColor`, `inherit`, `black`, `white`, or a black/white hex value; colors, `url(...)`, gradients, and external refs are rejected.
+- No `on*` handlers, inline `style`, `href`/`xlink:href`, comments, or doctypes. Unknown benign attributes are dropped.
+- Rendered in a fixed 1.5rem box with `fill`/`stroke` set to `currentColor`, so the mark follows the theme (and inverts correctly on press and on e-ink).
+- Keep authored icons around 2 KiB. They live inside the definition and count toward the 16 MiB package storage budget.
+
+A valid icon:
+
+```json
+"icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>"
+```
+
+Validation failures name the offending construct — for example `definition.icon uses a disallowed element <script>` or `definition.icon has an event handler attribute "onload"` — and write nothing. The installable examples (`clock`, `eight-ball`, `hello-counter`, `probe`) all use real monochrome SVG icons.
+
+### Definition versioning
+
+Every definition carries `schemaVersion`, an integer matching the current `DEFINITION_SCHEMA_VERSION` (`3` today; `1` = operator-only era, `2` = bundle-kind era, `3` = unified). Send it in every `add_app` call. A definition without it, or a **new** id carrying an older version, is rejected with an error naming the current version, and nothing is written.
+
+Re-adding an existing id overwrites it and restamps it to the current version regardless of what was submitted. That is how an old app comes forward: export it first if you need the current state, then re-add it (state resets to `initial`). `list_apps()` returns `schemaVersion` on every summary, so "which apps need updating?" is a filter over the list.
+
+Installs from before versioning backfill on read: a stored app with no `schemaVersion` reports the current version when it validates against the current shape, otherwise the oldest known version (`1`). Both eras stay readable and listable instead of bricking the shell.
+
+Breaking definition changes bump `DEFINITION_SCHEMA_VERSION` and ship a migration where one exists (same pattern as the `kody-os-app/1` to `/2` importer). Export envelopes keep `format: "kody-os-app/2"`: the version rides inside the definition, not the envelope.
+
 `act()` applies to every app: bundle UI and MCP calls share the one `act()` handler and the same state. An unknown action returns `{ ok: false, error }` and writes nothing. Re-adding an id with `add_app` overwrites the definition, keeps registry order, pins, hidden flags, homepage placement, and recent entries, and resets state to `initial`.
 
 The shell hosts a bundle inside the existing chrome (title, nav, inlined theme, single `<style>`, zero external assets). It inlines the `index.html` entry into the app panel (or overlay for `modal` placement), inlines referenced bundle-relative `<script src>` and stylesheet `<link>` content, drops dangling references that match no bundle file instead of fetching them, and appends any extra bundled `.js`/`.css` files as inline blocks. A bundle that cannot be displayed degrades to the normal chrome plus an explanatory message and a working close or back control, never a blank page. Unknown ids still return 404.
@@ -104,6 +134,7 @@ Save this as `/tmp/preview-counter.json` (a scratch path outside the repo; the c
   "id": "preview-counter",
   "name": "Preview Counter",
   "label": "Counter",
+  "schemaVersion": 3,
   "icon": "+",
   "category": "Tests",
   "description": "A counter added through the app registry; no republish.",
@@ -146,6 +177,8 @@ Save this as `/tmp/preview-counter.json` (a scratch path outside the repo; the c
 `add_app` validates before writing. On failure it returns `{ ok: false, error }` and writes nothing. Common errors:
 
 - `definition.id must match ^[a-z0-9][a-z0-9-]{0,63}$`
+- `definition.schemaVersion must be a positive integer; the current version is 3`
+- `definition.schemaVersion 1 is stale for a new app; send the current version 3 (re-adding an existing id restamps it)`
 - `definition.kind "..." is retired; use the unified shape: meta + bundle { entry, files } + stateSchema + actions`
 - `definition.bundle.entry must be "index.html"` (plus bad-path, non-string-file, and 256 KiB cap errors)
 - `definition.ui.template must be hello, generic, or clock` (frozen; required but render-ignored)

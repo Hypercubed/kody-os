@@ -322,7 +322,7 @@ main {
 	font: inherit;
 }
 
-/* The icon is a small bordered plate, so glyphs are optional decoration. */
+/* The icon is a bare mark with no plate: SVG or glyph sits directly on the tile. */
 .tile .tile-icon {
 	display: flex;
 	align-items: center;
@@ -330,11 +330,20 @@ main {
 	width: 2.25rem;
 	height: 2.25rem;
 	margin-bottom: 0.45rem;
-	border: var(--rule);
-	background: var(--paper);
 	font-size: 1.25rem;
 	font-weight: bold;
 	line-height: 1;
+}
+
+/* Inline-SVG marks are sanitized at validation and fill this fixed box.
+   No fill rule here: CSS fill would override each shape's own fill
+   attribute (CSS beats presentation attributes), turning line-art icons
+   into solid dots. Strokes follow the text color; fills come from the
+   markup (fill="none" line art, default-black solid parts). */
+.tile .tile-icon svg {
+	width: 1.5rem;
+	height: 1.5rem;
+	stroke: currentColor;
 }
 
 .tile .tile-label {
@@ -374,8 +383,6 @@ button.tile:active {
 
 a.tile:active .tile-icon,
 button.tile:active .tile-icon {
-	border-color: #fff;
-	background: #000;
 	color: #fff;
 }
 

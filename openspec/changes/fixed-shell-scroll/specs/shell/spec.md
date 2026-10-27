@@ -4,7 +4,7 @@
 
 ### Requirement: Single shared chrome
 
-Every page SHALL use the same chrome: title bar with the page title and a close box (labeled `Home`, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home, Apps, and Help links (no Refresh link); main content; footer with status text and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box SHALL be the titlebar's way home; the dashboard at `GET /` SHALL omit it (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults. The shell SHALL lock to the viewport height: the page itself never scrolls; the `main` content region is the single scroll region on every page (Home, Apps, app pages, Help, locked/404), with menubar, titlebar, and statusbar always visible.
+Every page SHALL use the same chrome: title bar with the page title and a close box (labeled `Home`, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home, Apps, and Help links (no Refresh link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, `via key`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box SHALL be the titlebar's way home; the dashboard at `GET /` SHALL omit it (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults. The shell SHALL lock to the viewport height: the page itself never scrolls; the `main` content region is the single scroll region on every page (Home, Apps, app pages, Help, locked/404), with menubar, titlebar, and statusbar always visible.
 
 #### Scenario: Unknown routes keep the chrome
 - **WHEN** a request hits an unknown path
@@ -17,6 +17,10 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 #### Scenario: Defaults preserve current rendering
 - **WHEN** no theme file is present
 - **THEN** title, brand, and background are byte-identical to the pre-change shell.
+
+#### Scenario: Footer names the auth path
+- **WHEN** any page is fetched
+- **THEN** the footer states which path authenticated the request (`via kody`, `via cookie`, `via key`, or `locked`).
 
 #### Scenario: Chrome stays put while content scrolls
 - **WHEN** a page taller than the viewport is rendered

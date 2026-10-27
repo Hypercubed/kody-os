@@ -53,6 +53,7 @@ import {
 	writeRegistry,
 	type KeyStore,
 } from './storage.ts'
+import { DEFINITION_SCHEMA_VERSION } from './types.ts'
 
 var NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 var EXPORT_FORMAT = 'kody-os-app/2'
@@ -110,6 +111,209 @@ function isBundlePath(path: string): boolean {
 	return false
 }
 
+/**
+ * Inline-SVG icon allowlist. Icons are the only author-supplied markup the
+ * shell inserts unescaped, so validation is the single choke point: basic
+ * shapes only, monochrome fill/stroke values only, no scripting, no external
+ * refs, no animation, no inline style. Unknown elements reject the whole icon;
+ * unknown benign attributes are stripped.
+ */
+var SVG_ICON_TAGS = ['svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'title']
+var SVG_ICON_ATTRS = [
+	'xmlns',
+	'viewbox',
+	'width',
+	'height',
+	'fill',
+	'stroke',
+	'stroke-width',
+	'stroke-linecap',
+	'stroke-linejoin',
+	'stroke-miterlimit',
+	'stroke-dasharray',
+	'stroke-opacity',
+	'fill-opacity',
+	'fill-rule',
+	'opacity',
+	'd',
+	'cx',
+	'cy',
+	'r',
+	'rx',
+	'ry',
+	'x',
+	'x1',
+	'x2',
+	'y',
+	'y1',
+	'y2',
+	'points',
+	'transform',
+	'role',
+	'aria-hidden',
+	'focusable',
+]
+var SVG_MONO_VALUES = ['none', 'currentcolor', 'inherit', 'black', 'white', '#000', '#000000', '#fff', '#ffffff']
+
+/** True when a string icon is the inline-SVG variant (leading whitespace ignored). */
+export function isSvgIcon(value: string): boolean {
+	return value.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0
+}
+
+function svgIconProblem(message: string): { ok: false; error: string } {
+	return { ok: false as const, error: 'definition.icon ' + message }
+}
+
+function isNameChar(character: string): boolean {
+	return /[A-Za-z0-9:_-]/.test(character)
+}
+
+function isSpaceChar(character: string): boolean {
+	return /\s/.test(character)
+}
+
+/**
+ * Validate and normalize an inline-SVG icon. Returns the canonical markup to
+ * store, or an error naming the offending construct. DOM-free: the Worker has
+ * no parser, so this is a small strict tokenizer plus an allowlist.
+ */
+export function sanitizeSvgIcon(value: string): { ok: true; icon: string } | { ok: false; error: string } {
+	var source = value.replace(/^\s+/, '').replace(/\s+$/, '')
+	if (source.toLowerCase().indexOf('<svg') !== 0) return svgIconProblem('SVG must start with <svg')
+	var pos = 0
+	var out: string[] = []
+	var stack: string[] = []
+	var rootCount = 0
+	var inTitle = false
+	while (pos < source.length) {
+		var lt = source.indexOf('<', pos)
+		if (lt === -1) {
+			var tail = source.slice(pos)
+			if (tail.replace(/\s+/g, '') !== '') {
+				if (!inTitle) return svgIconProblem('has text outside a <title> element')
+				if (tail.indexOf('&') !== -1) return svgIconProblem('title text contains "&"')
+				out.push(tail)
+			}
+			pos = source.length
+			break
+		}
+		if (lt > pos) {
+			var text = source.slice(pos, lt)
+			if (text.replace(/\s+/g, '') !== '') {
+				if (!inTitle) return svgIconProblem('has text outside a <title> element')
+				if (text.indexOf('&') !== -1) return svgIconProblem('title text contains "&"')
+				out.push(text)
+			}
+		}
+		if (source.substr(lt, 4) === '<!--' || source.substr(lt, 2) === '<!' || source.substr(lt, 2) === '<?') {
+			return svgIconProblem('contains a comment, doctype, or processing instruction')
+		}
+		pos = lt + 1
+		var closing = source.charAt(pos) === '/'
+		if (closing) pos++
+		var nameStart = pos
+		while (pos < source.length && isNameChar(source.charAt(pos))) pos++
+		var name = source.slice(nameStart, pos).toLowerCase()
+		if (name === '') return svgIconProblem('has a malformed tag')
+		if (SVG_ICON_TAGS.indexOf(name) === -1) return svgIconProblem('uses a disallowed element <' + name + '>')
+		if (closing) {
+			while (pos < source.length && isSpaceChar(source.charAt(pos))) pos++
+			if (source.charAt(pos) !== '>') return svgIconProblem('has a malformed closing tag </' + name + '>')
+			pos++
+			if (stack.length === 0 || stack[stack.length - 1] !== name) return svgIconProblem('has a mismatched </' + name + '>')
+			stack.pop()
+			if (name === 'title') inTitle = false
+			out.push('</' + name + '>')
+			continue
+		}
+		var attrs: string[] = []
+		var selfClosing = false
+		while (pos < source.length) {
+			while (pos < source.length && isSpaceChar(source.charAt(pos))) pos++
+			if (pos >= source.length) return svgIconProblem('has an unclosed <' + name + '>')
+			var marker = source.charAt(pos)
+			if (marker === '>') {
+				pos++
+				break
+			}
+			if (marker === '/' && source.charAt(pos + 1) === '>') {
+				selfClosing = true
+				pos += 2
+				break
+			}
+			var attrStart = pos
+			while (pos < source.length && !/[\s=/>]/.test(source.charAt(pos))) pos++
+			var attrName = source.slice(attrStart, pos)
+			if (attrName === '') return svgIconProblem('has a malformed attribute')
+			var lowerAttr = attrName.toLowerCase()
+			while (pos < source.length && isSpaceChar(source.charAt(pos))) pos++
+			var attrValue: string | undefined
+			if (source.charAt(pos) === '=') {
+				pos++
+				while (pos < source.length && isSpaceChar(source.charAt(pos))) pos++
+				var quote = source.charAt(pos)
+				if (quote === '"' || quote === "'") {
+					pos++
+					var valueStart = pos
+					while (pos < source.length && source.charAt(pos) !== quote) pos++
+					if (pos >= source.length) return svgIconProblem('has an unterminated attribute value')
+					attrValue = source.slice(valueStart, pos)
+					pos++
+				} else {
+					var rawStart = pos
+					while (pos < source.length && !/[\s>]/.test(source.charAt(pos))) pos++
+					attrValue = source.slice(rawStart, pos)
+				}
+			}
+			if (lowerAttr.indexOf('on') === 0) return svgIconProblem('has an event handler attribute "' + lowerAttr + '"')
+			if (lowerAttr === 'style') return svgIconProblem('has a style attribute')
+			if (lowerAttr === 'href' || lowerAttr === 'xlink:href' || lowerAttr === 'src') {
+				return svgIconProblem('has an external reference attribute "' + lowerAttr + '"')
+			}
+			if (SVG_ICON_ATTRS.indexOf(lowerAttr) === -1) continue
+			var valueText = attrValue === undefined ? '' : attrValue
+			var lowerValue = valueText.toLowerCase()
+			if (
+				lowerValue.indexOf('url(') !== -1 ||
+				lowerValue.indexOf('javascript:') !== -1 ||
+				lowerValue.indexOf('data:') !== -1 ||
+				lowerValue.indexOf('expression(') !== -1
+			) {
+				return svgIconProblem('has an external or script reference in "' + lowerAttr + '"')
+			}
+			if (lowerAttr === 'xmlns' && valueText !== 'http://www.w3.org/2000/svg') {
+				return svgIconProblem('has a non-SVG xmlns')
+			}
+			if ((lowerAttr === 'fill' || lowerAttr === 'stroke') && SVG_MONO_VALUES.indexOf(lowerValue) === -1) {
+				return svgIconProblem('uses non-monochrome ' + lowerAttr + ' "' + valueText + '"')
+			}
+			if (attrValue === undefined) {
+				attrs.push(attrName)
+			} else {
+				attrs.push(
+					attrName +
+						'="' +
+						valueText.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+						'"',
+				)
+			}
+		}
+		if (stack.length === 0) {
+			if (name !== 'svg') return svgIconProblem('must be a single <svg> root')
+			rootCount++
+			if (rootCount > 1) return svgIconProblem('has more than one root element')
+		}
+		out.push('<' + name + (attrs.length === 0 ? '' : ' ' + attrs.join(' ')) + (selfClosing ? ' />' : '>'))
+		if (!selfClosing) {
+			stack.push(name)
+			if (name === 'title') inTitle = true
+		}
+	}
+	if (stack.length !== 0) return svgIconProblem('has an unclosed <' + stack[stack.length - 1] + '>')
+	if (rootCount !== 1) return svgIconProblem('must be a single <svg> root')
+	return { ok: true as const, icon: out.join('') }
+}
+
 /** Validate the bundle manifest of a unified app definition. Returns an error string, or null when valid. */
 function validateBundleManifest(def: Record<string, unknown>): string | null {
 	if (!isRecord(def['bundle'])) return 'definition.bundle must be an object (every unified app ships its own UI files)'
@@ -152,8 +356,17 @@ export function validateDefinition(def: unknown): string | null {
 	if (def['label'] !== undefined && typeof def['label'] !== 'string') {
 		return 'definition.label must be a string'
 	}
-	if (def['icon'] !== undefined && typeof def['icon'] !== 'string') {
-		return 'definition.icon must be a string'
+	var schemaVersion = def['schemaVersion']
+	if (typeof schemaVersion !== 'number' || !Number.isSafeInteger(schemaVersion) || schemaVersion <= 0) {
+		return 'definition.schemaVersion must be a positive integer; the current version is ' + DEFINITION_SCHEMA_VERSION
+	}
+	if (def['icon'] !== undefined) {
+		if (typeof def['icon'] !== 'string') return 'definition.icon must be a string'
+		var icon = def['icon'] as string
+		if (isSvgIcon(icon)) {
+			var iconResult = sanitizeSvgIcon(icon)
+			if (!iconResult.ok) return iconResult.error
+		}
 	}
 	if (def['category'] !== undefined && typeof def['category'] !== 'string') {
 		return 'definition.category must be a string'
@@ -374,6 +587,23 @@ function coerceArg(
 	return { value: raw }
 }
 
+/**
+ * Label a stored definition with its schema version. Apps installed before
+ * versioning carry no `schemaVersion`: the current shape is validated and the
+ * current version stamped when it passes, else the oldest known era (1), so
+ * stale apps stay readable and listable instead of bricking the shell.
+ * Read-only: the label is applied to the in-memory copy, not written back.
+ */
+function backfillDefinition(raw: AppDefinition): AppDefinition {
+	if (!raw || typeof raw !== 'object') return raw
+	var rec = raw as unknown as Record<string, unknown>
+	var version = rec['schemaVersion']
+	if (typeof version === 'number' && Number.isSafeInteger(version) && version > 0) return raw
+	rec['schemaVersion'] = DEFINITION_SCHEMA_VERSION
+	if (validateDefinition(rec) !== null) rec['schemaVersion'] = 1
+	return rec as unknown as AppDefinition
+}
+
 function loadEntry(
 	store: KeyStore,
 	id: string,
@@ -386,7 +616,7 @@ function loadEntry(
 		var state = pair[1]
 		if (!definition) return { error: 'unknown app "' + id + '"' }
 		if (!state) return { error: 'app "' + id + '" has no state' }
-		return { definition: definition, state: state }
+		return { definition: backfillDefinition(definition), state: state }
 	})
 }
 
@@ -548,16 +778,20 @@ export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<App
 				;(function (want: string): void {
 					chain = chain.then(function (): Promise<void> {
 						if (hidden.indexOf(want) !== -1) return Promise.resolve()
-						return readJson<AppDefinition>(active, defKey(want)).then(function (def): void {
-							if (!def) return
+						return readJson<AppDefinition>(active, defKey(want)).then(function (raw): void {
+							if (!raw) return
+							var def = backfillDefinition(raw)
+							var ui = def.ui as unknown as Record<string, unknown> | undefined
+							var placements = ui && ui['placements'] ? (ui['placements'] as AppPlacement[]) : ['page']
 							out.push({
 								id: def.id,
 								name: def.name,
 								label: def.label || def.name,
+								schemaVersion: def.schemaVersion,
 								icon: def.icon,
 								category: def.category,
 								description: def.description,
-								placements: def.ui.placements || ['page'],
+								placements: placements,
 							})
 						})
 					})
@@ -745,45 +979,65 @@ export function add_app(
 	var problem = validateDefinition(definition)
 	if (problem) return Promise.resolve({ ok: false as const, error: problem })
 	return resolveStore(store).then(function (active: KeyStore) {
-		var placements: AppPlacement[] = definition.ui.placements === undefined ? ['page'] : definition.ui.placements
-		var manifest = definition.bundle as unknown as Record<string, unknown>
-		var rawFiles = (manifest['files'] as Record<string, unknown>) || {}
-		var files: Record<string, string> = {}
-		for (var fk of Object.keys(rawFiles)) files[fk] = String(rawFiles[fk])
-		var def: AppDefinition = {
-			id: definition.id,
-			name: definition.name,
-			label: definition.label || definition.name,
-			icon: definition.icon,
-			category: definition.category,
-			description: definition.description,
-			bundle: { entry: 'index.html', files: files },
-			ui: {
-				template: definition.ui.template,
-				title: definition.ui.title,
-				placements: placements,
-				actions: definition.ui.actions,
-			},
-			stateSchema: definition.stateSchema,
-			actions: definition.actions,
-		}
-		var initial = cloneState(definition.stateSchema.initial as AppState)
-		return writeJson(active, defKey(def.id), def)
-			.then(function () {
-				return writeJson(active, stateKey(def.id), initial)
-			})
-			.then(function () {
-				return readRegistry(active)
-			})
-			.then(function (ids: string[]) {
-				if (ids.indexOf(def.id) === -1) {
-					ids.push(def.id)
-					return writeRegistry(active, ids).then(function () {
-						return { ok: true as const, id: def.id }
-					})
-				}
-				return { ok: true as const, id: def.id }
-			})
+		return readJson<AppDefinition>(active, defKey(definition.id)).then(function (existing): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+			if (!existing && definition.schemaVersion !== DEFINITION_SCHEMA_VERSION) {
+				return Promise.resolve({
+					ok: false as const,
+					error:
+						'definition.schemaVersion ' +
+						definition.schemaVersion +
+						' is stale for a new app; send the current version ' +
+						DEFINITION_SCHEMA_VERSION +
+						' (re-adding an existing id restamps it)',
+				})
+			}
+			var placements: AppPlacement[] = definition.ui.placements === undefined ? ['page'] : definition.ui.placements
+			var manifest = definition.bundle as unknown as Record<string, unknown>
+			var rawFiles = (manifest['files'] as Record<string, unknown>) || {}
+			var files: Record<string, string> = {}
+			for (var fk of Object.keys(rawFiles)) files[fk] = String(rawFiles[fk])
+			// Store the canonical sanitized SVG, not the submitted markup.
+			var icon = definition.icon
+			if (typeof icon === 'string' && isSvgIcon(icon)) {
+				var cleanIcon = sanitizeSvgIcon(icon)
+				icon = cleanIcon.ok ? cleanIcon.icon : undefined
+			}
+			var def: AppDefinition = {
+				id: definition.id,
+				name: definition.name,
+				label: definition.label || definition.name,
+				schemaVersion: DEFINITION_SCHEMA_VERSION,
+				icon: icon,
+				category: definition.category,
+				description: definition.description,
+				bundle: { entry: 'index.html', files: files },
+				ui: {
+					template: definition.ui.template,
+					title: definition.ui.title,
+					placements: placements,
+					actions: definition.ui.actions,
+				},
+				stateSchema: definition.stateSchema,
+				actions: definition.actions,
+			}
+			var initial = cloneState(definition.stateSchema.initial as AppState)
+			return writeJson(active, defKey(def.id), def)
+				.then(function () {
+					return writeJson(active, stateKey(def.id), initial)
+				})
+				.then(function () {
+					return readRegistry(active)
+				})
+				.then(function (ids: string[]) {
+					if (ids.indexOf(def.id) === -1) {
+						ids.push(def.id)
+						return writeRegistry(active, ids).then(function () {
+							return { ok: true as const, id: def.id }
+						})
+					}
+					return { ok: true as const, id: def.id }
+				})
+		})
 	})
 }
 

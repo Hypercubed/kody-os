@@ -7,6 +7,30 @@ Every app definition SHALL carry: `id` (stable slug `^[a-z0-9][a-z0-9-]{0,63}$`,
 - **WHEN** `add_app` receives a definition with a bad id, unknown template, undeclared state field, or a UI action referencing no declared action
 - **THEN** it returns `{ ok: false, error }` naming the problem and writes nothing.
 
+#### Scenario: Unknown template still rejected with reason
+- **WHEN** `add_app` receives a definition with a template outside the closed set
+- **THEN** it returns `{ ok: false, error }` naming the template and writes nothing.
+
+#### Scenario: Stale version on a new id is rejected with the current version named
+- **WHEN** `add_app` receives a new id whose `schemaVersion` is missing or older than current
+- **THEN** it returns `{ ok: false, error }` naming the current version and writes nothing.
+
+#### Scenario: Overwrite restamps to current
+- **WHEN** `add_app` re-adds an existing id
+- **THEN** the stored definition carries the current `schemaVersion` regardless of what was submitted.
+
+#### Scenario: Unified app round-trips
+- **WHEN** a unified app is exported then imported into a blank install
+- **THEN** definition and state are deep-equal to the originals, including `schemaVersion`.
+
+#### Scenario: Pre-version installs backfill on read
+- **WHEN** an app installed before versioning is read back
+- **THEN** it reports the current version if it validates against the current shape, else the oldest known version — so stale apps are listable.
+
+#### Scenario: SVG icon accepted
+- **WHEN** `add_app` receives a definition with a sanitized inline-SVG icon
+- **THEN** it returns `{ ok: true, id }` and the icon renders as SVG on tiles.
+
 #### Scenario: fromNow stamps the current time into a string field
 - **WHEN** `act` runs a `set` action with `fromNow: true` targeting a string field
 - **THEN** the field holds the action-time as an ISO 8601 UTC string and the write is atomic like every other effect.

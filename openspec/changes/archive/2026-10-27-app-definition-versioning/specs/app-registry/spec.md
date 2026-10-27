@@ -9,6 +9,10 @@ Every app definition SHALL carry: `id` (stable slug `^[a-z0-9][a-z0-9-]{0,63}$`,
 - **WHEN** `add_app` receives a definition with a bad id, bad bundle path, undeclared state field, or a UI action referencing no declared action
 - **THEN** it returns `{ ok: false, error }` naming the problem and writes nothing.
 
+#### Scenario: Unknown template still rejected with reason
+- **WHEN** `add_app` receives a definition with a template outside the closed set
+- **THEN** it returns `{ ok: false, error }` naming the template and writes nothing.
+
 #### Scenario: Stale version on a new id is rejected with the current version named
 - **WHEN** `add_app` receives a new id whose `schemaVersion` is missing or older than current
 - **THEN** it returns `{ ok: false, error }` naming the current version and writes nothing.

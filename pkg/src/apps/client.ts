@@ -232,9 +232,15 @@ export function isModalApp(app: AppSummary): boolean {
 	return !!app.placements && app.placements.indexOf('modal') !== -1
 }
 
+/** Inline SVG icons were sanitized at validation; detect the stored variant. */
+function looksLikeSvg(value: string): boolean {
+	return value.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0
+}
+
 function tileItem(app: AppSummary, appBasePath: string): string {
 	var label = escapeHtml(app.label)
-	var icon = escapeHtml(app.icon || '#')
+	var rawIcon = app.icon || '#'
+	var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
 	return (
 		'<li><a class="tile" href="' +
 		escapeHtml(isModalApp(app) ? '#app-' + app.id : appBasePath + '/apps/' + app.id) +

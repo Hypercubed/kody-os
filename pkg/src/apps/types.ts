@@ -137,6 +137,17 @@ export function isBundleDefinition(def: AppDefinition): boolean {
 	return rec['bundle'] !== undefined && rec['bundle'] !== null
 }
 
+/**
+ * Definition schema version stamped into every installed app. Single source
+ * of truth: bump it on any breaking definition change and ship a migration in
+ * the same release (same pattern as the kody-os-app/1 to /2 importer).
+ *
+ *  1 = operator-only era (no bundle; `kind` discriminated the renderer)
+ *  2 = bundle-kind era (bundle manifest, still `kind`-discriminated)
+ *  3 = unified era (one shape: meta + bundle + stateSchema + actions)
+ */
+export var DEFINITION_SCHEMA_VERSION = 3
+
 export interface AppDefinition {
 	/** Stable slug: ^[a-z0-9][a-z0-9-]{0,63}$ . Identity: routes, storage keys. */
 	id: string
@@ -144,7 +155,20 @@ export interface AppDefinition {
 	name: string
 	/** Tile label. Defaults to `name` when omitted. */
 	label?: string
-	/** Plain-text glyph or short mark. System fonts only, never emoji. */
+	/**
+	 * Definition schema version this app was stamped with at install time.
+	 * Pre-version installs backfill on read; see DEFINITION_SCHEMA_VERSION
+	 * for the era history.
+	 */
+	schemaVersion: number
+	/**
+	 * Tile icon: a plain-text glyph or short mark (system fonts only, never
+	 * emoji), OR an inline SVG starting with `<svg`. SVG is sanitized at
+	 * validation time: allowlisted shapes (`svg, path, circle, rect, line,
+	 * polyline, polygon, g, title`), geometry plus monochrome fill/stroke
+	 * only, no script, external refs, style, or animation. Rendered with
+	 * `currentColor` in a 1.5rem box; cap authored icons around 2 KiB.
+	 */
 	icon?: string
 	category?: string
 	/** Help text: what the app is for. Read by humans and agents. */
@@ -162,6 +186,8 @@ export interface AppSummary {
 	id: string
 	name: string
 	label: string
+	/** Definition schema version, backfilled on read for pre-version installs. */
+	schemaVersion: number
 	icon?: string
 	category?: string
 	description?: string

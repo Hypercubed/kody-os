@@ -29,6 +29,10 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 - **WHEN** a unified app page is fetched
 - **THEN** bundle UI, live state, and action forms all render in the single panel with no template branch.
 
+#### Scenario: SVG tile renders mark
+- **WHEN** an app with a sanitized SVG icon is listed
+- **THEN** the tile shows the SVG mark at icon size with no color or animation.
+
 ### Requirement: Pinned section
 
 The shell SHALL render a Pinned section above Recent listing pinned apps in pin order. A pinned app that is also hidden SHALL still appear in Pinned. An empty pinned list SHALL omit the section entirely.

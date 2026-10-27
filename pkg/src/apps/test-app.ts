@@ -8,12 +8,14 @@
  */
 
 import type { AppDefinition } from './types.ts'
+import { DEFINITION_SCHEMA_VERSION } from './types.ts'
 
 export function helloCounterDefinition(): AppDefinition {
 	return {
 		id: 'hello-counter',
 		name: 'Hello Counter',
 		label: 'Hello Counter',
+		schemaVersion: DEFINITION_SCHEMA_VERSION,
 		icon: '#',
 		category: 'Tests',
 		description: 'Phase 2 validation app: a shared counter proving UI and MCP act on the same state.',
