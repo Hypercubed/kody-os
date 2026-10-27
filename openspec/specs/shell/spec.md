@@ -143,7 +143,7 @@ Every action SHALL complete as a plain form submission + redirect. The client mo
 - **THEN** subsequent pages render without `?k=` in links while native-submit fallback keeps working with `?k=` stamped.
 
 ### Requirement: Bundle hosting in shell chrome
-`GET /apps/:id` SHALL render the existing shell chrome (title, nav, inlined theme, single `<style>`, zero external assets) with the bundle's `index.html` content inlined into the app panel (or overlay for modal placement). Bundle `<script>` and `<style>` content SHALL be inlined with the entry. Any shell-side hosting code SHALL meet the ES2019 ceiling.
+`GET /apps/:id` SHALL render the existing shell chrome (title, nav, inlined theme, single `<style>`, zero external assets) with the bundle's `index.html` content inlined into the app panel (or overlay for modal placement). Bundle `<script>` and `<style>` content SHALL be inlined with the entry. The shell SHALL stamp `data-action-base="/apps/<id>"` on the bundle container so bundle scripts can resolve action URLs against the owning app without reading the page path. Any shell-side hosting code SHALL meet the ES2019 ceiling.
 
 #### Scenario: Bundle page renders in chrome
 - **WHEN** a unified app page is fetched
@@ -152,6 +152,10 @@ Every action SHALL complete as a plain form submission + redirect. The client mo
 #### Scenario: Actions keep PRG behavior
 - **WHEN** a form posts a valid or invalid action on a bundle app page
 - **THEN** it responds 303 to the app page on success or 400 with an inline error on failure, same as any app.
+
+#### Scenario: Bundle container carries the action base
+- **WHEN** any page renders a bundle (app page, overlay, or home widget)
+- **THEN** the `.bundle` container carries `data-action-base` naming the owning app's `/apps/<id>` path.
 
 ### Requirement: Bundle failures degrade, never blank
 Unknown ids SHALL still 404. Bundle render failures SHALL degrade to the server-rendered page, never a blank response.
