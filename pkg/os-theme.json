@@ -2,5 +2,13 @@
 	"name": "kody-os",
 	"title": "",
 	"icon": "",
-	"background": "desk"
+	"background": "desk",
+	"_comment": [
+		"Every field is optional; a missing file or broken JSON falls back to the stock look.",
+		"background: \"desk\" (default) or \"paper\", or a custom 8x8 grid object: {\"grid\": [r0..r7]} with eight integers 0-255, MSB leftmost, drawn black on paper as a repeating tile.",
+		"Example background: \"background\": { \"grid\": [24, 60, 126, 255, 255, 126, 60, 24] }",
+		"icon: a short text glyph (\"OS\") or a sanitized inline SVG string; empty keeps the checkerboard mark.",
+		"Example icon: \"icon\": \"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 14L14 2' fill='none' stroke='#000'/></svg>\"",
+		"Invalid grids or SVG fall back to the default background or checkerboard mark."
+	]
 }

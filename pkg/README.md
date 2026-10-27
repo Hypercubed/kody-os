@@ -48,4 +48,4 @@ Copy this to your Kody-connected agent and fill in the bracketed parts:
 
 ## Theme file
 
-Forks rebrand by editing `pkg/os-theme.json` (all fields optional strings): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph; empty keeps the checkerboard mark), `background` (`desk` or `paper`). A missing file, missing field, or broken JSON falls back to the stock look.
+Forks rebrand by editing `pkg/os-theme.json` (all fields optional): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph or a sanitized inline SVG; empty keeps the checkerboard mark), `background` (`desk`, `paper`, or a custom 8×8 grid object `{ "grid": [r0..r7] }` of eight 0-255 row bytes, MSB left, drawn black on paper as a repeating tile). The file carries commented examples in `_comment`; invalid grids or SVG fall back to the stock look. A missing file, missing field, or broken JSON also falls back to the stock look.

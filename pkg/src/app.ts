@@ -1,5 +1,6 @@
 import { SHELL_CSS } from './shell-css.ts'
 import { ACCESS_COOKIE, accessCookie, authenticate, authPathFor, checkCode, isKodyVerifiedVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
+import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import type { AuthPath } from './auth.ts'
 
 interface PackageContext {
@@ -30,7 +31,10 @@ interface ResolvedTheme {
 	build?: string
 	name: string
 	titlePrefix: string
+	/** Plain-text glyph mark; empty when absent or when an SVG mark is set. */
 	icon: string
+	/** Sanitized inline-SVG mark; empty when absent or when a glyph is set. */
+	iconSvg: string
 	bodyStyle: string
 }
 
@@ -38,6 +42,54 @@ interface ResolvedTheme {
 var THEME_BACKGROUNDS: Record<string, string> = {
 	desk: '',
 	paper: 'background: #fff',
+}
+
+/** Custom grid background: eight rows of eight cells, MSB leftmost. */
+var THEME_GRID_ROWS = 8
+var THEME_GRID_CELL_PX = 6
+
+/**
+ * Render a `{ grid: [r0..r7] }` theme background as the same inline-SVG
+ * data-URI tile shape the shell already uses for stripes/checker.
+ * Returns null for anything that is not eight bytes of 0-255, so a
+ * hand-edited typo falls back to `desk` instead of breaking the page.
+ */
+function gridBodyStyle(value: unknown): string | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+	var rows = (value as { grid?: unknown }).grid
+	if (!Array.isArray(rows) || rows.length !== THEME_GRID_ROWS) return null
+	var rects = ''
+	for (var row = 0; row < THEME_GRID_ROWS; row++) {
+		var byte = rows[row]
+		if (typeof byte !== 'number' || !isFinite(byte) || Math.floor(byte) !== byte || byte < 0 || byte > 255) return null
+		for (var col = 0; col < THEME_GRID_ROWS; col++) {
+			if ((byte & (128 >> col)) === 0) continue
+			rects +=
+				"%3Crect x='" +
+				String(col * THEME_GRID_CELL_PX) +
+				"' y='" +
+				String(row * THEME_GRID_CELL_PX) +
+				"' width='" +
+				String(THEME_GRID_CELL_PX) +
+				"' height='" +
+				String(THEME_GRID_CELL_PX) +
+				"' fill='%23000'/%3E"
+		}
+	}
+	var side = String(THEME_GRID_ROWS * THEME_GRID_CELL_PX)
+	var tile =
+		"%3Csvg xmlns='http://www.w3.org/2000/svg' width='" +
+		side +
+		"' height='" +
+		side +
+		"'%3E%3Crect width='" +
+		side +
+		"' height='" +
+		side +
+		"' fill='%23fff'/%3E" +
+		rects +
+		'%3C/svg%3E'
+	return 'background: #fff url("data:image/svg+xml,' + tile + '") repeat'
 }
 
 /** Escape runtime values before placing them in an HTML attribute. */
@@ -140,9 +192,23 @@ function resolveTheme(raw: ThemeFile): ResolvedTheme {
 	var src = raw && typeof raw === 'object' ? raw : {}
 	var name = typeof src.name === 'string' && src.name !== '' ? src.name : 'kody-os'
 	var icon = typeof src.icon === 'string' ? src.icon : ''
+	var iconSvg = ''
+	// A theme icon that starts with `<svg` must pass the app-icon allowlist;
+	// hostile or malformed markup falls back to the stock checkerboard mark.
+	if (icon !== '' && isSvgIcon(icon)) {
+		var iconResult = sanitizeSvgIcon(icon)
+		iconSvg = iconResult.ok ? iconResult.icon : ''
+		icon = ''
+	}
 	var titlePrefix = typeof src.title === 'string' && src.title !== '' ? src.title : name
-	var bg = typeof src.background === 'string' && src.background in THEME_BACKGROUNDS ? src.background : 'desk'
-	return { name: name, titlePrefix: titlePrefix, icon: icon, bodyStyle: THEME_BACKGROUNDS[bg] }
+	var bodyStyle = THEME_BACKGROUNDS['desk']
+	if (typeof src.background === 'string' && Object.prototype.hasOwnProperty.call(THEME_BACKGROUNDS, src.background)) {
+		bodyStyle = THEME_BACKGROUNDS[src.background]
+	} else if (typeof src.background === 'object') {
+		var gridStyle = gridBodyStyle(src.background)
+		if (gridStyle !== null) bodyStyle = gridStyle
+	}
+	return { name: name, titlePrefix: titlePrefix, icon: icon, iconSvg: iconSvg, bodyStyle: bodyStyle }
 }
 
 /** Join the mount path and a route without doubling or dropping the slash. */
@@ -193,22 +259,29 @@ function shellChrome(opts: {
 	theme: ResolvedTheme
 	current?: string
 	authPath?: AuthPath
+	/** Validated close destination; defaults to Home when absent. */
+	closeHref?: string
+	closeLabel?: string
 }): string {
 	var safeBase = escapeAttribute(opts.appBasePath)
 	var safeTitle = escapeAttribute(opts.title)
 	var safeName = escapeAttribute(opts.theme.name)
 	var safePrefix = escapeAttribute(opts.theme.titlePrefix)
 	var mark =
-		opts.theme.icon !== ''
-			? '<span class="os-mark-glyph" aria-hidden="true">' + escapeAttribute(opts.theme.icon) + '</span>'
-			: '<span class="os-mark" aria-hidden="true"></span>'
+		opts.theme.iconSvg !== ''
+			? '<span class="os-mark-glyph" aria-hidden="true">' + opts.theme.iconSvg + '</span>'
+			: opts.theme.icon !== ''
+				? '<span class="os-mark-glyph" aria-hidden="true">' + escapeAttribute(opts.theme.icon) + '</span>'
+				: '<span class="os-mark" aria-hidden="true"></span>'
 	var bodyAttr = opts.theme.bodyStyle !== '' ? ' style="' + escapeAttribute(opts.theme.bodyStyle) + '"' : ''
+	var closeHref = typeof opts.closeHref === 'string' && opts.closeHref !== '' ? escapeAttribute(opts.closeHref) : safeBase + '/'
+	var closeLabel = typeof opts.closeLabel === 'string' && opts.closeLabel !== '' ? escapeAttribute(opts.closeLabel) : 'Home'
 	var homeBox =
 		opts.current === 'home'
 			? ''
 			: '\t\t\t<a class="os-box" href="' +
-				safeBase +
-				'/" aria-label="Home" title="Home"></a>\n'
+				closeHref +
+				'" aria-label="' + closeLabel + '" title="' + closeLabel + '"></a>\n'
 
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
@@ -505,15 +578,15 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var renderRecentSection = c.renderRecentSection
 				var renderWidgetSection = c.renderWidgetSection
 
-			function appBody(id: string, withError: string): Promise<Response> {
+			function appBody(id: string, withError: string, fromParam: string): Promise<Response> {
 				return get_app(id).then(function (entry): Promise<Response> {
 					if ('error' in entry) return Promise.resolve(notFoundPage(chrome))
 					return record_use(id).then(
 						function (): Response {
-							return renderAppPage(id, withError, entry.definition, entry.state)
+							return renderAppPage(id, withError, entry.definition, entry.state, fromParam)
 						},
 						function (): Response {
-							return renderAppPage(id, withError, entry.definition, entry.state)
+							return renderAppPage(id, withError, entry.definition, entry.state, fromParam)
 						},
 					)
 				})
@@ -552,16 +625,20 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 				}
 
-				function renderAppPage(id: string, withError: string, definition: never, state: never): Response {
+				function renderAppPage(id: string, withError: string, definition: never, state: never, fromParam: string): Response {
 					var defName = (definition as unknown as { name: string }).name || id
+					var homePath = joinPath(appBasePath, '/')
+					var appsPath = joinPath(appBasePath, '/apps')
+					var closeHref = safeNextPath(fromParam, appBasePath)
+					var closeLabel = closeHref === appsPath ? 'Apps' : closeHref === homePath ? 'Home' : 'Back'
 					try {
-						var panel = renderAppPanel(definition, state, appBasePath, '', '', code, withError, false)
+						var panel = renderAppPanel(definition, state, appBasePath, '', '', code, withError, false, fromParam !== '' ? closeHref : '')
 						var lines = panel.split('\n')
 						var indented = ''
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -573,7 +650,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}
@@ -606,7 +683,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 									headers: { Location: appBasePath + '/apps/' + id },
 								})
 							}
-							return appBody(id, result.error)
+							return appBody(id, result.error, '')
 						})
 					})
 			}
@@ -644,10 +721,10 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								})
 							}
 							if (fromPath !== '') return dashboardBody(gid, result.error)
-							return appBody(gid, result.error)
+							return appBody(gid, result.error, '')
 					})
 				}
-				return appBody(gid, '')
+				return appBody(gid, '', query.get('from') || '')
 			}
 
 			// POST /__prefs — API path for pin/hide/home/clear (HTML uses GET forms edge-safe).

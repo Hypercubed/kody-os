@@ -241,9 +241,11 @@ function tileItem(app: AppSummary, appBasePath: string): string {
 	var label = escapeHtml(app.label)
 	var rawIcon = app.icon || '#'
 	var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
+	// Tiles live on the Apps page, so the app's close box returns there.
+	var fromApps = encodeURIComponent(appBasePath + '/apps')
 	return (
 		'<li><a class="tile" href="' +
-		escapeHtml(isModalApp(app) ? '#app-' + app.id : appBasePath + '/apps/' + app.id) +
+		escapeHtml(isModalApp(app) ? '#app-' + app.id : appBasePath + '/apps/' + app.id + '?from=' + fromApps) +
 		'"><span class="tile-icon" aria-hidden="true">' +
 		icon +
 		'</span><span class="tile-label">' +
@@ -404,7 +406,7 @@ export function renderHomeTiles(apps: AppSummary[], appBasePath: string): string
 				var mark = app.icon ? app.icon + ' ' : ''
 				return (
 					'<li><a href="' +
-					escapeHtml(appBasePath + '/apps/' + app.id) +
+					escapeHtml(appBasePath + '/apps/' + app.id + '?from=' + encodeURIComponent(appBasePath + '/')) +
 					'">' +
 					escapeHtml(mark + app.label) +
 					'</a></li>'
@@ -448,7 +450,7 @@ export function renderWidgetSection(
 		'<h2 class="app-titlebar"><span class="app-title-plate">' +
 		title +
 		'</span><a class="widget-expand" href="' +
-		escapeHtml(appBasePath + '/apps/' + def.id) +
+		escapeHtml(appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/')) +
 		'" aria-label="Expand ' +
 		title +
 		'" title="Expand"></a></h2>\n' +
