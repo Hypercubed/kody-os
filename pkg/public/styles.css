@@ -336,19 +336,26 @@ main {
 	display: flex;
 	margin: 0;
 	padding: 0;
+	min-width: 0;
 }
 
 /* Pinned tiles span two grid columns (three per row at full width) and lay
    out horizontally: icon fixed left, label plus description stacked right.
-   Under the narrow breakpoint the 2-column grid makes each span fill a row. */
+   Under the narrow breakpoint the 2-column grid makes each span fill a row.
+   min-width:0 + overflow:hidden down the flex chain lets the nowrap
+   description ellipsis instead of forcing the grid tracks wider than the
+   window (grid/flex items default to min-width:auto). */
 .tiles > li.tile-wide {
 	grid-column: span 2;
+	min-width: 0;
 }
 
 .tiles > li.tile-wide .tile {
 	flex-direction: row;
 	justify-content: flex-start;
 	text-align: left;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .tiles > li.tile-wide .tile .tile-icon {
@@ -358,8 +365,17 @@ main {
 
 .tiles > li.tile-wide .tile-text {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
+	justify-content: center;
 	min-width: 0;
+	overflow: hidden;
+}
+
+.tiles > li.tile-wide .tile-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .tiles > li.tile-wide .tile-desc {
@@ -374,6 +390,7 @@ main {
 
 .tiles a.tile {
 	flex: 1;
+	min-width: 0;
 }
 
 .tile {
