@@ -118,7 +118,7 @@ Server-rendered HTML + plain forms + full-page navigation. The Scribe runs Chrom
    plain `<form method="GET">` + full-page navigation (edge-safe on the
    package-app subdomain). A guarded same-origin GET fetch fast path
    (`form.app-action` + `?format=json`, `Accept: application/json`, in-place
-   `[data-field]`/`[data-value]` refresh with native-submit fallback) is
+   `[data-field]` refresh with native-submit fallback) is
    allowed and encouraged where `fetch`/JSON parsing exist — but never
    require timers, WebSockets, client routing, or frameworks.
 2. **Inline `<style>` only; no external stylesheets.** Per Scribe first-hand

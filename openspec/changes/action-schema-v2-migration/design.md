@@ -15,6 +15,7 @@ See proposal.md Why. Current state: `validateDefinition` checks one shape (`pkg/
 2. **Normalize at the boundary, validate the canonical shape** — `migrateAction` expands v1 single-effect to one-entry `effects[]` before validation, so the validator only ever sees one shape. Why: single validator to test, no v1/v2 branches in every check. Alternative (dual validators) rejected: doubles every future validation change.
 3. **Overwrite = preserve declared + reset dropped, atomic with the definition write** — state merge computed during validation, committed in the same single state write. Why: a failed migrate leaves definition AND state untouched (no half-migrated app). Alternative (write definition first, then state) rejected: crash window leaves mismatched pair.
 4. **`resetState` / `migrate` as call options, not definition fields** — they describe the write, not the app. Why: keeps stored definitions clean and the export envelope unchanged. Alternative (definition-level flags) rejected: flags would persist and confuse re-imports.
+5. **Drop `ui.template` in v4, reject on write, tolerate on read** — the field is a frozen stub the renderer never branches on. Why: one less thing for new readers to puzzle over; the v4 bump is the only clean moment (stored v3 defs keep the field inertly until re-added). Alternative (leave it forever) rejected: permanent dead surface in types, validator, rebuild, and every example. Read path needs no backfill change — `backfillDefinition` passes the stored shape through and the renderer ignores the field either way.
 
 ## Risks / Trade-offs
 
@@ -25,7 +26,7 @@ See proposal.md Why. Current state: `validateDefinition` checks one shape (`pkg/
 ## Migration Plan
 
 1. Land types (bump + v2 effect types) + helpers + atomic `add_app` + preserve-by-default together (one coherent unit).
-2. Restamp the five example apps (`clock`, `eight-ball`, `hello-counter`, `probe`, `mac-puzzle`) to `schemaVersion: 4`.
+2. Restamp the five example apps (`clock`, `eight-ball`, `hello-counter`, `probe`, `mac-puzzle`) to `schemaVersion: 4`, stripping `ui.template` from each plus `test-app.ts`.
 3. Rollback: republish prior commit; v4 definitions fail closed on old code (rejected, nothing written).
 
 ## Open Questions

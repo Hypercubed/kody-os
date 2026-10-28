@@ -132,6 +132,25 @@ export interface BundleManifest {
 	files: Record<string, string>
 }
 
+export interface FeedDecl {
+	/** Feed slug used in the route: GET /feed/<app>/<name>. Same slug rule as app ids. */
+	name: string
+	/** Upstream feed URL. HTTPS only; validated at install and again at serve time. */
+	url: string
+	/** Cache lifetime in seconds. Defaults to 3600. Range 60..86400. */
+	ttlSeconds?: number
+	/** Maximum upstream body kept, in characters. Defaults to 65536. Range 1024..262144. */
+	maxBytes?: number
+}
+
+/** Optional server-side capabilities an app declares. Apps remain data: the
+ * package implements each capability generically; a definition only names
+ * what it needs, never code. */
+export interface AppCapabilities {
+	/** Allowlisted upstream feeds this app may read through GET /feed/<app>/<name>. */
+	feeds?: FeedDecl[]
+}
+
 /** Legacy helper kept for import compatibility. Every unified app carries a bundle manifest, so this returns true when a bundle manifest is present. */
 export function isBundleDefinition(def: AppDefinition): boolean {
 	if (!def) return false
@@ -175,6 +194,8 @@ export interface AppDefinition {
 	category?: string
 	/** Help text: what the app is for. Read by humans and agents. */
 	description?: string
+	/** Optional declared server-side capabilities (feeds, ...). Data only, never code. */
+	capabilities?: AppCapabilities
 	/** Bundle manifest. Required: every unified app ships its own UI files. */
 	bundle: BundleManifest
 	ui: UiDef

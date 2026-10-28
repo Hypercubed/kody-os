@@ -27,7 +27,7 @@ Rules for every current and future app:
 
 1. Render UI actions as `<form class="app-action" method="GET"
    action="{appBasePath}/apps/{id}">` with a hidden `action` field. State
-   rows carry `data-field` hooks with a `data-value` value node, and the app
+   rows carry `data-field` hooks with a plain `<span>` value node, and the app
    panel `section.app` carries `data-app-id` — styling unchanged, hooks only
    for the guarded in-place refresh.
 2. On the `?k=` path, also render a hidden `k` field carrying the code. A GET
@@ -60,7 +60,7 @@ The browser client (`src/client/index.ts`) adds a guarded same-origin GET
 fast path: it intercepts only `form.app-action`, and only when `fetch`,
 `document.querySelector`, and JSON parsing all exist. It replays the same GET
 URL plus `format=json` with `Accept: application/json`; on `{ ok:true }` it
-updates the matching `[data-app-id] [data-field] [data-value]` nodes and
+updates the matching `[data-app-id] [data-field] span` nodes and
 clears the `role="alert"` error in place, on `{ ok:false }` it shows that
 error in place, and on any failure it falls back to a native `form.submit()`.
 Plain GET navigation stays the resilient fallback; do not add a

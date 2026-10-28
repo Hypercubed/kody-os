@@ -9,6 +9,7 @@
 
 - [ ] 2.1 Rewrite `add_app` as validate-all-first then single-registry-write + single-state-write, with `resetState` / `migrate` options, and verify each failure mode leaves storage byte-identical plus targeted preserve/reset/migrate-abort checks
 - [ ] 2.2 Restamp the five example apps (`clock`, `eight-ball`, `hello-counter`, `probe`, `mac-puzzle`) to `schemaVersion: 4` and verify `list_apps` shows version 4 on each
+- [ ] 2.3 Drop the frozen `ui.template` stub in v4: remove `UiTemplate`/`UiDef.template` from `pkg/src/apps/types.ts`, reject `template` in the v4 validator branch of `pkg/src/apps/registry.ts` (keep accepting on the v3-legacy branch), strip it from the `add_app` rebuild + example apps + `test-app.ts`, and verify `node --experimental-strip-types --check` passes plus repo grep for `template` in `pkg/src` hits only the v3 branch
 
 ## 3. Docs and verify
 

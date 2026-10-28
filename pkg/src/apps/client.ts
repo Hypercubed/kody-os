@@ -135,7 +135,7 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 	var fields = fieldNames
 		.map(function (field: string): string {
 			var value = str(state[field])
-			return '<p data-field="' + escapeHtml(field) + '"' + hiddenAttr + '>' + escapeHtml(field) + ': ' + '<span data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</span></p>'
+			return '<p data-field="' + escapeHtml(field) + '"' + hiddenAttr + '>' + escapeHtml(field) + ': ' + '<span>' + escapeHtml(value) + '</span></p>'
 		})
 		.join('\n')
 	var codeField =
@@ -256,7 +256,7 @@ function tileItem(app: AppSummary, appBasePath: string): string {
 	var fromApps = encodeURIComponent(appBasePath + '/apps')
 	return (
 		'<li><a class="tile" href="' +
-		escapeHtml(isModalApp(app) ? '#app-' + app.id : appBasePath + '/apps/' + app.id + '?from=' + fromApps) +
+		escapeHtml(isModalApp(app) ? appBasePath + '/apps/' + app.id + '?touch=1&from=' + fromApps : appBasePath + '/apps/' + app.id + '?from=' + fromApps) +
 		'"><span class="tile-icon" aria-hidden="true">' +
 		icon +
 		'</span><span class="tile-label">' +

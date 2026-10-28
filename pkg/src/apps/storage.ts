@@ -64,7 +64,7 @@ const PINNED_KEY = 'kody-os.apps.pinned'
 const HIDDEN_KEY = 'kody-os.apps.hidden'
 const RECENT_KEY = 'kody-os.apps.recent'
 const HOMEPAGE_KEY = 'kody-os.apps.homepage'
-const RECENT_CAP = 8
+const RECENT_CAP = 6
 const defKey = (name: string): string => `kody-os.apps.def.${name}`
 const stateKey = (name: string): string => `kody-os.apps.state.${name}`
 

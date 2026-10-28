@@ -1,6 +1,7 @@
 import { SHELL_CSS } from './shell-css.ts'
 import { ACCESS_COOKIE, accessCookie, authenticate, authPathFor, checkCode, isKodyVerifiedVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
+import { serveFeed } from './feeds.ts'
 import type { AuthPath } from './auth.ts'
 
 interface PackageContext {
@@ -234,6 +235,8 @@ function pageHeaders(): Record<string, string> {
 		'Content-Type': 'text/html; charset=utf-8',
 		'Cache-Control': 'no-store',
 		'Referrer-Policy': 'no-referrer',
+		'X-Content-Type-Options': 'nosniff',
+		'Content-Security-Policy': "frame-ancestors 'none'",
 	}
 }
 
@@ -454,6 +457,8 @@ function finishResponse(response: Response, code: string, hash: string, appBaseP
 	var headers = new Headers(response.headers)
 	headers.set('Cache-Control', 'no-store')
 	headers.set('Referrer-Policy', 'no-referrer')
+	headers.set('X-Content-Type-Options', 'nosniff')
+	headers.set('Content-Security-Policy', "frame-ancestors 'none'")
 	if (!stamp) return Promise.resolve(new Response(response.body, { status: response.status, statusText: response.statusText, headers: headers }))
 
 	headers.append('Set-Cookie', accessCookie(hash, appBasePath, isSecureRequest(request)))
@@ -534,6 +539,8 @@ function unlock(request: Request, chrome: Chrome): Promise<Response> {
 							'Set-Cookie': cookie,
 							'Cache-Control': 'no-store',
 							'Referrer-Policy': 'no-referrer',
+							'X-Content-Type-Options': 'nosniff',
+							'Content-Security-Policy': "frame-ancestors 'none'",
 						},
 					})
 				})
@@ -695,6 +702,25 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var gid = firstPathSegment(path, '/apps/')
 				if (!gid) return Promise.resolve(notFoundPage(chrome))
 					var query = new URL(request.url).searchParams
+					// Modal tiles link here with ?touch=1: record the open in recent, then send
+					// the browser back to the Apps page with the overlay fragment. Fragment links
+					// alone never reach the server, so without this an opened modal never counts
+					// as used. Scribe-safe: plain 303, no script needed.
+					if (query.get('touch') === '1' && !query.get('action')) {
+						var touchFrom = safeNextPath(query.get('from') || '', appBasePath)
+						var touchDest = touchFrom + '#app-' + gid
+						return get_app(gid).then(function (entry): Promise<Response> {
+							if ('error' in entry) return Promise.resolve(notFoundPage(chrome))
+							return record_use(gid).then(
+								function (): Response {
+									return new Response(null, { status: 303, headers: { Location: touchDest } })
+								},
+								function (): Response {
+									return new Response(null, { status: 303, headers: { Location: touchDest } })
+								},
+							)
+						})
+					}
 					if (query.get('action')) {
 						var getEntries: Record<string, string> = {}
 						query.forEach(function (v: string, k: string): void {
@@ -711,6 +737,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 										'Content-Type': 'application/json; charset=utf-8',
 										'Cache-Control': 'no-store',
 										'Referrer-Policy': 'no-referrer',
+										'X-Content-Type-Options': 'nosniff',
 									},
 								})
 							}
@@ -767,7 +794,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			if (method === 'GET' && path === '/help') {
 				var body =
 					'\t\t\t<section class="app" aria-label="Help">\n' +
-					'\t\t\t\t<div class="app-body">\n' +
+					'\t\t\t\t<div class="app-body help-body">\n' +
 					'\t\t\t\t\t<p>kody-os is a minimal shared OS shell. The home page shows your live widgets; the Apps page lists installed apps and opening one shows its live state, and every action runs through the same handler the agents use.</p>\n' +
 					'<h3>Adding apps</h3>\n' +
 					'<p>Copy this prompt into a Kody-connected agent and fill in the bracketed parts. The browser has no add control; the agent adds the app with MCP <code>add_app</code> — a registry write, no republish.</p>\n' +
@@ -933,6 +960,29 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						})
 					}
 				})
+			}
+
+			// GET /feed/:app/:name — generic feed capability (see feeds.ts):
+			// allowlisted upstream fetch + storage cache, served same-origin.
+			// Inside dispatch, so the device gate in fetch() has already run.
+			// Placed after the /apps/ branches so an app id of "feed" still
+			// renders its app page. Unknown apps/feeds are plain 404s.
+			if (method === 'GET') {
+				var feedAt = path.indexOf('/feed/')
+				if (feedAt !== -1) {
+					var feedRoute = path.slice(feedAt)
+					var feedParts = feedRoute.split('/')
+					if (feedParts.length === 4) {
+						var feedApp = ''
+						var feedName = ''
+						try { feedApp = decodeURIComponent(feedParts[2]) } catch (err) { feedApp = '' }
+						try { feedName = decodeURIComponent(feedParts[3]) } catch (err) { feedName = '' }
+						if (feedApp !== '' && feedName !== '') {
+							return serveFeed(feedApp, feedName)
+						}
+					}
+					return Promise.resolve(new Response('feed not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }))
+				}
 			}
 
 			return Promise.resolve(notFoundPage(chrome))

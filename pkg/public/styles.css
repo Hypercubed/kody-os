@@ -13,6 +13,22 @@
 	--rule: 2px solid #000;
 	--lift: 3px 3px 0 #000;
 	--lift-lg: 5px 5px 0 #000;
+	--os-ink: #000;
+	--os-paper: var(--paper);
+	--os-grey: #888;
+	--os-border: 1px solid #000;
+	--os-shadow: 2px 2px 0 #000;
+	--os-radius: 4px;
+	--os-font: "Chicago", "Geneva", Helvetica, Arial, sans-serif;
+	--os-font-mono: "Courier New", Courier, monospace;
+	--os-text-sm: 14px;
+	--os-text: 16px;
+	--os-text-lg: 20px;
+	--os-display: 28px;
+	--os-tap: 48px;
+	--os-gap: 6px;
+	--os-pad: 16px;
+	--os-dots: radial-gradient(#000 1px, transparent 1.4px);
 	--stripes: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect y='2' width='4' height='1' fill='%23000'/%3E%3C/svg%3E");
 	--checker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23888'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23888'/%3E%3C/svg%3E");
 	background: var(--desk);
@@ -243,6 +259,16 @@ main {
 	font-weight: bold;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
+}
+
+/* Help-only typography: headings larger than body text, body regular.
+   Scoped to .help-body so state-field paragraphs elsewhere keep the
+   shell's readout rendering. */
+.help-body h3 {
+	font-size: 1.125rem;
+}
+.help-body > p {
+	font-weight: normal;
 }
 
 /* ---- Launcher grid ---- */
@@ -966,6 +992,152 @@ button:active {
 	transform: translate(3px, 3px);
 }
 
+/* ---- Shared app classes (os-*) ---- */
+
+/* Provided by the shell for every bundle: use the class names, do not
+   copy or redefine them. See docs/style-guide.md. Bundles render in the
+   same document as this stylesheet, so these rules cascade into the
+   .bundle container. The :hover and transform rules pin off the shell's
+   generic button behaviour (bold, shift on press, shade on hover) so a
+   shared button behaves the same in every bundle. */
+
+.os-panel {
+	background: var(--os-paper);
+	color: var(--os-ink);
+	border: var(--os-border);
+	padding: var(--os-pad);
+}
+
+.os-section-title {
+	background: var(--os-ink);
+	color: var(--os-paper);
+	font-size: var(--os-text-sm);
+	font-weight: bold;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 8px 12px;
+	margin: 0;
+}
+
+.os-btn {
+	min-height: var(--os-tap);
+	min-width: var(--os-tap);
+	font-family: var(--os-font);
+	font-size: var(--os-text-lg);
+	font-weight: normal;
+	background: var(--os-paper);
+	color: var(--os-ink);
+	border: var(--os-border);
+	border-radius: var(--os-radius);
+	box-shadow: var(--os-shadow);
+	padding: 0 16px;
+}
+
+.os-btn--dark {
+	background: var(--os-ink);
+	color: var(--os-paper);
+}
+
+.os-btn:disabled,
+.os-btn--disabled {
+	color: var(--os-grey);
+	border-color: var(--os-grey);
+	box-shadow: none;
+}
+
+.os-btn:active {
+	background: var(--os-ink);
+	color: var(--os-paper);
+	box-shadow: none;
+	transform: none;
+}
+
+.os-btn:hover {
+	background: var(--os-paper);
+}
+
+.os-btn--dark:hover {
+	background: var(--os-ink);
+}
+
+.os-display {
+	font-size: var(--os-display);
+	text-align: right;
+	background: var(--os-paper);
+	color: var(--os-ink);
+	border: var(--os-border);
+	padding: 8px 12px;
+	min-height: var(--os-tap);
+	box-sizing: border-box;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.os-keypad {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: var(--os-gap);
+}
+
+.os-key {
+	min-height: var(--os-tap);
+	font-family: var(--os-font);
+	font-size: var(--os-text-lg);
+	font-weight: normal;
+	background: var(--os-paper);
+	color: var(--os-ink);
+	border: var(--os-border);
+	border-radius: var(--os-radius);
+	box-shadow: var(--os-shadow);
+	padding: 0;
+}
+
+.os-key:hover {
+	background: var(--os-paper);
+}
+
+.os-key:active {
+	transform: none;
+}
+
+.os-key--wide { grid-column: span 2; }
+.os-key--tall { grid-row: span 2; }
+
+.os-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.os-row {
+	min-height: var(--os-tap);
+	display: flex;
+	align-items: center;
+	padding: 8px 12px;
+	font-size: var(--os-text);
+	border-bottom: var(--os-border);
+}
+
+.os-row--selected {
+	background: var(--os-ink);
+	color: var(--os-paper);
+}
+
+.os-row--disabled {
+	color: var(--os-grey);
+}
+
+.os-muted {
+	color: var(--os-grey);
+	font-size: var(--os-text-sm);
+}
+
+.os-dots {
+	background-color: var(--os-paper);
+	background-image: var(--os-dots);
+	background-size: 4px 4px;
+}
+
 @media (prefers-contrast: more) {
 	.os-menubar,
 	.os-window,
@@ -981,6 +1153,10 @@ button:active {
 	.dashboard-empty h2,
 	.app-title-plate,
 	.app-body > p,
+	.os-btn,
+	.os-display,
+	.os-key,
+	.os-panel,
 	button,
 	input,
 	select,

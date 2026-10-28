@@ -340,6 +340,63 @@ function validateBundleManifest(def: Record<string, unknown>): string | null {
 	return null
 }
 
+function validateCapabilities(def: Record<string, unknown>): string | null {
+	var caps = def['capabilities']
+	if (caps === undefined) return null
+	if (!isRecord(caps)) return 'definition.capabilities must be an object'
+	var feeds = (caps as Record<string, unknown>)['feeds']
+	if (feeds === undefined) return null
+	if (!Array.isArray(feeds)) return 'definition.capabilities.feeds must be an array'
+	if (feeds.length > 8) return 'definition.capabilities.feeds allows at most 8 feeds'
+	var seen: string[] = []
+	for (var i = 0; i < feeds.length; i++) {
+		var feed = feeds[i]
+		var prefix = 'definition.capabilities.feeds[' + String(i) + ']'
+		if (!isRecord(feed)) return prefix + ' must be an object'
+		var name = feed['name']
+		if (typeof name !== 'string' || !NAME_RE.test(name)) return prefix + '.name must match ^[a-z0-9][a-z0-9-]{0,63}$'
+		if (seen.indexOf(name) !== -1) return prefix + '.name is duplicated'
+		seen.push(name)
+		var url = feed['url']
+		if (typeof url !== 'string') return prefix + '.url must be a string'
+		try {
+			var parsed = new URL(url)
+			if (parsed.protocol !== 'https:') return prefix + '.url must use https:'
+			if (parsed.hostname === '' || parsed.username !== '' || parsed.password !== '') return prefix + '.url must be a bare https URL with no credentials'
+		} catch (err) {
+			return prefix + '.url must be a valid URL'
+		}
+		var ttl = feed['ttlSeconds']
+		if (ttl !== undefined && (!Number.isSafeInteger(ttl) || (ttl as number) < 60 || (ttl as number) > 86400)) {
+			return prefix + '.ttlSeconds must be an integer from 60 to 86400'
+		}
+		var maxBytes = feed['maxBytes']
+		if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || (maxBytes as number) < 1024 || (maxBytes as number) > 262144)) {
+			return prefix + '.maxBytes must be an integer from 1024 to 262144'
+		}
+	}
+	return null
+}
+
+/** Normalize declared capabilities at install time so the handler only ever
+ * sees defaults-applied values. Assumes validateCapabilities already passed. */
+function sanitizeCapabilities(caps: unknown): import('./types.ts').AppCapabilities | undefined {
+	if (!isRecord(caps)) return undefined
+	var feeds = (caps as Record<string, unknown>)['feeds']
+	if (!Array.isArray(feeds)) return undefined
+	var out: import('./types.ts').FeedDecl[] = []
+	for (var i = 0; i < feeds.length; i++) {
+		var feed = feeds[i] as Record<string, unknown>
+		out.push({
+			name: feed['name'] as string,
+			url: feed['url'] as string,
+			ttlSeconds: typeof feed['ttlSeconds'] === 'number' ? (feed['ttlSeconds'] as number) : 3600,
+			maxBytes: typeof feed['maxBytes'] === 'number' ? (feed['maxBytes'] as number) : 65536,
+		})
+	}
+	return { feeds: out }
+}
+
 /** Validate a unified app definition. Returns an error string, or null when valid. */
 export function validateDefinition(def: unknown): string | null {
 	if (!isRecord(def)) return 'definition must be an object'
@@ -374,6 +431,8 @@ export function validateDefinition(def: unknown): string | null {
 	if (def['description'] !== undefined && typeof def['description'] !== 'string') {
 		return 'definition.description must be a string'
 	}
+	var capsErr = validateCapabilities(def)
+	if (capsErr) return capsErr
 	var bundleErr = validateBundleManifest(def)
 	if (bundleErr) return bundleErr
 	if (!isRecord(def['ui'])) return 'definition.ui must be an object'
@@ -1011,6 +1070,7 @@ export function add_app(
 				icon: icon,
 				category: definition.category,
 				description: definition.description,
+				capabilities: sanitizeCapabilities(definition.capabilities),
 				bundle: { entry: 'index.html', files: files },
 				ui: {
 					template: definition.ui.template,

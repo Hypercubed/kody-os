@@ -6,7 +6,7 @@
  * error. Where fetch, querySelector, and JSON parsing all exist, forms with
  * class "app-action" are submitted in place as the same GET URL plus
  * format=json (Accept: application/json); matching [data-app-id]
- * [data-field] [data-value] nodes update without navigation and a
+ * [data-field] value spans update without navigation and a
  * role="alert" error is cleared or shown in place. Any failure falls back
  * to a native form.submit(). Never required: no timers, no WebSockets, no
  * client routing, no frameworks.
@@ -174,13 +174,9 @@ if (canFastPath) {
 									var key = row.getAttribute('data-field') || ''
 									if (key === '' || !(key in st)) continue
 									var sval = String(st[key])
-									var target = row.querySelector('[data-value]')
+									var target = row.querySelector('span')
 									if (target) {
 										target.textContent = sval
-										target.setAttribute('data-value', sval)
-									} else if (row.hasAttribute('data-value')) {
-										row.textContent = sval
-										row.setAttribute('data-value', sval)
 									}
 								}
 								var clearEl = scope.querySelector('[role="alert"]')
