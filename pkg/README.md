@@ -6,7 +6,7 @@ Current: **v0.1.5** — data-driven apps, homepage widgets, server-side feed pro
 
 ## Screenshots
 
-> Capture pending — see shot list at the bottom. Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
+Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
 
 ![Home dashboard](public/screenshots/home.png)
 ![All apps](public/screenshots/apps.png)
@@ -48,11 +48,4 @@ Copy this to your Kody-connected agent and fill in the bracketed parts:
 
 Forks rebrand by editing `os-theme.json` (all fields optional): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph or a sanitized inline SVG; empty keeps the checkerboard mark), `background` (`desk`, `paper`, or a custom 8×8 grid object `{ "grid": [r0..r7] }` of eight 0-255 row bytes, MSB left, drawn black on paper as a repeating tile). Invalid grids or SVG fall back to the stock look, as do a missing file, missing field, or broken JSON.
 
-## Shot list (to capture)
 
-On the local preview (`?k=` code in `/tmp/kodyos-preview-code.txt`), 1280×900, capture to `public/screenshots/`:
-
-1. `home.png` — home with Clock, Calculator, Counter, Eight Ball, and Puzzle pinned.
-2. `apps.png` — All apps grid.
-3. `counter.png` — Counter app page after tapping +1 twice (big number visible, no `count:` readout, centered Reset).
-4. `puzzle.png` — Puzzle mid-game with the shadowed New Game button.
