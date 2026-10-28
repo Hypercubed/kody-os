@@ -338,6 +338,40 @@ main {
 	padding: 0;
 }
 
+/* Pinned tiles span two grid columns (three per row at full width) and lay
+   out horizontally: icon fixed left, label plus description stacked right.
+   Under the narrow breakpoint the 2-column grid makes each span fill a row. */
+.tiles > li.tile-wide {
+	grid-column: span 2;
+}
+
+.tiles > li.tile-wide .tile {
+	flex-direction: row;
+	justify-content: flex-start;
+	text-align: left;
+}
+
+.tiles > li.tile-wide .tile .tile-icon {
+	flex-shrink: 0;
+	margin: 0 0.6rem 0 0;
+}
+
+.tiles > li.tile-wide .tile-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.tiles > li.tile-wide .tile-desc {
+	margin-top: 0.15rem;
+	font-size: 0.75rem;
+	font-weight: normal;
+	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .tiles a.tile {
 	flex: 1;
 }

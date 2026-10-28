@@ -248,27 +248,37 @@ function looksLikeSvg(value: string): boolean {
 	return value.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0
 }
 
-function tileItem(app: AppSummary, appBasePath: string): string {
+function tileItem(app: AppSummary, appBasePath: string, wide?: boolean): string {
 	var label = escapeHtml(app.label)
 	var rawIcon = app.icon || '#'
 	var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
+	var description = typeof app.description === 'string' ? app.description : ''
+	var titleAttr = ' title="' + escapeHtml(description) + '"'
 	// Tiles live on the Apps page, so the app's close box returns there.
 	var fromApps = encodeURIComponent(appBasePath + '/apps')
+	var iconHtml = '<span class="tile-icon" aria-hidden="true">' + icon + '</span>'
+	var textHtml =
+		wide === true
+			? '<span class="tile-text"><span class="tile-label">' +
+				label +
+				'</span><span class="tile-desc">' +
+				escapeHtml(description) +
+				'</span></span>'
+			: '<span class="tile-label">' + label + '</span>'
 	return (
-		'<li><a class="tile" href="' +
+		'<li' + (wide === true ? ' class="tile-wide"' : '') + '><a class="tile" href="' +
 		escapeHtml(isModalApp(app) ? appBasePath + '/apps/' + app.id + '?touch=1&from=' + fromApps : appBasePath + '/apps/' + app.id + '?from=' + fromApps) +
-		'"><span class="tile-icon" aria-hidden="true">' +
-		icon +
-		'</span><span class="tile-label">' +
-		label +
-		'</span></a></li>'
+		'"' + titleAttr + '>' +
+		iconHtml +
+		textHtml +
+		'</a></li>'
 	)
 }
 
-function tilesList(apps: AppSummary[], appBasePath: string): string {
+function tilesList(apps: AppSummary[], appBasePath: string, wide?: boolean): string {
 	var items: string[] = []
 	for (var i = 0; i < apps.length; i++) {
-		items.push(tileItem(apps[i], appBasePath))
+		items.push(tileItem(apps[i], appBasePath, wide))
 	}
 	return '<ul class="tiles">\n' + items.join('\n') + '\n</ul>'
 }
@@ -278,7 +288,7 @@ export function renderPinnedSection(apps: AppSummary[], appBasePath: string): st
 	return (
 		'<section class="category" id="pinned" aria-label="Pinned">\n' +
 		'<div class="section-head"><h2>Pinned</h2></div>\n' +
-		tilesList(apps, appBasePath) +
+		tilesList(apps, appBasePath, true) +
 		'\n</section>'
 	)
 }
