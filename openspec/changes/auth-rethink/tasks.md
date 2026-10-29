@@ -1,8 +1,8 @@
 ## 0. Probe gate (blocking — before any implementation)
 
-- [ ] 0.1 Run the Gate 0 probe from design.md Decision 0: confirm the secret is bound via MCP `get_access_status`, then present the derived code through the anonymous `/unlock/<code>` path form from a signed-out session and record whether the fetch handler accepts it. Handle the derived code transiently only; never record it in chat, logs, or files. Distinguish unbound secret vs. host not allowlisted vs. `sign()` unreachable before concluding
-- [ ] 0.2 Record the probe result in `design.md` (Decision 0). If `sign()` does not resolve anonymously, STOP: do not start implementation tasks; return the spec for revisiting
-- [ ] 0.3 Establish whether anonymous device access needs an `internet_visible` approval beyond publish, and record the answer (plus the owner step, if any) for the setup guide
+- [x] 0.1 Run the Gate 0 probe from design.md Decision 0: confirm the secret is bound via MCP `get_access_status`, then present the derived code through the anonymous `/unlock/<code>` path form from a signed-out session and record whether the fetch handler accepts it. Handle the derived code transiently only; never record it in chat, logs, or files. Distinguish unbound secret vs. host not allowlisted vs. `sign()` unreachable before concluding
+- [x] 0.2 Record the probe result in `design.md` (Decision 0). If `sign()` does not resolve anonymously, STOP: do not start implementation tasks; return the spec for revisiting — **probe FAILED 2026-10-29; stopped here**
+- [x] 0.3 Establish whether anonymous device access needs an `internet_visible` approval beyond publish, and record the answer (plus the owner step, if any) for the setup guide — anonymous reachability established (locked page served anonymously); no distinct `internet_visible` setting verifiable from read-only sources, no additional approval needed for anonymous requests to reach the handler
 
 ## 1. Design addendum (after the probe passes)
 

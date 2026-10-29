@@ -53,6 +53,32 @@ model the owner directed on 2026-10-29.
    the spec returns for revisiting (platform question or a
    different invalidation mechanism). The probe result SHALL be
    recorded in this design file before implementation tasks start.
+
+   **Probe record (2026-10-29, run twice with identical results; no code
+   values were recorded).** Secret bound: confirmed — the `access-key`
+   secret exists (metadata updated 2026-10-26), and derivation
+   succeeded in the authenticated MCP context when given the explicit
+   hosted URL. Anonymous baseline: `GET /` from a signed-out session
+   returned the locked page (404), so anonymous requests reach the
+   fetch handler as published. Unlock attempt: the MCP-derived code,
+   presented through the anonymous `/unlock/<code>` path form,
+   returned 404 with no `Set-Cookie`, and the follow-up request with
+   the (empty) cookie jar was still locked. Hosted version observed:
+   v0.1.7 (current). Distinctions: an unbound secret is ruled out;
+   a host-allowlist failure is unlikely as the sole cause (signing
+   for `hypercubed.kody.run` succeeded in the MCP context), but a
+   fetch-context host-resolution difference cannot be fully excluded
+   from outside the handler — the most consistent explanation is
+   that `sign()` does not resolve in the anonymous fetch context.
+   Either way, fetch-context derivation does not produce a code an
+   anonymous visitor can use. **Conclusion: Gate 0 FAILED.
+   Implementation SHALL NOT proceed on the HMAC-verification design;
+   the spec returns for revisiting.** Task 0.3: anonymous
+   reachability is established by the baseline above; a distinct
+   `internet_visible` setting could not be verified from the
+   available read-only sources (no such field in the package search
+   metadata), and no additional approval was needed for anonymous
+   requests to reach the handler.
    Rationale: every cookie shape in Decision 1 needs the same call
    at request time; building first and discovering it fails would
    lock every anonymous device out.
