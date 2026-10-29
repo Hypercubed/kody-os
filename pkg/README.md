@@ -44,6 +44,33 @@ Copy this to your Kody-connected agent and fill in the bracketed parts:
 > - Name: [display name]
 > - What it does: [one sentence]
 
+## Local development (`kody dev`)
+
+Run the real shell locally from `pkg/` with bundled build, persistent mock storage, and live-reload:
+
+```sh
+cd pkg
+# proxy bypass required on this host
+export NO_PROXY='*' no_proxy='*'
+unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
+
+kody dev --target mock
+# → App ready at http://127.0.0.1:4302/
+```
+
+Then seed the dev gate code and the `counter` fixture (one-time per fresh mock store):
+
+```sh
+cd pkg
+kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}'
+python3 -c "import json; d=json.load(open('examples/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
+kody execute --target mock --file scripts/registry.ts --params "$(cat /tmp/add.json)"
+```
+
+Open `http://127.0.0.1:4302/?k=local-dev-code-123456` (VSCode port-forward 4302 to reach it remotely). Home shows `via key` when unlocked; Apps lists `counter`; `GET /apps/counter` returns 200; old `hello-counter` id returns 404.
+
+Useful checks: `kody dev check --target mock --offline`, `kody dev fetch "/apps/counter?k=local-dev-code-123456" --target mock`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`.
+
 ## Theme file
 
 Forks rebrand by editing `os-theme.json` (all fields optional): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph or a sanitized inline SVG; empty keeps the checkerboard mark), `background` (`desk`, `paper`, or a custom 8×8 grid object `{ "grid": [r0..r7] }` of eight 0-255 row bytes, MSB left, drawn black on paper as a repeating tile). Invalid grids or SVG fall back to the stock look, as do a missing file, missing field, or broken JSON.

@@ -55,6 +55,20 @@ await remove_app('counter') // definition, state, and all reference lists gone
 
 `remove_app` is MCP-only (the UI exposes hide, never remove) and validates the id first; unknown ids return `{ ok:false }` and write nothing. Export v1 payloads import with id derived from name; v2 is id-keyed.
 
+## Local dev (`kody dev`)
+
+Run from `pkg/` only (repo root fails: missing `kody.app.entry`). Proxy bypass required on this host for every `kody dev` / `curl` call: `export NO_PROXY='*' no_proxy='*'; unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY`. Bare `kody dev` (no `--port`) so `fetch` can attach.
+
+```sh
+cd pkg
+kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
+systemctl --user enable --now kody-os-dev.service # persistent across turns; verify with is-active + curl status
+kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}' # writes ACCESS_HASH_KEY
+kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
+```
+
+Seed `counter` fixture: `python3 -c "import json; d=json.load(open('examples/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"` then `registry.ts` with `$(cat /tmp/add.json)`. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
+
 ## Edge cases
 
 - No root-export side effects: no jobs, file writes, or installs.
