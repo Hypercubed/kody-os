@@ -1,6 +1,21 @@
 # @hypercubed/kody-os
 
-v0.1.5. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v0.1.7. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+
+## Version policy
+
+Single source of truth: `pkg/package.json` — `version` (`MAJOR.MINOR.PATCH`) and `build` (integer). The status bar reads them at runtime via `getPackageMeta()`; never set the displayed version anywhere else. `pkg/AGENTS.md` and `pkg/README.md` headers MUST state the same version as `package.json`; update them in the same commit as any bump. `0.x` does not soften these rules: a breaking change bumps MAJOR even before 1.0.
+
+Apply the HIGHEST bump any part of the change triggers. When in doubt between two levels, take the higher one. Bump in the same commit as the change it describes — never a separate "bump version" commit, and never bump for a change you have not verified.
+
+- **MAJOR — existing apps or agent scripts will break.** Bump MAJOR when any of these is true: an existing valid app definition no longer validates, installs, or acts the same; support for a `schemaVersion` is dropped; a state field, storage key, or effect operator changes meaning or is removed without migration; rendered markup, client patch scope, or form semantics change in a way a conforming bundle must adapt to; an MCP export is removed, renamed, or changes signature/return shape; the shell-provided framework/adapter surface (once it lands) changes in a breaking way; auth, edge, or session behavior changes so existing bookmarks, codes, or sessions stop working. If an app, definition, or script that worked before stops working — or behaves differently — without changes on its side, it is MAJOR. No exceptions for "small" breakage.
+- **MINOR — new feature, nothing existing breaks.** Bump MINOR for: a new `schemaVersion` (old versions keep working); a new MCP export; a new effect operator; a new optional `ui` or definition field (ignored by older readers); a new capability (e.g. a new feed type, a new launcher list); a new provided-framework capability that existing apps can ignore; a new doc surface describing a new feature. Reset PATCH to 0 on a MINOR bump.
+- **PATCH — bug fix or correction, behavior otherwise unchanged.** Bump PATCH for: a fix that restores documented behavior; an internal refactor with no observable change; a CSS/theme tweak that does not change the contract; a docs-only correction (including drift fixes to this file and `pkg/README.md`). Reset nothing else. Docs-only changes ride with the next version-bumping change when one is pending; a publish containing only docs corrections still bumps PATCH.
+- **BUILD — increment by exactly 1 on every publish**, including publishes where `version` is unchanged. Never reset `build`, never skip an increment, never reuse a `version` + `build` pair. The build number alone never communicates compatibility — it only orders publishes.
+
+What does NOT bump the version: changes outside `pkg/` (e.g. `openspec/` drafts, repo tooling), and app definitions or state written via `add_app`/`act` (data, not package code). Those change no shipped package behavior and need no version decision.
+
+This policy's own addition, and the header correction from v0.1.5 to v0.1.7 that accompanies it, do not bump the version: the header now states the version already in `package.json`, and the policy text is docs-only.
 
 ## Imports
 
