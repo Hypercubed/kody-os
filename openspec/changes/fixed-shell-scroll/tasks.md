@@ -2,7 +2,7 @@
 
 ## 1. Prove inner scroll on the Scribe
 
-- [ ] 1.1 Add a scrollable-div + `scrollTop` beacon row to the probe (`pkg/src/probe.ts` plus `example-apps/probe.bundle.json` if the probe ships as a bundle) and verify the row reports scrollable on the Scribe before any CSS work
+- [ ] 1.1 Add a scrollable-div + `scrollTop` beacon row to the probe (`pkg/src/probe.ts` plus `pkg/examples/probe.bundle.json` if the probe ships as a bundle) and verify the row reports scrollable on the Scribe before any CSS work
 
 ## 2. Lock the shell
 

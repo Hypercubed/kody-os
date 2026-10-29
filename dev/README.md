@@ -25,7 +25,7 @@ Then open `http://HOST:PORT/?k=<code>`.
 
 ## Notes
 
-- Seeds `hello-counter` plus every `example-apps/*.json` on boot.
+- Seeds `hello-counter` plus every `pkg/examples/*.json` on boot.
 - Serves `pkg/public/styles.css` at `/styles.css` and a type-stripped
   `pkg/src/client/index.ts` at `/client.js` (hosting normally injects both).
 - Storage is in-memory: restarts wipe pins and states — re-pin afterwards.

@@ -44,7 +44,7 @@ They are generic data-write operators, not a built-in counter app. `hello-counte
 
 Each app has isolated state at `kody-os.apps.state.<id>`. Every action coerces its args, applies the effect to a copy of state, re-validates the result against the schema, then writes with a single set. A bad action returns `{ ok: false, error }` and leaves stored state untouched. One app cannot touch another app’s state.
 
-Stated plainly: there is no `random`/`shuffle` operator, and UI buttons carry no arguments. A true Magic 8-ball “shake” keeps its randomness in bundle JS and persists the outcome through a `set`/`append` action (see `example-apps/eight-ball.bundle.json`); arg-taking actions are driven through MCP `act(id, action, args)` or bundle `fetch`. Do not invent new operators per app; they are only these two.
+Stated plainly: there is no `random`/`shuffle` operator, and UI buttons carry no arguments. A true Magic 8-ball “shake” keeps its randomness in bundle JS and persists the outcome through a `set`/`append` action (see `examples/eight-ball.bundle.json`); arg-taking actions are driven through MCP `act(id, action, args)` or bundle `fetch`. Do not invent new operators per app; they are only these two.
 
 ### Kindle Scribe browser: what agents may assume
 
@@ -73,7 +73,7 @@ The device gate is a latch, not multi-user auth: one shared gate per OS install,
 
 ### Bundle contract
 
-Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `example-apps/hello-counter.json`, `example-apps/eight-ball.bundle.json`, and `example-apps/clock.bundle.json` (modal placement) for installable shapes.
+Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `examples/hello-counter.bundle.json`, `examples/eight-ball.bundle.json`, and `examples/clock.bundle.json` (modal placement) for installable shapes.
 
 Validation rejects bad bundles before any write and returns `{ ok: false, error }`:
 

@@ -14,7 +14,7 @@
 //   PREVIEW_CODE_FILE where to write the code (default /tmp/kodyos-preview-code.txt)
 //
 // Behavior mirrors the hosted app: seeds hello-counter plus every
-// example-apps/*.json, serves pkg/public/styles.css and a type-stripped
+// pkg/examples/*.json, serves pkg/public/styles.css and a type-stripped
 // pkg/src/client/index.ts, and forwards everything else into app.fetch().
 // Storage is in-memory: each restart wipes pins and states, so re-pin after
 // respawning. Requires Node 22+ (stripTypeScriptTypes, getSetCookie).
@@ -36,9 +36,9 @@ var { hashCode, ACCESS_HASH_KEY, normalizeCode } = await import(path.join(PKG, '
 var { resolveStore } = await import(path.join(PKG, 'src/apps/storage.ts'))
 
 await add_app(helloCounterDefinition()).catch(function () {})
-// Preview-only seed: install example-apps definitions verbatim so they show up
+// Preview-only seed: install pkg/examples definitions verbatim so they show up
 // in the local preview exactly as they would after a hosted add. Reads every
-// example-apps/*.json; a missing file or bad JSON is skipped.
+// pkg/examples/*.json; a missing file or bad JSON is skipped.
 async function seedFile(file) {
 	try {
 		var staged = JSON.parse(await readFile(file, 'utf8'))
@@ -46,9 +46,9 @@ async function seedFile(file) {
 	} catch (err) {}
 }
 try {
-	var dir = await readdir(path.join(ROOT, 'example-apps'))
+	var dir = await readdir(path.join(PKG, 'examples'))
 	for (var f of dir.filter(function (n) { return n.endsWith('.json') })) {
-		await seedFile(path.join(ROOT, 'example-apps', f))
+		await seedFile(path.join(PKG, 'examples', f))
 	}
 } catch (err) {}
 
