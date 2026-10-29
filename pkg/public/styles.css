@@ -678,6 +678,12 @@ button.tile:active .tile-icon {
 	padding: 0;
 }
 
+/* Lone widget in its row spans the full grid width (covers the
+   single-widget home and the last row of any odd widget count). */
+.widgets > :last-child:nth-child(odd) {
+	grid-column: 1 / -1;
+}
+
 .widget {
 	margin: 0;
 	background: var(--paper);
