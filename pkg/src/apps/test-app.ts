@@ -20,7 +20,6 @@ export function helloCounterDefinition(): AppDefinition {
 		category: 'Tests',
 		description: 'Phase 2 validation app: a shared counter proving UI and MCP act on the same state.',
 		ui: {
-			template: 'hello',
 			title: 'Hello Counter',
 			actions: [
 				{ action: 'increment', label: 'Increment' },
@@ -38,21 +37,21 @@ export function helloCounterDefinition(): AppDefinition {
 		actions: {
 			increment: {
 				description: 'Add one to the counter.',
-				effect: { op: 'increment', field: 'count', by: 1 },
+				effects: [{ op: 'increment', field: 'count', by: 1 }],
 			},
 			add: {
 				description: 'Add an arbitrary step (1-100) to the counter.',
 				args: { by: { type: 'integer', required: true, min: 1, max: 100 } },
-				effect: { op: 'increment', field: 'count', byArg: 'by' },
+				effects: [{ op: 'increment', field: 'count', byArg: 'by' }],
 			},
 			set_greeting: {
 				description: 'Replace the greeting text.',
 				args: { text: { type: 'string', required: true, maxLength: 80 } },
-				effect: { op: 'set', field: 'greeting', fromArg: 'text' },
+				effects: [{ op: 'set', field: 'greeting', fromArg: 'text' }],
 			},
 			reset: {
 				description: 'Restore initial state.',
-				effect: { op: 'reset' },
+				effects: [{ op: 'reset' }],
 			},
 		},
 	}

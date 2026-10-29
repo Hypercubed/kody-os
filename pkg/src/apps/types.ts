@@ -21,7 +21,6 @@ export type FieldType = 'integer' | 'string' | 'boolean' | 'array'
 export type ArgType = 'integer' | 'string' | 'boolean'
 /** Generic ops are `set` and `append`. `increment`, `toggle`, and `reset` are deprecated sugar kept until migration retires them. */
 export type EffectOp = 'set' | 'append' | 'increment' | 'toggle' | 'reset'
-export type UiTemplate = 'hello' | 'generic' | 'clock'
 /** Where an app may surface. `widget` validates but renders nothing until the widget-screen change lands. */
 export type AppPlacement = 'page' | 'modal' | 'widget'
 
@@ -105,7 +104,10 @@ export type ActionEffect = SetEffect | AppendEffect | IncrementEffect | ToggleEf
 export interface ActionDef {
 	description?: string
 	args?: Record<string, ActionArgDef>
-	effect: ActionEffect
+	/** Legacy single effect (schemaVersion 3). Exactly one of `effect` / `effects` must be present. */
+	effect?: ActionEffect
+	/** V2 sequence (schemaVersion 4): applied in order to a state copy, then validated + written once. */
+	effects?: ActionEffect[]
 }
 
 export interface UiActionDef {
@@ -115,7 +117,6 @@ export interface UiActionDef {
 }
 
 export interface UiDef {
-	template: UiTemplate
 	title?: string
 	/** Placement allowlist. Omitted means page-only. Modal-capable apps open as home overlays. */
 	placements?: AppPlacement[]
@@ -165,9 +166,10 @@ export function isBundleDefinition(def: AppDefinition): boolean {
  *
  *  1 = operator-only era (no bundle; `kind` discriminated the renderer)
  *  2 = bundle-kind era (bundle manifest, still `kind`-discriminated)
- *  3 = unified era (one shape: meta + bundle + stateSchema + actions)
+ *  3 = unified era (one shape: meta + bundle + stateSchema + actions, single `effect`)
+ *  4 = v2 effects era (one shape with `effects[]` sequence; `ui.template` removed)
  */
-export var DEFINITION_SCHEMA_VERSION = 3
+export var DEFINITION_SCHEMA_VERSION = 4
 
 export interface AppDefinition {
 	/** Stable slug: ^[a-z0-9][a-z0-9-]{0,63}$ . Identity: routes, storage keys. */

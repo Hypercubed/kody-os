@@ -2,7 +2,7 @@
   "id": "hello-counter",
   "name": "Counter",
   "label": "Counter",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M12 8v8M8 12h8\" /></svg>",
   "category": "Tests",
   "description": "Unified validation app: a shared counter proving bundle UI and MCP act on the same state through set actions.",
@@ -13,7 +13,6 @@
     }
   },
   "ui": {
-    "template": "hello",
     "title": "Counter",
     "hideState": true,
     "actions": [
@@ -47,19 +46,23 @@
           "max": 1000000
         }
       },
-      "effect": {
-        "op": "set",
-        "field": "count",
-        "fromArg": "value"
-      }
+      "effects": [
+        {
+          "op": "set",
+          "field": "count",
+          "fromArg": "value"
+        }
+      ]
     },
     "reset_count": {
       "description": "Reset the counter to zero.",
-      "effect": {
-        "op": "set",
-        "field": "count",
-        "value": 0
-      }
+      "effects": [
+        {
+          "op": "set",
+          "field": "count",
+          "value": 0
+        }
+      ]
     }
   }
 }

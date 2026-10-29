@@ -397,6 +397,48 @@ function sanitizeCapabilities(caps: unknown): import('./types.ts').AppCapabiliti
 	return { feeds: out }
 }
 
+/** Supported definition versions: 3 = legacy single-`effect` shape, 4 = v2 `effects[]` sequence. */
+export var SUPPORTED_SCHEMA_VERSIONS: number[] = [3, 4]
+
+/**
+ * Normalize one action to the canonical `effects[]` shape for validation/storage.
+ * Single-`effect` v1 actions expand to a one-entry `effects[]`; v2 actions
+ * pass through unchanged. Non-objects pass through for the validator to reject.
+ */
+export function migrateAction(action: unknown): unknown {
+	if (!isRecord(action)) return action
+	var rec = action as Record<string, unknown>
+	if (Array.isArray(rec['effects'])) return rec
+	if (isRecord(rec['effect'])) {
+		var out: Record<string, unknown> = {}
+		for (var k of Object.keys(rec)) {
+			if (k !== 'effect') out[k] = rec[k]
+		}
+		out['effects'] = [rec['effect']]
+		return out
+	}
+	return rec
+}
+
+/**
+ * Normalize one definition to the canonical `effects[]` shape (per-action
+ * `migrateAction`). Non-objects pass through for the validator to reject.
+ * Version and `ui.template` are left untouched: `validateDefinition` selects
+ * the validator branch by version first.
+ */
+export function migrateDefinition(def: unknown): unknown {
+	if (!isRecord(def)) return def
+	var rec = def as Record<string, unknown>
+	if (!isRecord(rec['actions'])) return def
+	var actions = rec['actions'] as Record<string, unknown>
+	var next: Record<string, unknown> = {}
+	for (var name of Object.keys(actions)) next[name] = migrateAction(actions[name])
+	var out: Record<string, unknown> = {}
+	for (var key of Object.keys(rec)) out[key] = rec[key]
+	out['actions'] = next
+	return out
+}
+
 /** Validate a unified app definition. Returns an error string, or null when valid. */
 export function validateDefinition(def: unknown): string | null {
 	if (!isRecord(def)) return 'definition must be an object'
@@ -416,6 +458,9 @@ export function validateDefinition(def: unknown): string | null {
 	var schemaVersion = def['schemaVersion']
 	if (typeof schemaVersion !== 'number' || !Number.isSafeInteger(schemaVersion) || schemaVersion <= 0) {
 		return 'definition.schemaVersion must be a positive integer; the current version is ' + DEFINITION_SCHEMA_VERSION
+	}
+	if (SUPPORTED_SCHEMA_VERSIONS.indexOf(schemaVersion) === -1) {
+		return 'unsupported definition.schemaVersion ' + String(schemaVersion) + ' (supported: 3, 4)'
 	}
 	if (def['icon'] !== undefined) {
 		if (typeof def['icon'] !== 'string') return 'definition.icon must be a string'
@@ -437,8 +482,14 @@ export function validateDefinition(def: unknown): string | null {
 	if (bundleErr) return bundleErr
 	if (!isRecord(def['ui'])) return 'definition.ui must be an object'
 	var ui = def['ui'] as Record<string, unknown>
-	if (ui['template'] !== 'hello' && ui['template'] !== 'generic' && ui['template'] !== 'clock') {
-		return 'definition.ui.template must be hello, generic, or clock'
+	if (schemaVersion === 4) {
+		if ('template' in ui) {
+			return 'definition.ui.template is removed in schemaVersion 4; delete it (renderer ignores it)'
+		}
+	} else {
+		if (ui['template'] !== 'hello' && ui['template'] !== 'generic' && ui['template'] !== 'clock') {
+			return 'definition.ui.template must be hello, generic, or clock'
+		}
 	}
 	if (ui['title'] !== undefined && typeof ui['title'] !== 'string') {
 		return 'definition.ui.title must be a string'
@@ -497,7 +548,7 @@ export function validateDefinition(def: unknown): string | null {
 	if (!isRecord(def['actions'])) return 'definition.actions must be an object'
 	var actions = def['actions'] as Record<string, unknown>
 	for (var actionName of Object.keys(actions)) {
-		var err1 = validateActionDef(actionName, actions[actionName], fields as Record<string, StateFieldDef>)
+		var err1 = validateActionDef(actionName, actions[actionName], fields as Record<string, StateFieldDef>, schemaVersion)
 		if (err1) return err1
 	}
 	var uiActions = ui['actions'] as Array<{ action: string }> | undefined
@@ -511,10 +562,72 @@ export function validateDefinition(def: unknown): string | null {
 	return null
 }
 
+function validateSingleEffect(
+	label: string,
+	effectRec: unknown,
+	fields: Record<string, StateFieldDef>,
+): string | null {
+	if (!isRecord(effectRec) || typeof effectRec['op'] !== 'string') {
+		return label + ' must be an object with an op'
+	}
+	var effect = effectRec as unknown as Record<string, unknown>
+	var op = effect['op'] as string
+	if (op === 'increment') {
+		if (typeof effect['field'] !== 'string' || !((effect['field'] as string) in fields)) {
+			return label + '.field must name a declared state field'
+		}
+		if (fields[effect['field'] as string].type !== 'integer') {
+			return label + ' increment target must be an integer field'
+		}
+		if (effect['by'] !== undefined && !Number.isSafeInteger(effect['by'])) {
+			return label + '.by must be a safe integer'
+		}
+		if (effect['byArg'] !== undefined && typeof effect['byArg'] !== 'string') {
+			return label + '.byArg must be an arg name'
+		}
+	} else if (op === 'set') {
+		if (typeof effect['field'] !== 'string' || !((effect['field'] as string) in fields)) {
+			return label + '.field must name a declared state field'
+		}
+		if (effect['fromArg'] !== undefined && typeof effect['fromArg'] !== 'string') {
+			return label + '.fromArg must be an arg name'
+		}
+	} else if (op === 'append') {
+		if (typeof effect['field'] !== 'string' || !((effect['field'] as string) in fields)) {
+			return label + '.field must name a declared state field'
+		}
+		if (fields[effect['field'] as string].type !== 'array') {
+			return label + ' append target must be an array field'
+		}
+		if (effect['fromArg'] !== undefined && typeof effect['fromArg'] !== 'string') {
+			return label + '.fromArg must be an arg name'
+		}
+		if (effect['cap'] !== undefined && (!Number.isSafeInteger(effect['cap']) || (effect['cap'] as unknown as number) <= 0)) {
+			return label + '.cap must be a positive safe integer'
+		}
+		if (effect['maxEntryBytes'] !== undefined && (!Number.isSafeInteger(effect['maxEntryBytes']) || (effect['maxEntryBytes'] as unknown as number) <= 0)) {
+			return label + '.maxEntryBytes must be a positive safe integer'
+		}
+	} else if (op === 'toggle') {
+		if (typeof effect['field'] !== 'string' || !((effect['field'] as string) in fields)) {
+			return label + '.toggle target must be a boolean field'
+		}
+		if (fields[effect['field'] as string].type !== 'boolean') {
+			return label + ' toggle target must be a boolean field'
+		}
+	} else if (op === 'reset') {
+		// no extra fields needed
+	} else {
+		return label + '.op must be set, append, increment, toggle, or reset'
+	}
+	return null
+}
+
 function validateActionDef(
 	actionName: string,
 	spec: unknown,
 	fields: Record<string, StateFieldDef>,
+	schemaVersion: number,
 ): string | null {
 	var prefix = 'actions.' + actionName
 	if (!isRecord(spec)) return prefix + ' must be an object'
@@ -531,6 +644,20 @@ function validateActionDef(
 			}
 		}
 	}
+	var rawRec = action as unknown as Record<string, unknown>
+	if (schemaVersion === 4) {
+		if ('effect' in rawRec) return prefix + ' must use effects[] in schemaVersion 4 (single effect retired)'
+		if (!Array.isArray(rawRec['effects']) || (rawRec['effects'] as unknown[]).length === 0) {
+			return prefix + '.effects must be a non-empty array'
+		}
+		var seq = rawRec['effects'] as unknown[]
+		for (var ei = 0; ei < seq.length; ei++) {
+			var eerr = validateSingleEffect(prefix + '.effects[' + String(ei) + ']', seq[ei], fields)
+			if (eerr) return eerr
+		}
+		return null
+	}
+	if ('effects' in rawRec) return prefix + '.effects requires schemaVersion 4'
 	var effectRec = (action as unknown as Record<string, unknown>)['effect']
 	if (!isRecord(effectRec) || typeof effectRec['op'] !== 'string') {
 		return prefix + '.effect must be an object with an op'
@@ -949,63 +1076,85 @@ export function act(
 				resolved[argName] = coerced.value
 			}
 
-			// 2. Apply the declarative effect to a COPY — storage untouched so far.
+			// 2. Apply the declarative effects to a COPY — storage untouched so far.
+			// v3 definitions carry single `effect`; v4 carries `effects[]`.
+			var rawAction = actionDef as unknown as Record<string, unknown>
+			var seq: unknown[] = []
+			if (Array.isArray(rawAction['effects'])) seq = rawAction['effects'] as unknown[]
+			else if (isRecord(rawAction['effect'])) seq = [rawAction['effect']]
+			else {
+				return Promise.resolve({ ok: false as const, error: 'action "' + action + '" has no effects' })
+			}
 			var next = cloneState(state)
-			var effect = actionDef.effect
-			if (effect.op === 'set') {
-				var value: unknown = effect.fromArg !== undefined ? resolved[effect.fromArg] : effect.value
-				if (value === undefined) {
-					return Promise.resolve({ ok: false as const, error: 'set action "' + action + '" has no value' })
-				}
-				next[effect.field] = value as number | string | boolean
-			} else if (effect.op === 'append') {
-				var entry: unknown = effect.fromArg !== undefined ? resolved[effect.fromArg] : effect.value
-				if (entry === undefined) {
-					return Promise.resolve({ ok: false as const, error: 'append action "' + action + '" has no value' })
-				}
-				var list = next[effect.field]
-				if (!Array.isArray(list)) {
-					return Promise.resolve({ ok: false as const, error: 'field "' + effect.field + '" is not an array' })
-				}
-				if (typeof entry === 'string') {
-					var maxEntry = effect.maxEntryBytes !== undefined ? effect.maxEntryBytes : APPEND_MAX_ENTRY_BYTES
-					if (byteLength(entry) > maxEntry) {
-						return Promise.resolve({ ok: false as const, error: 'append entry exceeds ' + maxEntry + ' bytes' })
+			var applyError: string | null = null
+			for (var si = 0; si < seq.length; si++) {
+				if (applyError) break
+				var effect = seq[si] as import('./types.ts').ActionEffect
+				if (effect.op === 'set') {
+					var value: unknown = effect.fromArg !== undefined ? resolved[effect.fromArg] : effect.value
+					if (value === undefined) {
+						applyError = 'set action "' + action + '" has no value'
+						break
 					}
+					next[effect.field] = value as number | string | boolean
+				} else if (effect.op === 'append') {
+					var entry: unknown = effect.fromArg !== undefined ? resolved[effect.fromArg] : effect.value
+					if (entry === undefined) {
+						applyError = 'append action "' + action + '" has no value'
+						break
+					}
+					var list = next[effect.field]
+					if (!Array.isArray(list)) {
+						applyError = 'field "' + effect.field + '" is not an array'
+						break
+					}
+					if (typeof entry === 'string') {
+						var maxEntry = effect.maxEntryBytes !== undefined ? effect.maxEntryBytes : APPEND_MAX_ENTRY_BYTES
+						if (byteLength(entry) > maxEntry) {
+							applyError = 'append entry exceeds ' + maxEntry + ' bytes'
+							break
+						}
+					}
+					var grown = (list as Array<number | string | boolean>).concat([entry as number | string | boolean])
+					var cap = effect.cap !== undefined ? effect.cap : APPEND_CAP
+					if (grown.length > cap) grown = grown.slice(grown.length - cap)
+					next[effect.field] = grown
+				} else if (effect.op === 'increment') {
+					// Deprecated sugar over set: computes the next integer and sets it.
+					// Kept until migration retires it; prefer a set effect instead.
+					var step: unknown = effect.byArg !== undefined ? resolved[effect.byArg] : effect.by !== undefined ? effect.by : 1
+					if (typeof step !== 'number' || !Number.isSafeInteger(step)) {
+						applyError = 'increment step for "' + effect.field + '" is not a safe integer'
+						break
+					}
+					var current = next[effect.field]
+					if (typeof current !== 'number') {
+						applyError = 'field "' + effect.field + '" is not an integer'
+						break
+					}
+					next[effect.field] = current + step
+				} else if (effect.op === 'toggle') {
+					// Deprecated sugar over set: negates the boolean field via set.
+					// Kept until migration retires it; prefer a set effect instead.
+					var cur = next[effect.field]
+					if (typeof cur !== 'boolean') {
+						applyError = 'field "' + effect.field + '" is not a boolean'
+						break
+					}
+					next[effect.field] = !cur
+				} else if (effect.op === 'reset') {
+					// Deprecated sugar over set: resets every field to its initial
+					// value via set. Kept until migration retires it.
+					var fresh = cloneState(definition.stateSchema.initial)
+					for (var k of Object.keys(next)) delete next[k]
+					for (var fk of Object.keys(fresh)) next[fk] = fresh[fk]
+				} else {
+					applyError = 'unknown effect op "' + String((effect as unknown as Record<string, unknown>)['op']) + '"'
+					break
 				}
-				var grown = (list as Array<number | string | boolean>).concat([entry as number | string | boolean])
-				var cap = effect.cap !== undefined ? effect.cap : APPEND_CAP
-				if (grown.length > cap) grown = grown.slice(grown.length - cap)
-				next[effect.field] = grown
-			} else if (effect.op === 'increment') {
-				// Deprecated sugar over set: computes the next integer and sets it.
-				// Kept until migration retires it; prefer a set effect instead.
-				var step: unknown = effect.byArg !== undefined ? resolved[effect.byArg] : effect.by !== undefined ? effect.by : 1
-				if (typeof step !== 'number' || !Number.isSafeInteger(step)) {
-					return Promise.resolve({
-						ok: false as const,
-						error: 'increment step for "' + effect.field + '" is not a safe integer',
-					})
-				}
-				var current = next[effect.field]
-				if (typeof current !== 'number') {
-					return Promise.resolve({ ok: false as const, error: 'field "' + effect.field + '" is not an integer' })
-				}
-				next[effect.field] = current + step
-			} else if (effect.op === 'toggle') {
-				// Deprecated sugar over set: negates the boolean field via set.
-				// Kept until migration retires it; prefer a set effect instead.
-				var cur = next[effect.field]
-				if (typeof cur !== 'boolean') {
-					return Promise.resolve({ ok: false as const, error: 'field "' + effect.field + '" is not a boolean' })
-				}
-				next[effect.field] = !cur
-			} else {
-				// Deprecated sugar over set: resets every field to its initial
-				// value via set. Kept until migration retires it.
-				var fresh = cloneState(definition.stateSchema.initial)
-				for (var k of Object.keys(next)) delete next[k]
-				for (var fk of Object.keys(fresh)) next[fk] = fresh[fk]
+			}
+			if (applyError) {
+				return Promise.resolve({ ok: false as const, error: applyError })
 			}
 
 			// 3. Validate the resulting state against the schema BEFORE writing.
@@ -1026,20 +1175,49 @@ export function act(
 	})
 }
 
+export interface AddAppOptions {
+	resetState?: boolean
+	migrate?: Record<string, string>
+}
+
 /**
- * Install a unified app definition. Registry-write-only: writes the
- * definition, its initial state, and the registry entry. No republish, no
- * code changes. Re-adding an existing id overwrites the definition and
- * RESETS its state.
+ * Install a unified app definition. Validate-all-first, then a single
+ * registry write followed by a single state write. A failed call writes
+ * nothing: storage is byte-identical to before the call.
+ *
+ * Same-id overwrite preserves state by default (declared fields carried
+ * forward, dropped fields reset to `initial`) and leaves registry order,
+ * pins, hidden flags, homepage placement, and recent entries untouched.
+ * `resetState: true` restores the legacy wipe; `migrate` maps old field
+ * names to new ones with validator-checked values (unmappable aborts).
  */
 export function add_app(
 	definition: AppDefinition,
-	store?: KeyStore,
+	store?: KeyStore | AddAppOptions,
+	opts?: AddAppOptions,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	var activeStore: KeyStore | undefined = undefined
+	var options: AddAppOptions = {}
+	if (store && isKeyStore(store)) {
+		activeStore = store
+		if (opts) options = opts
+	} else if (store && typeof store === 'object') {
+		options = store as AddAppOptions
+	}
 	var problem = validateDefinition(definition)
 	if (problem) return Promise.resolve({ ok: false as const, error: problem })
-	return resolveStore(store).then(function (active: KeyStore) {
-		return readJson<AppDefinition>(active, defKey(definition.id)).then(function (existing): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	return resolveStore(activeStore).then(function (active: KeyStore) {
+		return Promise.all([
+			readJson<AppDefinition>(active, defKey(definition.id)),
+			readJson<AppState>(active, stateKey(definition.id)),
+			readRegistry(active),
+		]).then(function (triple): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+			var existing = triple[0]
+			var existingState = triple[1]
+			var ids = triple[2]
+			if (options.resetState === true && options.migrate !== undefined) {
+				return Promise.resolve({ ok: false as const, error: 'add_app options resetState and migrate are mutually exclusive' })
+			}
 			if (!existing && definition.schemaVersion !== DEFINITION_SCHEMA_VERSION) {
 				return Promise.resolve({
 					ok: false as const,
@@ -1056,12 +1234,19 @@ export function add_app(
 			var rawFiles = (manifest['files'] as Record<string, unknown>) || {}
 			var files: Record<string, string> = {}
 			for (var fk of Object.keys(rawFiles)) files[fk] = String(rawFiles[fk])
-			// Store the canonical sanitized SVG, not the submitted markup.
 			var icon = definition.icon
 			if (typeof icon === 'string' && isSvgIcon(icon)) {
 				var cleanIcon = sanitizeSvgIcon(icon)
 				icon = cleanIcon.ok ? cleanIcon.icon : undefined
 			}
+			var canonicalActions: Record<string, unknown> = {}
+			var inputActions = definition.actions as unknown as Record<string, unknown>
+			for (var aname of Object.keys(inputActions)) canonicalActions[aname] = migrateAction(inputActions[aname])
+			var uiOut: Record<string, unknown> = {}
+			if (definition.ui.title !== undefined) uiOut['title'] = definition.ui.title
+			uiOut['placements'] = placements
+			if (definition.ui.actions !== undefined) uiOut['actions'] = definition.ui.actions
+			if (definition.ui.hideState !== undefined) uiOut['hideState'] = definition.ui.hideState
 			var def: AppDefinition = {
 				id: definition.id,
 				name: definition.name,
@@ -1072,34 +1257,72 @@ export function add_app(
 				description: definition.description,
 				capabilities: sanitizeCapabilities(definition.capabilities),
 				bundle: { entry: 'index.html', files: files },
-				ui: {
-					template: definition.ui.template,
-					title: definition.ui.title,
-					placements: placements,
-					actions: definition.ui.actions,
-					hideState: definition.ui.hideState,
-				},
+				ui: uiOut as unknown as AppDefinition['ui'],
 				stateSchema: definition.stateSchema,
-				actions: definition.actions,
+				actions: canonicalActions as unknown as AppDefinition['actions'],
 			}
-			var initial = cloneState(definition.stateSchema.initial as AppState)
-			return writeJson(active, defKey(def.id), def)
-				.then(function () {
-					return writeJson(active, stateKey(def.id), initial)
-				})
-				.then(function () {
-					return readRegistry(active)
-				})
-				.then(function (ids: string[]) {
-					if (ids.indexOf(def.id) === -1) {
+			var candidate: AppState
+				var freshInitial = cloneState(definition.stateSchema.initial as AppState)
+			if (!existing) {
+				candidate = freshInitial
+			} else if (options.resetState === true) {
+				candidate = freshInitial
+			} else {
+				candidate = cloneState(freshInitial)
+					var newFields = definition.stateSchema.fields as Record<string, StateFieldDef>
+				var stored: AppState = existingState ? existingState : ({} as AppState)
+					for (var fname of Object.keys(newFields)) {
+						if (fname in stored) {
+							var perr = checkFieldValue(fname, newFields[fname], stored[fname])
+							if (perr) {
+								return Promise.resolve({ ok: false as const, error: 'preserved state invalid: ' + perr })
+							}
+							candidate[fname] = stored[fname]
+						}
+					}
+					if (options.migrate !== undefined) {
+						if (!isRecord(options.migrate)) {
+							return Promise.resolve({ ok: false as const, error: 'add_app migrate must be an object mapping old field names to new ones' })
+						}
+						var mapping = options.migrate as Record<string, unknown>
+						for (var oldName of Object.keys(mapping)) {
+							var newName = mapping[oldName]
+							if (typeof newName !== 'string') {
+								return Promise.resolve({ ok: false as const, error: 'migrate maps old field "' + oldName + '" to a non-string field name' })
+							}
+							if (!(oldName in stored)) {
+								return Promise.resolve({ ok: false as const, error: 'migrate maps unknown old field "' + oldName + '"' })
+							}
+							if (!(newName in newFields)) {
+								return Promise.resolve({ ok: false as const, error: 'migrate maps to unknown new field "' + newName + '"' })
+							}
+							var merr = checkFieldValue(newName, newFields[newName], stored[oldName])
+							if (merr) {
+								return Promise.resolve({ ok: false as const, error: 'migrate value invalid: ' + merr })
+							}
+							candidate[newName] = stored[oldName]
+						}
+					}
+			}
+				for (var cfield of Object.keys(def.stateSchema.fields)) {
+					var cerr = checkFieldValue(cfield, def.stateSchema.fields[cfield], candidate[cfield])
+				if (cerr) {
+					return Promise.resolve({ ok: false as const, error: 'candidate state invalid: ' + cerr })
+				}
+			}
+				var isNew = ids.indexOf(def.id) === -1
+				return writeJson(active, defKey(def.id), def)
+					.then(function () {
+						return writeJson(active, stateKey(def.id), candidate)
+					})
+					.then(function (): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+						if (!isNew) return Promise.resolve({ ok: true as const, id: def.id })
 						ids.push(def.id)
 						return writeRegistry(active, ids).then(function () {
 							return { ok: true as const, id: def.id }
 						})
-					}
-					return { ok: true as const, id: def.id }
-				})
-		})
+					})
+			})
 	})
 }
 
@@ -1256,7 +1479,7 @@ export function import_install(
 	})
 }
 
-function migrateDefinition(payload: unknown): { def?: AppDefinition; error?: string } {
+function migrateImportPayload(payload: unknown): { def?: AppDefinition; error?: string } {
 	if (!isRecord(payload)) return { error: 'import payload must be an object' }
 	var body: unknown = payload
 	if (isRecord(payload['definition'])) {
@@ -1294,7 +1517,7 @@ export function import_app(
 	options?: { overwrite?: boolean },
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		var m = migrateDefinition(payload)
+		var m = migrateImportPayload(payload)
 		if (m.error || !m.def) return { ok: false as const, error: m.error || 'invalid payload' }
 		var def = m.def
 		var needCheck = !options || options.overwrite !== true

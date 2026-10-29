@@ -31,10 +31,9 @@ export type {
 	ToggleEffect,
 	UiActionDef,
 	UiDef,
-	UiTemplate,
 } from './types.ts'
 export { createMemoryStore, resolveStore } from './storage.ts'
-export type { ListAppsOptions, InstallExport } from './registry.ts'
+export type { AddAppOptions, ListAppsOptions, InstallExport } from './registry.ts'
 export type { KeyStore } from './storage.ts'
 export { isBundleDefinition } from './types.ts'
 export {
@@ -53,6 +52,8 @@ export {
 	import_app,
 	import_install,
 	list_apps,
+	migrateAction,
+	migrateDefinition,
 	move_home,
 	record_use,
 	remove_app,
@@ -62,6 +63,7 @@ export {
 	set_homepage,
 	set_pin,
 	set_pinned,
+	SUPPORTED_SCHEMA_VERSIONS,
 	validateDefinition,
 } from './registry.ts'
 export { actFromForm } from './forms.ts'

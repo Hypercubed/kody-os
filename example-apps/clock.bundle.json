@@ -2,7 +2,7 @@
   "id": "clock",
   "name": "Clock",
   "label": "Clock",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><path d=\"M12 7v5l3.5 2\" /></svg>",
   "category": "utilities",
   "description": "Live clock: current time and date, updating once per minute. Runs fully in the page.",
@@ -13,7 +13,6 @@
     }
   },
   "ui": {
-    "template": "generic",
     "title": "Clock",
     "placements": [
       "modal"

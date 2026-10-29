@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md Why. Current state: `validateDefinition` checks one shape (`pkg/src/apps/registry.ts:140`); `ActionDef` carries a single `effect` (`pkg/src/apps/types.ts:108`); `add_app` rebuilds the definition and resets state to `initial` on every same-id re-add (`registry.ts:753`); `DEFINITION_SCHEMA_VERSION = 3` (`types.ts:149`); read backfill labels pre-version installs (`registry.ts:391`).
+See proposal.md Why. Current state: `validateDefinition` checks one shape (`pkg/src/apps/registry.ts:401`); `ActionDef` carries a single `effect` (`pkg/src/apps/types.ts:105`); `add_app` rebuilds the definition and resets state to `initial` on every same-id re-add (`registry.ts:1035`); `DEFINITION_SCHEMA_VERSION = 3` (`types.ts:170`); read backfill labels pre-version installs (`registry.ts:657`).
 
 ## Goals / Non-Goals
 
@@ -26,7 +26,7 @@ See proposal.md Why. Current state: `validateDefinition` checks one shape (`pkg/
 ## Migration Plan
 
 1. Land types (bump + v2 effect types) + helpers + atomic `add_app` + preserve-by-default together (one coherent unit).
-2. Restamp the five example apps (`clock`, `eight-ball`, `hello-counter`, `probe`, `mac-puzzle`) to `schemaVersion: 4`, stripping `ui.template` from each plus `test-app.ts`.
+2. Restamp the seven example apps (`calculator`, `clock`, `eight-ball`, `hello-counter`, `mac-puzzle`, `probe`, `xkcd`) to `schemaVersion: 4`, stripping `ui.template` from each plus `test-app.ts`.
 3. Rollback: republish prior commit; v4 definitions fail closed on old code (rejected, nothing written).
 
 ## Open Questions
