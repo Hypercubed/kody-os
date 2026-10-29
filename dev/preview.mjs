@@ -31,11 +31,10 @@ var HOST = process.env.HOST || '127.0.0.1'
 var CODE_FILE = process.env.PREVIEW_CODE_FILE || '/tmp/kodyos-preview-code.txt'
 
 var { default: app } = await import(path.join(PKG, 'src/app.ts'))
-var { add_app, counterDefinition } = await import(path.join(PKG, 'src/apps/index.ts'))
+var { add_app } = await import(path.join(PKG, 'src/apps/index.ts'))
 var { hashCode, ACCESS_HASH_KEY, normalizeCode } = await import(path.join(PKG, 'src/auth.ts'))
 var { resolveStore } = await import(path.join(PKG, 'src/apps/storage.ts'))
 
-await add_app(counterDefinition()).catch(function () {})
 // Preview-only seed: install pkg/examples definitions verbatim so they show up
 // in the local preview exactly as they would after a hosted add. Reads every
 // pkg/examples/*.json; a missing file or bad JSON is skipped.

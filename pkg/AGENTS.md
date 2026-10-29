@@ -42,13 +42,14 @@ import main from 'kody:@hypercubed/kody-os'
 const info = await main()
 // => { package, exports: [...], note: 'Phase 2 app layer — data-driven apps via packageStorage.' }
 
-import { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, counterDefinition } from 'kody:@hypercubed/kody-os'
-await add_app(counterDefinition()) // { ok:true, id:'counter' } — no republish
+import { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app } from 'kody:@hypercubed/kody-os'
+import counterBundle from './examples/counter.bundle.json' with { type: 'json' }
+await add_app(counterBundle) // { ok:true, id:'counter' } — no republish
 await list_apps() // exactly 1 entry
-await act('counter', 'increment') // { ok:true, state:{ count:1, ... } }
+await act('counter', 'set_count', { value: 1 }) // { ok:true, state:{ count:1 } }
 await get_app_state('counter') // same state the UI route renders
 const exp = await export_app('counter') // format 'kody-os-app/2'
-await act('counter', 'add', { by: 9999 }) // { ok:false } — state unchanged
+await act('counter', 'set_count', { value: 9999999 }) // { ok:false } — state unchanged
 await remove_app('counter') // definition, state, and all reference lists gone
 ```
 

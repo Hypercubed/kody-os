@@ -25,6 +25,6 @@ The widget home page (widget-home, in progress) needs live widgets to test again
 
 ## Impact
 
-- `pkg/src/apps/types.ts`, `registry.ts` (time source, grid recompute), `test-app.ts` (two new definitions).
+- `pkg/src/apps/types.ts`, `registry.ts` (time source, grid recompute); fixtures install via `pkg/examples/*.bundle.json`.
 - `pkg/src/apps/forms.ts`, `client.ts`: no changes expected (generic rendering already covers both).
 - No MCP surface changes, no export-format change, no storage-key changes. Widget rendering itself belongs to the widget-home change; these apps are its test doubles.

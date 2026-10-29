@@ -14,7 +14,7 @@ See proposal.md (Why). The registry validates effects and applies them atomicall
 1. **`fromNow` as a `set`-effect flag, not a new op.** The op stays `set`; only the value source is new. Rationale: validation, atomicity, and the single-write path are untouched — the flag just selects "current ISO 8601 UTC time" at apply time. Alternative (a `now()` arg expression language) rejected: it opens the door to an expression grammar, violating declarative-only.
 2. **New `calendar` effect op for the month grid** (fields: offset source integer, target string). Rationale: the grid is deterministic pure data (year/month → monospaced text) needing no storage reads beyond the offset; an op keeps navigation as ordinary actions (prev/next month) with the same validation + atomicity. Alternative (renderer-side derivation at display time) rejected: the grid must persist in state so MCP reads, export snapshots, and re-imports all see the same value — render-time derivation would diverge across surfaces.
 3. **Grid format: fixed-width monospace text block** (e.g. 7-column weeks, leading blanks, today left unmarked — no highlight state to keep). Rationale: renders identically in generic `<p>`/`<pre>`-style output, Scribe-safe, byte-comparable for round-trip tests.
-4. **Test apps live next to `counterDefinition` in `test-app.ts`.** Rationale: established pattern; keeps fixtures out of the shipped registry until an agent adds them.
+4. **Test fixtures install via `pkg/examples/*.bundle.json`.** Rationale: established pattern; keeps fixtures out of the shipped registry until an agent adds them.
 
 ## Risks / Trade-offs
 

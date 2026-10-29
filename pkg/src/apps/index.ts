@@ -4,10 +4,10 @@
  * Import from here, not from the individual modules:
  *
  * @example
- * import { add_app, list_apps, act, counterDefinition } from './src/apps/index.ts'
+ * import { add_app, list_apps, act } from './src/apps/index.ts'
  *
- * await add_app(counterDefinition())
- * await act('counter', 'increment')
+ * await add_app(counterBundle) // parsed pkg/examples/counter.bundle.json
+ * await act('counter', 'set_count', { value: 1 })
  */
 export type {
 	ActionArgDef,
@@ -68,4 +68,3 @@ export {
 } from './registry.ts'
 export { actFromForm } from './forms.ts'
 export { escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'
-export { counterDefinition, helloCounterDefinition } from './test-app.ts'

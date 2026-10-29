@@ -22,6 +22,6 @@ Every fresh install starts empty with no way to ship a working out-of-box set. S
 
 ## Impact
 
-- `pkg/src/apps/registry.ts` (seed routine), `storage.ts` (no new keys beyond the existing namespace), seeded definitions live next to `counterDefinition` in `test-app.ts` (or a sibling seed module).
+- `pkg/src/apps/registry.ts` (seed routine), `storage.ts` (no new keys beyond the existing namespace), seeded definitions install via `pkg/examples/*.bundle.json`.
 - First-run detection reads the (empty) registry; no migration needed. No MCP surface removals; no new exports (seeding is internal wiring).
 - No theme/client changes expected beyond what already renders empty vs populated states.
