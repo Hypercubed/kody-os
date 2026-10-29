@@ -1,5 +1,5 @@
 {
-  "id": "hello-counter",
+  "id": "counter",
   "name": "Counter",
   "label": "Counter",
   "schemaVersion": 4,

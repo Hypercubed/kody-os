@@ -90,7 +90,7 @@ The shell SHALL render one page per app at `GET /apps/:id` showing the app's tit
 The shell SHALL route mount-tolerantly: it slices the request path from the first `/apps/` occurrence so mounted, synthetic (`packageAppFetch`), and stripped requests route identically. The HTTP method match SHALL be case-insensitive.
 
 #### Scenario: Mounted and stripped paths route the same
-- **WHEN** the handler receives `/kody-os/apps/hello-counter` or `/apps/hello-counter`
+- **WHEN** the handler receives `/kody-os/apps/counter` or `/apps/counter`
 - **THEN** both render the same app page with the same state.
 
 ### Requirement: Single shared chrome

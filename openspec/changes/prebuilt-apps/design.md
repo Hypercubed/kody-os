@@ -12,7 +12,7 @@ See proposal.md (Why). The registry resolves stores via `resolveStore()` (hosted
 ## Decisions
 
 1. **Lazy seeding on first read, not an explicit seed step**: any registry read path checks for an empty registry and installs the seed set first (guarded so concurrent calls seed once). Rationale: no lifecycle hook exists to run install-time code, and lazy seeding makes blank stores (tests, fresh installs, new devices) behave identically without a separate step. Alternative (explicit `seed_apps()` the shell must call) rejected: it adds a call every new surface must remember, and a missed call yields the old empty home.
-2. **Seed set = the validation apps bundled at publish time** (`hello-counter` today; clock/calendar once built), installed via the same `add_app` path (so validation applies to seeds too). A corrupt seed definition fails closed like any bad definition.
+2. **Seed set = the validation apps bundled at publish time** (`counter` today; clock/calendar once built), installed via the same `add_app` path (so validation applies to seeds too). A corrupt seed definition fails closed like any bad definition.
 ## Risks / Trade-offs
 
 - [Risk] Lazy seeding adds reads on every cold path → Mitigation: a single registry-key read; the seeded marker is the registry itself being non-empty, so steady state costs one extra read only on truly blank stores.

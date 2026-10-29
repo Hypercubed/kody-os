@@ -19,7 +19,7 @@ Closed vocabulary: anything needing custom logic (win detection, computed values
 ## A2UI evaluation (open, raised 2026-10-25)
 - A2UI (a2ui.org, Google open standard, v1.0 spec) is the closest existing framework: agents emit declarative JSON UI intent, client renders natively, no arbitrary code — same philosophy as our definitions.
 - Open questions: Scribe-safe subset (their renderers assume modern JS — our shell would need to server-render an A2UI subset to plain HTML); action model fit (their events vs our validated `act()`); spec stability.
-- Next: spike-map hello-counter to A2UI JSON, test what subset server-renders cleanly. Candidate Phase 3 entry task.
+- Next: spike-map counter to A2UI JSON, test what subset server-renders cleanly. Candidate Phase 3 entry task.
 
 ## Rules that must survive any extension
 - State lives in storage; actions validated before mutation; bad action = clean error, zero partial writes.

@@ -4,7 +4,7 @@ Installable reference definitions. Each file installs verbatim via MCP `add_app`
 
 Files:
 
-- `hello-counter.bundle.json` — unified counter fixture. Retained as the contract fixture: smoke tests, guide, and fast-path verification depend on it. State (`count`, `greeting`) plus `set`-only actions; the bundle stepper writes through the shared `set_count` action.
+- `counter.bundle.json` — unified counter fixture. Retained as the contract fixture: smoke tests, guide, and fast-path verification depend on it. State (`count`, `greeting`) plus `set`-only actions; the bundle stepper writes through the shared `set_count` action.
 - `eight-ball.bundle.json` — Magic 8-Ball bundle. True random shake in-page via vanilla JS with zero navigation; the shake answer persists best-effort through the shared `record_answer` action when reachable.
 - `clock.bundle.json` — live clock bundle, modal placement (`placements: modal`). Vanilla JS, updates at most once per minute. Opens as a home overlay.
 - `xkcd.bundle.json` — xkcd comics as a live RSS feed. Fetches through the shell's same-origin feed proxy first (`capabilities.feeds`, 1h TTL), then tries `xkcd.com/rss.xml` directly; shows the comic image with its alt text and falls back to the stored feed when both fetches are blocked. The stored feed starts empty; a live fetch or `set_feed` fills it.
@@ -16,12 +16,12 @@ Rules for all files: one unified shape (meta + `bundle` + `stateSchema` + `set`/
 Submit the parsed file object as `definition`. From a shell with the repo checked out:
 
 ```bash
-node -e 'var fs=require("fs"); var def=JSON.parse(fs.readFileSync("pkg/examples/hello-counter.bundle.json","utf8")); console.log(JSON.stringify({ok:true,id:def.id}));'
+node -e 'var fs=require("fs"); var def=JSON.parse(fs.readFileSync("pkg/examples/counter.bundle.json","utf8")); console.log(JSON.stringify({ok:true,id:def.id}));'
 ```
 
 Then in the agent (Kody MCP), call `add_app` with that definition:
 
-- hello-counter: `add_app(JSON.parse(read pkg/examples/hello-counter.bundle.json))` returns `{ ok: true, id: \"hello-counter\" }`.
+- counter: `add_app(JSON.parse(read pkg/examples/counter.bundle.json))` returns `{ ok: true, id: \"counter\" }`.
 - eight-ball: `add_app(JSON.parse(read pkg/examples/eight-ball.bundle.json))` returns `{ ok: true, id: \"eight-ball\" }`.
 - clock: `add_app(JSON.parse(read pkg/examples/clock.bundle.json))` returns `{ ok: true, id: \"clock\" }`.
 - xkcd: `add_app(JSON.parse(read pkg/examples/xkcd.bundle.json))` returns `{ ok: true, id: \"xkcd\" }`.

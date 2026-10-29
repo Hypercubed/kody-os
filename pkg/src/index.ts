@@ -10,12 +10,12 @@
  * @returns Package name, shell export guidance, and the Phase 2 status note
  *
  * @example
- * import main, { add_app, act, helloCounterDefinition } from 'kody:@hypercubed/kody-os'
+ * import main, { add_app, act, counterDefinition } from 'kody:@hypercubed/kody-os'
  *
  * const info = await main()
  * console.log(info.package) // @hypercubed/kody-os
- * await add_app(helloCounterDefinition())
- * await act('hello-counter', 'increment')
+ * await add_app(counterDefinition())
+ * await act('counter', 'increment')
  */
 export default async function main(): Promise<{
 	package: string
@@ -71,7 +71,7 @@ export {
 	validateDefinition,
 } from './apps/index.ts'
 export { actFromForm } from './apps/index.ts'
-export { helloCounterDefinition } from './apps/index.ts'
+export { counterDefinition, helloCounterDefinition } from './apps/index.ts'
 export { getAccessCode as get_access_code, getAccessStatus as get_access_status, mintOtp as mint_otp } from './auth.ts'
 export type {
 	ActionArgDef,

@@ -42,14 +42,14 @@ import main from 'kody:@hypercubed/kody-os'
 const info = await main()
 // => { package, exports: [...], note: 'Phase 2 app layer — data-driven apps via packageStorage.' }
 
-import { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, helloCounterDefinition } from 'kody:@hypercubed/kody-os'
-await add_app(helloCounterDefinition()) // { ok:true, id:'hello-counter' } — no republish
+import { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, counterDefinition } from 'kody:@hypercubed/kody-os'
+await add_app(counterDefinition()) // { ok:true, id:'counter' } — no republish
 await list_apps() // exactly 1 entry
-await act('hello-counter', 'increment') // { ok:true, state:{ count:1, ... } }
-await get_app_state('hello-counter') // same state the UI route renders
-const exp = await export_app('hello-counter') // format 'kody-os-app/2'
-await act('hello-counter', 'add', { by: 9999 }) // { ok:false } — state unchanged
-await remove_app('hello-counter') // definition, state, and all reference lists gone
+await act('counter', 'increment') // { ok:true, state:{ count:1, ... } }
+await get_app_state('counter') // same state the UI route renders
+const exp = await export_app('counter') // format 'kody-os-app/2'
+await act('counter', 'add', { by: 9999 }) // { ok:false } — state unchanged
+await remove_app('counter') // definition, state, and all reference lists gone
 ```
 
 `remove_app` is MCP-only (the UI exposes hide, never remove) and validates the id first; unknown ids return `{ ok:false }` and write nothing. Export v1 payloads import with id derived from name; v2 is id-keyed.

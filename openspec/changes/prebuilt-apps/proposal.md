@@ -6,7 +6,7 @@ Every fresh install starts empty with no way to ship a working out-of-box set. S
 
 ## What Changes
 
-- Fresh installs auto-seed a bundled set of definitions on first run (empty registry only; never overwrites user state). Seed set = the package's bundled validation apps at publish time (`hello-counter` today; clock/calendar once built).
+- Fresh installs auto-seed a bundled set of definitions on first run (empty registry only; never overwrites user state). Seed set = the package's bundled validation apps at publish time (`counter` today; clock/calendar once built).
 - Explicit non-goal: no gallery, no catalog, no install-from-list UI. Removal lives in the `remove-app` change.
 - BREAKING: none. Additive API; existing installs and exports are unaffected.
 
@@ -22,6 +22,6 @@ Every fresh install starts empty with no way to ship a working out-of-box set. S
 
 ## Impact
 
-- `pkg/src/apps/registry.ts` (seed routine), `storage.ts` (no new keys beyond the existing namespace), seeded definitions live next to `helloCounterDefinition` in `test-app.ts` (or a sibling seed module).
+- `pkg/src/apps/registry.ts` (seed routine), `storage.ts` (no new keys beyond the existing namespace), seeded definitions live next to `counterDefinition` in `test-app.ts` (or a sibling seed module).
 - First-run detection reads the (empty) registry; no migration needed. No MCP surface removals; no new exports (seeding is internal wiring).
 - No theme/client changes expected beyond what already renders empty vs populated states.

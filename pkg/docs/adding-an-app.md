@@ -37,7 +37,7 @@ Definitions are JSON: no code, `eval`, or imports. The two effect operators are 
 
 ### What `set` and `append` actually are
 
-They are generic data-write operators, not a built-in counter app. `hello-counter` is only a test harness that happens to use them. Any app may define its own actions with either of:
+They are generic data-write operators, not a built-in counter app. `counter` is only a test harness that happens to use them. Any app may define its own actions with either of:
 
 - `set`: write a fixed value—or a validated arg—to a declared field.
 - `append`: append a fixed entry—or a validated arg—to a declared array field, with length and entry-byte caps.
@@ -73,7 +73,7 @@ The device gate is a latch, not multi-user auth: one shared gate per OS install,
 
 ### Bundle contract
 
-Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `examples/hello-counter.bundle.json`, `examples/eight-ball.bundle.json`, and `examples/clock.bundle.json` (modal placement) for installable shapes.
+Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `examples/counter.bundle.json`, `examples/eight-ball.bundle.json`, and `examples/clock.bundle.json` (modal placement) for installable shapes.
 
 Validation rejects bad bundles before any write and returns `{ ok: false, error }`:
 
@@ -103,7 +103,7 @@ A valid icon:
 "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>"
 ```
 
-Validation failures name the offending construct — for example `definition.icon uses a disallowed element <script>` or `definition.icon has an event handler attribute "onload"` — and write nothing. The installable examples (`clock`, `eight-ball`, `hello-counter`, `probe`) all use real monochrome SVG icons.
+Validation failures name the offending construct — for example `definition.icon uses a disallowed element <script>` or `definition.icon has an event handler attribute "onload"` — and write nothing. The installable examples (`clock`, `eight-ball`, `counter`, `probe`) all use real monochrome SVG icons.
 
 ### Definition versioning
 
@@ -119,7 +119,7 @@ Breaking definition changes bump `DEFINITION_SCHEMA_VERSION` and ship a migratio
 
 The shell hosts a bundle inside the existing chrome (title, nav, inlined theme, single `<style>`, zero external assets). It inlines the `index.html` entry into the app panel (or overlay for `modal` placement), inlines referenced bundle-relative `<script src>` and stylesheet `<link>` content, drops dangling references that match no bundle file instead of fetching them, and appends any extra bundled `.js`/`.css` files as inline blocks. A bundle that cannot be displayed degrades to the normal chrome plus an explanatory message and a working close or back control, never a blank page. Unknown ids still return 404.
 
-Bundle buttons that mutate state SHALL resolve their action URL from their own `.bundle` container's `data-action-base` attribute, never from `window.location.pathname` alone. The shell stamps `data-action-base="/apps/<id>"` on every bundle container it renders — app page, modal overlay, and home widget — so the same button acts on the owning app from the dashboard as well as from the app's own page. Walk up from the clicked element to the nearest ancestor carrying the attribute and fall back to `window.location.pathname` only when it is absent (an older shell). When the button uses `fetch` for the `?format=json` fast path, pass `credentials: 'same-origin'` so cookie-authenticated pages carry the session, and keep the full-navigation fallback. The `hello-counter` bundle's `actionBase()` is the reference implementation.
+Bundle buttons that mutate state SHALL resolve their action URL from their own `.bundle` container's `data-action-base` attribute, never from `window.location.pathname` alone. The shell stamps `data-action-base="/apps/<id>"` on every bundle container it renders — app page, modal overlay, and home widget — so the same button acts on the owning app from the dashboard as well as from the app's own page. Walk up from the clicked element to the nearest ancestor carrying the attribute and fall back to `window.location.pathname` only when it is absent (an older shell). When the button uses `fetch` for the `?format=json` fast path, pass `credentials: 'same-origin'` so cookie-authenticated pages carry the session, and keep the full-navigation fallback. The `counter` bundle's `actionBase()` is the reference implementation.
 
 Scribe posture for bundle content: vanilla ES2019 only (no `?.`, no `??`, no `replaceAll`, no `Array.at`), system fonts only, zero emojis, all CSS and JS inlined, no external stylesheets or scripts. Guarded `fetch` of the same-origin GET action with `?format=json` is allowed where `fetch` and JSON parsing exist; never require timers, WebSockets, client-side routing, frameworks, animations, auto-refresh, or polling. Large tap targets and high-contrast black-on-white still apply. Full device findings: `scribe-limitations.md`.
 

@@ -13,7 +13,7 @@
 //                     code here; the package never logs the raw code)
 //   PREVIEW_CODE_FILE where to write the code (default /tmp/kodyos-preview-code.txt)
 //
-// Behavior mirrors the hosted app: seeds hello-counter plus every
+// Behavior mirrors the hosted app: seeds counter plus every
 // pkg/examples/*.json, serves pkg/public/styles.css and a type-stripped
 // pkg/src/client/index.ts, and forwards everything else into app.fetch().
 // Storage is in-memory: each restart wipes pins and states, so re-pin after
@@ -31,11 +31,11 @@ var HOST = process.env.HOST || '127.0.0.1'
 var CODE_FILE = process.env.PREVIEW_CODE_FILE || '/tmp/kodyos-preview-code.txt'
 
 var { default: app } = await import(path.join(PKG, 'src/app.ts'))
-var { add_app, helloCounterDefinition } = await import(path.join(PKG, 'src/apps/index.ts'))
+var { add_app, counterDefinition } = await import(path.join(PKG, 'src/apps/index.ts'))
 var { hashCode, ACCESS_HASH_KEY, normalizeCode } = await import(path.join(PKG, 'src/auth.ts'))
 var { resolveStore } = await import(path.join(PKG, 'src/apps/storage.ts'))
 
-await add_app(helloCounterDefinition()).catch(function () {})
+await add_app(counterDefinition()).catch(function () {})
 // Preview-only seed: install pkg/examples definitions verbatim so they show up
 // in the local preview exactly as they would after a hosted add. Reads every
 // pkg/examples/*.json; a missing file or bad JSON is skipped.

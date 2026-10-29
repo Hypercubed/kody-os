@@ -1,5 +1,5 @@
 /**
- * The Phase 2 validation app: a trivial Hello/counter TEST harness.
+ * The Phase 2 validation app: a trivial counter TEST harness.
  *
  * This is NOT a product feature — it exists only to prove the app-layer
  * contract end to end (list -> open -> act -> refresh -> export).
@@ -10,17 +10,17 @@
 import type { AppDefinition } from './types.ts'
 import { DEFINITION_SCHEMA_VERSION } from './types.ts'
 
-export function helloCounterDefinition(): AppDefinition {
+export function counterDefinition(): AppDefinition {
 	return {
-		id: 'hello-counter',
-		name: 'Hello Counter',
-		label: 'Hello Counter',
+		id: 'counter',
+		name: 'Counter',
+		label: 'Counter',
 		schemaVersion: DEFINITION_SCHEMA_VERSION,
 		icon: '#',
 		category: 'Tests',
 		description: 'Phase 2 validation app: a shared counter proving UI and MCP act on the same state.',
 		ui: {
-			title: 'Hello Counter',
+			title: 'Counter',
 			actions: [
 				{ action: 'increment', label: 'Increment' },
 				{ action: 'reset', label: 'Reset' },
@@ -56,3 +56,6 @@ export function helloCounterDefinition(): AppDefinition {
 		},
 	}
 }
+
+/** @deprecated Use counterDefinition instead. Kept for existing callers. */
+export var helloCounterDefinition = counterDefinition
