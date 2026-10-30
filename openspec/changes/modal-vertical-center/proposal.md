@@ -7,6 +7,7 @@ Modal apps currently open pinned to the top of the viewport (`margin: 1.5rem aut
 ## What Changes
 
 - The modal overlay centers its panel on both axes when the content fits the viewport; content taller than the viewport keeps the current scroll behavior with the panel top reachable (no clipped content).
+- **Superseded Oct 30, 2026, by owner direction:** the panel is no longer centered — its top sits at 25vh (see task 1.4). The centering text above is the original proposal, kept for history; the 25vh rule is the current intent.
 - No change to open/close mechanics (fragment `:target`, back link, close box), backdrop, panel width cap, or non-modal placements.
 - Pure CSS, no JS, no new markup.
 

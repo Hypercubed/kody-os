@@ -205,6 +205,7 @@ export function renderAppPanel(
 	withHeader?: boolean,
 	fromPath?: string,
 	closeHref?: string,
+	expandHref?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
 	var content = renderAppSection(def, state, appBasePath, code, fromPath)
@@ -217,10 +218,14 @@ export function renderAppPanel(
 		typeof closeHref === 'string' && closeHref !== ''
 			? '<a class="os-box" href="' + escapeHtml(closeHref) + '" aria-label="Close"></a>'
 			: ''
+	var expandBtn =
+		typeof expandHref === 'string' && expandHref !== ''
+			? '<a class="modal-expand" href="' + escapeHtml(expandHref) + '" aria-label="Open ' + title + ' full page"></a>'
+			: ''
 	var header =
 		withHeader === false
 			? ''
-			: '<h2 class="app-titlebar' + (closeBtn !== '' ? ' has-close' : '') + '">' + closeBtn + '<span class="app-title-plate">' + title + '</span></h2>\n'
+			: '<h2 class="app-titlebar' + (closeBtn !== '' ? ' has-close' : '') + (expandBtn !== '' ? ' has-expand' : '') + '">' + closeBtn + '<span class="app-title-plate">' + title + '</span>' + expandBtn + '</h2>\n'
 	return (
 		'<section class="app" data-app-id="' +
 		escapeHtml(def.id) +
@@ -240,12 +245,14 @@ export function renderAppPanel(
 /**
  * Render a modal overlay for one modal-capable app: a `:target`-revealed panel
  * holding the same single app panel as the app page, plus a close box that
- * hides it again. The outer element is a `div` so the overlay markup contains
- * exactly one `section.app`. Fully present in server-rendered HTML.
+ * hides it again and an expand box that opens the full app page (mirroring
+ * the widget expand box on the home screen). The outer element is a `div`
+ * so the overlay markup contains exactly one `section.app`. Fully present
+ * in server-rendered HTML.
  */
 export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string, code?: string): string {
 	var fromPath = appBasePath + '/apps#app-' + def.id
-	var panel = renderAppPanel(def, state, appBasePath, '', '', code, undefined, undefined, fromPath, '#apps')
+	var panel = renderAppPanel(def, state, appBasePath, '', '', code, undefined, undefined, fromPath, '#apps', appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/apps'))
 	return (
 		'<div class="overlay" id="app-' +
 		escapeHtml(def.id) +
@@ -485,7 +492,9 @@ export function renderWidgetSection(
 	var upDisabled = index <= 0 ? ' disabled' : ''
 	var downDisabled = index >= total - 1 ? ' disabled' : ''
 	return (
-		'<section class="widget" aria-label="' +
+		'<section class="widget" data-app-id="' +
+		escapeHtml(def.id) +
+		'" aria-label="' +
 		title +
 		'">\n' +
 		'<h2 class="app-titlebar"><span class="app-title-plate">' +

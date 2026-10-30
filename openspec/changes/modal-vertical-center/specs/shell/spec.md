@@ -4,7 +4,7 @@
 
 ### Requirement: Home launcher lists installed apps
 
-The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections with edit mode — SHALL live behind the Apps menu link instead of at `/`. Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. The modal panel SHALL open vertically centered in the viewport when its content fits; taller-than-viewport content SHALL keep the current scroll behavior with the panel top reachable. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. With no apps installed at all, both `/` and the Apps page SHALL render honest empty states with guidance toward adding apps.
+The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections with edit mode — SHALL live behind the Apps menu link instead of at `/`. Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. The modal panel SHALL open with its top at 25vh in the viewport (superseding the earlier vertically-centered rule, Oct 30, 2026); taller-than-viewport content SHALL keep the current scroll behavior with the panel top reachable. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. With no apps installed at all, both `/` and the Apps page SHALL render honest empty states with guidance toward adding apps.
 
 #### Scenario: Empty registry is honest
 - **WHEN** no apps are installed
@@ -30,6 +30,6 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 - **WHEN** an app with a sanitized SVG icon is listed
 - **THEN** the tile shows the SVG mark at icon size with no color or animation.
 
-#### Scenario: Modal opens vertically centered
+#### Scenario: Modal opens with its top at 25vh
 - **WHEN** a modal overlay opens with content shorter than the viewport
-- **THEN** the panel renders centered vertically (not top-pinned), with open/close and backdrop behavior unchanged.
+- **THEN** the panel renders with its top at 25vh (upper, not centered), with open/close and backdrop behavior unchanged.

@@ -5,6 +5,7 @@ See proposal.md Why. Current state (`pkg/public/styles.css:657-676`): `.overlay:
 
 ## Goals / Non-Goals
 - Goals: vertically centered modal panel when content fits; no clipped content when it doesn't; pure CSS, old-WebKit-safe.
+- **Update Oct 30, 2026:** centering is superseded — the goal is now a panel top at 25vh (upper, not centered), with tall content still scrolling with its top reachable. See task 1.4.
 - Non-Goals: no change to open/close mechanics, backdrop, panel width, or scrolling model.
 
 ## Decisions

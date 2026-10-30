@@ -80,7 +80,15 @@
   function readSeedScript(section) {
     var appId = '';
     if (section && section.getAttribute) appId = section.getAttribute('data-app-id') || '';
+    /* No app id to match against means a seed can only be trusted when
+     * it is the ONLY seed on the page (a bundle-document harness, or a
+     * single-app page). With several seeds, returning the first would
+     * silently hand this store another app's state (the home-widget
+     * bug, Oct 2026), so return null and let the caller fall back to
+     * this section's own span readout instead. */
     var scripts = document.querySelectorAll('script[data-kody-state-seed]');
+    var loneSeed = null;
+    var seedCount = 0;
     for (var i = 0; i < scripts.length; i++) {
       var el = scripts[i];
       if (appId !== '' && el.getAttribute('data-app-id') !== appId) continue;
@@ -88,11 +96,15 @@
       if (text === '') continue;
       try {
         var parsed = JSON.parse(text);
-        if (isRecord(parsed)) return parsed;
+        if (!isRecord(parsed)) continue;
+        if (appId !== '') return parsed;
+        loneSeed = parsed;
+        seedCount += 1;
       } catch (err) {
-        return null;
+        if (appId !== '') return null;
       }
     }
+    if (appId === '') return seedCount === 1 ? loneSeed : null;
     return null;
   }
 

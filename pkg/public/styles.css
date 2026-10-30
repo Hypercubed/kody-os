@@ -496,6 +496,12 @@ button.tile:active .tile-icon {
 	padding-right: 3.5rem;
 }
 
+/* Modal expand box: same right-side slot as the close box is on the left. */
+.app-titlebar.has-expand {
+	position: relative;
+	padding-right: 3.5rem;
+}
+
 .app-titlebar {
 	margin: 0;
 	padding: 0.3rem 0.5rem;
@@ -854,6 +860,57 @@ button.tile:active .tile-icon {
 	box-shadow: none;
 }
 
+/* Modal expand box mirrors the widget expand box, upper right with an icon:
+   same 3rem hit area, outlined square, upward-outward corner bracket. */
+.modal-expand {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 100%;
+	min-height: 3rem;
+	padding: 0;
+	text-decoration: none;
+}
+
+.modal-expand::before {
+	content: "";
+	display: block;
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid #000;
+	background: #fff;
+	box-shadow: 1px 1px 0 #000;
+}
+
+.modal-expand::after {
+	content: "";
+	position: absolute;
+	top: calc(50% - 0.32rem);
+	left: calc(50% + 0.02rem);
+	width: 0.28rem;
+	height: 0.28rem;
+	border-top: 2px solid #000;
+	border-right: 2px solid #000;
+}
+
+.modal-expand:hover::before,
+.modal-expand:active::before {
+	background: #000;
+}
+
+.modal-expand:hover::after,
+.modal-expand:active::after {
+	border-color: #fff;
+}
+
+.modal-expand:active::before {
+	box-shadow: none;
+}
+
 .dashboard-empty h2 {
 	margin: 0 0 0.9rem;
 	padding: 0.4rem 0.6rem;
@@ -887,13 +944,13 @@ button.tile:active .tile-icon {
 	background-repeat: repeat;
 }
 
-/* Auto margins center short panels and pin tall ones to the top so the
-   first line stays reachable while the overlay scrolls (align-items:center
-   clips overflow in old WebKit). */
+/* Panel top sits 25vh down the viewport (upper, not centered): left/right
+   margins stay auto so the panel stays horizontally centered, and the
+   overlay still scrolls, so a tall panel's top stays reachable. */
 .overlay-panel {
 	width: calc(100% - 2rem);
 	max-width: 48rem;
-	margin: auto;
+	margin: 25vh auto auto;
 }
 
 .overlay .app-back a {
@@ -1202,6 +1259,7 @@ button:active {
 	.os-box::before,
 	.os-mark-glyph,
 	.widget-expand::before,
+	.modal-expand::before,
 	.category h2,
 	.tile,
 	.tile .tile-icon,
