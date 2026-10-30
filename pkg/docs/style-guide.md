@@ -23,7 +23,7 @@ it does not yet solve is drift.
 
 `docs/adding-an-app.md` tells a bundle author the hard
 constraints — ES2019 only, system fonts, no emojis, inline
-CSS/JS only, no external stylesheets or scripts, no
+CSS/JS only, no external stylesheets or scripts, no per-app
 frameworks, no timers, WebSockets, polling, or animations —
 but on its own it names no tokens and no reusable classes.
 Without shared classes, every bundle invents its own button,

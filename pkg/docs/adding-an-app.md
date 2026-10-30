@@ -436,4 +436,3 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - [App-layer integration](../src/apps/INTEGRATION.md)
 - [Package README](../README.md)
 - [Scribe limitations](scribe-limitations.md)
-- Repo-only working spec: `docs/app-definition.md` (not included in the published package).

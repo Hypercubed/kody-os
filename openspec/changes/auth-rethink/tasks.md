@@ -14,7 +14,7 @@
 - [ ] 2.1 Rewrite the gate in `pkg/src/auth.ts`: cookie verifies against the current secret only; OTP burn issues the new-format cookie; `mint_otp` fails closed with a named error when no secret is bound; remove derived-code entry, stored-hash fallback, legacy code-hash cookie, and `get_access_code`; `get_access_status` reports the new meaning (secret bound = cookie path enabled)
 - [ ] 2.2 Rewrite `pkg/src/app.ts` + `pkg/src/apps/client.ts`: unlock form takes OTP only and 303s clean with the cookie; remove `?k=` handling, link/form/redirect stamping, hidden `k` fields, and enhancement key read/attach; footer reports only `via kody`, `via cookie`, or `locked`; remove `get_access_code` from `pkg/src/index.ts` exports; retire `pkg/scripts/seed-dev-hash.ts`
 - [ ] 2.3 Remove the legacy path from every place the app-store change (if landed first) added a `k`-field form, and confirm the store's "authenticated shell request" follows the new transport
-- [ ] 2.4 Rewrite docs in the same change: `pkg/docs/device-key.md` (new model, no legacy instructions), `docs/scribe-auth.md` (superseded notes corrected), `pkg/AGENTS.md` + `pkg/README.md` (gate, exports, version, local-dev copy), and the setup guide's auth section if it has landed; grep-verify no stale claim survives
+- [ ] 2.4 Rewrite docs in the same change: `pkg/docs/device-key.md` (new model, no legacy instructions), `pkg/AGENTS.md` + `pkg/README.md` (gate, exports, version, local-dev copy), and the setup guide's auth section if it has landed; grep-verify no stale claim survives
 
 ## 3. Verification
 

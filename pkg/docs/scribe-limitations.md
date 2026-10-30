@@ -83,7 +83,7 @@ This section is the single place that states the JavaScript ceiling. Other docs 
   structure is multi-page routes (`/help`, `/privacy`, `/changelog`,
   `kindle.html`), dashboard behind sign-in — consistent with full-page
   loads, not an SPA shell.
-  Source: live fetch of rekindle.ink 2026-10-25 (see `rekindle-research.md`);
+  Source: live fetch of rekindle.ink 2026-10-25;
   https://rekindle.ink/kindle
 - Press corroboration that ReKindle works inside the built-in Kindle browser
   as lightweight web apps (not native installs).

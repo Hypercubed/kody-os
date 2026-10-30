@@ -4,7 +4,7 @@
 
 Everything a new owner needs to set up kody-os is currently scattered:
 the fork/install model lives in Kody's docs, the device-key and OTP
-mechanics live in `pkg/docs/device-key.md` and `docs/scribe-auth.md`,
+mechanics live in `pkg/docs/device-key.md`,
 the catalog and store behavior lives in the app-store change, and the
 login model is being rethought in the auth-rethink change. A person
 who forks the package has no single path from "I have a copy" to "my

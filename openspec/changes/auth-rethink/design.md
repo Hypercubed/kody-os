@@ -156,7 +156,7 @@ Cutover is a republish: old cookies, bookmarks, and stored codes
 stop working immediately; the owner mints fresh OTPs per device
 after confirming the secret is bound. No data migration: apps and
 their state are untouched (session storage is separate from app
-storage). `pkg/docs/device-key.md`, `docs/scribe-auth.md`,
+storage). `pkg/docs/device-key.md`,
 `pkg/AGENTS.md`, `pkg/README.md`, and the setup guide's auth section
 are rewritten/corrected in the same change; stale claims (rotation
 invalidates "everything", secret-derived code as fallback, `via key`)

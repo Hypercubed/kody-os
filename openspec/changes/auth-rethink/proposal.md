@@ -78,7 +78,6 @@ the secret invalidates all cookies at once.
   `pkg/src/index.ts` (export list: `get_access_code` removed),
   `pkg/scripts/seed-dev-hash.ts` (retired with the stored hash),
   `pkg/docs/device-key.md` (rewritten to the new model),
-  `docs/scribe-auth.md` (superseded notes corrected),
   `pkg/AGENTS.md` + `pkg/README.md` (gate, version, and local-dev
   copy), `pkg/docs/setup.md` (auth section updated if the
   setup-guide change has landed — reciprocal task).
