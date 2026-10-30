@@ -20,7 +20,7 @@
  * `name` the display name. Export format is kody-os-app/2; v1 payloads and
  * bare definitions import with id derived from name.
  *
- * ES2019 ceiling: no ?. and no ?? in this file (Chromium 75 crashes on them).
+ * ES2019 ceiling: no ?. and no ?? in this file (see the canonical ceiling in docs/scribe-limitations.md).
  */
 
 import type {

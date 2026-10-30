@@ -14,7 +14,7 @@
  * so it can be shared between the Worker shell, MCP handlers, and any client.
  *
  * Kindle ceiling is ES2019: no ?. and no ?? anywhere in this file or its
- * importers — they crash Chromium 75.
+ * importers (see the canonical ceiling in docs/scribe-limitations.md).
  */
 
 export type FieldType = 'integer' | 'string' | 'boolean' | 'array'

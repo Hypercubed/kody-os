@@ -18,7 +18,7 @@
  *
  * Server-side only. The browser never imports this file.
  *
- * ES2019 ceiling: no optional chaining and no nullish coalescing in this file (Chromium 75 crashes on them).
+ * ES2019 ceiling: no optional chaining and no nullish coalescing in this file (see the canonical ceiling in docs/scribe-limitations.md).
  */
 
 import { resolveStore } from './apps/storage.ts'

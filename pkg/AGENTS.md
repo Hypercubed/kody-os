@@ -43,9 +43,9 @@ Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain wh
 
 ## Adding an app
 
-Registry write, not a package change: no commit, no republish. No add control in the UI; agents call `add_app`. Not on home until pinned via Apps → Edit → **Add to home**. Full contract: [Adding an app](docs/adding-an-app.md). Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
+Registry write, not a package change: no commit, no republish. No add control in the UI; agents call `add_app`. Not on home until pinned via Apps → Edit → **Add to home**. Full contract: [Adding an app](docs/adding-an-app.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
 
-- Definition: meta + bundle (`entry: index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap) + `stateSchema` + `actions` (`set`/`append`; `increment`/`toggle`/`reset` are deprecated sugar). `ui.template` is frozen (`hello|generic|clock`): required by the validator, ignored by the renderer — never branch on it.
+- Definition: meta + bundle (`entry: index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap) + `stateSchema` + `actions` (`set`/`append`; `increment`/`toggle`/`reset` are deprecated sugar). `ui.template` was removed in schemaVersion 4 (required only for schemaVersion 3 submissions, ignored by the renderer in every version) — never send it in a v4 definition, never branch on it.
 - `ui.hideState: true` hides the server-rendered state readout (stays in the DOM for bundle scripts to read initial state). Use when the bundle already displays state.
 - `capabilities.feeds`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }` — HTTPS only, served via `GET /feed/:app/:name` with storage caching. Data-only declarations; the route takes the feed name, never a URL.
 - Bundle scripts run same-origin with full session authority: installing an app = trusting its code. Review third-party bundles before `import_app`.
@@ -89,5 +89,5 @@ Seed `counter` fixture: `python3 -c "import json; d=json.load(open('examples/cou
 - No root-export side effects: no jobs, file writes, or installs.
 - Missing runtime context falls back to shared in-memory storage, starting empty with an honest "no apps yet" tile.
 - Works without JavaScript (form submit + PRG); the client only enhances `form.app-action` with `?format=json` in-place patching (guarded, falls back to native submit).
-- ES2019 ceiling in `pkg/src`: no `?.`/`??` (Chromium 75 crashes), no flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
+- Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.

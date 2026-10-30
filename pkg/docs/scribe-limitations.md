@@ -4,12 +4,24 @@
 
 Server-rendered HTML + plain forms + full-page navigation. The Scribe runs Chromium 80 with working JS, fetch, timers, events, DOM, and storage — so vanilla JS and the fetch fast path are normal tools, not gambles. No React/Vue/Svelte/Alpine/HTMX-bundle, no client-side router: still unjustified weight for an e-ink browser with limited memory.
 
+Amendment, 2026-10-29 (agent-app-authoring Phase 1): the vanilla-only decision stands for the shell itself, and per-app framework vendoring is not the recommended path. A single framework provided by the shell itself, free to every stateful app, is the Phase 2 direction of that change; its selection has not landed and no provided surface exists yet. Until it lands, stateful bundles follow the hand-rolled contract in `adding-an-app.md`. See the binding-ceiling section below and the shell-provided-framework note in that guide.
+
 ## Decision rule (from starter) applied
 
 - Rule: modern ES + CSS grid reliably on Scribe → light framework *allowed*.
 - Finding: on-device probe proves Chromium 80, ES2019-safe JS, working fetch/XHR/timers/events/storage, CSS grid. Quirks and refresh costs still dominate e-ink rendering. → Stay vanilla, server-render first, use JS/fetch freely within the ES2019 ceiling.
 - Either-way constraints from starter stand: no animation, big tap targets,
   full-page navigation.
+
+## The binding ceiling (canonical statement)
+
+This section is the single place that states the JavaScript ceiling. Other docs cross-reference it; they do not restate their own version. Added 2026-10-29, agent-app-authoring Phase 1.
+
+- **Engine with on-device evidence: Chromium 80** on Android 9, proven by the on-device probe of 2026-10-25 (user agent in section 1 below). No on-device evidence in this package names Chromium 75, and no probe tested what Chromium 75 does. Do not cite Chromium 75, and do not claim any construct crashes it.
+- **Ceiling: ES2019 and earlier, for JavaScript that executes in the Scribe browser** — bundle scripts and the shell client. Code at or below ES2019 is the ceiling; anything newer is excluded whether or not a newer engine might run it, because it is unproven on this device.
+- **Excluded as post-ES2019 / unproven on device:** optional chaining, nullish coalescing, `String.prototype.replaceAll`, `Array.prototype.at`, and any other syntax or API newer than ES2019. The probe proved the ES2019 features listed in section 2 (JSON, Promise, Symbol, Map/Set, `Object.assign`, `Array.prototype.includes`, `String.prototype.startsWith`, plus the DOM, network, and storage surface there); it did not test the excluded constructs, so they are excluded as unproven, not as proven to crash.
+- **Not part of the ceiling:** the Counter bundle additionally avoids arrow functions, `const`/`let`, `async`/`await`, and template literals. Those are all at or below ES2019, so avoiding them is that bundle's conservative style (and its harness check), not a binding rule. A bundle using them does not violate the ceiling.
+- **CSS companion rule** (stated here with the ceiling): no flexbox `gap`; grid `gap` is allowed. System fonts only, zero emojis, 48px minimum tap targets.
 
 ## Evidence (named source per claim)
 
@@ -136,6 +148,11 @@ Server-rendered HTML + plain forms + full-page navigation. The Scribe runs Chrom
    the engine can't run them (it can), but because e-ink punishes their
    cost — runtime weight, re-render churn, and timers on a 1–10 FPS display
    with limited memory. Vanilla ES2019 is the ceiling, not the floor.
+   (Amendment 2026-10-29: this excludes per-app frameworks and any
+   framework the shell would have to ship per bundle. A single
+   shell-provided framework for stateful bundles is the Phase 2
+   direction noted at the top of this document; it does not exist yet,
+   and nothing in this constraint selects or promises one.)
 7. **Absolute script/navigations URLs only — never bare relative ones.**
    The Scribe resolves relative subresource/navigations URLs against the
    page path as if it were a directory (`/probe` + `probe-report` →

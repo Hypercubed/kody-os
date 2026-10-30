@@ -998,7 +998,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
  * Every request passes the device gate first (see auth.ts). MCP exports are
  * not routed through fetch, so agents keep working while the browser is locked.
  *
- * ES2019 ceiling: no optional chaining and no nullish coalescing in this file (Chromium 75 crashes on them).
+ * ES2019 ceiling: no optional chaining and no nullish coalescing in this file (see the canonical ceiling in docs/scribe-limitations.md).
  */
 var app = {
 	fetch: async function (request: Request): Promise<Response> {

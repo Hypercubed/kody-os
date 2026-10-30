@@ -11,7 +11,7 @@
  * to a native form.submit(). Never required: no timers, no WebSockets, no
  * client routing, no frameworks.
  *
- * ES2019 ceiling: no ?. and no ?? in this file (Chromium 75 crashes on them).
+ * ES2019 ceiling: no ?. and no ?? in this file (see the canonical ceiling in docs/scribe-limitations.md).
  * No replaceAll, no .at.
  */
 function readPakConfig(): Record<string, unknown> {

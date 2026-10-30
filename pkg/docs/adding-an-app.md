@@ -4,6 +4,8 @@ An app is a JSON definition in `packageStorage()`. Adding one is a registry writ
 
 The browser shell has no add control. Agents add with the package's MCP `add_app` (or an `execute` wrapper). The shell can hide, pin, and add an app to the homepage; deletion is MCP-only (`remove_app`).
 
+Before writing a bundle that displays state, read the [Bundle/shell interaction contract](#bundleshell-interaction-contract) below and run the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). A bundle that only follows the definition contract above will render, but its display can go stale the first time a shell action form fires; the contract is what keeps bundle display and shell state in sync.
+
 ## Definition contract
 
 | Field | Required | Value |
@@ -57,11 +59,13 @@ Available:
 
 Not available to depend on:
 
-- Frameworks, client-side routing, or JS-required actions.
+- Client-side routing, or JS-required actions.
 - Mutating POST forms or `fetch` POST in the UI; the Kody edge rejects cross-origin/null-origin POSTs to package-app subdomains.
 - WebSockets, timers/polling, auto-refresh, background sync, animations/transitions.
 - External stylesheets or external scripts.
 - Cookies/`localStorage` as functional storage; treat them as absent.
+
+No framework is provided by the shell today, and per-app framework vendoring is not the recommended path; see the shell-provided-framework note in the [Bundle/shell interaction contract](#bundleshell-interaction-contract). JavaScript itself is assumed: the on-device probe in `scribe-limitations.md` proves Chromium 80 with working fetch, timers, events, DOM, and storage. The span-based state contract in this guide documents current shell behavior; it is not justified by no-JS support.
 
 ReKindle is existence proof that guarded vanilla JS can run in a Kindle browser. It is not proof of modern APIs, storage, sockets, or timers. So: enhance where present, never require.
 
@@ -119,9 +123,58 @@ Breaking definition changes bump `DEFINITION_SCHEMA_VERSION` and ship a migratio
 
 The shell hosts a bundle inside the existing chrome (title, nav, inlined theme, single `<style>`, zero external assets). It inlines the `index.html` entry into the app panel (or overlay for `modal` placement), inlines referenced bundle-relative `<script src>` and stylesheet `<link>` content, drops dangling references that match no bundle file instead of fetching them, and appends any extra bundled `.js`/`.css` files as inline blocks. A bundle that cannot be displayed degrades to the normal chrome plus an explanatory message and a working close or back control, never a blank page. Unknown ids still return 404.
 
-Bundle buttons that mutate state SHALL resolve their action URL from their own `.bundle` container's `data-action-base` attribute, never from `window.location.pathname` alone. The shell stamps `data-action-base="/apps/<id>"` on every bundle container it renders — app page, modal overlay, and home widget — so the same button acts on the owning app from the dashboard as well as from the app's own page. Walk up from the clicked element to the nearest ancestor carrying the attribute and fall back to `window.location.pathname` only when it is absent (an older shell). When the button uses `fetch` for the `?format=json` fast path, pass `credentials: 'same-origin'` so cookie-authenticated pages carry the session, and keep the full-navigation fallback. The `counter` bundle's `actionBase()` is the reference implementation.
+### Bundle/shell interaction contract
 
-Scribe posture for bundle content: vanilla ES2019 only (no `?.`, no `??`, no `replaceAll`, no `Array.at`), system fonts only, zero emojis, all CSS and JS inlined, no external stylesheets or scripts. Guarded `fetch` of the same-origin GET action with `?format=json` is allowed where `fetch` and JSON parsing exist; never require timers, WebSockets, client-side routing, frameworks, animations, auto-refresh, or polling. Large tap targets and high-contrast black-on-white still apply. Full device findings: `scribe-limitations.md`.
+This section states the full protocol between a bundle and the shell. It is the binding contract for stateful bundles (agent-app-authoring Phase 1, 2026-10-29). The Counter bundle (`pkg/examples/counter.bundle.json`) is the reference implementation: every pattern below is the pattern its script uses, and `pkg/examples/tests/counter-tests.cjs` is the harness that proves it. The contract is framework-agnostic: it describes what the shell guarantees and what any bundle — hand-rolled today, or written against the shell-provided framework once it exists — must do. It changes no bundle behavior; it documents the existing protocol. The retired no-JS premise does not justify it: JavaScript is assumed on the Scribe (see the Kindle Scribe section above), and the span-based state handoff below is current behavior, not a no-JS design. Replacing it with a structured state handoff is a future change.
+
+**1. Rendered markup, exactly.** The shell renders, in order: the bundle UI, then one state readout per declared state field, then one form per `ui.actions` entry. The code in `pkg/src/apps/client.ts` (`renderAppSection`) is authoritative; the markup is:
+
+```html
+<div class="bundle" data-bundle="<id>" data-action-base="/apps/<id>">…bundle HTML…</div>
+<p data-field="<field>"><field>: <span><escaped value></span></p>
+<form class="app-action" method="GET" action="/apps/<id>">
+  <input type="hidden" name="action" value="<action>" />
+  <!-- hidden k and from inputs only when the shell has one to carry -->
+  <button type="submit">label</button>
+</form>
+```
+
+The bundle container sits inside `<section class="app" data-app-id="<id>">` on app pages and modal overlays; a home widget renders the same content inside `<section class="widget">` without `data-app-id`. The state readout is a `<p data-field="<name>">` containing the field name as text and a plain `<span>` holding the escaped value. There is **no `data-value` attribute** on the paragraph or the span. With `ui.hideState: true` the paragraph carries `hidden`; the span stays in the DOM with the current value. `ui.actions` forms are shell-owned GET forms: `form.app-action`, hidden `action` input (plus `k`/`from` when present), one submit button. A bundle must not rewrite, replace, or restyle these forms as its own, and must not assume any other markup for state or actions.
+
+**2. Initial-state reading.** A bundle that displays a declared state field reads its initial value from the rendered `[data-field]` span's text — the only initial-state source the renderer provides. Never assume a `data-value` attribute exists: the renderer emits none, so a bundle that reads one silently falls back to whatever it hardcoded. The Counter bundle's stored display is hardcoded to `0`; reading its own display alone would restart the counter at `0` on every page load. Read the span first (parsing defensively; a span that is absent or unparsable is not a value), and treat the bundle's own static markup only as a last-resort fallback when no span is present at all. The span's text is authoritative over any `data-value` value if both are ever present.
+
+**3. Shell-client patch semantics.** In a capable browser (where `fetch`, `querySelector`, and JSON parsing all exist), the shell client (`pkg/src/client/index.ts`) replays a submitted `form.app-action` as the same GET URL plus `?format=json` with `Accept: application/json`. On `{ ok: true, state }` it patches **only** the `[data-field]` spans inside the nearest `[data-app-id]` ancestor (or the enclosing `<section>`, or the document when neither exists), setting each span's `textContent` from the returned state for keys present in it, and clears or shows the in-place `role="alert"` error. It never writes to bundle-owned DOM and never touches bundle variables. Any failure — fetch error, unparsable response, missing `ok`, non-object state, cross-origin URL guard — falls back to native `form.submit()`: full navigation, server redirect, fresh render. On the server, `k`, `from`, and `format` are stripped before the action runs, so they never become action arguments. A bundle therefore cannot rely on the shell client to update its display: after a shell-form action, only the span has moved.
+
+**4. Form ownership and the capture/sequencing pattern.** When a bundle has its own buttons for an action that a shell `ui.actions` form also performs (Counter's `+1`/`-1` buttons share state with the shell Reset form), the bundle must handle the shared action with all four parts, scoped to its own section:
+
+- **Capture-phase claim, scoped to the app's own form.** Register a capture-phase `submit` listener on the document. Claim a submit only when the form is inside the bundle's own section scope, its `input[name="action"]` names the shared action, and its form action base matches the bundle's own `data-action-base`. On a claim, prevent the default and stop propagation so the shell client's fetch never starts, paint optimistically at once, and send the write through the bundle's single-flight queue (rule 5). Never claim another app's form, and never claim a form for a different action.
+- **Optimistic paint.** Paint the intended value immediately, in both the bundle's display and the shell span (rule 6), before any fetch resolves. A shell-form action with no optimistic paint feels a full round trip behind the bundle's own buttons.
+- **Sequencing guard.** Count local actions (steps and claimed submits) in order. Record the sequence number of a Reset-style submit; a shell span patch that arrives after the sequence has moved past it is stale and must not be adopted. Without this guard, a late shell patch (the Reset value) overwrites a step taken after Reset was pressed, and the in-flight handler can then re-send the stale value server-side, losing the step for good. The reverse ordering fails the same way: a stale pre-Reset response must not repaint the old value after Reset.
+- **`MutationObserver` adoption, with a form-level fallback.** Observe the `[data-field]` paragraph (child list, character data, subtree, attributes) and adopt a value the bundle did not itself paint — that is how a shell-form action the bundle did not claim (or a claim that never delivered) still resets the bundle's display and internal count. The observer must not loop (painting the same value back is no change) and must not fire extra fetches. As a fallback for engines that do not deliver submit capture, attach a form-level `submit` listener that paints and sequences at submit time without claiming the submit: the shell client's fetch still owns the server call, and the sequencing guard keeps its late patch from losing steps taken since.
+
+A bundle with no shared actions needs none of this; a bundle whose buttons are the only writers to its fields needs only rules 5 and 6. The no-JS path needs none of it either: native submit reloads the page and initialization reads the freshly rendered span.
+
+**5. Single-flight ordered queue.** One in-flight state write per app. Clicks update a single desired value and paint it immediately; `flush` sends at most one request at a time, and inputs made while one is in flight coalesce into a single follow-up request for the latest desired value — rapid clicks never send duplicate writes with the same value. On a response, if the server value differs from the in-flight value (someone else moved the state), rebase the pending deltas onto the server value instead of overwriting the desired value. On fetch or JSON failure, fall back to full navigation for the latest desired value, and clear the in-flight flag so the bundle is not wedged: the next input must send again. The Counter bundle's `flushCounter` / `stepCounter` / `desiredCount` / `confirmedCount` variables are the reference shape of this queue.
+
+**6. Paint/sync.** When a bundle paints, it writes the same value to its own display and to the shell `[data-field]` span, so the two never diverge. Initialize on `DOMContentLoaded`, guarded against double initialization, by reading the span (rule 2) and painting that value before wiring observers and listeners. Keep one source of truth after initialization (desired vs. confirmed counts in the Counter bundle): never re-read the painted DOM as the current value, because it only changes when a fetch returns or the shell patches it.
+
+**7. Action-URL resolution (`data-action-base`).** Bundle buttons that mutate state SHALL resolve their action URL from their own `.bundle` container's `data-action-base` attribute, never from `window.location.pathname` alone. The shell stamps `data-action-base="/apps/<id>"` on every bundle container it renders — app page, modal overlay, and home widget — so the same button acts on the owning app from the dashboard as well as from the app's own page. Walk up from the clicked element to the nearest ancestor carrying the attribute and fall back to `window.location.pathname` only when it is absent (an older shell). When the button uses `fetch` for the `?format=json` fast path, pass `credentials: 'same-origin'` so cookie-authenticated pages carry the session, preserve the `k` code from the page URL when present, and keep the full-navigation fallback. The Counter bundle's `actionBase()` is the reference implementation. The checklist below rejects any bundle that builds action URLs from `window.location.pathname` alone.
+
+**Shell-provided framework (recommended path, surface not yet available).** A stateful bundle SHOULD use the shell-provided framework and adapter once Phase 2 of the agent-app-authoring change selects and ships one: the framework is loaded once by the shell, instantiated per app section, and the adapter implements this contract (initial-state read, paint/sync, observer adoption, single-flight queue, capture-phase claim, action-base resolution, fetch-with-fallback). No provided surface exists yet, so Phase 1 names the direction without documenting a namespace, version, or instantiation that does not exist; this contract stays framework-agnostic so it does not need rewriting when the selection lands. Until then, hand-rolled bundles that follow this contract are the recommended path and remain valid — the validator does not reject a bundle for not using a framework that does not exist. Stateless and presentational bundles need not use it at all. Per-app framework vendoring or compilation is not the recommended path; fallback rules are recorded in Phase 2.
+
+### Pre-`add_app` authoring checklist
+
+Run every item before calling `add_app`. The verification path is exactly one: the `kody dev` end-to-end check below plus the jsdom harness pattern in `pkg/examples/README.md`. There is no other supported local verification path.
+
+- [ ] The definition validates: id, `schemaVersion` 4, bundle entry and 256 KiB cap, state schema, `set`/`append` effects only, `ui.actions` referencing declared actions.
+- [ ] The bundle renders in `kody dev`: the app page shows the bundle, the state readout, and the shell action forms, with no console or render error.
+- [ ] State initializes from the shell span: loading the page at a non-zero stored value displays that value, not the bundle's hardcoded markup.
+- [ ] Shell-form actions stay in sync under rapid and overlapping input: Reset-then-step, step-then-Reset, and a stale response landing after Reset all settle at the newest intended value, in the bundle display and in the span (run the harness scenarios, or step through them in `kody dev` with the network delayed).
+- [ ] The ES2019 scan is clean for browser-executed bundle code: no post-ES2019 syntax or APIs; see the canonical ceiling in `scribe-limitations.md`. (The Counter bundle's stricter avoidance of arrows, `const`/`let`, `async`/`await`, and template literals is its own style, not a checklist requirement.)
+- [ ] No action URL is built from `window.location.pathname` alone: every bundle `fetch` resolves against the container's `data-action-base`, sends `credentials: 'same-origin'`, requests `?format=json`, and falls back to full navigation.
+- [ ] Stateful bundle: follows the interaction contract above. No shell-provided framework surface exists yet, so record "hand-rolled per contract" rather than vendoring a framework; when the provided surface lands, use it or record why not.
+
+Scribe posture for bundle content: ES2019 only — see the canonical ceiling in `scribe-limitations.md` (no post-ES2019 syntax or APIs); system fonts only, zero emojis, all CSS and JS inlined, no external stylesheets or scripts. Guarded `fetch` of the same-origin GET action with `?format=json` is allowed where `fetch` and JSON parsing exist; never require timers, WebSockets, client-side routing, animations, auto-refresh, or polling. Large tap targets and high-contrast black-on-white still apply. Full device findings: `scribe-limitations.md`.
 
 Styling: see [Style guide](style-guide.md). The shell's inlined theme provides the shared `os-*` classes (buttons, displays, keypads, panels, rows) — use the class names in bundle markup; do not copy or redefine them, and do not load an external stylesheet. Bundle-only CSS stays inline in the bundle.
 
@@ -248,49 +301,20 @@ The package is `@hypercubed/kody-os`; this install is hosted at `https://hypercu
 
 ## Add to the local preview (`kody dev`)
 
-The local preview serves the working tree with `kody dev` (default target `mock`). Its mock storage is separate from the hosted store. A fresh mock store is unconfigured, so the shell is locked until you set a local access code.
+The local preview serves the working tree with `kody dev`. This is the one supported local verification path, together with the jsdom harness in `pkg/examples/README.md` — see the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). Run every command in this section from `pkg/` (running from the repo root fails: the package entry is not found there). Its mock storage is separate from the hosted store. A fresh mock store is unconfigured, so the shell is locked until you set a local access code.
 
-Local registry writes use a small file helper. Create `pkg/scripts/registry.ts` once:
-
-```ts
-import { add_app, list_apps, remove_app } from '../src/index.ts'
-
-type Input =
-  | { op: 'add'; definition: Parameters<typeof add_app>[0] }
-  | { op: 'list' }
-  | { op: 'remove'; id: string }
-
-export default async function main(input: Input) {
-  if (input.op === 'add') return await add_app(input.definition)
-  if (input.op === 'remove') return await remove_app(input.id)
-  return await list_apps()
-}
-```
-
-The local preview has no bound secret, so the derived path is empty there and
-the pre-secret stored-hash fallback applies. Seed a throwaway dev hash with a
-one-off local script (a mock-store test fixture, not key management — the
-hosted code is derived from the Kody secret and has no set path). Create
-`pkg/scripts/seed-dev-hash.ts` once:
-
-```ts
-import { ACCESS_HASH_KEY, hashCode, normalizeCode } from '../src/auth.ts'
-import { resolveStore } from '../src/apps/storage.ts'
-
-export default async function main(input: { code: string }) {
-  var store = await resolveStore()
-  await store.set(ACCESS_HASH_KEY, await hashCode(normalizeCode(input.code)))
-  return { ok: true }
-}
-```
+Local registry writes use the existing file helpers in `pkg/scripts/` — do not recreate them: `scripts/registry.ts` (add/list/remove through `add_app`/`list_apps`/`remove_app`) and `scripts/seed-dev-hash.ts` (seed a throwaway dev hash). The local preview has no bound secret, so the derived path is empty there and the pre-secret stored-hash fallback applies. The seed script is a mock-store test fixture, not key management — the hosted code is derived from the Kody secret and has no set path. The same commands, proxy bypass, and `kody dev fetch` checks are in the "Local dev" sections of `pkg/README.md` and `pkg/AGENTS.md`; this section is the authoring copy of that path, not a second one.
 
 Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the package bucket `local:kody-os`, the same bucket `kody dev` reads. `--code` with `kody:@...` uses the `local-default` mock bucket and will not appear in the preview.
 
 1. Stop `kody dev` if it is running. A running preview keeps its mock state in memory; start it after the writes, or restart it afterward.
-2. Seed a throwaway local dev code and add the app:
+2. Seed a throwaway local dev code and add the app. Proxy bypass is required on this host for every `kody dev` / `curl` call:
 
    ```bash
    cd pkg
+   export NO_PROXY='*' no_proxy='*'
+   unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
+
    kody execute --target mock --file scripts/seed-dev-hash.ts \
      --params '{"code":"local-dev-code-123456"}'
 
@@ -306,19 +330,20 @@ Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the pack
 3. Start the preview:
 
    ```bash
-   kody dev
+   kody dev --target mock
    ```
 
-   Open the printed URL with `?k=local-dev-code-123456`. Start without an explicit `--port` so `kody dev fetch` can attach to it.
+   Open the printed URL with `?k=local-dev-code-123456`. Start without an explicit `--port` (bare `kody dev`, no `--port` flag) so `kody dev fetch` can attach to it.
 
-4. Verify:
+4. Verify against real shell rendering:
 
    ```bash
-   kody dev fetch '/apps?k=local-dev-code-123456'
-   kody dev fetch '/apps/preview-counter?k=local-dev-code-123456'
+   kody dev check --target mock --offline
+   kody dev fetch '/apps?k=local-dev-code-123456' --target mock
+   kody dev fetch '/apps/preview-counter?k=local-dev-code-123456' --target mock
    ```
 
-   Or use the registry helper:
+   Confirm the served HTML carries the contract markup: the bundle, then `<p data-field="…">` with a plain `<span>` holding the stored value, then the `form.app-action` forms. Or use the registry helper:
 
    ```bash
    kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}'
@@ -330,7 +355,7 @@ Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the pack
    kody execute --target mock --reset-storage --file scripts/registry.ts --params '{"op":"list"}'
    ```
 
-   This wipes the local apps and the local access code without starting a server. Re-run `set-code` and the add, then start `kody dev`.
+   This wipes the local apps and the local access code without starting a server. Re-run the seed-dev-hash step and the add, then start `kody dev`.
 
 The local mock session defaults to `default`; set `KODY_MOCK_SESSION_ID` to use a different scratch session. The store is in the CLI user cache (Linux: `~/.cache/kody/mock-sessions/<session>/state.json`).
 
@@ -338,7 +363,7 @@ The local mock session defaults to `default`; set `KODY_MOCK_SESSION_ID` to use 
 
 - **Read state:** `get_app_state(id)` returns the same state the app page renders.
 - **Run an action:** `act(id, action, args?)` returns `{ ok: true, state }` or `{ ok: false, error }`.
-- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); the shell adds the session or device code as a hidden `k` field only when the current session is query-authenticated, so cookie-authenticated pages render fully clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field` value spans update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. App authors do nothing special: the renderer adds `form.app-action`, `section[data-app-id]`, `data-action-base` on the bundle container, and `data-field` hooks automatically.
+- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); the shell adds the session or device code as a hidden `k` field only when the current session is query-authenticated, so cookie-authenticated pages render fully clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field` value spans update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. The renderer adds `form.app-action`, `section[data-app-id]`, `data-action-base` on the bundle container, and `data-field` hooks automatically — but that is not the whole job for a bundle that displays state: the bundle must read its initial value from the span and handle shell-form actions per the [Bundle/shell interaction contract](#bundleshell-interaction-contract), or its display goes stale the first time a shell form fires.
 - **Homepage:** Apps → Edit → **Add to home** / **Remove from home**. The home dashboard shows live widgets in homepage order. Homepage placement is a UI action in the current shell; there is no `set_home` MCP export.
 - **Pin and hide:** Apps → Edit → **Pin** / **Hide**. Hide is reversible. The UI has no Remove control.
 - **Export:** `export_app(id)` returns `{ format: "kody-os-app/2", exportedAt, definition, state }`. `import_app(payload, undefined, { overwrite: true })` restores it into the other target. Use this to copy between hosted and local, which have separate stores.
@@ -401,7 +426,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - **An action with args has no button:** the current shell renders only no-arg buttons. Call `act(id, action, args)` through MCP.
 - **Increment flashes a full reload:** expected on browsers without working `fetch`/JSON parsing, or when the fast-path request fails. Capable browsers patch the changed fields in place; the no-JS navigation path always still works.
 - **`format` appears in a request:** the UI/server fast path uses `?format=json` to ask for `ActResult` JSON. It is stripped before `actFromForm`, so it never becomes an action arg.
-- **Re-adding reset the state:** `add_app` overwrites an existing id and restores `initial`. Export before replacing if you need the old state.
+- **Re-adding reset the state:** it does not, by default. `add_app` on an existing id overwrites the definition and preserves state (declared fields carried forward, dropped fields reset to `initial`). Pass `resetState: true` to restore the legacy wipe, or `migrate: { oldField: newField }` to rename fields. Export before replacing if you need the old state regardless.
 - **No remove button in the UI:** removal is MCP-only by design. Use `remove_app`; use Hide for a reversible action.
 - **Access code:** the hosted browser needs a fresh OTP (owner mints with `mint_otp`, valid 10 minutes, single use, 4 digits); MCP exports are not gated. Do not put a code in a definition, export, or log. The local dev code (`?k=` on the local preview, which has no edge stripping) is a development code, not the hosted one.
 

@@ -21,8 +21,9 @@
  * is tried first, so an agent that installed jsdom in the repo tree
  * needs no extra setup.
  *
- * The local preview server (dev/preview.mjs, see dev/README.md)
- * is the separate manual check: it seeds this definition, open
+ * The separate live check is `kody dev` (see docs/adding-an-app.md,
+ * "Add to the local preview"): seed this definition through
+ * pkg/scripts/registry.ts, start `kody dev --target mock`, open
  * /apps/counter, step it, then use Reset and
  * confirm the big number moves to 0 and the next +1 sends 1. This
  * harness simulates the shell side of that check (the exact
