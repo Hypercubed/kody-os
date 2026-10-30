@@ -1,3 +1,10 @@
+/* Phase 2 bridge (decided 2026-10-30): plain ES2019 JS, no imports of its
+ * own, sets window.KodyBridge. The shell client module runs before
+ * DOMContentLoaded, which is when bundles init, so bundles can use the
+ * bridge at init time. See pkg/src/bridge/bridge.js for the store,
+ * dispatch, rebase, and span-adoption contract. */
+import '../bridge/bridge.js'
+
 /**
  * Browser enhancement for app action forms (same-origin GET JSON fast path).
  *

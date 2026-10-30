@@ -1,12 +1,12 @@
-/* jsdom harness for the counter example bundle.
+/* jsdom harness for the counter example bundle (bridge port, Phase 2).
  *
  * Tests the definition exactly as stored in ../counter.bundle.json: the
- * bundle's step behaviour, its sync with the shell-rendered state field,
- * and the shell Reset form's in-place patch. These are behaviour tests,
- * not live tests: nothing here talks to Kody, the hosted OS, or the
- * local preview server. They fail on both pre-fix bundles (the
- * duplicate-set_count bundle and the Reset-ignoring bundle), so they
- * are the regression tests for those fixes.
+ * bundle's step behaviour through window.KodyBridge, its sync with the
+ * JSON seed and the shell-rendered state field, and the shell Reset
+ * form's in-place patch. These are behaviour tests, not live tests:
+ * nothing here talks to Kody, the hosted OS, or the local preview
+ * server. The bridge is loaded from ../../src/bridge/bridge.js before
+ * the bundle script, as the shell client module loads it in production.
  *
  * How to run (jsdom is the only dependency, installed ephemerally so
  * the repo stays free of a test runner and a node_modules tree):
@@ -63,6 +63,20 @@ function extractScript(html) {
   if (!m) throw new Error("no script");
   return m[1];
 }
+const BRIDGE_PATH = path.join(__dirname, "..", "..", "src", "bridge", "bridge.js");
+function loadBridge(dom) {
+  dom.window.eval(fs.readFileSync(BRIDGE_PATH, "utf8"));
+  if (!dom.window.KodyBridge) throw new Error("bridge did not load");
+}
+function addSeed(dom, serverState) {
+  const doc = dom.window.document;
+  const seed = doc.createElement("script");
+  seed.setAttribute("type", "application/json");
+  seed.setAttribute("data-kody-state-seed", "1");
+  seed.setAttribute("data-app-id", "counter");
+  seed.textContent = JSON.stringify({ count: serverState });
+  doc.body.insertBefore(seed, doc.body.firstChild);
+}
 function valueOf(url) {
   const m = /[?&]value=(-?\d+)/.exec(url);
   return m ? parseInt(m[1], 10) : null;
@@ -86,6 +100,8 @@ function makeDom(bundleHtml, initial) {
       pending.push({ url: url, resolve: resolve, reject: reject });
     });
   };
+  loadBridge(dom);
+  addSeed(dom, initial !== undefined ? initial : 0);
   dom.window.eval(extractScript(bundleHtml));
   if (dom.window.document.readyState === "loading") {
     dom.window.document.dispatchEvent(new dom.window.Event("DOMContentLoaded"));
@@ -108,6 +124,9 @@ function makeShellDom(bundleHtml, serverState) {
     pretendToBeVisual: true,
   });
   const doc = dom.window.document;
+  const section = doc.createElement("section");
+  section.setAttribute("data-app-id", "counter");
+  doc.body.appendChild(section);
   const field = doc.createElement("p");
   field.setAttribute("data-field", "count");
   field.setAttribute("hidden", "");
@@ -115,7 +134,7 @@ function makeShellDom(bundleHtml, serverState) {
   span.textContent = String(serverState);
   field.appendChild(doc.createTextNode("count: "));
   field.appendChild(span);
-  doc.body.appendChild(field);
+  section.appendChild(field);
   const form = doc.createElement("form");
   form.setAttribute("class", "app-action");
   form.setAttribute("method", "GET");
@@ -135,7 +154,7 @@ function makeShellDom(bundleHtml, serverState) {
   btn.setAttribute("type", "submit");
   btn.textContent = "Reset count";
   form.appendChild(btn);
-  doc.body.appendChild(form);
+  section.appendChild(form);
   const calls = [];
   const pending = [];
   dom.window.fetch = function (url) {
@@ -144,63 +163,9 @@ function makeShellDom(bundleHtml, serverState) {
       pending.push({ url: url, resolve: resolve, reject: reject });
     });
   };
+  loadBridge(dom);
+  addSeed(dom, serverState);
   dom.window.eval(extractScript(bundleHtml));
-  if (dom.window.document.readyState === "loading") {
-    dom.window.document.dispatchEvent(new dom.window.Event("DOMContentLoaded"));
-  }
-  return { dom: dom, calls: calls, pending: pending };
-}
-/* Shell-page DOM with submit capture disabled: drop only capture-phase
- * submit listeners on the document, so the bundle's document-level
- * capture claim never runs. This is the fallback path for an engine
- * that does not deliver submit capture: the shell client's fetch (or,
- * here, the simulated span patch) must still be sequenced. The wrapper
- * is installed after the bundle script is evaluated but before the
- * DOMContentLoaded dispatch that runs initCounter, so init's own
- * listener registration is what gets dropped. */
-function makeShellDomNoCapture(bundleHtml, serverState) {
-  const dom = new JSDOM(bundleHtml, {
-    url: "https://hypercubed.kody.run/kody-os/apps/counter?k=TESTCODE",
-    runScripts: "outside-only",
-    pretendToBeVisual: true,
-  });
-  const doc = dom.window.document;
-  const field = doc.createElement("p");
-  field.setAttribute("data-field", "count");
-  field.setAttribute("hidden", "");
-  const span = doc.createElement("span");
-  span.textContent = String(serverState);
-  field.appendChild(doc.createTextNode("count: "));
-  field.appendChild(span);
-  doc.body.appendChild(field);
-  const form = doc.createElement("form");
-  form.setAttribute("class", "app-action");
-  form.setAttribute("method", "GET");
-  form.setAttribute("action", "/apps/counter");
-  const actionInput = doc.createElement("input");
-  actionInput.setAttribute("type", "hidden");
-  actionInput.setAttribute("name", "action");
-  actionInput.setAttribute("value", "reset_count");
-  form.appendChild(actionInput);
-  const btn = doc.createElement("button");
-  btn.setAttribute("type", "submit");
-  btn.textContent = "Reset count";
-  form.appendChild(btn);
-  doc.body.appendChild(form);
-  const calls = [];
-  const pending = [];
-  dom.window.fetch = function (url) {
-    calls.push(url);
-    return new Promise(function (resolve, reject) {
-      pending.push({ url: url, resolve: resolve, reject: reject });
-    });
-  };
-  dom.window.eval(extractScript(bundleHtml));
-  const origAdd = doc.addEventListener.bind(doc);
-  doc.addEventListener = function (type, fn, opts) {
-    if (type === "submit" && opts === true) { return; }
-    return origAdd(type, fn, opts);
-  };
   if (dom.window.document.readyState === "loading") {
     dom.window.document.dispatchEvent(new dom.window.Event("DOMContentLoaded"));
   }
@@ -268,7 +233,7 @@ async function test(name, fn) {
 
   await test("DEFINITION: counter shape the bundle tests assume", async function () {
     assert(definition.id === "counter", "id is counter");
-    assert(definition.schemaVersion === 4, "schemaVersion is 4, got " + definition.schemaVersion);
+    assert(definition.schemaVersion === 5, "schemaVersion is 5, got " + definition.schemaVersion);
     assert(
       Array.isArray(definition.actions.set_count.effects) && definition.actions.set_count.effects[0].op === "set" &&
       Array.isArray(definition.actions.reset_count.effects) && definition.actions.reset_count.effects[0].op === "set",
@@ -284,9 +249,13 @@ async function test(name, fn) {
     );
     const js = extractScript(newHtml);
     assert(js.indexOf("DOMContentLoaded") !== -1, "bundle waits for DOMContentLoaded");
-    assert(js.indexOf("MutationObserver") !== -1, "bundle observes the shell field for shell-form changes");
-    assert(js.indexOf("onSubmitCapture") !== -1, "bundle claims the Reset submit in the capture phase");
-    assert(js.indexOf("resetOpSeq") !== -1, "bundle sequences Reset submits against steps");
+    assert(js.indexOf("KodyBridge") !== -1, "bundle uses the bridge, not a hand-rolled queue");
+    assert(js.indexOf("counterRebase") !== -1, "bundle supplies a delta rebase for set_count");
+    assert(js.indexOf("claimForm") !== -1, "bundle claims the Reset form through the bridge");
+    assert(js.indexOf("MutationObserver") === -1, "bundle does not hand-roll span observation (the bridge owns it)");
+    const bridgeJs = fs.readFileSync(BRIDGE_PATH, "utf8");
+    assert(bridgeJs.indexOf("MutationObserver") !== -1, "bridge observes spans for shell-form patches");
+    assert(bridgeJs.indexOf("KodyBridge") !== -1, "bridge exposes window.KodyBridge");
     ["?.", "??", "=>", "`"].forEach(function (bad) {
       assert(js.indexOf(bad) === -1, "bundle script has no forbidden syntax " + bad);
     });
@@ -452,20 +421,28 @@ async function test(name, fn) {
     assert(shown(ctx) === "0", "settled at 0");
   });
 
-  await test("Fallback when capture does not deliver: late shell patch cannot lose a step", async function () {
-    const ctx = makeShellDomNoCapture(newHtml, 5);
-    const cancelled = submitReset(ctx);
-    assert(cancelled === true, "bundle does not claim the submit when capture is unavailable, got " + cancelled);
-    assert(shown(ctx) === "0", "form-level listener still paints 0 at submit time, got " + shown(ctx));
-    assert(ctx.calls.length === 0, "no bundle fetch: the shell fetch owns the server call, got " + ctx.calls.length);
+  await test("Bridge span adoption: patch with nothing pending adopts; a patch that is the late echo of a submit before a step does not lose the step", async function () {
+    const ctx = makeShellDom(newHtml, 5);
+    await shellReset(ctx, 3);
+    assert(shown(ctx) === "3", "patch with nothing pending adopts to 3, got " + shown(ctx));
+    // A shell form submitted after init is not claimed by the bundle, so
+    // its submit records a shell-action generation in the bridge. A step
+    // sent after that submit, then the shell patch arriving late, is a
+    // stale patch: it must not lose the step.
+    const section = ctx.dom.window.document.querySelector("section[data-app-id]");
+    const lateForm = ctx.dom.window.document.createElement("form");
+    lateForm.setAttribute("class", "app-action");
+    lateForm.setAttribute("method", "GET");
+    lateForm.setAttribute("action", "/apps/counter");
+    section.appendChild(lateForm);
+    lateForm.dispatchEvent(new ctx.dom.window.Event("submit", { bubbles: true, cancelable: true }));
     click(ctx, 1);
-    assert(shown(ctx) === "1", "step after Reset, got " + shown(ctx));
+    assert(shown(ctx) === "4", "step paints 4, got " + shown(ctx));
     await shellReset(ctx, 0);
-    assert(shown(ctx) === "1", "late shell patch cannot lose the step, got " + shown(ctx));
-    assert(fieldShown(ctx) === "1", "field is painted back to the desired value, got " + fieldShown(ctx));
-    assert(ctx.calls.length === 1 && valueOf(ctx.calls[0]) === 1, "only the step fetch, value=1, got " + ctx.calls.map(valueOf).join(","));
+    assert(shown(ctx) === "4", "late shell patch cannot lose the pending step, got " + shown(ctx));
+    assert(fieldShown(ctx) === "4", "field is painted back to the desired value, got " + fieldShown(ctx));
     await resolveNext(ctx);
-    assert(shown(ctx) === "1", "settled at 1");
+    assert(shown(ctx) === "4", "settled at 4");
   });
 
   await test("A non-Reset form is not claimed by the bundle", async function () {

@@ -397,8 +397,8 @@ function sanitizeCapabilities(caps: unknown): import('./types.ts').AppCapabiliti
 	return { feeds: out }
 }
 
-/** Supported definition versions: 3 = legacy single-`effect` shape, 4 = v2 `effects[]` sequence. */
-export var SUPPORTED_SCHEMA_VERSIONS: number[] = [3, 4]
+/** Supported definition versions: 3 = legacy single-`effect` shape, 4 = v2 `effects[]` sequence, 5 = bridge era (nested/object values). */
+export var SUPPORTED_SCHEMA_VERSIONS: number[] = [3, 4, 5]
 
 /**
  * Normalize one action to the canonical `effects[]` shape for validation/storage.
@@ -460,7 +460,7 @@ export function validateDefinition(def: unknown): string | null {
 		return 'definition.schemaVersion must be a positive integer; the current version is ' + DEFINITION_SCHEMA_VERSION
 	}
 	if (SUPPORTED_SCHEMA_VERSIONS.indexOf(schemaVersion) === -1) {
-		return 'unsupported definition.schemaVersion ' + String(schemaVersion) + ' (supported: 3, 4)'
+		return 'unsupported definition.schemaVersion ' + String(schemaVersion) + ' (supported: 3, 4, 5)'
 	}
 	if (def['icon'] !== undefined) {
 		if (typeof def['icon'] !== 'string') return 'definition.icon must be a string'
@@ -482,9 +482,9 @@ export function validateDefinition(def: unknown): string | null {
 	if (bundleErr) return bundleErr
 	if (!isRecord(def['ui'])) return 'definition.ui must be an object'
 	var ui = def['ui'] as Record<string, unknown>
-	if (schemaVersion === 4) {
+	if (schemaVersion >= 4) {
 		if ('template' in ui) {
-			return 'definition.ui.template is removed in schemaVersion 4; delete it (renderer ignores it)'
+			return 'definition.ui.template is removed in schemaVersion 4 and later; delete it (renderer ignores it)'
 		}
 	} else {
 		if (ui['template'] !== 'hello' && ui['template'] !== 'generic' && ui['template'] !== 'clock') {
@@ -526,13 +526,19 @@ export function validateDefinition(def: unknown): string | null {
 	var initial = schema['initial'] as Record<string, unknown>
 	for (var field of Object.keys(fields)) {
 		var spec = fields[field]
-		if (!isRecord(spec) || (spec['type'] !== 'integer' && spec['type'] !== 'string' && spec['type'] !== 'boolean' && spec['type'] !== 'array')) {
-			return 'stateSchema.fields.' + field + '.type must be integer, string, boolean, or array'
+		if (!isRecord(spec) || (spec['type'] !== 'integer' && spec['type'] !== 'string' && spec['type'] !== 'boolean' && spec['type'] !== 'array' && spec['type'] !== 'object')) {
+			return 'stateSchema.fields.' + field + '.type must be integer, string, boolean, array, or object'
+		}
+		if ((spec as Record<string, unknown>)['type'] === 'object' && schemaVersion < 5) {
+			return 'stateSchema.fields.' + field + '.type object requires schemaVersion 5'
 		}
 		if ((spec as Record<string, unknown>)['type'] === 'array') {
 			var items = (spec as Record<string, unknown>)['items']
-			if (items !== undefined && items !== 'integer' && items !== 'string' && items !== 'boolean') {
-				return 'stateSchema.fields.' + field + '.items must be integer, string, or boolean'
+			if (items !== undefined && items !== 'integer' && items !== 'string' && items !== 'boolean' && items !== 'object') {
+				return 'stateSchema.fields.' + field + '.items must be integer, string, boolean, or object'
+			}
+			if (items === 'object' && schemaVersion < 5) {
+				return 'stateSchema.fields.' + field + '.items object requires schemaVersion 5'
 			}
 			var maxItems = (spec as Record<string, unknown>)['maxItems']
 			if (maxItems !== undefined && (!Number.isSafeInteger(maxItems) || (maxItems as number) <= 0)) {
@@ -645,8 +651,8 @@ function validateActionDef(
 		}
 	}
 	var rawRec = action as unknown as Record<string, unknown>
-	if (schemaVersion === 4) {
-		if ('effect' in rawRec) return prefix + ' must use effects[] in schemaVersion 4 (single effect retired)'
+	if (schemaVersion >= 4) {
+		if ('effect' in rawRec) return prefix + ' must use effects[] in schemaVersion 4 and later (single effect retired)'
 		if (!Array.isArray(rawRec['effects']) || (rawRec['effects'] as unknown[]).length === 0) {
 			return prefix + '.effects must be a non-empty array'
 		}
@@ -715,6 +721,32 @@ function validateActionDef(
 	return null
 }
 
+/** JSON-serializability + depth check for nested (schemaVersion 5) values. Depth cap 10 keeps a nested field from becoming an unbounded tree; null is allowed inside a nested value, but never as a top-level field value (see checkFieldValue). */
+function jsonValueProblem(value: unknown, depth: number): string | null {
+	if (depth > 10) return 'exceeds the nested depth cap of 10'
+	if (value === null) return null
+	if (typeof value === 'number') {
+		if (!Number.isSafeInteger(value) && !isFinite(value)) return 'number is not finite'
+		return null
+	}
+	if (typeof value === 'string' || typeof value === 'boolean') return null
+	if (Array.isArray(value)) {
+		for (var i = 0; i < value.length; i++) {
+			var perr = jsonValueProblem(value[i], depth + 1)
+			if (perr) return 'array entry ' + i + ': ' + perr
+		}
+		return null
+	}
+	if (isRecord(value)) {
+		for (var k of Object.keys(value)) {
+			var kerr = jsonValueProblem((value as Record<string, unknown>)[k], depth + 1)
+			if (kerr) return 'key "' + k + '": ' + kerr
+		}
+		return null
+	}
+	return 'is not a JSON value'
+}
+
 function checkFieldValue(field: string, spec: StateFieldDef, value: unknown): string | null {
 	if (spec.type === 'integer') {
 		if (typeof value !== 'number' || !Number.isSafeInteger(value)) return field + ' must be a safe integer'
@@ -729,6 +761,12 @@ function checkFieldValue(field: string, spec: StateFieldDef, value: unknown): st
 		}
 		return null
 	}
+	if (spec.type === 'object') {
+		if (!isRecord(value)) return field + ' must be an object'
+		var oerr = jsonValueProblem(value, 0)
+		if (oerr) return field + ' ' + oerr
+		return null
+	}
 	if (spec.type === 'array') {
 		if (!Array.isArray(value)) return field + ' must be an array'
 		var list = value as unknown[]
@@ -741,6 +779,10 @@ function checkFieldValue(field: string, spec: StateFieldDef, value: unknown): st
 				if (typeof list[ii] !== 'number' || !Number.isSafeInteger(list[ii])) return field + '[' + ii + '] must be a safe integer'
 			} else if (itemType === 'boolean') {
 				if (typeof list[ii] !== 'boolean') return field + '[' + ii + '] must be a boolean'
+			} else if (itemType === 'object') {
+				if (!isRecord(list[ii])) return field + '[' + ii + '] must be an object'
+				var ierr = jsonValueProblem(list[ii], 0)
+				if (ierr) return field + '[' + ii + '] ' + ierr
 			} else if (typeof list[ii] !== 'string') {
 				return field + '[' + ii + '] must be a string'
 			}

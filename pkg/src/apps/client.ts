@@ -122,6 +122,25 @@ export function renderBundleContent(def: AppDefinition, actionBase?: string): st
  * same-origin form. The code travels as a hidden `k` field so the bookmark path
  * keeps working without a cookie.
  */
+/** Render the JSON state seed for one app section (Phase 2, decided 2026-10-30).
+ * The seed is a <script type="application/json"> element carrying the full
+ * durable state, rendered BEFORE the bundle HTML so it is present at
+ * bundle-script time — the 2026-10-30 Scribe probe proved the span readout
+ * is not present at bundle-script time, only by DOMContentLoaded. Escaping
+ * <, >, & and U+2028/U+2029 as \u escapes keeps the JSON from breaking
+ * out of the script element; JSON.parse on the bundle side restores it.
+ * Dual-channel migration: the span readout below is still rendered, so
+ * span-reading bundles keep working until ported to the bridge. */
+export function renderStateSeed(def: AppDefinition, state: AppState): string {
+	var json = JSON.stringify(state)
+		.replace(/</g, '\\u003c')
+		.replace(/>/g, '\\u003e')
+		.replace(/&/g, '\\u0026')
+		.replace(/\u2028/g, '\\u2028')
+		.replace(/\u2029/g, '\\u2029')
+	return '<script type="application/json" data-kody-state-seed="1" data-app-id="' + escapeHtml(def.id) + '">' + json + '</script>'
+}
+
 export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, code?: string, fromPath?: string): string {
 	var bundleHtml: string
 	try {
@@ -129,6 +148,7 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 	} catch (err) {
 		bundleHtml = '<p>This bundle could not be displayed. The stored definition is damaged; reinstall it with add_app.</p>'
 	}
+	var seedHtml = renderStateSeed(def, state)
 	var hideState = def.ui.hideState === true
 	var fieldNames: string[] = Object.keys(def.stateSchema.fields)
 	var hiddenAttr = hideState ? ' hidden' : ''
@@ -164,7 +184,7 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 			)
 		})
 		.join('\n')
-	return bundleHtml + '\n' + fields + '\n' + forms
+	return seedHtml + '\n' + bundleHtml + '\n' + fields + '\n' + forms
 }
 
 /**

@@ -17,7 +17,7 @@
  * importers (see the canonical ceiling in docs/scribe-limitations.md).
  */
 
-export type FieldType = 'integer' | 'string' | 'boolean' | 'array'
+export type FieldType = 'integer' | 'string' | 'boolean' | 'array' | 'object'
 export type ArgType = 'integer' | 'string' | 'boolean'
 /** Generic ops are `set` and `append`. `increment`, `toggle`, and `reset` are deprecated sugar kept until migration retires them. */
 export type EffectOp = 'set' | 'append' | 'increment' | 'toggle' | 'reset'
@@ -32,16 +32,19 @@ export interface StateFieldDef {
 	max?: number
 	/** Maximum string length (string fields only). */
 	maxLength?: number
-	/** Element type (array fields only). Scalar element types only, never nested arrays. */
-	items?: 'integer' | 'string' | 'boolean'
+	/** Element type (array fields only). Scalar element types, or 'object' for arrays of objects (schemaVersion 5); never nested arrays. */
+	items?: 'integer' | 'string' | 'boolean' | 'object'
 	/** Maximum entry count (array fields only). */
 	maxItems?: number
 }
 
+/** A durable state value: scalars, arrays of scalars or objects, or a nested object (schemaVersion 5). Nested values must be JSON-serializable; see checkFieldValue in registry.ts for the depth and serializability rules. */
+export type StateValue = number | string | boolean | Array<number | string | boolean | Record<string, unknown>> | Record<string, unknown>
+
 export interface StateSchemaDef {
 	type: 'object'
 	/** Initial state written at add_app / import time. */
-	initial: Record<string, number | string | boolean | Array<number | string | boolean>>
+	initial: Record<string, StateValue>
 	/** Every key of `initial` must be declared here; no undeclared keys allowed. */
 	fields: Record<string, StateFieldDef>
 }
@@ -70,8 +73,8 @@ export interface IncrementEffect {
 export interface SetEffect {
 	op: 'set'
 	field: string
-	/** Fixed value, or taken from an arg when `fromArg` is set. */
-	value?: number | string | boolean
+	/** Fixed value, or taken from an arg when `fromArg` is set. In schemaVersion 5 the fixed value may be a nested object/array (JSON-serializable). */
+	value?: StateValue
 	fromArg?: string
 }
 
@@ -168,8 +171,9 @@ export function isBundleDefinition(def: AppDefinition): boolean {
  *  2 = bundle-kind era (bundle manifest, still `kind`-discriminated)
  *  3 = unified era (one shape: meta + bundle + stateSchema + actions, single `effect`)
  *  4 = v2 effects era (one shape with `effects[]` sequence; `ui.template` removed)
+ *  5 = bridge era (JSON seed + bridge-owned store; nested/object state values allowed; `ui.template` still removed)
  */
-export var DEFINITION_SCHEMA_VERSION = 4
+export var DEFINITION_SCHEMA_VERSION = 5
 
 export interface AppDefinition {
 	/** Stable slug: ^[a-z0-9][a-z0-9-]{0,63}$ . Identity: routes, storage keys. */
@@ -205,7 +209,7 @@ export interface AppDefinition {
 	actions: Record<string, ActionDef>
 }
 
-export type AppState = Record<string, number | string | boolean | Array<number | string | boolean>>
+export type AppState = Record<string, StateValue>
 
 export interface AppSummary {
 	id: string
