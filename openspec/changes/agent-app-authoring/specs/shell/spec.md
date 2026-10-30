@@ -20,13 +20,25 @@ The shell SHALL render every app page as: bundle UI first, then one state readou
 - **WHEN** an app declares `ui.actions` entries
 - **THEN** each renders as a GET form to `/apps/<id>` with a hidden `action` input naming the declared action, and submitting it runs that action through the shared `act()` handler.
 
+### Requirement: Shell renders a JSON state seed before bundle scripts (Phase 2, decided 2026-10-30)
+
+The shell SHALL render a structured JSON seed carrying the app's initial durable state, placed so it is present before bundle scripts run. The 2026-10-30 Scribe probe proved the existing span readout is not present at bundle-script time (only by `DOMContentLoaded`), so a seed that appears only by `DOMContentLoaded` does not satisfy this requirement. During the dual-channel migration, the shell SHALL render both the JSON seed and the existing `[data-field]` span readout, so span-reading bundles keep working until ported. The seed SHALL NOT replace server `packageStorage` as durable truth; it is initial state only, and later state changes go through `act()` via the bridge.
+
+#### Scenario: Seed is readable at bundle-script time
+- **WHEN** a new stateful bundle's script runs
+- **THEN** it can read its initial state from the JSON seed already in the page, without waiting for `DOMContentLoaded` and without scraping a span.
+
+#### Scenario: Span readout still present during migration
+- **WHEN** an existing span-reading bundle loads after the JSON seed ships
+- **THEN** its `[data-field]` span readout is still present in the served HTML, and it initializes from the span as before.
+
 ### Requirement: Shell provides the framework and adapter surface
 
-The shell SHALL load the selected framework once per page, together with the shell-bridge adapter, in every placement where app sections render (page, widget, modal). The provided surface SHALL be exposed under one documented global namespace and SHALL carry a version that bundles can read (and that the docs record); a version change to the provided surface SHALL require a spec update and re-verification of the reference apps before it ships. The shell SHALL instantiate the adapter separately for each app section, scoped to that section's `[data-app-id]` scope. No app definition, storage key, or registry field is added by this requirement; apps persist state only through `act()`.
+The shell SHALL load the selected renderer once per page, together with the shell-bridge adapter, in every placement where app sections render (page, widget, modal). The provided surface SHALL be exposed under one documented global namespace and SHALL carry a version that bundles can read (and that the docs record); a version change to the provided surface SHALL require a spec update and re-verification of the reference apps before it ships. The shell SHALL instantiate the adapter separately for each app section, scoped to that section's `[data-app-id]` scope, and the bridge SHALL own one store per section (durable/ephemeral/derived separate, durable changed only via `act()`). The provided surface SHALL satisfy the ES2019 ceiling as shipped, with no downleveling pipeline; a couple of polyfills are a narrow, case-by-case exception for an otherwise ceiling-clean candidate. Svelte and Lit SHALL NOT be provided as the shell-provided framework under the 2026-10-30 decisions. No app definition, storage key, or registry field is added by this requirement; apps persist state only through `act()`.
 
 #### Scenario: Framework loads once per page in every placement
 - **WHEN** a page renders two app sections and a widget renders a third
-- **THEN** the framework code is loaded once, the adapter exists once per section, and each section's adapter reads only its own section's state span and forms.
+- **THEN** the framework code is loaded once, the adapter exists once per section, and each section's adapter reads only its own section's JSON seed and forms, with its own bridge-owned store.
 
 #### Scenario: Provided surface is versioned
 - **WHEN** a bundle reads the provided surface version
