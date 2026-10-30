@@ -800,6 +800,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					'<p>Copy this prompt into a Kody-connected agent and fill in the bracketed parts. The browser has no add control; the agent adds the app with MCP <code>add_app</code> — a registry write, no republish.</p>\n' +
 					'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#docs/adding-an-app.md, then follow that definition contract. Use the package\'s add_app through the Kody MCP execute wrapper. Validate before writing, verify with list_apps and get_app_state, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 App id: [slug]<br>\u2013 Name: [display name]<br>\u2013 What it does: [one sentence]</code></p>\n' +
 					'\t\t\t\t\t<p>The new app appears on the Apps page immediately. Add it to the home dashboard from Apps → Edit → <strong>Add to home</strong>. Pins, hidden flags, homepage order, and recent use stay on this device.</p>\n' +
+					'\t\t\t\t\t<p>Setting up a fresh fork or opening the OS for the first time? Follow the setup guide: open the published guide with Kody search entity <code>package:kody-os#docs/setup.md</code> and follow its sequence, ending with your first installed app.</p>\n' +
 					'\t\t\t\t</div>\n' +
 					'\t\t\t</section>'
 				return Promise.resolve(

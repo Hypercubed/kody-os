@@ -115,3 +115,53 @@ in the same commit as any bump. This spec draft does not bump anything.
 3. Confirm landing order with auth-rethink: guide drafted now,
    auth section re-verified at auth-rethink implementation, vs.
    guide held until auth-rethink lands.
+
+## Implementation notes (2026-10-29, as implemented and archived)
+
+Implemented per owner direction (2026-10-29): the guide SHALL NOT
+include details of the legacy system slated for removal. The
+following deviations from the proposal/design above are the
+implemented behavior and supersede Decision 4, Decision 6, and
+the auth-rethink-dependent parts of the tasks for this change.
+The original proposal/design text is preserved in git history
+(commit `b8a8966`).
+
+- **Auth model.** The guide describes Kody login and the
+  OTP-issued session cookie only. There is no `access-key`
+  secret setup, no rotation/deletion semantics, and no
+  `get_access_status` in the guide. The auth-rethink model
+  (secret-bound cookie) is parked and was not used; the guide
+  follows the remove-legacy-code end state (OTP sessions, no
+  secret). The guide describes the live OTP mechanics, which
+  the package already has; the legacy path still exists in
+  code until remove-legacy-code lands, but the guide documents
+  no part of it.
+- **Detail link.** The guide links to `adding-an-app.md` only.
+  The `device-key.md` link is deferred: that document currently
+  describes the legacy fallback (secret creation, rotation,
+  `get_access_code`), and linking it would funnel setup readers
+  into the legacy setup steps. The link may be added once
+  remove-legacy-code rewrites `device-key.md`.
+- **Store sequence.** The App Store is specified but not
+  implemented (no seeding code exists; `pkg/examples/` is not
+  renamed). The guide's setup sequence therefore ends with a
+  first app added via agent `add_app` and verified by an
+  add/open/act round trip, and states plainly that the store
+  is not yet implemented. When the app-store change lands, the
+  guide's sequence and catalog section need updating.
+- **Open questions resolved.** (1) The guide lives only in
+  `pkg/docs/` plus Help/README pointers; no in-OS page.
+  (2) The copy-paste prompt is included. (3) Landing order:
+  the guide shipped before auth-rethink, on the
+  remove-legacy-code model instead.
+- **Verification limits.** Task 2.2's live-fork walk could not
+  be run end to end from this environment (no kody CLI here,
+  no live fork to publish); the sequence was verified against
+  the package source and the existing flows it describes
+  (`list_apps`, `add_app`, OTP unlock, `kody dev` patterns in
+  `pkg/README.md` / `pkg/AGENTS.md`). A live-fork walk remains
+  a good first-use check for the owner.
+- **Version.** No bump in the implementing commit (docs-only;
+  the Help pointer is copy text, no behavior change). PATCH at
+  publication if published alone, per the version policy, or
+  ride with the next version-bumping change.

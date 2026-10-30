@@ -21,6 +21,10 @@ Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
 - **Feeds** — apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
 - **Access** — the browser shell is locked by one-time codes so e-ink devices open it without Kody login. Each code is 4 digits, single use, valid 10 minutes; entering it burns the code and mints a 30-day session cookie with clean, code-free URLs. A derived device code (HMAC of the Kody `access-key` secret, UI-managed, never stored) remains as fallback. Agents use MCP exports, which are never gated. Full steps: [Device key](docs/device-key.md).
 
+## Setup
+
+Setting up a fork of kody-os (fork, publish, unlock, first app) is covered start to finish in the [Setup guide](docs/setup.md). Start there; the sections below assume the OS is already set up.
+
 ## How to know it is working
 
 - Home shows live widgets for pinned apps, or the honest **no widgets yet** empty state pointing at Apps → Edit → **Add to home**.
