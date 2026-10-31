@@ -1,6 +1,6 @@
 # Spec Delta
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Help is a catalog app, not a static page
 
@@ -47,3 +47,18 @@ install without the help app installed SHALL show no Help link.
   expand control. The old shell rule "no expand control on the
   Help page" referred to the static `/help` page, which no
   longer exists; it does not apply to the help app page.
+
+## REMOVED Requirements
+
+### Requirement: Static Help page in full chrome
+
+**Reason**: Help no longer exists as a static page served at `GET /help`. It
+ships as the `help` catalog app so its content is versioned, installable, and
+removable like any other app, and its menu link appears only while installed.
+Keeping the static-page requirement would contradict both the shell's menu-app
+links and the app-page expand rule.
+
+**Migration**: `GET /help` now responds 303 to `/apps/help`, preserving the
+request's query string, so existing bookmarks and links keep working. Install
+the `help` app from the catalog (id `help`) to restore the reference content on
+an install that lacks it.

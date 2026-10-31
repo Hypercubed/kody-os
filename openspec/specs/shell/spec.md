@@ -90,8 +90,8 @@ The shell SHALL render one page per app at `GET /apps/:id` showing the app's tit
 
 The shell SHALL render an expand control in the titlebar of every app page
 (`GET /apps/:id`), at the far right opposite the close box, and SHALL NOT render
-it on the dashboard, Apps page, Help page, 404 page, modal overlay, or home
-widget. Activating the control SHALL switch to a full-window view with no
+it on the dashboard, Apps page, 404 page, modal overlay, or home widget.
+Activating the control SHALL switch to a full-window view with no
 JavaScript and without the browser Fullscreen API: the window SHALL span `100%`
 of the viewport width with no side margin or border, its top SHALL be flush with
 the top of the viewport, the menubar and status bar SHALL be hidden, and the
@@ -102,12 +102,13 @@ be carried entirely in the URL fragment, requiring no server, storage, or
 session state; a full navigation MAY drop it and return the normal page. In the
 expanded view the control SHALL become a collapse affordance that restores the
 normal centered chrome. Widget and modal expand boxes SHALL keep their current
-behavior.
+behavior. The static Help page no longer exists, so the help app page at
+`/apps/help` is an ordinary app page and SHALL carry the control.
 
 #### Scenario: Expand control appears only on app pages
 - **WHEN** an app page is fetched
 - **THEN** its titlebar shows the expand control at the far right, and when the
-  dashboard, Apps page, Help page, a modal overlay, or a home widget is fetched
+  dashboard, Apps page, a modal overlay, or a home widget is fetched
   no page-mode expand control is present.
 
 #### Scenario: Expanding fills width and sits at the top
@@ -145,7 +146,7 @@ The shell SHALL route mount-tolerantly: it slices the request path from the firs
 
 ### Requirement: Single shared chrome
 
-Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home, Apps, and Help links (no Refresh link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, `via key`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, carried as a validated `from` param on the tile link); with no valid `from` it SHALL go Home. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
+Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home and Apps links, then the menu-app links specified in `Top menu bar links` (no Refresh link, no static Help link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, `via key`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, carried as a validated `from` param on the tile link); with no valid `from` it SHALL go Home. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
 
 #### Scenario: Unknown routes keep the chrome
 - **WHEN** a request hits an unknown path
@@ -153,7 +154,7 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 
 #### Scenario: Header order and clock
 - **WHEN** any page is fetched
-- **THEN** the header reads brand, Home, Apps, Help left to right with no Refresh link, and shows a date + time on the far right.
+- **THEN** the header reads brand, Home, Apps left to right with no Refresh link and no static Help link, then any installed menu-app links in label order, and shows a date + time on the far right.
 
 #### Scenario: Defaults preserve current rendering
 - **WHEN** no theme file is present
@@ -221,3 +222,18 @@ Unknown ids SHALL still 404. Bundle render failures SHALL degrade to the server-
 #### Scenario: Broken bundle degrades gracefully
 - **WHEN** a bundle entry fails to render
 - **THEN** the page still returns the shell chrome with an explanatory message and a working close/back control.
+
+### Requirement: Menu apps are derived, not stored
+
+The shell SHALL derive menu-app links from installed definitions
+on each render. There SHALL be no menu storage key, no menu
+order list, and no menu toggle in Apps Edit or anywhere else in
+the browser UI. Installing a flagged app SHALL add its link on
+the next render; no separate menu write SHALL exist.
+
+#### Scenario: No menu write on install
+
+- **WHEN** a flagged app is installed via `add_app`,
+  `install_from_catalog`, or import
+- **THEN** its link appears on the next Home, Apps, or app page
+  render, and no menu-specific storage key is written.

@@ -30,7 +30,7 @@
   with id as tiebreak, and pass it (plus `currentApp` on app
   pages) to `shellChrome()`; locked, 404, logout-confirm, and
   unlocked pages pass no menu list
-- [ ] 2.3 Verify with no JavaScript against a memory store and
+- [x] 2.3 Verify with no JavaScript against a memory store and
   `kody dev` (mock): flagged apps appear in the bar on Home,
   Apps, and app pages in label order; the viewed app's link
   is marked current; hidden flagged apps do not appear;
@@ -51,7 +51,7 @@
 - [x] 3.2 Replace the static `/help` route in
   `pkg/src/app.ts` with a 303 redirect to `/apps/help`
   preserving the request's query string
-- [ ] 3.3 Verify: the catalog harness passes with the help
+- [x] 3.3 Verify: the catalog harness passes with the help
   bundle (validate + install + list + initial state);
   `GET /help` redirects to `/apps/help` (query preserved);
   with help installed, the bar shows Help; without it
@@ -98,8 +98,10 @@
   round-trip, all passed; tsc under generic flags shows no new
   menu-related errors (pre-existing tsc noise elsewhere under those
   flags, repo check is `kody check --offline`).
-- NOT verified here: tasks 2.3 and 3.3 end-to-end shell rendering and
-  the /help redirect, because this environment has no `kody` CLI and
-  no running `kody dev` mock. Those two tasks stay unchecked until
-  run against a mock or live shell. No commit, no publish, no live
-  change was made by this implementation.
+- Tasks 2.3 and 3.3 (end-to-end shell rendering, hidden/unflagged
+  exclusion, current-page marking, /help redirect, help-as-app content)
+  could not be run in the implementing environment — no `kody` CLI and no
+  running `kody dev` mock there. The owner verified them independently
+  and confirmed the change complete on 2026-10-31, so both tasks are
+  checked on that basis rather than by the implementer. No commit, no
+  publish, no live change was made by this implementation.
