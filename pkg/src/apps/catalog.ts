@@ -21,6 +21,7 @@ import clockBundle from '../../catalog/clock.bundle.json' with { type: 'json' }
 import counterBundle from '../../catalog/counter.bundle.json' with { type: 'json' }
 import eightBallBundle from '../../catalog/eight-ball.bundle.json' with { type: 'json' }
 import macPuzzleBundle from '../../catalog/mac-puzzle.bundle.json' with { type: 'json' }
+import newsBundle from '../../catalog/news.bundle.json' with { type: 'json' }
 import probeBundle from '../../catalog/probe.bundle.json' with { type: 'json' }
 import xkcdBundle from '../../catalog/xkcd.bundle.json' with { type: 'json' }
 import type { AppDefinition } from './types.ts'
@@ -33,6 +34,7 @@ var CATALOG: AppDefinition[] = [
 	counterBundle as AppDefinition,
 	eightBallBundle as AppDefinition,
 	macPuzzleBundle as AppDefinition,
+	newsBundle as AppDefinition,
 	probeBundle as AppDefinition,
 	xkcdBundle as AppDefinition,
 ]

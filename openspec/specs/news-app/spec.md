@@ -1,6 +1,10 @@
-# Spec Delta
+# News App Specification
 
-## NEW Requirements
+## Purpose
+
+TBD - created by syncing change news-app. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: News app in the shipped catalog
 
@@ -87,16 +91,3 @@ NOT take a feed URL from user input or from a request.
 - **WHEN** the definition is validated
 - **THEN** it declares exactly six feeds, all HTTPS, and
   validation passes under the registry's feeds rules.
-
-## Open Questions (recorded, not decided by this change)
-
-- If a BBC HTTPS feed variant does not serve RSS, what HTTPS
-  source replaces that section? (Task 2.1 must answer this
-  before implementation is treated as done.)
-- Does the future reader change add a shell reader route, or
-  reuse another extraction service? That decision belongs to
-  the reader change (Tasks §3), not this one.
-- Should sections cache per section for the session, or
-  always re-fetch through the proxy on switch? V1 default in
-  this change: re-fetch through the proxy; the proxy's TTL
-  is the only cache.
