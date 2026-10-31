@@ -256,6 +256,122 @@ body {
 	transform: translate(1px, 1px);
 }
 
+/* ---- App page full-window view ---- */
+
+/* Page-mode expand/collapse controls share the widget/modal box look and sit
+   in the titlebar slot opposite the close box. */
+.os-expand,
+.os-collapse {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 100%;
+	min-height: 3rem;
+	padding: 0;
+	text-decoration: none;
+}
+
+.os-collapse {
+	display: none;
+}
+
+.os-expand::before,
+.os-collapse::before {
+	content: "";
+	display: block;
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid #000;
+	background: #fff;
+	box-shadow: 1px 1px 0 #000;
+}
+
+/* Expand: upward-outward corner bracket, matching widget/modal expand. */
+.os-expand::after {
+	content: "";
+	position: absolute;
+	top: calc(50% - 0.32rem);
+	left: calc(50% + 0.02rem);
+	width: 0.28rem;
+	height: 0.28rem;
+	border-top: 2px solid #000;
+	border-right: 2px solid #000;
+}
+
+/* Collapse: the same bracket mirrored to the lower-left corner. */
+.os-collapse::after {
+	content: "";
+	position: absolute;
+	top: calc(50% - 0.02rem);
+	left: calc(50% - 0.32rem);
+	width: 0.28rem;
+	height: 0.28rem;
+	border-bottom: 2px solid #000;
+	border-left: 2px solid #000;
+}
+
+.os-expand:hover::before,
+.os-expand:active::before,
+.os-collapse:hover::before,
+.os-collapse:active::before {
+	background: #000;
+}
+
+.os-expand:hover::after,
+.os-expand:active::after,
+.os-collapse:hover::after,
+.os-collapse:active::after {
+	border-color: #fff;
+}
+
+.os-expand:active::before,
+.os-collapse:active::before {
+	box-shadow: none;
+}
+
+/* Expanded view: the app page drops the desktop gutter, the width cap, and the
+   menu/status bars, and sits flush with the top. Height is never forced, so
+   content height and scrolling stay exactly as on the normal page. */
+#os-full:target {
+	padding: 0;
+}
+
+#os-full:target .os-menubar,
+#os-full:target .os-statusbar {
+	display: none;
+}
+
+#os-full:target .os-window {
+	width: 100%;
+	max-width: none;
+	margin: 0;
+	border: 0;
+	box-shadow: none;
+}
+
+#os-full:target main {
+	padding: 0;
+}
+
+#os-full:target .app {
+	border-top: 0;
+	border-right: 0;
+	border-left: 0;
+	box-shadow: none;
+}
+
+#os-full:target .os-expand {
+	display: none;
+}
+
+#os-full:target .os-collapse {
+	display: flex;
+}
+
 main {
 	padding: 1rem;
 }
@@ -1269,6 +1385,8 @@ button:active {
 	.os-mark-glyph,
 	.widget-expand::before,
 	.modal-expand::before,
+	.os-expand::before,
+	.os-collapse::before,
 	.category h2,
 	.tile,
 	.tile .tile-icon,

@@ -265,6 +265,8 @@ function shellChrome(opts: {
 	/** Validated close destination; defaults to Home when absent. */
 	closeHref?: string
 	closeLabel?: string
+	/** App pages opt into the page-mode expand/collapse controls. */
+	expandable?: boolean
 }): string {
 	var safeBase = escapeAttribute(opts.appBasePath)
 	var safeTitle = escapeAttribute(opts.title)
@@ -287,6 +289,12 @@ function shellChrome(opts: {
 			: '\t\t\t<a class="os-box" href="' +
 				closeHref +
 				'" aria-label="' + closeLabel + '" title="' + closeLabel + '"></a>\n'
+	var fullId = opts.expandable === true ? ' id="os-full"' : ''
+	var expandBox =
+		opts.expandable === true
+			? '\t\t\t<a class="os-expand" href="#os-full" aria-label="Expand app to fill window" title="Expand app to fill window"></a>\n' +
+				'\t\t\t<a class="os-collapse" href="#" aria-label="Collapse app" title="Collapse app"></a>\n'
+			: ''
 
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
@@ -321,6 +329,7 @@ function shellChrome(opts: {
 		'</style>\n' +
 		'</head>\n' +
 		'<body' +
+		fullId +
 		bodyAttr +
 		'>\n' +
 		'\t<header class="os-menubar">\n' +
@@ -357,6 +366,7 @@ function shellChrome(opts: {
 		'\t\t\t<h1 class="os-title">' +
 		safeTitle +
 		'</h1>\n' +
+		expandBox +
 		'\t\t</div>\n' +
 		'\t\t<main>\n' +
 		opts.body +
@@ -654,7 +664,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -666,7 +676,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}
