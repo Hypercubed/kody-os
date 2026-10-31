@@ -1,5 +1,7 @@
 # Tasks
 
+> ARCHIVED 2026-10-30: implemented in Entire `9ea2126` (MINOR to v0.4.0 build 13, published to Entire and Kody; live Clock modal derivation from stored `placements: ["modal"]` verified after that publish). Tasks 1.1–4.1 are done as recorded below, and the open-mode harness was re-run green at archive time. Tasks 4.2 (`kody dev` end-to-end) and 4.3 (`openspec validate` half) were NOT completed at archive time — no `kody` CLI and no `openspec` binary in this environment — and are left open below, not checked off, per the user's direction to archive the change as done. This archive commit changes no `pkg/` code and no version/build.
+
 ## 1. Schema and validation
 
 - [x] 1.1 Add `ui.openAs?: 'page' | 'modal'` to `UiDef` (and the
