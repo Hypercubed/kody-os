@@ -1,5 +1,5 @@
 import { SHELL_CSS } from './shell-css.ts'
-import { ACCESS_COOKIE, accessCookie, authenticate, authPathFor, checkCode, isKodyVerifiedVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
+import { ACCESS_COOKIE, accessCookie, authenticate, authPathFor, checkCode, isKodyOwnerVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed } from './feeds.ts'
 import type { AuthPath } from './auth.ts'
@@ -1050,11 +1050,13 @@ var app = {
 			return unlock(request, chrome)
 		}
 
-		// Kody-login bypass: a platform-verified visitor skips the device gate.
-		// Anonymous (no header, or metaGetCurrentUser throws) falls through to
-		// the device gate; the Scribe never sends the header so its `?k=` flow
-		// is byte-identical to today. Never fails open.
-		var kodyVisitor = await isKodyVerifiedVisitor(request)
+		// Kody-login bypass, owner-only: a platform-verified visitor with
+		// role `owner` in the owning org skips the device gate. Any other
+		// verified visitor, and anonymous (no header, or metaGetCurrentUser
+		// throws), falls through to the device gate; the Scribe never sends
+		// the header so its `?k=` flow is byte-identical to today. Never
+		// fails open.
+		var kodyVisitor = await isKodyOwnerVisitor(request)
 		var access = await authenticate(request)
 		if (kodyVisitor) {
 			var kodyAccess = { ok: true, viaQuery: false, viaCookie: false, viaKody: true, code: '', hash: access.hash }

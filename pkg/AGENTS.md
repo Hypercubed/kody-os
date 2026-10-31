@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v0.4.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v1.0.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -34,7 +34,7 @@ Only `src/app.ts` fetch requests are gated; MCP exports are not. The owner mints
 - No MCP or in-app set path: create/rotate the code only in the Kody UI. Overwriting the secret rotates everything at once. Steps: [Device key](docs/device-key.md).
 - The secret value never appears in code, storage, logs, or chat; the handler recomputes per request.
 - Unlock form submits to path form `/unlock/<code>` (the edge drops query strings, so `?k=` never arrives); success sets the session cookie and 303-redirects to a clean URL. Wrong/expired codes re-render locked with an inline error; 10+ failures in 10 minutes locks out with a notice. Logout is device-sessions only.
-- Unauthenticated requests get the same honest 404. With no secret bound, only Kody-logged-in visitors are served (login-only mode).
+- Unauthenticated requests get the same honest 404. With no secret bound, only Kody-logged-in owners are served (login-only mode): the Kody bypass is owner-only (`isKodyOwnerVisitor` in `src/auth.ts` — platform visitor header with role `owner` plus a live `metaGetCurrentUser` confirm, fail-closed). Any other verified Kody visitor falls through to the device gate like an anonymous visitor. The device gate itself is unchanged, and MCP exports are still ungated by fetch.
 - Response headers on every HTML/JSON page: `no-store`, `no-referrer`, `nosniff`, `frame-ancestors 'none'`.
 
 ## App actions and the package-app edge
