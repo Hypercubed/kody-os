@@ -26,6 +26,20 @@ installs one app instead and lets the user choose the rest.
   bundled definition and loads it into the data store through `add_app` —
   the same validation, atomicity, and state rules as every other registry
   write. No agent, no MCP call, and no republish is needed.
+- The App Store page is a single combined list, not a catalog-only
+  listing plus a separate Apps Edit list: one row per id from the union
+  of catalog ids and installed ids, deduplicated by id, alphabetical by
+  id, with each row's badge and controls following its state (not
+  installed, up to date, behind, modified, storage-only, or snapshot-less
+  Installed; see design.md, Decisions 12–15). That combined list folds
+  in the Apps Edit controls — Pin/Unpin, Hide/Unhide, Add to home/Remove
+  from home — for installed rows, alongside Install, Update, and Restore.
+  The Apps page itself stays a launcher (Pinned, Recent, All tiles); its
+  Edit mode is retired. No launching from the catalog: a row for an app
+  that is not installed offers Install only, with no Open link, since
+  there is nothing installed to open; a row for an installed app may
+  link to its app page. The App Store itself gets a row like any other
+  app, superseding its earlier exclusion from its own listing.
 - Catalog apps carry a per-app version, and a store install records an
   install snapshot (see design.md, Decisions 7–10). The store can therefore
   tell whether an installed catalog app is behind the catalog, whether it
@@ -60,9 +74,11 @@ installs one app instead and lets the user choose the rest.
   the single App Store app, plus per-app catalog versioning, install
   snapshots, update-status classification, and confirmed updates (design.md,
   Decisions 7–10).
-- `shell`: the App Store app page gains a server-rendered catalog listing
-  with install controls; Help and empty-state copy gain the browser install
-  path. No new chrome, no new route family. Installed catalog rows gain
+- `shell`: the App Store app page gains a server-rendered combined list
+  with install, update, restore, pin, hide, and home controls (design.md,
+  Decisions 12–15); the Apps page loses its Edit mode and stays a
+  launcher. Help and empty-state copy gain the browser install path. No
+  new chrome, no new route family. Installed catalog rows gain
   update controls and, for modified apps, a confirmation step carrying the
   loss warning (see the shell spec delta).
 - `authoring`: catalog membership rules (what a file in `pkg/catalog/` must
@@ -75,9 +91,10 @@ installs one app instead and lets the user choose the rest.
 - `pkg/src/apps/catalog.ts` (new; explicit per-file imports of the catalog
   definitions — the Worker has no directory listing), `pkg/src/apps/registry.ts`
   (install-from-catalog + seeding helper + install snapshots + update
-  classification), `pkg/src/apps/client.ts` (store listing section),
-  `pkg/src/app.ts` (seed-on-first-use + install handling + update handling
-  and confirmation on the store page), `pkg/catalog/app-store.bundle.json`
+  classification + combined-list union), `pkg/src/apps/client.ts` (store
+  listing section), `pkg/src/app.ts` (seed-on-first-use + install/update/
+  pin/hide/home handling and confirmation on the store page, Apps Edit
+  section removed), `pkg/catalog/app-store.bundle.json`
   (new; the store definition), `pkg/catalog/README.md` (rewritten),
   `pkg/docs/adding-an-app.md` and `pkg/AGENTS.md` (catalog + browser-install
   copy, path updates, version-bump and snapshot rules).

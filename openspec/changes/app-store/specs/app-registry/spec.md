@@ -151,6 +151,59 @@ auto-update an installed app.
 - **WHEN** a republish ships a newer catalog definition
 - **THEN** installed apps keep their stored definitions until the user chooses an update (or restore) from the store.
 
+### Requirement: Single combined list
+
+The store SHALL present a single combined list: one row per id from the
+union of catalog ids and installed ids, deduplicated by id, in
+alphabetical-by-id order. Each row's badge and controls SHALL follow its
+state under the update-status requirement, plus these rules:
+
+- Not installed (catalog only): Install only. No Pin, Hide, Home, Update,
+  Restore, or Open control.
+- Installed: Pin/Unpin, Hide/Unhide, and Add to home/Remove from home
+  controls, which change only their launcher lists and never the
+  definition, state, or snapshot; plus Update, Restore, or neither
+  according to the update-status requirement.
+- Installed with no catalog entry: Storage only badge and launcher
+  controls only; no Install, Update, or Restore control. Where a
+  snapshot exists for such an id the row MAY be labelled formerly in
+  the catalog; where none exists it is custom/storage-only. Neither
+  variant claims a modified or update status.
+- Installed catalog app with no snapshot: Installed badge and launcher
+  controls only; no update control under this scheme.
+- The App Store itself (`app-store`) appears as a row like any other
+  app when installed; it is not excluded from its own list.
+- The list is unfiltered: hidden apps appear in it, so a hidden app
+  (including a hidden App Store) can be unhidden from the list. Hide
+  affects the Apps launcher tiles only.
+- No launching from the catalog: a row for an app that is not installed
+  SHALL offer no Open link to `/apps/:id`; a row for an installed app
+  MAY link to its app page.
+
+#### Scenario: Union deduplicates by id
+- **WHEN** an app is both in the catalog and installed
+- **THEN** it appears exactly once in the combined list, with its installed status and controls.
+
+#### Scenario: Catalog-only row offers install only
+- **WHEN** a catalog app is not installed
+- **THEN** its row offers Install and no Pin, Hide, Home, Update, Restore, or Open control.
+
+#### Scenario: Storage-only row offers launcher controls only
+- **WHEN** an installed app has no catalog entry
+- **THEN** its row shows Storage only with Pin, Hide, and Home controls, and no Install, Update, or Restore control.
+
+#### Scenario: Hidden app still appears in the combined list
+- **WHEN** an installed app is hidden
+- **THEN** its row still appears in the combined list with an Unhide control, even though it is absent from the Apps launcher tiles.
+
+#### Scenario: Combined list is alphabetical by id
+- **WHEN** the combined list is rendered with catalog-only, installed, and storage-only apps
+- **THEN** rows appear in alphabetical-by-id order regardless of state.
+
+#### Scenario: Update preserves launcher placement
+- **WHEN** a pinned, homepage app is updated or restored from the combined list
+- **THEN** its pin and homepage placement are unchanged afterwards.
+
 ### Requirement: First use seeds only the App Store
 
 On the first authenticated shell request against an empty registry, the

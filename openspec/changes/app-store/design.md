@@ -22,7 +22,9 @@ carry that class.
   can install from with no agent; install through the existing validated
   `add_app` path; catalog membership as a checkable rule; for catalog apps
   with an install snapshot, a store that can tell behind from modified
-  and offer a confirmed update (Decisions 7–10).
+  and offer a confirmed update (Decisions 7–10); a single combined
+  management list (catalog ∪ installed) that folds in the Apps Edit
+  controls, with no launching from the catalog (Decisions 12–15).
 - Non-goals: remote/third-party catalogs; store search, ratings, or
   reviews; a store that is itself a bundle-JS
   listing (a static bundle cannot know installed state — the listing is
@@ -68,10 +70,11 @@ carry that class.
 2. **The store is a catalog member.** Its definition lives at
    `pkg/catalog/app-store.bundle.json` alongside the apps it lists, and the
    catalog module imports it the same way. Rationale: one import mechanism,
-   one validation gate, no second seed source to drift. The listing
-   excludes the store itself (it is already installed by definition of
-   being open; an Install button for it inside itself is noise). The
-   exclusion is one explicit rule, scenario-pinned.
+   one validation gate, no second seed source to drift. (Correction
+   2026-10-31: the earlier "listing excludes the store itself" rule in
+   this decision is superseded — under the combined list in Decisions
+   12–15 the store gets a row like any other app, so it can be pinned,
+   hidden, added to home, updated, or restored from its own page.)
 3. **Catalog = explicit import list, alphabetical by id.** The Worker
    cannot list package files at runtime, so `catalog.ts` imports each
    `*.bundle.json` by path (the same JSON-import form `app.ts` already uses
@@ -96,8 +99,9 @@ carry that class.
    `add_app`, so a re-install through any path preserves state by default
    and never wipes it — the store SHALL NOT pass `resetState: true`.
    Install changes nothing else: no pin, no homepage entry, no recency
-   entry for the installed app. The user pins/adds to home from Edit, as
-   today.
+   entry for the installed app. (Correction 2026-10-31: "pins/adds to
+   home from Edit" is superseded — the user pins/adds to home from the
+   combined list itself, Decisions 12–15; the Apps Edit mode is retired.)
 5. **The store app itself is stateless and page-only.** No state fields,
    no actions, `placements: ["page"]`. Its bundle is minimal descriptive
    HTML; the catalog listing is a shell-rendered section on the same page
@@ -191,6 +195,58 @@ carry that class.
     is created only by a store install or store update; generic
     `add_app` and `import_app` SHALL NOT write it, and `remove_app`
     SHALL delete it with the app.
+12. **One combined list: catalog ∪ installed, one row per id.** The
+    store page renders a single list whose rows are the union of catalog
+    ids and installed ids, deduplicated by id, in alphabetical-by-id
+    order (the catalog import-list order) — not a catalog section plus
+    a separate installed section, and not a catalog listing plus a
+    separate Apps Edit list. An app that is both catalog and installed
+    appears once, with its installed status and controls; an app that
+    is only one of the two appears once, with only that side's controls.
+    Rationale: one place to find any app, and the row's badge — not a
+    section boundary — carries the state, so a state change (install,
+    update, restore, catalog drop) moves no row to another section.
+13. **Controls are gated by row state; pin/hide/home are orthogonal
+    toggles; no launching from the catalog.** The control set on a row
+    is exactly what its state allows (see the app-registry spec delta):
+    not installed → Install only; installed → Pin/Unpin, Hide/Unhide,
+    Add to home/Remove from home, plus Update, Restore, or neither
+    according to Decisions 9–11. Pin, Hide, and Home are independent
+    toggles on installed rows, shown regardless of update/modified
+    status, and they change only their launcher lists — never the
+    definition, state, or snapshot — so updating an app cannot lose its
+    pin or homepage placement. No launching from the catalog means, in
+    full: a row for an app that is not installed SHALL offer no Open
+    link to `/apps/:id` (there is nothing installed to open); a row for
+    an installed app MAY link to its app page, which is opening an
+    installed app, not launching from the catalog. The combined list is
+    unfiltered: hidden apps appear in it, or hiding an app would remove
+    the only way to unhide it — Hide affects the Apps launcher tiles
+    only, never this management list. All controls are plain GET forms
+    with 303 back to the store page, no `app-action` class, following
+    the install precedent in Decision 4.
+14. **Apps Edit is retired; Apps stays a launcher.** The Apps page
+    (`/apps`) keeps its Pinned, Recent, and All tiles as the launcher,
+    but its Edit mode and edit list are removed; every control they
+    offered now lives on the combined-list row. Rationale: one
+    management surface instead of two that can drift (a row in Edit
+    saying one thing and a row in the store saying another), and the
+    store — seeded on first use, always present — is the surface that
+    already has to know installed state to show update status. Remove
+    stays MCP-only and is deliberately not added to the combined list
+    by this change.
+15. **Storage-only rows, split by snapshot.** An installed app with no
+    catalog entry gets a Storage only badge and launcher controls, and
+    no Install, Update, or Restore control (there is nothing to update
+    to). Where a snapshot exists for such an id, the row MAY say
+    formerly in the catalog (it was store-installed, then dropped from
+    the catalog); where no snapshot exists, the row says custom /
+    storage-only. Neither variant claims a modified or update status:
+    without a current catalog definition there is nothing to compare
+    against, and a custom definition is not "modified" — it was never a
+    catalog copy. Catalog versioning rules do not apply to
+    storage-only definitions: `catalogVersion` is required only for
+    catalog definitions.
 
 ## Risks / Trade-offs
 
@@ -221,6 +277,11 @@ carry that class.
   is kept (state for surviving fields); a modified app is never offered
   a plain, unconfirmed Update control, and the confirmation states that
   the loss is unrecoverable unless the app was exported first.
+- [Risk] Hiding the store from the combined list would strand the user
+  (the management surface itself hidden). Mitigation: the combined list
+  is unfiltered by design (Decision 13) — Hide affects launcher tiles
+  only, so a hidden store still appears in its own list and can be
+  unhidden from there.
 - [Risk] The store definition fails validation at runtime (bad publish).
   Mitigation: seeding fails closed like any bad definition and the shell
   degrades to the honest empty state with guidance; the dev-time harness
@@ -255,6 +316,8 @@ bump anything.
 2. Confirm seeding stays shell-dispatch-only (Decision 1) rather than
    also firing from `list_apps()`.
 3. Confirm the store listing excludes the store itself (Decision 2).
+   (Superseded 2026-10-31: the combined list in Decisions 12–15 gives
+   the store a row like any other app; this question no longer stands.)
 4. Confirm no MCP export for install-from-catalog (agents keep `add_app`).
 5. Counter (`category: Tests`, "validation app" description) and Probe
    (diagnostics) read as fixtures in a user-facing listing. Confirm

@@ -18,6 +18,10 @@ store listing only when its file is added to the catalog import list (see
 app-registry); the README SHALL state the file + import + harness checklist
 (including the `catalogVersion` bump rule and the install-snapshot rule),
 and the trust rule that installing a catalog app trusts its bundle code.
+An installed app that is not a catalog definition carries no
+`catalogVersion` requirement and appears in the combined list as Storage
+only (see app-registry); `catalogVersion` is required only for catalog
+definitions.
 
 #### Scenario: Catalog apps install and render
 - **WHEN** an agent submits each catalog definition to `add_app`

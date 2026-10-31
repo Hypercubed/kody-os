@@ -13,8 +13,8 @@
 
 ## 3. Store page
 
-- [ ] 3.1 Render the server-rendered catalog section on the App Store app page: one row per catalog app except `app-store` itself, in import-list order, showing icon, label, and description; not-yet-installed rows show an Install GET form, installed rows show Installed plus a link to the app; verify with no JavaScript (plain form + 303) and that the page keeps one `<style>` block and the ES2019 ceiling
-- [ ] 3.2 Update shell copy: Help page gains the browser install path (App Store first, agent/`add_app` for custom apps), and the empty-registry hint no longer presents agent-only install as the only path; verify the honest empty state still renders if seeding fails
+- [ ] 3.1 Render the server-rendered combined list on the App Store app page (superseding the earlier catalog-only section and the Apps Edit list; see §7): one row per id from the union of catalog and installed ids, deduplicated, alphabetical by id, showing icon, label, description, and status badge; not-yet-installed rows show an Install GET form and no Open link; installed rows show status plus a link to the app and Pin/Hide/Home GET forms; the App Store itself appears as a row; hidden apps appear in the list; verify with no JavaScript (plain forms + 303) and that the page keeps one `<style>` block and the ES2019 ceiling
+- [ ] 3.2 Update shell copy: Help page gains the browser install and management path (App Store combined list first, agent/`add_app` for custom apps), and the empty-registry hint no longer presents agent-only install as the only path; verify the honest empty state still renders if seeding fails. Remove the Apps page Edit mode and its edit list; the Apps page stays a launcher of Pinned, Recent, and All tiles
 
 ## 4. Docs and catalog rules
 
@@ -34,3 +34,12 @@
 - [ ] 6.4 Wire store update controls: Update for behind-clean and catalog-differing rows, Restore catalog version (never Update) for modified-current and modified-ahead rows, no Update control for up-to-date or snapshot-less rows; verify each row state in the store page with no JavaScript
 - [ ] 6.5 Wire the modified-app confirmation: a server-rendered confirmation page stating definition changes are lost and unrecoverable unless exported first, while state for surviving fields is preserved and dropped fields reset; verify no write before confirmation, a confirmed update replaces the definition and records a new snapshot, and declining changes nothing
 - [ ] 6.6 Verify the full status matrix against a memory store (clean behind, modified behind, modified current, modified ahead, catalog-differing at the same version, content-equal despite a version-field difference, snapshot-less Installed with no control) and that pins, hidden flags, homepage placement, and recency are untouched by an update
+
+## 7. Single combined list
+
+- [ ] 7.1 Render the combined list from the union of catalog ids and installed ids, deduplicated by id, alphabetical by id, with one row per id and a status badge per row; verify a both-catalog-and-installed app appears exactly once, the App Store itself appears as a row, and an installed app with no catalog entry appears as Storage only
+- [ ] 7.2 Gate every row's controls by its state: Install only for not-installed rows; Pin/Unpin, Hide/Unhide, and Add to home/Remove from home for installed rows only, changing only launcher lists (never definition, state, or snapshot); Update, Restore, or neither per the §6 status matrix; verify each control set and that an update/restore preserves pin and homepage placement
+- [ ] 7.3 Enforce no launching from the catalog: a not-installed row offers no Open link to `/apps/:id`; an installed row links to its app page; verify a catalog-only row has no launch control and an installed row does
+- [ ] 7.4 Keep the combined list unfiltered: hidden apps (including a hidden App Store) appear with an Unhide control, while Hide affects only the Apps launcher tiles; verify hiding then unhiding an app, including the store, from the combined list alone
+- [ ] 7.5 Retire the Apps page Edit mode: remove its edit list and Edit control, leaving Pinned, Recent, and All tiles as a launcher; verify the Apps page has no Edit control and all former Edit controls are present on combined-list rows
+- [ ] 7.6 Verify the combined-list matrix against a memory store (catalog-only, up-to-date, behind-clean, catalog-differing, modified-behind, modified-current, modified-ahead, storage-only formerly-catalog, storage-only custom, snapshot-less Installed) with no JavaScript, plain GET forms + 303 back to the store page
