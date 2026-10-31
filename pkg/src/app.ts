@@ -195,7 +195,7 @@ function resolveTheme(raw: ThemeFile): ResolvedTheme {
 	var icon = typeof src.icon === 'string' ? src.icon : ''
 	var iconSvg = ''
 	// A theme icon that starts with `<svg` must pass the app-icon allowlist;
-	// hostile or malformed markup falls back to the stock checkerboard mark.
+	// hostile or malformed markup falls back to the stock Kody mark.
 	if (icon !== '' && isSvgIcon(icon)) {
 		var iconResult = sanitizeSvgIcon(icon)
 		iconSvg = iconResult.ok ? iconResult.icon : ''
@@ -270,12 +270,14 @@ function shellChrome(opts: {
 	var safeTitle = escapeAttribute(opts.title)
 	var safeName = escapeAttribute(opts.theme.name)
 	var safePrefix = escapeAttribute(opts.theme.titlePrefix)
+	var assetBase = opts.assetBasePath !== '' ? opts.assetBasePath : '/_assets'
+	var faviconHref = escapeAttribute(joinPath(assetBase, '/favicon.png'))
 	var mark =
 		opts.theme.iconSvg !== ''
 			? '<span class="os-mark-glyph" aria-hidden="true">' + opts.theme.iconSvg + '</span>'
 			: opts.theme.icon !== ''
 				? '<span class="os-mark-glyph" aria-hidden="true">' + escapeAttribute(opts.theme.icon) + '</span>'
-				: '<span class="os-mark" aria-hidden="true"></span>'
+				: '<img class="os-mark-img" src="' + faviconHref + '" alt="" aria-hidden="true" />'
 	var bodyAttr = opts.theme.bodyStyle !== '' ? ' style="' + escapeAttribute(opts.theme.bodyStyle) + '"' : ''
 	var closeHref = typeof opts.closeHref === 'string' && opts.closeHref !== '' ? escapeAttribute(opts.closeHref) : safeBase + '/'
 	var closeLabel = typeof opts.closeLabel === 'string' && opts.closeLabel !== '' ? escapeAttribute(opts.closeLabel) : 'Home'
@@ -311,6 +313,9 @@ function shellChrome(opts: {
 		' · ' +
 		safePrefix +
 		'</title>\n' +
+		'\t<link rel="icon" type="image/png" sizes="256x256" href="' +
+		faviconHref +
+		'" />\n' +
 		'\t<style>' +
 		SHELL_CSS +
 		'</style>\n' +
@@ -446,6 +451,10 @@ function withAccessCode(url: string, code: string): string {
  */
 function withAccessCodeInHtml(html: string, code: string): string {
 	return html.replace(/\s(href|action)="([^"]*)"/g, function (match: string, attribute: string, url: string): string {
+		// Static package assets (/_assets/, e.g. the favicon) carry no session
+		// state, so stamping them would put the code in an asset request for
+		// no auth benefit. Leave them clean; page and action links still stamp.
+		if (url.indexOf('/_assets/') !== -1) return match
 		var stamped = withAccessCode(url, code)
 		if (stamped === url) return match
 		return ' ' + attribute + '="' + stamped.replace(/&/g, '&amp;') + '"'

@@ -112,7 +112,7 @@ body {
 	bottom: 0;
 }
 
-/* Fork glyph mark from os-theme.json: replaces the checkerboard when set. */
+/* Fork glyph mark from os-theme.json: replaces the default Kody mark when set. */
 .os-mark-glyph {
 	display: inline-flex;
 	align-items: center;
@@ -134,6 +134,15 @@ body {
 	width: 1.1rem;
 	height: 1.1rem;
 	stroke: currentColor;
+}
+
+/* Default header mark: the official Kody mark in public/favicon.png.
+   A theme icon from os-theme.json still replaces it (see .os-mark-glyph). */
+.os-mark-img {
+	display: block;
+	width: auto;
+	height: 1.5rem;
+	margin-right: 0.45rem;
 }
 
 .os-menubar nav {
