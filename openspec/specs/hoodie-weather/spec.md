@@ -1,12 +1,13 @@
-## Purpose
+# hoodie-weather Specification
 
-The Hoodie Weather app answers one question from the next hour's forecast —
+## Purpose
+The Weather app answers one question from the next hour's forecast —
 raincoat, jacket, hoodie, or t-shirt — and establishes how an app resolves
 *where*: a declared default place through the feed proxy, a place set directly
 by search or MCP, and enhance-only automatic discovery, each degrading to the
 next.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Next-hour verdict display
 
@@ -17,8 +18,9 @@ chosen by this classifier applied in order: chance of rain greater than 30%
 apparent temperature below 65 °F → hoodie; otherwise → t-shirt. Apparent
 temperature SHALL come from the data source when it provides one, otherwise
 be computed from temperature and wind speed with the standard wind-chill
-formula. The verdict SHALL be shown as an inline monochrome SVG drawn in the
-bundle — never an external image file, never an emoji. The app SHALL refresh
+formula. The verdict SHALL be shown as one of the four original HoodieWeather
+PNG images inlined in the bundle as a data URI — never a remote or external
+image file, never an emoji — so the bundle stays self-contained. The app SHALL refresh
 only on page load and on an explicit user-triggered Refresh control; it SHALL
 NOT poll, timer-refresh, or auto-refresh.
 
@@ -73,6 +75,36 @@ the default place through the shell's feed proxy (`GET /feed/hoodie-weather/<nam
 - **WHEN** the proxy returns an error and has no cached entry
 - **THEN** the app shows an error state with a Retry control rather than a
   stale or blank verdict.
+
+### Requirement: NWS names a discovered place
+
+When the saved place's label is exactly `Current location`, the app SHALL make
+one direct request to `https://api.weather.gov/points/{lat},{lon}` and read
+`properties.relativeLocation`. On success with a non-empty city or state, the
+app SHALL persist the same coordinates with that name as the label through
+`set_location`. The request SHALL NOT supply or replace the forecast, SHALL
+NOT block the Open-Meteo render, and SHALL fail silently, leaving the label
+`Current location`. A default or explicitly named place SHALL NOT contact
+`api.weather.gov`. The declared feed SHALL remain Open-Meteo.
+
+#### Scenario: Discovered place gets named
+
+- **WHEN** the saved place came from geolocation and its label is
+  `Current location`, and the points request succeeds
+- **THEN** the label becomes the response's city and state (for example
+  `Louisville, CO`), persisted with the same coordinates, while the forecast
+  remains the Open-Meteo verdict already shown.
+
+#### Scenario: Naming failure is silent
+
+- **WHEN** the points request fails or returns no usable relative location
+- **THEN** the label stays `Current location`, the forecast is unaffected, and
+  no notice or error is shown for the naming attempt.
+
+#### Scenario: No naming request for a named place
+
+- **WHEN** the place is the default or was chosen by search or MCP
+- **THEN** no request to `api.weather.gov` is made.
 
 ### Requirement: Location set directly
 

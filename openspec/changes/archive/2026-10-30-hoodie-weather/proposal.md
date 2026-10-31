@@ -14,7 +14,13 @@ location must be authored, searched for, or (untested on the Scribe) discovered.
   temperature and conditions, and a four-way verdict icon (raincoat / jacket /
   hoodie / t-shirt) computed in bundle JS, faithful to the original's
   classifier (rain chance > 30% → raincoat; apparent temp < 51 °F → jacket;
-  < 65 °F → hoodie; else t-shirt).
+  < 65 °F → hoodie; else t-shirt). The verdict artwork is the four PNGs from
+  the original repository, inlined as data URIs.
+- NWS naming only: when geolocation discovers a place, the bundle makes one
+  `api.weather.gov/points` request and persists the response's
+  `relativeLocation` city/state as the label (for example `Louisville, CO`).
+  The forecast always stays Open-Meteo; naming never blocks or replaces it,
+  and a naming failure silently leaves the honest `Current location` label.
 - Three-layer location resolution, each layer degrading to the next:
   - **L1 default place** — one declared HTTPS feed (`capabilities.feeds`)
     read through the shell's feed proxy; works regardless of device support.
@@ -39,7 +45,7 @@ change — it uses only existing surfaces (`add_app`, `act` with args,
 
 ### New Capabilities
 
-- `hoodie-weather`: the Hoodie Weather app — next-hour verdict display,
+- `hoodie-weather`: the Weather app — next-hour verdict display,
   three-layer location resolution (declared default feed, direct set via
   search/MCP, enhance-only geolocation discovery), and the hosting/state
   constraints its bundle must satisfy.

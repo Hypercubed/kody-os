@@ -38,17 +38,24 @@ direct CORS-open weather fetch — no geolocation anywhere.
 
 ## Decisions
 
-**D1 — Data source: Open-Meteo, not NWS.**
-One request takes `lat`/`lon` in the URL (no `points` → `gridpoints` hop),
-returns a small payload with `apparent_temperature` and
-`precipitation_probability` already computed — exactly the classifier's two
-inputs — and sends `Access-Control-Allow-Origin: *`, which the direct-fetch
-legs require. It is also ReKindle's source, and the original HoodieWeather
-carries it as its own commented-out fallback. Rejected: NWS (faithful to the
-original's *source* but not its behavior) — two-step URL resolution the static
-feed allowlist can't express, a fixed-User-Agent risk in the proxy, and a
-40–90 KB hourly payload. NWS remains available later as a second feed without
-spec changes.
+**D1 — Open-Meteo for weather, NWS for naming.**
+Open-Meteo is the single forecast source: one request takes `lat`/`lon` in the
+URL (no `points` → `gridpoints` hop), returns a small payload with
+`apparent_temperature` and `precipitation_probability` already computed —
+exactly the classifier's two inputs — and sends `Access-Control-Allow-Origin:
+*`, which the direct-fetch legs require. It is also ReKindle's source, and the
+original HoodieWeather carries it as its own commented-out fallback.
+
+The US National Weather Service is used only to name a place that geolocation
+discovered: when the saved label is exactly `Current location`, one direct
+request to `api.weather.gov/points/{lat},{lon}` reads
+`properties.relativeLocation` (city/state), and the same coordinates are
+persisted with that name. There is no `nws` preference and no source toggle;
+the points response never supplies the forecast, so NWS being down cannot
+remove the verdict. NWS is US-only, its coordinate-specific URL cannot ride the static
+feed allowlist, and the browser sends its own User-Agent. Naming is
+enhance-only: failure leaves the honest `Current location` label with no
+notice. A default or explicitly named place never contacts NWS.
 
 **D2 — Three-layer location resolution with a proxy floor.**
 L1: one declared feed whose static URL is the default place's Open-Meteo
@@ -62,17 +69,18 @@ edge or network blocks cross-origin fetch); geolocation-first (rejected —
 untested on device and the whole app would hang on it). The fallback decision
 is spec'd as "label what you show" rather than "retry forever".
 
-**D3 — State is the place, nothing else.**
+**D3 — State is just the place.**
 `stateSchema.fields = { lat, lon, label }` with initial values equal to the
-default place; `set_location` (args, one `set` effect) and a no-argument
+default place; `set_location` (args, `set` effects) and a no-argument
 `restore_default` (fixed values) — the latter exposed as a shell `ui.actions`
 button so the no-JS path can reset. The verdict and forecast are derived and
 never persisted: caching weather in state would freeze stale readings behind
-the shell's span patch. Rejected alternative: storing the last verdict for
-widget display, because a widget renders the bundle live anyway.
+the shell's span patch. The NWS name is written through the same
+`set_location` action as any other label, so there is no second setting and
+no migration.
 
 **D4 — Bridge, not hand-rolled sync.**
-The bundle is stateful (one durable setting) and shares `restore_default`
+The bundle is stateful (one durable setting: place) and shares `restore_default`
 with a shell form, so it follows the recommended path:
 `window.KodyBridge.create(section, …)` with `dispatch('set_location', …)`
 (absolute set → `rebase` returns null, server wins), `claimForm` for the
@@ -85,25 +93,27 @@ re-implement exactly this.
 On init: read seed → resolve effective place (saved → discovered → default)
 → if a non-default place applies, direct-fetch its weather with a timeout;
 on any failure fall back to the L1 proxy feed and raise the "saved place
-unreachable" notice; the Refresh control re-runs the same sequence. Guarded
-`fetch` only (probe-confirmed on device), full render from whatever source
-wins, no source mixing. Geocoding input is debounced and fetched directly;
-the query string never touches a declared feed (validator-visible in the
-spec's feed-allowlist scenario).
+unreachable" notice; the Refresh control re-runs the same sequence. When the
+place label is `Current location`, a naming request runs in parallel with the
+weather request; it can only write the label, never block or replace the
+forecast, and its failure is silent. Guarded `fetch` only (probe-confirmed on
+device), full render from whatever source wins, no source mixing. Geocoding
+input is debounced and fetched directly; the query string never touches a
+declared feed (validator-visible in the spec's feed-allowlist scenario).
 
 **D6 — Next-hour reading.**
 Request `current` plus a bounded `hourly` window (`forecast_days=1`,
 `timezone=auto`) and take the first hourly slot at or after "now" in the
-location's timezone — the equivalent of NWS `periods[0]`. Bounding the query
+location's timezone — the next hourly slot. Bounding the query
 keeps the L1 proxied payload small enough for a modest `maxBytes`
 (≤ 131072) and under the proxy's 8-second fetch timeout.
 
 **D7 — Icons and layout.**
-Four inline monochrome SVGs (hoodie, jacket, t-shirt, raincoat) drawn in the
-bundle in the same stroke style as the shell's SVG icons, toggled by the
+The four original HoodieWeather PNGs (hoodie, jacket, t-shirt, raincoat),
+inlined as data URIs so the bundle stays self-contained, toggled by the
 verdict; label, temperature, conditions line, and rain chance as plain text
-rows using the shell's `os-*` classes. No images, no animation, tap targets
-≥ 48 px.
+rows using the shell's `os-*` classes. No external images, no animation, tap
+targets ≥ 48 px.
 
 **D8 — Landing spot and verification.**
 `pkg/catalog/hoodie-weather.bundle.json` (installable verbatim), a jsdom
@@ -122,9 +132,13 @@ MCP `add_app`.
   regardless.
 - [Open-Meteo is a single unauthenticated upstream; schema or availability
   changes] → guarded parse with error state + Retry (spec'd); the verdict
-  logic is isolated behind one small adapter function so a source swap (e.g.
-  NWS as a second feed) doesn't touch the classifier.
-- [Proxy TTL means up to 15 minutes of stale default-place weather] → 600 s
+  logic is isolated behind one adapter, so the classifier never sees a
+  provider-specific shape.
+- [NWS is US-only and asks for a descriptive User-Agent] → the naming call is
+  direct-fetch only, one request, and strictly optional; the browser supplies
+  its own User-Agent, failure leaves `Current location`, and the forecast is
+  always Open-Meteo.
+- [Proxy TTL means up to 10 minutes of stale default-place weather] → 600 s
   TTL; the direct legs bypass the cache entirely; Refresh only helps past TTL
   — accepted for a next-hour verdict.
 - [Bridge span-observer edge cases around `restore_default` (stale patch vs
