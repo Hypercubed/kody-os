@@ -1,5 +1,7 @@
 # Tasks
 
+> ARCHIVED 2026-10-30: implemented Oct 30, 2026 — bundle authored, catalog-registered, live-installed via `add_app`, and committed in `2bec874` (no version/build change in that commit, not published to Kody at that time). Tasks 1.1, 1.2, 2.1, 2.2 are done as recorded below. Task 2.3 (MINOR version bump) was NOT applied at archive time and is left open below — the version decision is deferred to the next Kody publish, not made by this archive commit. This archive commit changes no `pkg/` code.
+
 ## 1. Bundle
 
 - [x] 1.1 Author `pkg/catalog/calendar.bundle.json` (id `calendar`,
