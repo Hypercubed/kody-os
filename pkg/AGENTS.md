@@ -80,9 +80,11 @@ kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__k
 systemctl --user enable --now kody-os-dev.service # persistent across turns; verify with is-active + curl status
 kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}' # writes ACCESS_HASH_KEY
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
+kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}' # install from catalog by id; op update/list also supported
+kody execute --target mock --file scripts/mint-dev-otp.ts # interim OTP mint (no params); returns a 4-digit single-use code, valid 10 minutes
 ```
 
-Seed `counter` fixture: `python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"` then `registry.ts` with `$(cat /tmp/add.json)`. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
+Seed `counter` fixture (writes before starting `kody dev`; a running preview keeps mock state in memory): seed first, then `catalog.ts` install as above — no Python step needed any more. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Or mint an OTP instead of seeding and enter it in the unlock form — footer then reads `via cookie`. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
 
 ## Edge cases
 

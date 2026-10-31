@@ -16,6 +16,7 @@
  */
 
 import calculatorBundle from '../../catalog/calculator.bundle.json' with { type: 'json' }
+import calendarBundle from '../../catalog/calendar.bundle.json' with { type: 'json' }
 import clockBundle from '../../catalog/clock.bundle.json' with { type: 'json' }
 import counterBundle from '../../catalog/counter.bundle.json' with { type: 'json' }
 import eightBallBundle from '../../catalog/eight-ball.bundle.json' with { type: 'json' }
@@ -27,6 +28,7 @@ import type { AppDefinition } from './types.ts'
 /** Import list, alphabetical by id. The order is the listing order. */
 var CATALOG: AppDefinition[] = [
 	calculatorBundle as AppDefinition,
+	calendarBundle as AppDefinition,
 	clockBundle as AppDefinition,
 	counterBundle as AppDefinition,
 	eightBallBundle as AppDefinition,

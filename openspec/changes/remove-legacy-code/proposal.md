@@ -85,7 +85,11 @@ implemented here (see design.md, Relationship to auth-rethink).
   `pkg/docs/device-key.md` (rewritten to the OTP-only model),
   `pkg/AGENTS.md` + `pkg/README.md` (gate, exports, version,
   local-dev copy), `pkg/docs/adding-an-app.md` (device-key
-  passages).
+  passages). The `pkg/README.md` update is explicit: its
+  Access bullet and its entire Local development section are
+  the user-facing copy that would otherwise keep instructing
+  the retired seed-and-`?k=` flow, so rewriting them is part
+  of this change, not a follow-up docs pass.
 - No storage-key changes for apps. The stale
   `kody-os.auth.code_hash` key in live packageStorage is never
   read again and needs no migration. Publishing with the need

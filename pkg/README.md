@@ -50,30 +50,43 @@ Copy this to your Kody-connected agent and fill in the bracketed parts:
 
 ## Local development (`kody dev`)
 
-Run the real shell locally from `pkg/` with bundled build, persistent mock storage, and live-reload:
+Run the real shell locally from `pkg/` with bundled build, persistent mock storage, and live-reload. Do the writes below *before* starting the server: a running preview keeps its mock state in memory, so writes made while it is running do not show up until it is restarted.
 
 ```sh
 cd pkg
 # proxy bypass required on this host
 export NO_PROXY='*' no_proxy='*'
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
+```
 
+Seed the dev gate code and install the `counter` fixture (one-time per fresh mock store). No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state.
+
+```sh
+kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}'
+kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}'
+```
+
+Then start the server:
+
+```sh
 kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Then seed the dev gate code and the `counter` fixture (one-time per fresh mock store):
-
-```sh
-cd pkg
-kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}'
-python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
-kody execute --target mock --file scripts/registry.ts --params "$(cat /tmp/add.json)"
-```
-
 Open `http://127.0.0.1:4302/?k=local-dev-code-123456` (VSCode port-forward 4302 to reach it remotely). Home shows `via key` when unlocked; Apps lists `counter`; `GET /apps/counter` returns 200; old `hello-counter` id returns 404.
 
-Useful checks: `kody dev check --target mock --offline`, `kody dev fetch "/apps/counter?k=local-dev-code-123456" --target mock`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`.
+Alternative unlock, and the flow that survives the planned remove-legacy-code change: skip the seed step and mint a one-time code instead. It is single use, valid 10 minutes, and burns into a 30-day session cookie, so start the server promptly after minting and enter the code in the unlock form (do not store the code anywhere).
+
+```sh
+kody execute --target mock --file scripts/mint-dev-otp.ts
+# → { "ok": true, "code": "4821" } — example only; use the code you actually get
+kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}'
+kody dev --target mock
+```
+
+With this path the footer reads `via cookie` with a clean URL, not `via key`. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does.
+
+Useful checks: `kody dev check --target mock --offline`, `kody dev fetch "/apps/counter?k=local-dev-code-123456" --target mock` (seeded path only — a minted OTP is single use, so do not use it as a repeatable fetch check), `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`.
 
 ## Theme file
 

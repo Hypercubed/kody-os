@@ -9,6 +9,7 @@ Files:
 - `counter.bundle.json` — unified counter fixture. Retained as the contract fixture: smoke tests, guide, and fast-path verification depend on it. State (`count`) plus `set_count`/`reset_count` actions (effects arrays); the bundle stepper writes through the shared `set_count` action.
 - `eight-ball.bundle.json` — Magic 8-Ball bundle. True random shake in-page via vanilla JS with zero navigation; the shake answer persists best-effort through the shared `record_answer` action when reachable.
 - `clock.bundle.json` — live clock bundle, modal placement (`placements: modal`). Vanilla JS, updates at most once per minute. Opens as a home overlay.
+- `calendar.bundle.json` — month calendar bundle. Fully JS-driven Sunday-first grid from the device-local date, today highlighted, Prev/Next re-render in place with no navigation, fetch, or act(). Always opens on the current month and keeps no state.
 - `xkcd.bundle.json` — xkcd comics as a live RSS feed. Fetches through the shell's same-origin feed proxy first (`capabilities.feeds`, 1h TTL), then tries `xkcd.com/rss.xml` directly; shows the comic image with its alt text and falls back to the stored feed when both fetches are blocked. The stored feed starts empty; a live fetch or `set_feed` fills it.
 
 Rules for all files: one unified shape (meta + `bundle` + `stateSchema` + `set`/`append` actions, optional `capabilities`, no `kind`), ES2019 only, system fonts only, zero emojis, all CSS and JS inlined, well under the 256 KiB cap, no external stylesheets or scripts. Shell-rendered UI actions are plain GET forms; bundle in-page buttons additionally write through the same `act()` handler via the GET action URL (`?action=<name>&...&format=json` guarded `fetch` with full-navigation fallback, preserving `k` when present).
@@ -26,6 +27,7 @@ Then in the agent (Kody MCP), call `add_app` with that definition:
 - counter: `add_app(JSON.parse(read pkg/catalog/counter.bundle.json))` returns `{ ok: true, id: \"counter\" }`.
 - eight-ball: `add_app(JSON.parse(read pkg/catalog/eight-ball.bundle.json))` returns `{ ok: true, id: \"eight-ball\" }`.
 - clock: `add_app(JSON.parse(read pkg/catalog/clock.bundle.json))` returns `{ ok: true, id: \"clock\" }`.
+- calendar: `add_app(JSON.parse(read pkg/catalog/calendar.bundle.json))` returns `{ ok: true, id: \"calendar\" }`.
 - xkcd: `add_app(JSON.parse(read pkg/catalog/xkcd.bundle.json))` returns `{ ok: true, id: \"xkcd\" }`.
 
 Re-adding the same id overwrites the definition and preserves state by default (declared fields carried forward, dropped fields reset to `initial`); pass `resetState: true` to restore the legacy wipe, or `migrate` to rename fields. Reference lists (pins, hidden flags, homepage placement, registry order) survive overwrite; only `remove_app` scrubs them.
