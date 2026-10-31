@@ -1,0 +1,84 @@
+{
+  "id": "cellular-playground",
+  "name": "Cellular Playground",
+  "label": "Cellular Playground",
+  "schemaVersion": 5,
+  "icon": "▦",
+  "category": "Games",
+  "description": "MVP rewrite of Hypercubed/CellularPlayground in vanilla ES2019: Life, Brian's Brain and Seeds on a 20 by 14 board, step mode plus a slow self-started 500 ms Play timer. Cuts vs the original: 3 automata instead of 11, no requestAnimationFrame loop, no stats panel, no dialogs, no fullscreen, no pattern library, dead edges, board stored as a digit string rather than RLE.",
+  "bundle": {
+    "entry": "index.html",
+    "files": {
+      "index.html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<style>\n.cp-wrap { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color: #111; background: #fff; padding: 16px; max-width: 560px; margin: 0 auto; }\n.cp-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }\n.cp-btn { flex: 1; font-family: inherit; font-size: 16px; min-height: 48px; border: 2px solid #111; background: #fff; color: #111; cursor: pointer; padding: 8px; }\n.cp-btn.on { background: #111; color: #fff; }\n.cp-board { display: grid; gap: 1px; background: #888; border: 2px solid #111; margin-bottom: 8px; }\n.cp-cell { height: auto; min-height: 0; background: #fff; border: 0; padding: 0; cursor: pointer; aspect-ratio: 1; }\n.cp-cell.s1 { background: #111; }\n.cp-cell.s2 { background: #888; }\n.cp-meta { font-size: 14px; margin: 0 0 8px 0; }\n.cp-note { font-size: 13px; color: #444; }\n</style>\n</head>\n<body>\n<div class=\"cp-wrap\">\n<div class=\"cp-row\">\n<button type=\"button\" class=\"cp-btn cp-auto on\" data-auto=\"life\">Life (B3/S23)</button>\n<button type=\"button\" class=\"cp-btn cp-auto\" data-auto=\"brain\">Brian's Brain</button>\n<button type=\"button\" class=\"cp-btn cp-auto\" data-auto=\"seeds\">Seeds (B2)</button>\n</div>\n<div class=\"cp-row\">\n<button type=\"button\" class=\"cp-btn\" id=\"cp-step\">Step</button>\n<button type=\"button\" class=\"cp-btn\" id=\"cp-play\">Play</button>\n<button type=\"button\" class=\"cp-btn\" id=\"cp-random\">Random</button>\n<button type=\"button\" class=\"cp-btn\" id=\"cp-clear\">Clear</button>\n</div>\n<div class=\"cp-row\">\n<button type=\"button\" class=\"cp-btn cp-paint on\" data-paint=\"1\">Alive</button>\n<button type=\"button\" class=\"cp-btn cp-paint\" data-paint=\"0\">Empty</button>\n<button type=\"button\" class=\"cp-btn cp-paint\" data-paint=\"2\" id=\"cp-paint2\">Refractory</button>\n</div>\n<p class=\"cp-meta\" id=\"cp-meta\">Generation 0</p>\n<div class=\"cp-board\" id=\"cp-board\"></div>\n<p class=\"cp-note\">Painting: Alive fills a live cell (firing in Brian's Brain), Empty erases to an empty/off cell, Refractory fills a refractory cell and only appears for Brian's Brain.</p>\n<p class=\"cp-note\">A kody-os rewrite of <a href=\"https://github.com/Hypercubed/CellularPlayground\" target=\"_blank\" rel=\"noopener\">Hypercubed/CellularPlayground</a> on GitHub.</p>\n</div>\n<script>\nvar cpScript = null;\ntry { cpScript = document.currentScript; } catch (err) { cpScript = null; }\nvar cpSection = null;\n(function () {\n  var el = cpScript;\n  while (el) {\n    if (el.getAttribute && el.getAttribute('data-app-id')) { cpSection = el; break; }\n    el = el.parentNode;\n  }\n  if (!cpSection) {\n    var secs = document.querySelectorAll('section[data-app-id]');\n    if (secs.length > 0) { cpSection = secs[0]; }\n  }\n})();\nvar CP_W = 20;\nvar CP_H = 14;\nvar cpStore = null;\nvar cpState = { automaton: 'life', generation: 0, grid: '' };\nvar cpPaint = 1;\nvar cpPlaying = false;\nvar cpTimer = null;\nvar cpDragging = false;\nvar cpLastGrid = '';\nvar cpLastAuto = '';\nfunction cpEmptyGrid() {\n  var s = '', i;\n  for (i = 0; i < CP_W * CP_H; i++) { s += '0'; }\n  return s;\n}\nfunction cpPreset(auto) {\n  var cells = [], i, x, y;\n  for (i = 0; i < CP_W * CP_H; i++) { cells.push('0'); }\n  function setCell(px, py, v) {\n    if (px >= 0 && px < CP_W && py >= 0 && py < CP_H) { cells[py * CP_W + px] = v; }\n  }\n  if (auto === 'brain') {\n    setCell(9, 6, '1'); setCell(10, 6, '1'); setCell(11, 6, '1'); setCell(10, 5, '1');\n  } else {\n    setCell(2, 1, '1'); setCell(3, 2, '1'); setCell(1, 3, '1'); setCell(2, 3, '1'); setCell(3, 3, '1');\n    setCell(15, 10, '1'); setCell(16, 10, '1'); setCell(17, 10, '1');\n  }\n  return cells.join('');\n}\nfunction cpRandomGrid(auto) {\n  var cells = [], i, r;\n  for (i = 0; i < CP_W * CP_H; i++) {\n    r = Math.random();\n    if (auto === 'brain') { cells.push(r < 0.15 ? '1' : '0'); }\n    else { cells.push(r < 0.25 ? '1' : '0'); }\n  }\n  return cells.join('');\n}\nfunction cpAt(grid, x, y) {\n  if (x < 0 || x >= CP_W || y < 0 || y >= CP_H) { return 0; }\n  return parseInt(grid.charAt(y * CP_W + x), 10) || 0;\n}\nfunction cpNeighbours(grid, x, y) {\n  var n = 0, dx, dy;\n  for (dy = -1; dy <= 1; dy++) {\n    for (dx = -1; dx <= 1; dx++) {\n      if (dx === 0 && dy === 0) { continue; }\n      if (cpAt(grid, x + dx, y + dy) === 1) { n += 1; }\n    }\n  }\n  return n;\n}\nfunction cpStepGrid(auto, grid) {\n  var out = [], x, y, v, n;\n  for (y = 0; y < CP_H; y++) {\n    for (x = 0; x < CP_W; x++) {\n      v = cpAt(grid, x, y);\n      n = cpNeighbours(grid, x, y);\n      if (auto === 'brain') {\n        if (v === 1) { out.push('2'); }\n        else if (v === 2) { out.push('0'); }\n        else { out.push(n === 2 ? '1' : '0'); }\n      } else if (auto === 'seeds') {\n        if (v === 1) { out.push('0'); }\n        else { out.push(n === 2 ? '1' : '0'); }\n      } else {\n        if (v === 1) { out.push((n === 2 || n === 3) ? '1' : '0'); }\n        else { out.push(n === 3 ? '1' : '0'); }\n      }\n    }\n  }\n  return out.join('');\n}\nfunction cpSquare() {\n  var board = document.getElementById('cp-board');\n  if (!board) { return; }\n  for (var i = 0; i < board.childNodes.length; i++) {\n    var c = board.childNodes[i];\n    if (c.offsetWidth > 0) { c.style.height = c.offsetWidth + 'px'; }\n  }\n}\nfunction cpRebase(server, pending, sent) { return { args: pending, optimistic: pending }; }\nfunction cpSave(next) {\n  cpState = { automaton: next.automaton, generation: next.generation, grid: next.grid };\n  cpRender();\n  if (cpStore) { cpStore.dispatch('save', cpState, cpState, cpRebase); }\n}\nfunction cpLiveCount() {\n  var n = 0, i;\n  for (i = 0; i < cpState.grid.length; i++) {\n    if (cpState.grid.charAt(i) !== '0') { n += 1; }\n  }\n  return n;\n}\nfunction cpRender() {\n  var meta = document.getElementById('cp-meta');\n  if (meta) { meta.textContent = 'Generation ' + cpState.generation + '  |  Live cells ' + cpLiveCount() + '  |  ' + cpState.automaton; }\n  var autos = document.querySelectorAll('.cp-auto');\n  for (var a = 0; a < autos.length; a++) {\n    if (autos[a].getAttribute('data-auto') === cpState.automaton) { autos[a].className = 'cp-btn cp-auto on'; }\n    else { autos[a].className = 'cp-btn cp-auto'; }\n  }\n  var p2 = document.getElementById('cp-paint2');\n  if (p2) { p2.style.display = cpState.automaton === 'brain' ? '' : 'none'; }\n  if (cpState.automaton !== 'brain' && cpPaint === 2) { cpPaint = 1; }\n  var paints = document.querySelectorAll('.cp-paint');\n  for (var p = 0; p < paints.length; p++) {\n    if (parseInt(paints[p].getAttribute('data-paint'), 10) === cpPaint) { paints[p].className = 'cp-btn cp-paint on'; }\n    else { paints[p].className = 'cp-btn cp-paint'; }\n  }\n  if (cpState.grid === cpLastGrid && cpState.automaton === cpLastAuto) { return; }\n  var board0 = document.getElementById('cp-board');\n  if (board0 && board0.childNodes.length === CP_W * CP_H) {\n    cpLastGrid = cpState.grid;\n    cpLastAuto = cpState.automaton;\n    for (var u = 0; u < board0.childNodes.length; u++) {\n      board0.childNodes[u].className = 'cp-cell s' + cpState.grid.charAt(u);\n    }\n    cpSquare();\n    return;\n  }\n  cpLastGrid = cpState.grid;\n  cpLastAuto = cpState.automaton;\n  var board = document.getElementById('cp-board');\n  if (!board) { return; }\n  board.style.gridTemplateColumns = 'repeat(' + CP_W + ', 1fr)';\n  while (board.firstChild) { board.removeChild(board.firstChild); }\n  var i, cell;\n  for (i = 0; i < CP_W * CP_H; i++) {\n    cell = document.createElement('button');\n    cell.type = 'button';\n    cell.className = 'cp-cell s' + cpState.grid.charAt(i);\n    cell.setAttribute('data-idx', String(i));\n    (function (idx, c) {\n      c.addEventListener('click', function () { cpPaintCell(idx); });\n      c.addEventListener('mousedown', function () { cpDragging = true; cpPaintCell(idx); });\n      c.addEventListener('mouseenter', function (e) {\n        if (cpDragging && e.buttons === 1) { cpPaintCell(idx); }\n      });\n      c.addEventListener('touchstart', function () { cpDragging = true; });\n    })(i, cell);\n    board.appendChild(cell);\n  }\n  cpSquare();\n}\nfunction cpPaintCell(idx) {\n  var cells = cpState.grid.split('');\n  if (cpState.automaton === 'brain' && cpPaint === 1) {\n    cells[idx] = cells[idx] === '0' ? '1' : cells[idx];\n  } else {\n    cells[idx] = String(cpPaint);\n  }\n  cpSave({ automaton: cpState.automaton, generation: cpState.generation, grid: cells.join('') });\n}\nfunction cpStopPlay() {\n  cpPlaying = false;\n  if (cpTimer) { clearInterval(cpTimer); cpTimer = null; }\n  var b = document.getElementById('cp-play');\n  if (b) { b.textContent = 'Play'; }\n}\nfunction cpInit() {\n  if (window.KodyBridge && cpSection) {\n    cpStore = window.KodyBridge.create(cpSection, {\n      fieldTypes: { automaton: 'string', generation: 'integer', grid: 'string' },\n      reassert: function (desired) { return { action: 'save', args: desired, optimistic: desired, rebase: cpRebase }; }\n    });\n    cpStore.subscribe(function (snap) {\n      var d = snap.desired;\n      if (d && typeof d.grid === 'string' && d.grid.length === CP_W * CP_H) {\n        cpState = { automaton: d.automaton || 'life', generation: d.generation || 0, grid: d.grid };\n        cpRender();\n      }\n    });\n    cpStore.startSpanObserver();\n    var cur = cpStore.getState().desired;\n    if (cur && typeof cur.grid === 'string' && cur.grid.length === CP_W * CP_H) {\n      cpState = { automaton: cur.automaton || 'life', generation: cur.generation || 0, grid: cur.grid };\n    }\n  } else {\n    var seed = null;\n    var scripts = document.querySelectorAll('script[data-kody-state-seed]');\n    for (var s = 0; s < scripts.length; s++) {\n      try { seed = JSON.parse(scripts[s].textContent); } catch (err) { seed = null; }\n      if (seed) { break; }\n    }\n    if (seed && typeof seed.grid === 'string' && seed.grid.length === CP_W * CP_H) {\n      cpState = { automaton: seed.automaton || 'life', generation: seed.generation || 0, grid: seed.grid };\n    } else {\n      cpState = { automaton: 'life', generation: 0, grid: cpPreset('life') };\n    }\n  }\n  if (!cpState.grid || cpState.grid.length !== CP_W * CP_H) {\n    cpState.grid = cpPreset(cpState.automaton);\n  }\n  window.addEventListener('resize', function () { cpSquare(); });\n  document.addEventListener('mouseup', function () { cpDragging = false; });\n  document.addEventListener('touchend', function () { cpDragging = false; });\n  var board = document.getElementById('cp-board');\n  if (board) {\n    board.addEventListener('touchmove', function (e) {\n      if (!cpDragging) { return; }\n      var t = e.touches[0];\n      var el = document.elementFromPoint(t.clientX, t.clientY);\n      while (el && !el.getAttribute('data-idx')) { el = el.parentNode; }\n      if (el && el.getAttribute('data-idx')) { cpPaintCell(parseInt(el.getAttribute('data-idx'), 10)); }\n    });\n  }\n  var autos = document.querySelectorAll('.cp-auto');\n  for (var ai = 0; ai < autos.length; ai++) {\n    (function (b) {\n      b.addEventListener('click', function () {\n        var auto = b.getAttribute('data-auto');\n        if (auto === cpState.automaton) { return; }\n        cpStopPlay();\n        cpSave({ automaton: auto, generation: 0, grid: cpPreset(auto) });\n      });\n    })(autos[ai]);\n  }\n  var step = document.getElementById('cp-step');\n  if (step) {\n    step.addEventListener('click', function () {\n      cpSave({ automaton: cpState.automaton, generation: cpState.generation + 1, grid: cpStepGrid(cpState.automaton, cpState.grid) });\n    });\n  }\n  var play = document.getElementById('cp-play');\n  if (play) {\n    play.addEventListener('click', function () {\n      if (cpPlaying) { cpStopPlay(); return; }\n      cpPlaying = true;\n      play.textContent = 'Pause';\n      cpTimer = setInterval(function () {\n        cpSave({ automaton: cpState.automaton, generation: cpState.generation + 1, grid: cpStepGrid(cpState.automaton, cpState.grid) });\n      }, 500);\n    });\n  }\n  var rnd = document.getElementById('cp-random');\n  if (rnd) {\n    rnd.addEventListener('click', function () {\n      cpSave({ automaton: cpState.automaton, generation: 0, grid: cpRandomGrid(cpState.automaton) });\n    });\n  }\n  var clr = document.getElementById('cp-clear');\n  if (clr) {\n    clr.addEventListener('click', function () {\n      cpStopPlay();\n      cpSave({ automaton: cpState.automaton, generation: 0, grid: cpEmptyGrid() });\n    });\n  }\n  var paints = document.querySelectorAll('.cp-paint');\n  for (var i = 0; i < paints.length; i++) {\n    (function (b) {\n      b.addEventListener('click', function () {\n        cpPaint = parseInt(b.getAttribute('data-paint'), 10) || 0;\n        cpRender();\n      });\n    })(paints[i]);\n  }\n  cpRender();\n}\nif (document.readyState === 'loading') {\n  document.addEventListener('DOMContentLoaded', cpInit);\n} else {\n  cpInit();\n}\n</script>\n</body>\n</html>\n"
+    }
+  },
+  "ui": {
+    "title": "Cellular Playground",
+    "openAs": "page",
+    "hideState": true,
+    "actions": []
+  },
+  "stateSchema": {
+    "type": "object",
+    "initial": {
+      "automaton": "life",
+      "generation": 0,
+      "grid": "0000000000000000000000100000000000000000000100000000000000000111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011100000000000000000000000000000000000000000000000000000000000000"
+    },
+    "fields": {
+      "automaton": {
+        "type": "string",
+        "maxLength": 32
+      },
+      "generation": {
+        "type": "integer",
+        "min": 0,
+        "max": 1000000
+      },
+      "grid": {
+        "type": "string",
+        "maxLength": 4096
+      }
+    }
+  },
+  "actions": {
+    "save": {
+      "description": "Save the whole playground state (absolute set, bundle wins on rebase).",
+      "args": {
+        "automaton": {
+          "type": "string",
+          "required": true,
+          "maxLength": 32
+        },
+        "generation": {
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 1000000
+        },
+        "grid": {
+          "type": "string",
+          "required": true,
+          "maxLength": 4096
+        }
+      },
+      "effects": [
+        {
+          "op": "set",
+          "field": "automaton",
+          "fromArg": "automaton"
+        },
+        {
+          "op": "set",
+          "field": "generation",
+          "fromArg": "generation"
+        },
+        {
+          "op": "set",
+          "field": "grid",
+          "fromArg": "grid"
+        }
+      ]
+    }
+  }
+}

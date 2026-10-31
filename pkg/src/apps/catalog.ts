@@ -16,8 +16,10 @@
  */
 
 import aboutBundle from '../../catalog/about.bundle.json' with { type: 'json' }
+import arrowGameBundle from '../../catalog/arrow-game.bundle.json' with { type: 'json' }
 import calculatorBundle from '../../catalog/calculator.bundle.json' with { type: 'json' }
 import calendarBundle from '../../catalog/calendar.bundle.json' with { type: 'json' }
+import cellularPlaygroundBundle from '../../catalog/cellular-playground.bundle.json' with { type: 'json' }
 import clockBundle from '../../catalog/clock.bundle.json' with { type: 'json' }
 import counterBundle from '../../catalog/counter.bundle.json' with { type: 'json' }
 import eightBallBundle from '../../catalog/eight-ball.bundle.json' with { type: 'json' }
@@ -26,14 +28,17 @@ import hoodieWeatherBundle from '../../catalog/hoodie-weather.bundle.json' with 
 import macPuzzleBundle from '../../catalog/mac-puzzle.bundle.json' with { type: 'json' }
 import newsBundle from '../../catalog/news.bundle.json' with { type: 'json' }
 import probeBundle from '../../catalog/probe.bundle.json' with { type: 'json' }
+import threeBitArtBundle from '../../catalog/three-bit-art.bundle.json' with { type: 'json' }
 import xkcdBundle from '../../catalog/xkcd.bundle.json' with { type: 'json' }
 import type { AppDefinition } from './types.ts'
 
 /** Import list, alphabetical by id. The order is the listing order. */
 var CATALOG: AppDefinition[] = [
 	aboutBundle as AppDefinition,
+	arrowGameBundle as AppDefinition,
 	calculatorBundle as AppDefinition,
 	calendarBundle as AppDefinition,
+	cellularPlaygroundBundle as AppDefinition,
 	clockBundle as AppDefinition,
 	counterBundle as AppDefinition,
 	eightBallBundle as AppDefinition,
@@ -42,6 +47,7 @@ var CATALOG: AppDefinition[] = [
 	macPuzzleBundle as AppDefinition,
 	newsBundle as AppDefinition,
 	probeBundle as AppDefinition,
+	threeBitArtBundle as AppDefinition,
 	xkcdBundle as AppDefinition,
 ]
 
