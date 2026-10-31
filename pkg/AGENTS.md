@@ -81,6 +81,7 @@ systemctl --user enable --now kody-os-dev.service # persistent across turns; ver
 kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}' # writes ACCESS_HASH_KEY
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}' # install from catalog by id; op update/list also supported
+kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)" # install a definition file directly; params ARE the definition, no op wrapper
 kody execute --target mock --file scripts/mint-dev-otp.ts # interim OTP mint (no params); returns a 4-digit single-use code, valid 10 minutes
 ```
 

@@ -55,6 +55,102 @@ re-import exactly like any other app.
 - **WHEN** a catalog app is installed from the store
 - **THEN** it is neither pinned, nor on the homepage, nor in Recent until the user pins it, adds it to home, or uses it.
 
+### Requirement: Catalog version
+
+Every catalog definition SHALL carry `catalogVersion`: a positive
+integer, starting at 1 on that app's first versioned release, incremented
+by exactly 1 on any change to that app's definition file, never reused,
+never decreased, and never bumped for an unrelated app or a shell change.
+`catalogVersion` is distinct from `schemaVersion` (definition format era)
+and from the shell's package version. A catalog definition without a
+valid `catalogVersion` SHALL fail catalog validation. The canonical
+stored definition SHALL preserve `catalogVersion` through `add_app`
+normalization.
+
+#### Scenario: Catalog definition carries a version
+- **WHEN** a catalog definition is validated
+- **THEN** it is rejected if `catalogVersion` is missing, non-integer, or less than 1.
+
+#### Scenario: Installed copy keeps its catalog version
+- **WHEN** a catalog app is installed through `add_app`
+- **THEN** the stored definition carries the catalog definition's `catalogVersion`.
+
+### Requirement: Install snapshot
+
+A store install or store update of a catalog app SHALL record a snapshot
+separate from the definition, containing the `catalogVersion` at install
+time and a deterministic fingerprint of the definition as actually stored
+(after `add_app` normalization, never of the raw catalog file). Generic
+`add_app` and `import_app` SHALL NOT write the snapshot, and the snapshot
+SHALL NOT be part of an exported definition. `remove_app` SHALL delete
+the snapshot with the app. A store update SHALL replace the snapshot
+with the new version and fingerprint after a successful update.
+
+#### Scenario: Store install records a snapshot
+- **WHEN** a catalog app is installed from the store
+- **THEN** a snapshot exists recording its `catalogVersion` and the fingerprint of its stored definition.
+
+#### Scenario: Generic re-add does not move the snapshot
+- **WHEN** an installed catalog app's definition is replaced through generic `add_app`
+- **THEN** the snapshot still records the version and fingerprint from the store install, so the app now differs from its snapshot.
+
+#### Scenario: Export does not carry the snapshot
+- **WHEN** an installed catalog app is exported
+- **THEN** the export contains its definition and state, but no snapshot, and importing it does not create a snapshot.
+
+### Requirement: Update status and confirmed updates
+
+For an installed catalog app with a snapshot, the store SHALL derive its
+status from the installed definition's fingerprint (I), the snapshot
+fingerprint (S), the current catalog definition's fingerprint (C,
+canonicalized the same way), the installed `catalogVersion` (Iv), and
+the catalog `catalogVersion` (Cv):
+
+- I == C: up to date, clean; no update is offered.
+- I == S and Iv < Cv: behind, clean; an Update control is offered.
+- I == S, Iv == Cv, and I != C: catalog-differing (the catalog changed
+  without a version bump); an Update control is offered with no
+  modification warning.
+- I != S and I != C: modified; behind and modified when Iv < Cv,
+  modified at the current version when Iv == Cv, and modified and ahead
+  when Iv > Cv. A modified app SHALL never be offered a plain Update
+  control, and a catalog copy SHALL never be offered as an Update to an
+  ahead app.
+- No snapshot: no status is claimed and no update control is offered
+  under this scheme (see design.md, Decision 11).
+
+Updating a modified app SHALL replace its definition with the catalog
+copy only after an explicit user confirmation (see the shell spec delta
+for the confirmation's required wording). The update SHALL preserve
+state by the existing `add_app` rule (fields still declared carry
+forward, dropped fields reset to `initial`) and SHALL NOT change pins,
+hidden flags, homepage placement, or recency. The store SHALL never
+auto-update an installed app.
+
+#### Scenario: Clean behind app can update
+- **WHEN** an installed catalog app matches its snapshot and its version is lower than the catalog's
+- **THEN** the store offers Update, and updating replaces its definition, preserves state for surviving fields, and records a new snapshot.
+
+#### Scenario: Modified behind app needs confirmation
+- **WHEN** an installed catalog app differs from its snapshot and its version is lower than the catalog's
+- **THEN** the store does not offer a plain Update control; it offers a confirmed update whose confirmation states that definition changes will be lost while state for surviving fields is preserved.
+
+#### Scenario: Modified current app offers restore, not update
+- **WHEN** an installed catalog app differs from its snapshot at the catalog's version
+- **THEN** the store offers Restore catalog version (with the same confirmation and warning), not Update.
+
+#### Scenario: Ahead app is not offered an update
+- **WHEN** an installed catalog app's version is higher than the catalog's
+- **THEN** the store does not offer it as an update to the catalog copy.
+
+#### Scenario: Snapshot-less app claims no status
+- **WHEN** an installed catalog app has no snapshot
+- **THEN** the store shows its existing Installed row and offers no update control under this scheme.
+
+#### Scenario: Update never runs on its own
+- **WHEN** a republish ships a newer catalog definition
+- **THEN** installed apps keep their stored definitions until the user chooses an update (or restore) from the store.
+
 ### Requirement: First use seeds only the App Store
 
 On the first authenticated shell request against an empty registry, the

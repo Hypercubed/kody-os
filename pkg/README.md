@@ -66,6 +66,12 @@ kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"lo
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}'
 ```
 
+To install your own definition file instead of (or in addition to) a catalog app, use `scripts/add-app.ts` — its params *are* the definition, with no op wrapper (that wrapper belongs to `scripts/registry.ts`):
+
+```sh
+kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)"
+```
+
 Then start the server:
 
 ```sh

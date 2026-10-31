@@ -45,7 +45,15 @@ icon, label, and description. A row for an app that is not installed SHALL
 offer an Install control as a plain GET form (`?install=<id>`, carrying
 whatever session credential the auth transport in force at
 implementation requires, no `app-action` class); a row for an
-installed app SHALL show Installed plus a link to the app. Submitting an
+installed app SHALL show Installed plus a link to the app. An installed
+catalog app with a snapshot SHALL additionally show its update status
+under the app-registry spec delta: behind-and-clean and
+catalog-differing rows offer an Update control; behind-and-modified rows
+offer a confirmed update (see below), not a plain Update control;
+modified-at-current-version rows offer Restore catalog version;
+ahead rows offer Restore catalog version, never Update; up-to-date rows offer neither.
+A row for an installed catalog app without a snapshot SHALL show
+Installed with no update control under this scheme. Submitting an
 Install form SHALL install the app through the registry's
 install-from-catalog path and respond 303 back to the store page. An
 unknown `install` id SHALL respond 400, re-render the store page with an
@@ -53,6 +61,48 @@ inline `role="alert"` error, and change nothing. The listing SHALL require
 no JavaScript. The Help page SHALL present the App Store as the browser
 path for installing shipped apps, with the agent/`add_app` path retained
 for custom apps.
+
+#### Scenario: Behind-and-clean row offers update
+- **WHEN** an installed catalog app matches its snapshot at a lower version than the catalog
+- **THEN** its row shows Update, and submitting it updates the app and returns 303 to the store page.
+
+#### Scenario: Snapshot-less row offers no update
+- **WHEN** an installed catalog app has no snapshot
+- **THEN** its row shows Installed with a link to the app and no Update or Restore control.
+
+### Requirement: Confirmed update for a modified app
+
+Submitting an update (or restore) for a modified catalog app SHALL NOT
+apply the update immediately. It SHALL first render a confirmation page
+(server-rendered, no JavaScript required, normal shell chrome) stating
+that updating will replace the app's definition — bundle files,
+stateSchema, actions, capabilities, and metadata — with the catalog copy
+and that the user's custom definition changes will be lost and cannot be
+recovered afterwards unless the app was exported first, and stating that
+state is preserved for fields still declared in the new definition while
+dropped fields reset to their initial values. Only an explicit
+confirmation submission on that page SHALL apply the update, through the
+registry update path, and respond 303 back to the store page. Declining
+or leaving the confirmation page SHALL change nothing. An update or
+restore for an unknown id, an uninstalled id, or a non-catalog id SHALL
+respond 400, re-render the store page with an inline `role="alert"`
+error, and change nothing.
+
+#### Scenario: Modified update waits for confirmation
+- **WHEN** a confirmed update is requested for a modified catalog app
+- **THEN** the store renders the confirmation page with the loss and state-preservation wording, and storage is unchanged until confirmation.
+
+#### Scenario: Confirmed update replaces definition and keeps surviving state
+- **WHEN** the confirmation is submitted for a modified catalog app
+- **THEN** its definition is replaced with the catalog copy, state for surviving fields is preserved, dropped fields reset, pins and homepage placement are untouched, and a new snapshot is recorded.
+
+#### Scenario: Declined update changes nothing
+- **WHEN** the confirmation page is left without confirming
+- **THEN** the installed definition, state, and snapshot are unchanged.
+
+#### Scenario: Ahead app offers restore, not update
+- **WHEN** an installed catalog app is modified and ahead of the catalog
+- **THEN** its row offers Restore catalog version with the confirmation and warning, never an Update control.
 
 #### Scenario: Store lists every catalog app except itself
 - **WHEN** the App Store page is fetched with catalog apps installed and uninstalled

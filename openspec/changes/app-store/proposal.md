@@ -26,16 +26,26 @@ installs one app instead and lets the user choose the rest.
   bundled definition and loads it into the data store through `add_app` —
   the same validation, atomicity, and state rules as every other registry
   write. No agent, no MCP call, and no republish is needed.
+- Catalog apps carry a per-app version, and a store install records an
+  install snapshot (see design.md, Decisions 7–10). The store can therefore
+  tell whether an installed catalog app is behind the catalog, whether it
+  has been modified since it was installed, or both — and a behind-and-
+  modified app is updated only after an explicit user confirmation that
+  names what updating will lose. The user chooses whether to update an
+  older version; the store never auto-updates.
 - Explicit non-goals: no remote catalog, no third-party submissions, no
   ratings or search/filter in the store listing (the `apps-search` change
-  covers filtering the All-apps list, not the store), no seeded-app update
-  mechanics (a republish ships new catalog definitions; installed apps keep
-  their state until re-installed from the store), no MCP call needed for
+  covers filtering the All-apps list, not the store), no MCP call needed for
   a browser store install. Custom apps still arrive via an agent and
   `add_app`, unchanged. (Correction 2026-10-30: the earlier "no change
   to the MCP surface" wording is superseded — catalog tools including
   `install_from_catalog` were exported from `pkg/src/index.ts` on
-  2026-10-30 outside this change; see tasks 5.2.)
+  2026-10-30 outside this change; see tasks 5.2.) (Correction 2026-10-31:
+  the earlier "no seeded-app update mechanics" non-goal is superseded for
+  versioned catalog apps that have an install snapshot — confirmed updates
+  are now in scope as described in design.md, Decisions 7–10. Installed
+  apps without a snapshot, including apps installed before versioning,
+  are explicitly out of scope for this change; see design.md, Decision 11.)
 
 ## Capabilities
 
@@ -47,23 +57,30 @@ installs one app instead and lets the user choose the rest.
 
 - `app-registry`: lifecycle gains the shipped catalog and install-from-catalog
   through the existing validated `add_app` path, plus first-run seeding of
-  the single App Store app.
+  the single App Store app, plus per-app catalog versioning, install
+  snapshots, update-status classification, and confirmed updates (design.md,
+  Decisions 7–10).
 - `shell`: the App Store app page gains a server-rendered catalog listing
   with install controls; Help and empty-state copy gain the browser install
-  path. No new chrome, no new route family.
+  path. No new chrome, no new route family. Installed catalog rows gain
+  update controls and, for modified apps, a confirmation step carrying the
+  loss warning (see the shell spec delta).
 - `authoring`: catalog membership rules (what a file in `pkg/catalog/` must
   satisfy, and how a new app joins the catalog) replace the `pkg/examples/`
-  contents requirement.
+  contents requirement. Membership now also requires a `catalogVersion`
+  and the bump rule in design.md, Decision 7.
 
 ## Impact
 
 - `pkg/src/apps/catalog.ts` (new; explicit per-file imports of the catalog
   definitions — the Worker has no directory listing), `pkg/src/apps/registry.ts`
-  (install-from-catalog + seeding helper), `pkg/src/apps/client.ts` (store
-  listing section), `pkg/src/app.ts` (seed-on-first-use + install handling on
-  the store page), `pkg/catalog/app-store.bundle.json` (new; the store
-  definition), `pkg/catalog/README.md` (rewritten), `pkg/docs/adding-an-app.md`
-  and `pkg/AGENTS.md` (catalog + browser-install copy, path updates).
+  (install-from-catalog + seeding helper + install snapshots + update
+  classification), `pkg/src/apps/client.ts` (store listing section),
+  `pkg/src/app.ts` (seed-on-first-use + install handling + update handling
+  and confirmation on the store page), `pkg/catalog/app-store.bundle.json`
+  (new; the store definition), `pkg/catalog/README.md` (rewritten),
+  `pkg/docs/adding-an-app.md` and `pkg/AGENTS.md` (catalog + browser-install
+  copy, path updates, version-bump and snapshot rules).
 - `pkg/examples/` and every reference to it move to `pkg/catalog/` in the
   same change, verified by a repo-wide grep. No storage-key changes; no
   export-format change; seeded definitions install via `add_app`, so the
