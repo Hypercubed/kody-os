@@ -1,0 +1,68 @@
+{
+  "id": "counter",
+  "name": "Counter",
+  "label": "Counter",
+  "schemaVersion": 5,
+  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M12 8v8M8 12h8\" /></svg>",
+  "category": "utilities",
+  "description": "A simple counter: tap +1 or -1 to change the count, Reset to start over. Your count is saved.",
+  "bundle": {
+    "entry": "index.html",
+    "files": {
+      "index.html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<style>\n.counter-wrap { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color: #111; background: #fff; text-align: center; padding: 24px 16px; }\n.counter-num { font-size: 56px; line-height: 1.1; margin: 0 0 16px 0; font-variant-numeric: tabular-nums; }\n.counter-row { margin: 0; }\n.counter-step { font-family: inherit; font-size: 17px; min-width: 64px; min-height: 48px; padding: 10px 22px; margin: 0 6px; border: 2px solid #111; border-radius: 999px; background: #fff; color: #111; cursor: pointer; }\n.counter-hint { font-size: 13px; color: #444; margin: 12px 0 0 0; }\n</style>\n</head>\n<body>\n<!-- Reference implementation: bridge adapter in pkg/src/bridge/bridge.js. Pattern: read initial state from the JSON seed, render from bridge subscriptions, dispatch set_count with a delta rebase, claim the shell Reset form through the bridge. Verified by pkg/catalog/tests/counter-tests.cjs. -->\n<div class=\"counter-wrap\">\n<p class=\"counter-num\">0</p>\n<p class=\"counter-row\"><button type=\"button\" class=\"counter-step\" data-delta=\"1\">+1</button><button type=\"button\" class=\"counter-step\" data-delta=\"-1\">-1</button></p>\n\n</div>\n<script>\n/* Reference implementation for the bridge adapter (Phase 2, decided 2026-10-30).\n * The bridge owns the store: this bundle only renders from subscriptions,\n * dispatches set_count, and lets the bridge handle the queue, rebase,\n * rollback, span adoption, and the Reset-form claim. Initial state comes\n * from the JSON seed the shell renders before this bundle, never from\n * scraping spans \u2014 spans are only the dual-channel fallback for old\n * bundles, and the bridge observes them for shell-form patches.\n * Verified by pkg/catalog/tests/counter-tests.cjs. Script style is\n * ES2019, var/function only, no arrows, template literals, optional chaining, or nullish coalescing. */\nvar counterScriptEl = null;\ntry { counterScriptEl = document.currentScript; } catch (err) { counterScriptEl = null; }\nvar counterSectionEl = null;\n(function () {\n  var el = counterScriptEl;\n  while (el) {\n    if (el.getAttribute && el.getAttribute('data-app-id')) { counterSectionEl = el; break; }\n    el = el.parentNode;\n  }\n  if (!counterSectionEl) {\n    var sections = document.querySelectorAll('section[data-app-id]');\n    if (sections.length > 0) counterSectionEl = sections[0];\n  }\n})();\nfunction counterRebase(server, pending, sent) {\n  var delta = pending.count - sent.count;\n  var value = server.count + delta;\n  if (value < 0) { value = 0; }\n  return { args: { value: value }, optimistic: { count: value } };\n}\nfunction counterPaint(n) {\n  var nums = document.querySelectorAll('.counter-wrap .counter-num');\n  for (var i = 0; i < nums.length; i++) { nums[i].textContent = String(n); }\n}\nvar counterStore = null;\nvar counterInitialized = false;\nfunction initCounter() {\n  if (counterInitialized) { return; }\n  counterInitialized = true;\n  if (typeof window === 'undefined' || !window.KodyBridge) {\n    var span = document.querySelector('[data-field=\"count\"] span');\n    if (span) { counterPaint(parseInt(span.textContent, 10) || 0); }\n    return;\n  }\n  counterStore = window.KodyBridge.create(counterSectionEl, { fieldTypes: { count: 'integer' }, reassert: function (desired) { return { action: 'set_count', args: { value: desired.count }, optimistic: desired, rebase: counterRebase }; } });\n  counterStore.subscribe(function (snap) {\n    counterPaint(snap.desired.count);\n  });\n  counterStore.startSpanObserver();\n  counterPaint(counterStore.get('count'));\n  var btns = document.querySelectorAll('.counter-step');\n  for (var i = 0; i < btns.length; i++) {\n    (function (btn) {\n      if (btn && btn.addEventListener) {\n        btn.addEventListener('click', function () {\n          if (!counterStore) { return; }\n          var d = parseInt(btn.getAttribute('data-delta') || '1', 10);\n          if (isNaN(d)) { d = 1; }\n          var current = counterStore.get('count');\n          if (typeof current !== 'number') { current = 0; }\n          var desired = current + d;\n          if (desired < 0) { desired = 0; }\n          if (desired === current) { return; }\n          counterStore.dispatch('set_count', { value: desired }, { count: desired }, counterRebase);\n        });\n      }\n    })(btns[i]);\n  }\n  if (counterSectionEl) {\n    var forms = counterSectionEl.querySelectorAll('form.app-action');\n    for (var f = 0; f < forms.length; f++) {\n      var input = forms[f].querySelector('input[name=\"action\"]');\n      if (input && input.value === 'reset_count') {\n        counterStore.claimForm(forms[f], 'set_count', function () { return { value: 0 }; }, null);\n      }\n    }\n  }\n}\nif (document.readyState === 'loading') {\n  if (document.addEventListener) { document.addEventListener('DOMContentLoaded', initCounter); }\n} else {\n  initCounter();\n}\n</script>\n</body>\n</html>\n"
+    }
+  },
+  "ui": {
+    "title": "Counter",
+    "hideState": true,
+    "actions": [
+      {
+        "action": "reset_count",
+        "label": "Reset count"
+      }
+    ]
+  },
+  "stateSchema": {
+    "type": "object",
+    "initial": {
+      "count": 0
+    },
+    "fields": {
+      "count": {
+        "type": "integer",
+        "min": 0,
+        "max": 1000000
+      }
+    }
+  },
+  "actions": {
+    "set_count": {
+      "description": "Set the counter to an explicit value.",
+      "args": {
+        "value": {
+          "type": "integer",
+          "required": true,
+          "min": 0,
+          "max": 1000000
+        }
+      },
+      "effects": [
+        {
+          "op": "set",
+          "field": "count",
+          "fromArg": "value"
+        }
+      ]
+    },
+    "reset_count": {
+      "description": "Reset the counter to zero.",
+      "effects": [
+        {
+          "op": "set",
+          "field": "count",
+          "value": 0
+        }
+      ]
+    }
+  }
+}

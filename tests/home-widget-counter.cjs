@@ -29,7 +29,7 @@ function check(name, ok, detail) {
 }
 
 var bridgeJs = fs.readFileSync(path.join(__dirname, '..', 'pkg', 'src', 'bridge', 'bridge.js'), 'utf8');
-var counterDef = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pkg', 'examples', 'counter.bundle.json'), 'utf8'));
+var counterDef = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pkg', 'catalog', 'counter.bundle.json'), 'utf8'));
 var counterScript = counterDef.bundle.files['index.html'].match(/<script>([\s\S]*?)<\/script>/)[1];
 
 var fetchCalls = [];

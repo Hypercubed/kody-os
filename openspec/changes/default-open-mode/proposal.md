@@ -60,7 +60,7 @@ permission.
   overlay gating), `pkg/src/app.ts` (modal overlay collection, field
   rename only — same mechanism).
 - `pkg/docs/adding-an-app.md` field table and checklist; all
-  `pkg/examples/*.bundle.json` (Clock becomes `openAs: "modal"`,
+  `pkg/catalog/*.bundle.json` (Clock becomes `openAs: "modal"`,
   the rest omit the field and take the page default).
 - No storage-key change: the registry stores the normalized
   definition, so old and new definitions round-trip through the same

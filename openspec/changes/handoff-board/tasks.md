@@ -4,7 +4,7 @@
 
 - [ ] 1.1 Declare `@hypercubed/handoff` in `pkg/package.json#kody.dependencies` (pinned) and verify the static import resolves in a local typecheck plus preview boot with no capability errors
 - [ ] 1.2 Add the board read path in `pkg/src/app.ts` (live `listTasks` at render, wrapped with failure isolation to an inline error) and verify the board renders the queue plus an honest error when handoff is simulated down
-- [ ] 1.3 Create `pkg/examples/handoff-board.bundle.json` (bundle UI, stateSchema for snapshot + taken-at, `set`-only Refresh) and verify it installs via `add_app` and renders on preview
+- [ ] 1.3 Create `pkg/catalog/handoff-board.bundle.json` (bundle UI, stateSchema for snapshot + taken-at, `set`-only Refresh) and verify it installs via `add_app` and renders on preview
 
 ## 2. Snapshot, docs, publish proof
 

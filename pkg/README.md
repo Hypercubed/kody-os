@@ -2,7 +2,7 @@
 
 Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v0.3.0** — data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box.
+Current: **v0.4.0** — data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), and agent catalog/pin/home/hide tools.
 
 ## Screenshots
 
@@ -67,7 +67,7 @@ Then seed the dev gate code and the `counter` fixture (one-time per fresh mock s
 ```sh
 cd pkg
 kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}'
-python3 -c "import json; d=json.load(open('examples/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
+python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
 kody execute --target mock --file scripts/registry.ts --params "$(cat /tmp/add.json)"
 ```
 

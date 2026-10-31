@@ -17,11 +17,12 @@ Before writing a bundle that displays state, read the [Bundle/shell interaction 
 | `category` | no | Metadata string. The current shell lists all apps together. |
 | `description` | no | Help text shown on the app page. |
 | `ui.title` | no | App page and overlay title. Defaults to `name`. |
-| `ui.placements` | no | Non-empty subset of `page`, `modal`, `widget`. Defaults to `["page"]`. `modal` makes the Apps tile open an overlay; `widget` is reserved and renders nothing. |
+| `ui.openAs` | no | `"page"` or `"modal"`. Defaults to `"page"`. This is only the default for how the Apps-page tile opens the app — `modal` opens the inline overlay, `page` opens the full app page. It is a default, not a restriction: every app is allowed in every context, direct navigation to `/apps/<id>` always renders the full page, and home widget presence is governed by the homepage list, not by this field. |
+| `ui.placements` | deprecated | Old allowlist (`page`, `modal`, `widget`). Still accepted, but it gates nothing: when a definition carries `placements` but no `openAs`, the shell derives `openAs` from it — `["modal"]` without `"page"` derives `"modal"`, any other value derives `"page"` — and when both fields are present, `openAs` wins. Stored and exported definitions carry `openAs` and no `placements`; re-export once to migrate an old definition. |
 | `ui.actions` | no | Array of `{ action, label }`. Each `action` must exist in `actions`. Buttons are no-argument GET forms. |
 | `stateSchema.type` | yes | `"object"`. |
 | `stateSchema.initial` | yes | Initial values. Every key must be declared in `fields`. |
-| `stateSchema.fields` | yes | Map of field name to `{ type, min?, max?, maxLength?, items?, maxItems? }`; `type` is `integer`, `string`, `boolean`, or `array`. `min`/`max` apply to integers; `maxLength` to strings; `items` (`integer`/`string`/`boolean`) and `maxItems` to arrays. |
+| `stateSchema.fields` | yes | Map of field name to `{ type, min?, max?, maxLength?, items?, maxItems? }`; `type` is `integer`, `string`, `boolean`, `array`, or `object` (schemaVersion 5). `min`/`max` apply to integers; `maxLength` to strings; `items` (`integer`/`string`/`boolean`/`object`) and `maxItems` to arrays. |
 | `bundle` | yes | `{ entry: "index.html", files: { path: content } }`. Every app ships its own UI files; see the bundle contract below. |
 | `actions` | yes | `{ [name]: { description?, args?, effects } }`. |
 | `actions.*.effects` | yes | Non-empty array of `set` / `append` effects (see below), applied in order. `increment`, `toggle`, and `reset` are deprecated sugar kept only until migration retires them; do not use them in new apps. |
@@ -46,7 +47,7 @@ They are generic data-write operators, not a built-in counter app. `counter` is 
 
 Each app has isolated state at `kody-os.apps.state.<id>`. Every action coerces its args, applies the effect to a copy of state, re-validates the result against the schema, then writes with a single set. A bad action returns `{ ok: false, error }` and leaves stored state untouched. One app cannot touch another app’s state.
 
-Stated plainly: there is no `random`/`shuffle` operator, and UI buttons carry no arguments. A true Magic 8-ball “shake” keeps its randomness in bundle JS and persists the outcome through a `set`/`append` action (see `examples/eight-ball.bundle.json`); arg-taking actions are driven through MCP `act(id, action, args)` or bundle `fetch`. Do not invent new operators per app; they are only these two.
+Stated plainly: there is no `random`/`shuffle` operator, and UI buttons carry no arguments. A true Magic 8-ball “shake” keeps its randomness in bundle JS and persists the outcome through a `set`/`append` action (see `catalog/eight-ball.bundle.json`); arg-taking actions are driven through MCP `act(id, action, args)` or bundle `fetch`. Do not invent new operators per app; they are only these two.
 
 ### Kindle Scribe browser: what agents may assume
 
@@ -65,7 +66,7 @@ Not available to depend on:
 - External stylesheets or external scripts.
 - Cookies/`localStorage` as functional storage; treat them as absent.
 
-The shell provides the bridge adapter, `window.KodyBridge` v1 (Phase 2 — see the bridge surface in the [Bundle/shell interaction contract](#bundleshell-interaction-contract)). The second-app gate is passed: Counter and xkcd are both ported to it, live on v0.2.0 build 10. Per-app framework vendoring is not the recommended path. JavaScript itself is assumed: the on-device probe in `scribe-limitations.md` proves Chromium 80 with working fetch, timers, events, DOM, and storage. The span-based state contract in this guide documents current shell behavior for existing bundles; new bundles use the JSON seed through the bridge, not span scraping.
+The shell provides the bridge adapter, `window.KodyBridge` v1 (Phase 2 — see the bridge surface in the [Bundle/shell interaction contract](#bundleshell-interaction-contract)). The second-app gate is passed: Counter and xkcd are both ported to it, live on v0.3.0 build 12. Per-app framework vendoring is not the recommended path. JavaScript itself is assumed: the on-device probe in `scribe-limitations.md` proves Chromium 80 with working fetch, timers, events, DOM, and storage. The span-based state contract in this guide documents current shell behavior for existing bundles; new bundles use the JSON seed through the bridge, not span scraping.
 
 ReKindle is existence proof that guarded vanilla JS can run in a Kindle browser. It is not proof of modern APIs, storage, sockets, or timers. So: enhance where present, never require.
 
@@ -77,7 +78,7 @@ The device gate is a latch, not multi-user auth: one shared gate per OS install,
 
 ### Bundle contract
 
-Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `examples/counter.bundle.json`, `examples/eight-ball.bundle.json`, and `examples/clock.bundle.json` (modal placement) for installable shapes.
+Every app ships its own UI files: there is no separate bundle kind and no `kind` field. Shape fragment: `{ bundle: { entry: "index.html", files: { path: content } } }`. The bundle manifest holds `entry` (must be exactly `index.html`) plus a `files` map of path to string content. Every path must be a relative `.html`, `.js`, or `.css` path with no `..` and no absolute path; deeper nesting beyond one level is not accepted. The files in one bundle must total no more than 256 KiB (`BUNDLE_CAP_BYTES = 256 * 1024`, part of the 16 MiB package storage budget). A definition with a `kind` field is rejected with guidance naming the unified shape. See `catalog/counter.bundle.json`, `catalog/eight-ball.bundle.json`, and `catalog/clock.bundle.json` (modal placement) for installable shapes.
 
 Validation rejects bad bundles before any write and returns `{ ok: false, error }`:
 
@@ -111,7 +112,7 @@ Validation failures name the offending construct — for example `definition.ico
 
 ### Definition versioning
 
-Every definition carries `schemaVersion`, an integer matching the current `DEFINITION_SCHEMA_VERSION` (`4` today; `1` = operator-only era, `2` = bundle-kind era, `3` = unified single-`effect`, `4` = v2 `effects[]` sequence with `ui.template` removed). Send it in every `add_app` call. A definition without it, or a **new** id carrying an older version, is rejected with an error naming the current version, and nothing is written.
+Every definition carries `schemaVersion`, an integer matching the current `DEFINITION_SCHEMA_VERSION` (`5` today; `1` = operator-only era, `2` = bundle-kind era, `3` = unified single-`effect`, `4` = v2 `effects[]` sequence with `ui.template` removed, `5` = v5 `object` fields and arrays of objects, JSON depth cap 10). Send it in every `add_app` call. A definition without it, or a **new** id carrying an older version, is rejected with an error naming the current version, and nothing is written. Versions 3 and 4 still validate for existing ids, which are restamped to 5 on re-add with state preserved by default.
 
 Re-adding an existing id overwrites it and restamps it to the current version regardless of what was submitted. That is how an old app comes forward: export it first if you need the current state, then re-add it. `list_apps()` returns `schemaVersion` on every summary, so "which apps need updating?" is a filter over the list.
 
@@ -121,11 +122,11 @@ Breaking definition changes bump `DEFINITION_SCHEMA_VERSION` and ship a migratio
 
 `act()` applies to every app: bundle UI and MCP calls share the one `act()` handler and the same state. An unknown action returns `{ ok: false, error }` and writes nothing. Re-adding an id with `add_app` overwrites the definition, keeps registry order, pins, hidden flags, homepage placement, and recent entries, and preserves state by default (declared fields carried forward, dropped fields reset to `initial`). Pass `resetState: true` to restore the legacy wipe, or `migrate: { oldField: newField }` to rename fields with validator-checked values; an unmappable `migrate` aborts the whole re-add with `{ ok: false }` and no state change.
 
-The shell hosts a bundle inside the existing chrome (title, nav, inlined theme, single `<style>`, zero external assets). It inlines the `index.html` entry into the app panel (or overlay for `modal` placement), inlines referenced bundle-relative `<script src>` and stylesheet `<link>` content, drops dangling references that match no bundle file instead of fetching them, and appends any extra bundled `.js`/`.css` files as inline blocks. A bundle that cannot be displayed degrades to the normal chrome plus an explanatory message and a working close or back control, never a blank page. Unknown ids still return 404.
+The shell hosts a bundle inside the existing chrome (title, nav, inlined theme, single `<style>`, zero external assets). It inlines the `index.html` entry into the app panel (or overlay for `modal` placement), inlines referenced bundle-relative `<script src>` and stylesheet `<link>` content, drops dangling references that match no bundle file instead of fetching them, and appends any extra bundled `.js`/`.css` files as inline blocks. A modal overlay panel opens with its top at 25vh (upper, not centered); its titlebar carries a close box on the left (back to the Apps page) and an expand box on the right that opens the full app page at `/apps/<id>?from=/apps` — the same expand pattern as a home widget. A bundle that cannot be displayed degrades to the normal chrome plus an explanatory message and a working close or back control, never a blank page. Unknown ids still return 404.
 
 ### Bundle/shell interaction contract
 
-This section states the full protocol between a bundle and the shell. It is the binding contract for stateful bundles (agent-app-authoring Phase 1, 2026-10-29; Phase 2 bridge decisions, 2026-10-30). The Counter bundle (`pkg/examples/counter.bundle.json`) is the reference implementation: it is ported to the bridge, and `pkg/examples/tests/counter-tests.cjs` is the harness that proves it. There are two paths, and both are valid: the bridge path (recommended, below) and the hand-rolled path (rules 4–6, for bundles that do not use the bridge). The retired no-JS premise does not justify the span contract: JavaScript is assumed on the Scribe (see the Kindle Scribe section above). The span-based state handoff below is current behavior for existing bundles; the structured JSON state handoff is decided for Phase 2 and is what new bundles use, with a dual-channel migration (seed and span both rendered) until existing bundles are ported.
+This section states the full protocol between a bundle and the shell. It is the binding contract for stateful bundles (agent-app-authoring Phase 1, 2026-10-29; Phase 2 bridge decisions, 2026-10-30). The Counter bundle (`pkg/catalog/counter.bundle.json`) is the reference implementation: it is ported to the bridge, and `pkg/catalog/tests/counter-tests.cjs` is the harness that proves it. There are two paths, and both are valid: the bridge path (recommended, below) and the hand-rolled path (rules 4–6, for bundles that do not use the bridge). The retired no-JS premise does not justify the span contract: JavaScript is assumed on the Scribe (see the Kindle Scribe section above). The span-based state handoff below is current behavior for existing bundles; the structured JSON state handoff is decided for Phase 2 and is what new bundles use, with a dual-channel migration (seed and span both rendered) until existing bundles are ported.
 
 **1. Rendered markup, exactly.** The shell renders, in order: the JSON state seed, the bundle UI, then one state readout per declared state field, then one form per `ui.actions` entry. The code in `pkg/src/apps/client.ts` (`renderAppSection`, `renderStateSeed`) is authoritative; the markup is:
 
@@ -140,7 +141,7 @@ This section states the full protocol between a bundle and the shell. It is the 
 </form>
 ```
 
-The bundle container sits inside `<section class="app" data-app-id="<id>">` on app pages and modal overlays; a home widget renders the same content inside `<section class="widget">` without `data-app-id`. The state readout is a `<p data-field="<name>">` containing the field name as text and a plain `<span>` holding the escaped value. There is **no `data-value` attribute** on the paragraph or the span. With `ui.hideState: true` the paragraph carries `hidden`; the span stays in the DOM with the current value. `ui.actions` forms are shell-owned GET forms: `form.app-action`, hidden `action` input (plus `k`/`from` when present), one submit button. A bundle must not rewrite, replace, or restyle these forms as its own, and must not assume any other markup for state or actions.
+The bundle container sits inside `<section class="app" data-app-id="<id>">` on app pages and modal overlays; a home widget renders the same content inside `<section class="widget" data-app-id="<id>">`. (Widget sections carried no `data-app-id` before v0.2.1 — that gap made the bridge read another app's seed on the home screen; do not assume it is absent.) The state readout is a `<p data-field="<name>">` containing the field name as text and a plain `<span>` holding the escaped value. There is **no `data-value` attribute** on the paragraph or the span. With `ui.hideState: true` the paragraph carries `hidden`; the span stays in the DOM with the current value. `ui.actions` forms are shell-owned GET forms: `form.app-action`, hidden `action` input (plus `k`/`from` when present), one submit button. A bundle must not rewrite, replace, or restyle these forms as its own, and must not assume any other markup for state or actions.
 
 **2. Initial-state reading.** A bundle using the bridge reads its initial value from the JSON seed the shell renders before the bundle (rule 1) — the seed is present at bundle-script time, which the span readout is not (2026-10-30 Scribe probe: span present only by `DOMContentLoaded`). The bridge (`KodyBridge.create`) reads the seed for the bundle's section, falling back to the spans only when no seed is present. A hand-rolled bundle that displays a declared state field reads its initial value from the rendered `[data-field]` span's text. Never assume a `data-value` attribute exists: the renderer emits none, so a bundle that reads one silently falls back to whatever it hardcoded. The Counter bundle's stored display is hardcoded to `0`; reading its own display alone would restart the counter at `0` on every page load. Read the seed (bridge) or the span (hand-rolled) first, and treat the bundle's own static markup only as a last-resort fallback when neither is present at all.
 
@@ -174,15 +175,15 @@ A bundle with no shared actions needs none of this; a bundle whose buttons are t
 
 ### Pre-`add_app` authoring checklist
 
-Run every item before calling `add_app`. The verification path is exactly one: the `kody dev` end-to-end check below plus the jsdom harness pattern in `pkg/examples/README.md`. There is no other supported local verification path.
+Run every item before calling `add_app`. The verification path is exactly one: the `kody dev` end-to-end check below plus the jsdom harness pattern in `pkg/catalog/README.md`. There is no other supported local verification path.
 
-- [ ] The definition validates: id, `schemaVersion` 5 (3 and 4 still accepted for existing apps), bundle entry and 256 KiB cap, state schema (including `object` fields and arrays of objects in v5), `set`/`append` effects only, `ui.actions` referencing declared actions.
+- [ ] The definition validates: id, `schemaVersion` 5 for a new app (3 and 4 still accepted on re-add of an existing app, which restamps it to 5 with state preserved), bundle entry and 256 KiB cap, state schema (including `object` fields and arrays of objects in v5), `set`/`append` effects only, `ui.actions` referencing declared actions.
 - [ ] The bundle renders in `kody dev`: the app page shows the JSON seed before the bundle, the bundle, the state readout, and the shell action forms, with no console or render error.
 - [ ] State initializes from the JSON seed (bridge) or the shell span (hand-rolled): loading the page at a non-zero stored value displays that value, not the bundle's hardcoded markup.
 - [ ] Shell-form actions stay in sync under rapid and overlapping input: Reset-then-step, step-then-Reset, and a stale response landing after Reset all settle at the newest intended value, in the bundle display and in the span (run the harness scenarios, or step through them in `kody dev` with the network delayed).
 - [ ] The ES2019 scan is clean for browser-executed bundle code: no post-ES2019 syntax or APIs; see the canonical ceiling in `scribe-limitations.md`. (The Counter bundle's stricter avoidance of arrows, `const`/`let`, `async`/`await`, and template literals is its own style, not a checklist requirement.)
 - [ ] No action URL is built from `window.location.pathname` alone: every bundle `fetch` resolves against the container's `data-action-base`, sends `credentials: 'same-origin'`, requests `?format=json`, and falls back to full navigation.
-- [ ] Stateful bundle: uses the bridge (`window.KodyBridge` v1, see the bridge surface above), or records why not (hand-rolled per rules 4–6, or a documented per-app fallback with pinned version and update owner). The second-app gate is passed (Counter + xkcd ported, live on v0.2.0 build 10); the bridge is the recommended path for stateful bundles.
+- [ ] Stateful bundle: uses the bridge (`window.KodyBridge` v1, see the bridge surface above), or records why not (hand-rolled per rules 4–6, or a documented per-app fallback with pinned version and update owner). The second-app gate is passed (Counter + xkcd ported, live on v0.3.0 build 12); the bridge is the recommended path for stateful bundles.
 
 Scribe posture for bundle content: ES2019 only — see the canonical ceiling in `scribe-limitations.md` (no post-ES2019 syntax or APIs); system fonts only, zero emojis, all CSS and JS inlined, no external stylesheets or scripts. Guarded `fetch` of the same-origin GET action with `?format=json` is allowed where `fetch` and JSON parsing exist; never require timers, WebSockets, client-side routing, animations, auto-refresh, or polling. Large tap targets and high-contrast black-on-white still apply. Full device findings: `scribe-limitations.md`.
 
@@ -201,7 +202,7 @@ Save this as `/tmp/preview-counter.json` (a scratch path outside the repo; the c
   "id": "preview-counter",
   "name": "Preview Counter",
   "label": "Counter",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "icon": "+",
   "category": "Tests",
   "description": "A counter added through the app registry; no republish.",
@@ -243,8 +244,9 @@ Save this as `/tmp/preview-counter.json` (a scratch path outside the repo; the c
 `add_app` validates before writing. On failure it returns `{ ok: false, error }` and writes nothing. Common errors:
 
 - `definition.id must match ^[a-z0-9][a-z0-9-]{0,63}$`
-- `definition.schemaVersion must be a positive integer; the current version is 4`
-- `definition.schemaVersion 1 is stale for a new app; send the current version 4 (re-adding an existing id restamps it)`
+- `definition.schemaVersion must be a positive integer; the current version is 5`
+- `definition.schemaVersion 1 is stale for a new app; send the current version 5 (re-adding an existing id restamps it)`
+- `unsupported definition.schemaVersion <n> (supported: 3, 4, 5)`
 - `definition.kind "..." is retired; use the unified shape: meta + bundle { entry, files } + stateSchema + actions`
 - `definition.bundle.entry must be "index.html"` (plus bad-path, non-string-file, and 256 KiB cap errors)
 - `definition.ui.template must be hello, generic, or clock` (schemaVersion 3 only; frozen, required but render-ignored)
@@ -311,7 +313,7 @@ The package is `@hypercubed/kody-os`; this install is hosted at `https://hypercu
 
 ## Add to the local preview (`kody dev`)
 
-The local preview serves the working tree with `kody dev`. This is the one supported local verification path, together with the jsdom harness in `pkg/examples/README.md` — see the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). Run every command in this section from `pkg/` (running from the repo root fails: the package entry is not found there). Its mock storage is separate from the hosted store. A fresh mock store is unconfigured, so the shell is locked until you set a local access code.
+The local preview serves the working tree with `kody dev`. This is the one supported local verification path, together with the jsdom harness in `pkg/catalog/README.md` — see the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). Run every command in this section from `pkg/` (running from the repo root fails: the package entry is not found there). Its mock storage is separate from the hosted store. A fresh mock store is unconfigured, so the shell is locked until you set a local access code.
 
 Local registry writes use the existing file helpers in `pkg/scripts/` — do not recreate them: `scripts/registry.ts` (add/list/remove through `add_app`/`list_apps`/`remove_app`) and `scripts/seed-dev-hash.ts` (seed a throwaway dev hash). The local preview has no bound secret, so the derived path is empty there and the pre-secret stored-hash fallback applies. The seed script is a mock-store test fixture, not key management — the hosted code is derived from the Kody secret and has no set path. The same commands, proxy bypass, and `kody dev fetch` checks are in the "Local dev" sections of `pkg/README.md` and `pkg/AGENTS.md`; this section is the authoring copy of that path, not a second one.
 
@@ -373,7 +375,7 @@ The local mock session defaults to `default`; set `KODY_MOCK_SESSION_ID` to use 
 
 - **Read state:** `get_app_state(id)` returns the same state the app page renders.
 - **Run an action:** `act(id, action, args?)` returns `{ ok: true, state }` or `{ ok: false, error }`.
-- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); the shell adds the session or device code as a hidden `k` field only when the current session is query-authenticated, so cookie-authenticated pages render fully clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field` value spans update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. The renderer adds `form.app-action`, `section[data-app-id]`, `data-action-base` on the bundle container, and `data-field` hooks automatically — but that is not the whole job for a bundle that displays state: the bundle must read its initial value from the span and handle shell-form actions per the [Bundle/shell interaction contract](#bundleshell-interaction-contract), or its display goes stale the first time a shell form fires.
+- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); the shell adds the session or device code as a hidden `k` field only when the current session is query-authenticated, so cookie-authenticated pages render fully clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field` value spans update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. The renderer adds `form.app-action`, `section[data-app-id]`, `data-action-base` on the bundle container, and `data-field` hooks automatically — but that is not the whole job for a bundle that displays state: the bundle must read its initial value from the JSON seed (bridge) or the span (hand-rolled) and handle shell-form actions per the [Bundle/shell interaction contract](#bundleshell-interaction-contract), or its display goes stale the first time a shell form fires.
 - **Homepage:** Apps → Edit → **Add to home** / **Remove from home**. The home dashboard shows live widgets in homepage order. Homepage placement is a UI action in the current shell; there is no `set_home` MCP export.
 - **Pin and hide:** Apps → Edit → **Pin** / **Hide**. Hide is reversible. The UI has no Remove control.
 - **Export:** `export_app(id)` returns `{ format: "kody-os-app/2", exportedAt, definition, state }`. `import_app(payload, undefined, { overwrite: true })` restores it into the other target. Use this to copy between hosted and local, which have separate stores.

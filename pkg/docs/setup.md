@@ -126,7 +126,7 @@ in to Kody, the footer reads `via kody` and no code is needed.
 
 Add your first app through your agent with the package's
 `add_app` export, using one of the bundled example definitions
-in `pkg/examples/` (for example `counter`). The agent validates
+in `pkg/catalog/` (for example `counter`). The agent validates
 the definition before writing, and the app appears on the Apps
 page with no republish. See [Adding an app](adding-an-app.md)
 for the definition contract, verification, homepage placement,
@@ -152,7 +152,7 @@ target where you want it.
 
 ## Catalog and trust
 
-The bundled example definitions in `pkg/examples/` are the
+The bundled example definitions in `pkg/catalog/` are the
 catalog today. Installing an app means trusting its code: bundle
 scripts run same-origin with full session authority, so review
 third-party definitions before importing them. The trust rule and
@@ -182,7 +182,7 @@ pattern in `pkg/README.md`:
 
 ```sh
 cd pkg
-python3 -c "import json; d=json.load(open('examples/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
+python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
 kody execute --target mock --file scripts/registry.ts --params "$(cat /tmp/add.json)"
 ```
 

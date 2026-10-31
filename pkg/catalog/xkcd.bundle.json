@@ -4,7 +4,7 @@
   "label": "xkcd",
   "schemaVersion": 5,
   "icon": "X",
-  "category": "Reading",
+  "category": "reading",
   "description": "xkcd comics as a live RSS feed. Fetches through the shell's same-origin feed proxy first, then tries xkcd.com/rss.xml directly; shows the comic image with its alt text and falls back to the stored feed when both fetches are blocked.",
   "capabilities": {
     "feeds": [
@@ -23,10 +23,7 @@
     }
   },
   "ui": {
-    "title": "xkcd",
-    "placements": [
-      "page"
-    ]
+    "title": "xkcd"
   },
   "stateSchema": {
     "type": "object",

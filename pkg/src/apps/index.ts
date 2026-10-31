@@ -6,7 +6,7 @@
  * @example
  * import { add_app, list_apps, act } from './src/apps/index.ts'
  *
- * await add_app(counterBundle) // parsed pkg/examples/counter.bundle.json
+ * await add_app(counterBundle) // parsed pkg/catalog/counter.bundle.json
  * await act('counter', 'set_count', { value: 1 })
  */
 export type {
@@ -18,6 +18,7 @@ export type {
 	BundleManifest,
 	AppExport,
 	AppPlacement,
+	OpenAs,
 	AppState,
 	AppSummary,
 	FieldType,
@@ -41,6 +42,7 @@ export {
 	add_app,
 	BUNDLE_CAP_BYTES,
 	clear_recent,
+	deriveOpenAs,
 	export_app,
 	export_install,
 	get_app,
@@ -51,6 +53,7 @@ export {
 	get_recent,
 	import_app,
 	import_install,
+	install_from_catalog,
 	list_apps,
 	migrateAction,
 	migrateDefinition,
@@ -64,7 +67,10 @@ export {
 	set_pin,
 	set_pinned,
 	SUPPORTED_SCHEMA_VERSIONS,
+	update_from_catalog,
 	validateDefinition,
 } from './registry.ts'
 export { actFromForm } from './forms.ts'
+export { get_catalog_definition, list_catalog } from './catalog.ts'
+export type { CatalogSummary } from './catalog.ts'
 export { escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'

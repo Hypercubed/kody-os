@@ -5,7 +5,10 @@
  *
  * MCP interface (same state + same handlers as the UI):
  * list_apps, get_app_state, act, add_app, remove_app, export_app
- * (+ get_app, import_app).
+ * (+ get_app, import_app), catalog tools (list_catalog,
+ * get_catalog_definition, install_from_catalog,
+ * update_from_catalog), and pin tools (get_pinned, set_pin,
+ * set_pinned).
  *
  * @returns Package name, shell export guidance, and the Phase 2 status note
  *
@@ -14,7 +17,7 @@
  *
  * const info = await main()
  * console.log(info.package) // @hypercubed/kody-os
- * // counter comes from pkg/examples/counter.bundle.json via add_app
+ * // counter comes from pkg/catalog/counter.bundle.json via add_app
  */
 export default async function main(): Promise<{
 	package: string
@@ -52,7 +55,62 @@ export default async function main(): Promise<{
 				name: 'export_app',
 				useWhen: 'Export one app as complete JSON for re-import into a blank install.',
 			},
-	
+			{
+				name: 'list_catalog',
+				useWhen: 'List the shipped catalog (id, label, category, description) — the apps an agent can install without authoring a definition.',
+			},
+			{
+				name: 'get_catalog_definition',
+				useWhen: 'Read one shipped catalog definition in full, or null for an unknown id.',
+			},
+			{
+				name: 'install_from_catalog',
+				useWhen: 'Install a shipped catalog app by id; idempotent, state preserved on re-install, never wipes state.',
+			},
+			{
+				name: 'update_from_catalog',
+				useWhen: 'Bring an already-installed app up to its shipped catalog definition, preserving state; refuses to install new apps.',
+			},
+			{
+				name: 'get_pinned',
+				useWhen: 'Read the pinned app ids in pin order.',
+			},
+			{
+				name: 'set_pin',
+				useWhen: 'Pin or unpin one app, keeping pin order.',
+			},
+			{
+				name: 'set_pinned',
+				useWhen: 'Overwrite the whole pinned list (order matters).',
+			},
+			{
+				name: 'get_homepage',
+				useWhen: 'Read the home-screen app ids in dashboard order.',
+			},
+			{
+				name: 'set_home',
+				useWhen: 'Add or remove one app from the home screen, keeping dashboard order.',
+			},
+			{
+				name: 'set_homepage',
+				useWhen: 'Overwrite the whole home-screen list (order matters).',
+			},
+			{
+				name: 'move_home',
+				useWhen: 'Move one home-screen app up (-1) or down (+1).',
+			},
+			{
+				name: 'get_hidden',
+				useWhen: 'Read the hidden app ids.',
+			},
+			{
+				name: 'set_hide',
+				useWhen: 'Hide or unhide one app.',
+			},
+			{
+				name: 'set_hidden',
+				useWhen: 'Overwrite the whole hidden list.',
+			},
 		],
 		note: 'Phase 2 app layer — data-driven apps via packageStorage.',
 	}
@@ -64,9 +122,23 @@ export {
 	export_app,
 	get_app,
 	get_app_state,
+	get_catalog_definition,
+	get_hidden,
+	get_homepage,
+	get_pinned,
 	import_app,
+	install_from_catalog,
 	list_apps,
+	list_catalog,
+	move_home,
 	remove_app,
+	set_hide,
+	set_hidden,
+	set_home,
+	set_homepage,
+	set_pin,
+	set_pinned,
+	update_from_catalog,
 	validateDefinition,
 } from './apps/index.ts'
 export { actFromForm } from './apps/index.ts'
@@ -81,4 +153,6 @@ export type {
 	AppPlacement,
 	AppState,
 	AppSummary,
+	CatalogSummary,
+	OpenAs,
 } from './apps/index.ts'

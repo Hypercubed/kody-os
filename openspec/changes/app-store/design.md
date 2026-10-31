@@ -22,10 +22,13 @@ carry that class.
   can install from with no agent; install through the existing validated
   `add_app` path; catalog membership as a checkable rule.
 - Non-goals: remote/third-party catalogs; store search, ratings, or
-  reviews; per-app update prompts; an MCP install export (agents already
-  have `add_app`); a store that is itself a bundle-JS listing (a static
-  bundle cannot know installed state — the listing is shell-rendered, like
-  the state readout).
+  reviews; per-app update prompts; a store that is itself a bundle-JS
+  listing (a static bundle cannot know installed state — the listing is
+  shell-rendered, like the state readout). (Correction 2026-10-30: the
+  earlier "an MCP install export (agents already have `add_app`)"
+  non-goal is superseded — `install_from_catalog` now exists as the MCP
+  install path, added 2026-10-30 outside this change; the store reuses
+  it and needs no further MCP export.)
 
 ## Decisions
 

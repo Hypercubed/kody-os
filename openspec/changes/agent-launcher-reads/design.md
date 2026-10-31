@@ -9,6 +9,8 @@ See proposal.md (Why). The facts established on 2026-10-28:
 - `AppSummary` (`pkg/src/apps/types.ts`) has no launcher flags, so `list_apps` cannot answer "is this app pinned / on home?".
 - The shell's own `GET /apps` handler (`pkg/src/app.ts`) already reads all four lists together via the internal imports, so the aggregate reader mirrors an existing read pattern, not a new one.
 
+> Correction 2026-10-30 (partially supersedes the Context facts and Decision 2 above, recorded outside this change): `get_pinned`, `get_hidden`, and `get_homepage` are now exported from `pkg/src/index.ts` with `main()` `useWhen` entries, as are the setters `set_pin`/`set_pinned`, `set_home`/`set_homepage`/`move_home`, and `set_hide`/`set_hidden` — so the "reads only, setters deferred" decision no longer describes the pin/home/hide surface. `get_recent` was deliberately NOT exported per user direction on 2026-10-30 (recency stays internal), which conflicts with this spec's four-reader aggregate as written: `get_launcher_state()` is still unbuilt, and its `recent` field needs a decision before task 1.1 can close (either the aggregate drops `recent`, or it reads recent internally without exporting `get_recent` separately).
+
 ## Goals / Non-Goals
 
 - Goals: agents can read every launcher list through the same import path as every other registry read; reads work on blank stores (empty lists) and on the hosted and preview stores alike; the new surface is discoverable via `main()`.

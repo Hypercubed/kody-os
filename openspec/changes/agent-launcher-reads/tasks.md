@@ -1,7 +1,7 @@
 ## 1. Root exports
 
-- [ ] 1.1 Re-export `get_pinned`, `get_hidden`, `get_recent`, `get_homepage` from `pkg/src/index.ts` and add `get_launcher_state()` (aggregate `{ pinned, hidden, recent, homepage }`, stored order preserved, missing keys read as `[]`), reusing the existing registry implementations with no new storage logic
-- [ ] 1.2 Add the new exports to `main()`'s `exports` array with `useWhen` text matching the existing entries, and verify `main()` output lists them
+- [ ] 1.1 Re-export `get_pinned`, `get_hidden`, `get_recent`, `get_homepage` from `pkg/src/index.ts` and add `get_launcher_state()` (aggregate `{ pinned, hidden, recent, homepage }`, stored order preserved, missing keys read as `[]`), reusing the existing registry implementations with no new storage logic PARTIAL 2026-10-30: `get_pinned`, `get_hidden`, `get_homepage` are now exported (outside this change); `get_recent` deliberately NOT exported per user direction 2026-10-30 (recency stays internal), so the aggregate's `recent` field conflicts with that direction and needs a decision (drop `recent` from the aggregate, or read it internally without a separate `get_recent` export) before this task can close. `get_launcher_state()` itself is still unbuilt.
+- [ ] 1.2 Add the new exports to `main()`'s `exports` array with `useWhen` text matching the existing entries, and verify `main()` output lists them PARTIAL 2026-10-30: the three exported readers (plus pin/home/hide setters) are in `main()`'s list; `get_launcher_state` is not, and `main()` output has not been verified for it.
 
 ## 2. Docs
 

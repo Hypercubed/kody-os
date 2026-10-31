@@ -18,15 +18,15 @@ Rules for all files: one unified shape (meta + `bundle` + `stateSchema` + `set`/
 Submit the parsed file object as `definition`. From a shell with the repo checked out:
 
 ```bash
-node -e 'var fs=require("fs"); var def=JSON.parse(fs.readFileSync("pkg/examples/counter.bundle.json","utf8")); console.log(JSON.stringify({ok:true,id:def.id}));'
+node -e 'var fs=require("fs"); var def=JSON.parse(fs.readFileSync("pkg/catalog/counter.bundle.json","utf8")); console.log(JSON.stringify({ok:true,id:def.id}));'
 ```
 
 Then in the agent (Kody MCP), call `add_app` with that definition:
 
-- counter: `add_app(JSON.parse(read pkg/examples/counter.bundle.json))` returns `{ ok: true, id: \"counter\" }`.
-- eight-ball: `add_app(JSON.parse(read pkg/examples/eight-ball.bundle.json))` returns `{ ok: true, id: \"eight-ball\" }`.
-- clock: `add_app(JSON.parse(read pkg/examples/clock.bundle.json))` returns `{ ok: true, id: \"clock\" }`.
-- xkcd: `add_app(JSON.parse(read pkg/examples/xkcd.bundle.json))` returns `{ ok: true, id: \"xkcd\" }`.
+- counter: `add_app(JSON.parse(read pkg/catalog/counter.bundle.json))` returns `{ ok: true, id: \"counter\" }`.
+- eight-ball: `add_app(JSON.parse(read pkg/catalog/eight-ball.bundle.json))` returns `{ ok: true, id: \"eight-ball\" }`.
+- clock: `add_app(JSON.parse(read pkg/catalog/clock.bundle.json))` returns `{ ok: true, id: \"clock\" }`.
+- xkcd: `add_app(JSON.parse(read pkg/catalog/xkcd.bundle.json))` returns `{ ok: true, id: \"xkcd\" }`.
 
 Re-adding the same id overwrites the definition and preserves state by default (declared fields carried forward, dropped fields reset to `initial`); pass `resetState: true` to restore the legacy wipe, or `migrate` to rename fields. Reference lists (pins, hidden flags, homepage placement, registry order) survive overwrite; only `remove_app` scrubs them.
 
@@ -52,7 +52,7 @@ Run it with jsdom installed ephemerally (no test runner, no `node_modules` in th
 
 ```bash
 mkdir -p /tmp/jsdom-test && cd /tmp/jsdom-test && npm init -y && npm install jsdom
-node pkg/examples/tests/counter-tests.cjs
+node pkg/catalog/tests/counter-tests.cjs
 ```
 
 Ceiling note: the harness checks the Counter bundle's stricter-than-ceiling style (no arrow functions, `const`/`let`, `async`/`await`, or template literals in its script). That style is this bundle's conservative choice, not the binding rule — the binding ceiling is ES2019 and earlier, stated once in `docs/scribe-limitations.md`. Do not reject a new bundle for using `const`, an arrow function, or `async`/`await` alone; reject it for post-ES2019 syntax or APIs.

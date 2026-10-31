@@ -12,7 +12,7 @@
  * the repo stays free of a test runner and a node_modules tree):
  *
  *   mkdir -p /tmp/jsdom-test && cd /tmp/jsdom-test && npm init -y && npm install jsdom
- *   node pkg/examples/tests/counter-tests.cjs
+ *   node pkg/catalog/tests/counter-tests.cjs
  *
  * Run from anywhere; the harness finds counter.bundle.json relative to
  * itself. If jsdom lives elsewhere, point JSDOM_PATH at its folder
@@ -49,7 +49,7 @@ try {
     console.error(
       "jsdom is required. Install it ephemerally:\n" +
         "  mkdir -p /tmp/jsdom-test && cd /tmp/jsdom-test && npm init -y && npm install jsdom\n" +
-        "then run: node pkg/examples/tests/counter-tests.cjs\n" +
+        "then run: node pkg/catalog/tests/counter-tests.cjs\n" +
         "Or set JSDOM_PATH to the folder containing jsdom's package.json."
     );
     process.exit(2);

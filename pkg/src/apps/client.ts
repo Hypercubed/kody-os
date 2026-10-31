@@ -265,9 +265,9 @@ export function renderOverlaySection(def: AppDefinition, state: AppState, appBas
 	)
 }
 
-/** True when the app may open as a home overlay (fragment link + inline section). */
+/** True when the app's default open mode is the modal overlay (fragment link + inline section). */
 export function isModalApp(app: AppSummary): boolean {
-	return !!app.placements && app.placements.indexOf('modal') !== -1
+	return app.openAs === 'modal'
 }
 
 /** Inline SVG icons were sanitized at validation; detect the stored variant. */

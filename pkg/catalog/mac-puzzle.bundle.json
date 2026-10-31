@@ -2,7 +2,7 @@
   "id": "mac-puzzle",
   "name": "Puzzle",
   "label": "Puzzle",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M3.5 9.2h17M3.5 14.8h17M9.2 3.5v5.7M14.8 3.5v5.7M9.2 14.8v5.7M14.8 14.8v5.7\" /></svg>",
   "category": "toys",
   "description": "The original Macintosh Puzzle: 15 numbered tiles in a 4x4 grid, slide them into order. Numbers are SVG tracings of the original outline digits. Runs fully in the page, no saved state.",
@@ -14,9 +14,6 @@
   },
   "ui": {
     "title": "Puzzle",
-    "placements": [
-      "page"
-    ],
     "actions": []
   },
   "stateSchema": {

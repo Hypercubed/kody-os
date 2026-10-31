@@ -30,8 +30,12 @@ installs one app instead and lets the user choose the rest.
   ratings or search/filter in the store listing (the `apps-search` change
   covers filtering the All-apps list, not the store), no seeded-app update
   mechanics (a republish ships new catalog definitions; installed apps keep
-  their state until re-installed from the store), no change to the MCP
-  surface. Custom apps still arrive via an agent and `add_app`, unchanged.
+  their state until re-installed from the store), no MCP call needed for
+  a browser store install. Custom apps still arrive via an agent and
+  `add_app`, unchanged. (Correction 2026-10-30: the earlier "no change
+  to the MCP surface" wording is superseded — catalog tools including
+  `install_from_catalog` were exported from `pkg/src/index.ts` on
+  2026-10-30 outside this change; see tasks 5.2.)
 
 ## Capabilities
 

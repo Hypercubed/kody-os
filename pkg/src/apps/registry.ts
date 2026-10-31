@@ -28,11 +28,12 @@ import type {
 	ActResult,
 	AppDefinition,
 	AppExport,
-	AppPlacement,
+	OpenAs,
 	AppState,
 	AppSummary,
 	StateFieldDef,
 } from './types.ts'
+import { get_catalog_definition } from './catalog.ts'
 import {
 	RECENT_CAP,
 	defKey,
@@ -439,6 +440,21 @@ export function migrateDefinition(def: unknown): unknown {
 	return out
 }
 
+/**
+ * Derive the default open mode from a definition's `ui`. An explicit
+ * `openAs` wins; otherwise the deprecated `placements` derives it
+ * (modal-only → modal, anything else → page); omitted fields → page.
+ * Callers must have validated the definition first, so both fields
+ * hold only known values here.
+ */
+export function deriveOpenAs(ui: unknown): OpenAs {
+	if (!isRecord(ui)) return 'page'
+	if (ui['openAs'] === 'page' || ui['openAs'] === 'modal') return ui['openAs'] as OpenAs
+	var placements = ui['placements']
+	if (Array.isArray(placements) && placements.indexOf('modal') !== -1 && placements.indexOf('page') === -1) return 'modal'
+	return 'page'
+}
+
 /** Validate a unified app definition. Returns an error string, or null when valid. */
 export function validateDefinition(def: unknown): string | null {
 	if (!isRecord(def)) return 'definition must be an object'
@@ -505,6 +521,9 @@ export function validateDefinition(def: unknown): string | null {
 				return 'definition.ui.placements has unknown placement "' + String(placement) + '" (page, modal, or widget)'
 			}
 		}
+	}
+	if (ui['openAs'] !== undefined && ui['openAs'] !== 'page' && ui['openAs'] !== 'modal') {
+		return 'definition.ui.openAs must be "page" or "modal" (got "' + String(ui['openAs']) + '")'
 	}
 	if (ui['actions'] !== undefined) {
 		if (!Array.isArray(ui['actions'])) return 'definition.ui.actions must be an array'
@@ -1010,8 +1029,6 @@ export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<App
 						return readJson<AppDefinition>(active, defKey(want)).then(function (raw): void {
 							if (!raw) return
 							var def = backfillDefinition(raw)
-							var ui = def.ui as unknown as Record<string, unknown> | undefined
-							var placements = ui && ui['placements'] ? (ui['placements'] as AppPlacement[]) : ['page']
 							out.push({
 								id: def.id,
 								name: def.name,
@@ -1020,7 +1037,7 @@ export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<App
 								icon: def.icon,
 								category: def.category,
 								description: def.description,
-								placements: placements,
+								openAs: deriveOpenAs(def.ui),
 							})
 						})
 					})
@@ -1271,7 +1288,6 @@ export function add_app(
 						' (re-adding an existing id restamps it)',
 				})
 			}
-			var placements: AppPlacement[] = definition.ui.placements === undefined ? ['page'] : definition.ui.placements
 			var manifest = definition.bundle as unknown as Record<string, unknown>
 			var rawFiles = (manifest['files'] as Record<string, unknown>) || {}
 			var files: Record<string, string> = {}
@@ -1286,7 +1302,7 @@ export function add_app(
 			for (var aname of Object.keys(inputActions)) canonicalActions[aname] = migrateAction(inputActions[aname])
 			var uiOut: Record<string, unknown> = {}
 			if (definition.ui.title !== undefined) uiOut['title'] = definition.ui.title
-			uiOut['placements'] = placements
+			uiOut['openAs'] = deriveOpenAs(definition.ui)
 			if (definition.ui.actions !== undefined) uiOut['actions'] = definition.ui.actions
 			if (definition.ui.hideState !== undefined) uiOut['hideState'] = definition.ui.hideState
 			var def: AppDefinition = {
@@ -1400,6 +1416,46 @@ export function remove_app(
 					})
 			})
 		})
+	})
+}
+
+/**
+ * Install a shipped catalog app by id, through the validated `add_app`
+ * path. Idempotent: re-installing an already-installed app preserves
+ * its state and restamps it to the catalog definition (same as a
+ * re-add). Unknown catalog ids return `{ ok: false }` naming the id
+ * and write nothing. Never passes `resetState`, so state is never
+ * wiped by an install.
+ */
+export function install_from_catalog(
+	id: string,
+	store?: KeyStore,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	var def = get_catalog_definition(id)
+	if (def === null) return Promise.resolve({ ok: false as const, error: 'unknown catalog app "' + id + '"' })
+	return add_app(def, store)
+}
+
+/**
+ * Bring an already-installed app up to its shipped catalog definition,
+ * preserving state (bundle and definition replaced, state carried
+ * forward by `add_app`). Refuses to install: an id that is not
+ * installed returns `{ ok: false }` directing the caller to
+ * `install_from_catalog`, and an id that is not in the catalog
+ * returns `{ ok: false }` naming the id. Nothing is written on
+ * either failure.
+ */
+export function update_from_catalog(
+	id: string,
+	store?: KeyStore,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	var def = get_catalog_definition(id)
+	if (def === null) return Promise.resolve({ ok: false as const, error: 'unknown catalog app "' + id + '"' })
+	return get_app(id, store).then(function (entry) {
+		if ('error' in entry) {
+			return { ok: false as const, error: 'app "' + id + '" is not installed (use install_from_catalog to install it)' }
+		}
+		return add_app(def as AppDefinition, store)
 	})
 }
 

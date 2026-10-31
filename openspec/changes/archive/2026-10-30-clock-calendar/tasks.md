@@ -1,3 +1,5 @@
+> REPLACED 2026-10-30, archived without implementation: per user direction, a real calendar app needs no package change — no `fromNow` effect, no `calendar` effect op, no `helloClockDefinition`/`helloCalendarDefinition` fixtures. The replacement is `openspec/changes/calendar-app/` (fully JS-driven calendar bundle, no persistent state). This spec's tasks were all unchecked at archive time; nothing in it was implemented.
+
 ## 1. Registry: time source and calendar op
 
 - [ ] 1.1 Add `fromNow` to `set`-effect validation (string target required, mutually exclusive with `value`/`fromArg`) and verify `add_app` rejects `fromNow` on a non-string field and alongside `value`, with no writes

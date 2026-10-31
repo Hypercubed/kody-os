@@ -9,7 +9,7 @@ The app layer in `src/apps/` is wired into `src/app.ts` and verified live
 - `src/apps/storage.ts` — `packageStorage()` with shared in-memory fallback; `createMemoryStore()` for isolated/fresh stores.
 - `src/apps/registry.ts` — `list_apps`, `get_app`, `get_app_state`, `act`, `add_app`, `remove_app`, `export_app`, `import_app`, `validateDefinition`.
 - `src/apps/forms.ts` — `actFromForm(id, entries)` — the UI path; funnels into the same `act()` MCP uses.
-- `src/apps/client.ts` — browser-safe (zero runtime imports) HTML builders: `renderHomeTiles`, `renderAppSection(def, state, appBasePath, code?)`. Counter comes from `pkg/examples/counter.bundle.json` via `add_app` (no in-code harness).
+- `src/apps/client.ts` — browser-safe (zero runtime imports) HTML builders: `renderHomeTiles`, `renderAppSection(def, state, appBasePath, code?)`. Counter comes from `pkg/catalog/counter.bundle.json` via `add_app` (no in-code harness).
 
 ## Edge rule: app actions are GET, never POST
 
@@ -79,6 +79,20 @@ JS-only POST path, a timer/polling loop, or client routing.
    `POST /apps/:id` remains for API clients that send a same-origin origin.
 4. **MCP tools** (same functions, same state): `list_apps`, `get_app_state`,
    `act`, `add_app`, `remove_app`, `export_app` map 1:1 to the registry exports.
+   Catalog tools (`list_catalog`, `get_catalog_definition`,
+   `install_from_catalog`, `update_from_catalog`) and pin tools
+   (`get_pinned`, `set_pin`, `set_pinned`) are exported from the package
+   entry the same way: an agent tool is a function exported from
+   `pkg/src/index.ts`. `install_from_catalog` is idempotent and never
+   wipes state; `update_from_catalog` refuses uninstalled ids and
+   refuses to install new ones. Home-screen tools (`get_homepage`,
+   `set_home`, `set_homepage`, `move_home`) and hide tools
+   (`get_hidden`, `set_hide`, `set_hidden`) follow the same pattern:
+   anything the browser shell lets the user do to pins, home, or
+   hidden flags, an agent can do too. Deliberately NOT exported:
+   the recency tools (`get_recent`, `record_use`, `clear_recent`) —
+   recency is shell-derived history, not user-managed state, so it
+   stays internal even though the shell has a clear-recents control.
 5. **Removal is MCP-only:** `remove_app` is not wired to any route or form.
    Edit mode exposes pin and hide only; deleting an app requires an agent call.
 6. **Do NOT:** touch `public/styles.css` without regenerating

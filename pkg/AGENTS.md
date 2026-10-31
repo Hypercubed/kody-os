@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v0.3.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v0.4.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -58,7 +58,7 @@ const info = await main()
 // => { package, exports: [...], note: 'Phase 2 app layer — data-driven apps via packageStorage.' }
 
 import { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app } from 'kody:@hypercubed/kody-os'
-import counterBundle from './examples/counter.bundle.json' with { type: 'json' }
+import counterBundle from './catalog/counter.bundle.json' with { type: 'json' }
 await add_app(counterBundle) // { ok:true, id:'counter' } — no republish
 await list_apps() // exactly 1 entry
 await act('counter', 'set_count', { value: 1 }) // { ok:true, state:{ count:1 } }
@@ -82,7 +82,7 @@ kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"lo
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
 ```
 
-Seed `counter` fixture: `python3 -c "import json; d=json.load(open('examples/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"` then `registry.ts` with `$(cat /tmp/add.json)`. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
+Seed `counter` fixture: `python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"` then `registry.ts` with `$(cat /tmp/add.json)`. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
 
 ## Edge cases
 

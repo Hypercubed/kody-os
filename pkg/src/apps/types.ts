@@ -21,8 +21,11 @@ export type FieldType = 'integer' | 'string' | 'boolean' | 'array' | 'object'
 export type ArgType = 'integer' | 'string' | 'boolean'
 /** Generic ops are `set` and `append`. `increment`, `toggle`, and `reset` are deprecated sugar kept until migration retires them. */
 export type EffectOp = 'set' | 'append' | 'increment' | 'toggle' | 'reset'
-/** Where an app may surface. `widget` validates but renders nothing until the widget-screen change lands. */
+/** Deprecated allowlist value set for `UiDef.placements`. Kept only so old definitions still validate; it gates nothing. */
 export type AppPlacement = 'page' | 'modal' | 'widget'
+
+/** How an app opens by default from the Apps page. A default, not a restriction: every app is allowed in every context. */
+export type OpenAs = 'page' | 'modal'
 
 export interface StateFieldDef {
 	type: FieldType
@@ -121,7 +124,9 @@ export interface UiActionDef {
 
 export interface UiDef {
 	title?: string
-	/** Placement allowlist. Omitted means page-only. Modal-capable apps open as home overlays. */
+	/** Default open mode from the Apps page. Omitted means page. */
+	openAs?: OpenAs
+	/** Deprecated: old allowlist. When present without `openAs`, it derives it (modal-only → modal, otherwise page); `openAs` wins on disagreement. */
 	placements?: AppPlacement[]
 	/** Buttons the shell renders as plain forms. Empty = read-only app page. */
 	actions?: UiActionDef[]
@@ -220,8 +225,8 @@ export interface AppSummary {
 	icon?: string
 	category?: string
 	description?: string
-	/** Placement allowlist (absent in older summaries means page-only). */
-	placements?: AppPlacement[]
+	/** Default open mode from the Apps page (always present; derived from deprecated `placements` for old stored definitions). */
+	openAs: OpenAs
 }
 
 export interface ActOk {

@@ -2,7 +2,7 @@
   "id": "calculator",
   "name": "Calculator",
   "label": "Calculator",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"5.5\" y=\"3.5\" width=\"13\" height=\"17\" rx=\"1.5\" /><path d=\"M8.5 7.5h7\" /><path d=\"M8.5 12h1.5M11.2 12h1.5M14 12h1.5M8.5 15.5h1.5M11.2 15.5h1.5M14 15.5h1.5\" /></svg>",
   "category": "utilities",
   "description": "Original Macintosh Calculator: C clears all, E clears last entry, = , *, /, -, + (tall), digits, decimal, wide 0. Runs fully in the page, no saved state.",
@@ -14,9 +14,6 @@
   },
   "ui": {
     "title": "Calculator",
-    "placements": [
-      "page"
-    ],
     "actions": []
   },
   "stateSchema": {
