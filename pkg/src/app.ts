@@ -2,6 +2,7 @@ import { SHELL_CSS } from './shell-css.ts'
 import { SESSION_COOKIE_BARE, authenticate, authPathFor, checkCode, isKodyOwnerVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed } from './feeds.ts'
+import { fileThemeToValues, get_shell_theme } from './shell-theme.ts'
 import type { AuthPath } from './auth.ts'
 
 interface PackageContext {
@@ -569,23 +570,43 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 	var appBasePath = chrome.appBasePath
 	return import('./apps/index.ts').then(function (m): Promise<Response> {			var actFromForm = m.actFromForm
 			var clear_recent = m.clear_recent
+			var ensure_app_store_seeded = m.ensure_app_store_seeded
 			var get_app = m.get_app
+			var get_app_status = m.get_app_status
 			var get_hidden = m.get_hidden
 			var get_homepage = m.get_homepage
 			var get_pinned = m.get_pinned
 			var get_recent = m.get_recent
+			var get_store_rows = m.get_store_rows
 			var list_apps = m.list_apps
 			var move_home = m.move_home
 			var record_use = m.record_use
 			var set_hide = m.set_hide
 			var set_home = m.set_home
 			var set_pin = m.set_pin
+			var store_install_from_catalog = m.store_install_from_catalog
+			var store_update_from_catalog = m.store_update_from_catalog
+		// App-store seeding: first authenticated shell request against an
+		// empty registry installs only the App Store, before routing.
+		// Seeding never runs from MCP reads (this is dispatch only), and
+		// a seeding failure degrades to the honest empty state below
+		// instead of breaking the shell.
+		var seedDone: Promise<unknown> = Promise.resolve()
+		try {
+			seedDone = ensure_app_store_seeded().then(
+				function (): unknown { return null },
+				function (): unknown { return null },
+			)
+		} catch (err) {
+			seedDone = Promise.resolve()
+		}
+		return seedDone.then(function (): Promise<Response> {
 		return import('./apps/client.ts').then(function (c): Promise<Response> {				var isModalApp = c.isModalApp
 				var renderAppPanel = c.renderAppPanel
+				var renderCombinedList = c.renderCombinedList
 				var renderDashboard = c.renderDashboard
 				var renderOverlaySection = c.renderOverlaySection
 				var renderAllSection = c.renderAllSection
-				var renderEditSection = c.renderEditSection
 				var renderPinnedSection = c.renderPinnedSection
 				var renderRecentSection = c.renderRecentSection
 				var renderWidgetSection = c.renderWidgetSection
@@ -722,6 +743,145 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 			}
 
+			// GET /apps/app-store — the App Store page: the bundle panel plus
+			// the server-rendered combined list, and all store controls.
+			// Plain GET forms + 303 only, no app-action class, no POST.
+			// An ?action= query falls through to the generic app page
+			// below (the store has no ui actions, so it errors there).
+			if (method === 'GET' && path === '/apps/app-store') {
+				var storeQuery = new URL(request.url).searchParams
+				if (!storeQuery.get('action')) {
+					var storeBase = appBasePath + '/apps/app-store'
+					var storeRedirect = function (): Response {
+						return new Response(null, { status: 303, headers: { Location: storeBase } })
+					}
+					var storePage = function (withError: string, status: number): Promise<Response> {
+						return Promise.all([list_apps(), get_hidden(), get_store_rows()]).then(function (parts): Promise<Response> {
+							var menu = menuAppsFor(parts[0], parts[1])
+							var rows = parts[2]
+							var listHtml = renderCombinedList(rows, appBasePath, storeBase, withError)
+							return get_app('app-store').then(function (entry): Response {
+								var body = ''
+								if ('error' in entry) {
+									body =
+										'\t\t\t<section class="app" aria-label="App Store">\n' +
+										'\t\t\t\t<div class="app-body">\n' +
+										'\t\t\t\t\t<p>The App Store app is not installed. The combined list below still works; install a catalog app from it, or ask an agent to install the App Store with install_from_catalog.</p>\n' +
+										'\t\t\t\t</div>\n' +
+										'\t\t\t</section>\n' +
+										listHtml
+									return new Response(
+										shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+										{ status: status, headers: pageHeaders() },
+									)
+								}
+								var panel = renderAppPanel(entry.definition, entry.state, appBasePath, '', '', '', false, '')
+								var lines = panel.split('\n')
+								var indented = ''
+								for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
+								indented += '\t\t\t' + listHtml.split('\n').join('\n\t\t\t') + '\n'
+								return new Response(
+									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, currentApp: 'app-store', expandable: true, body: indented }),
+									{ status: status, headers: pageHeaders() },
+								)
+							})
+						})
+					}
+					var confirmPage = function (kind: string, id: string, label: string): Promise<Response> {
+						return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
+							var menu = menuAppsFor(parts[0], parts[1])
+							var verb = kind === 'restore' ? 'Restore catalog version' : 'Update'
+							var body =
+								'\t\t\t<section class="app" aria-label="Confirm ' + escapeAttribute(verb.toLowerCase()) + '">\n' +
+								'\t\t\t\t<div class="app-body">\n' +
+								'\t\t\t\t\t<h2>Confirm ' + escapeAttribute(verb) + ': ' + escapeAttribute(label) + '</h2>\n' +
+								'\t\t\t\t\t<p>Updating will replace this app\u2019s definition \u2014 bundle files, stateSchema, actions, capabilities, and metadata \u2014 with the catalog copy. Your custom definition changes will be lost and cannot be recovered afterwards unless you exported the app first.</p>\n' +
+								'\t\t\t\t\t<p>State is preserved for fields still declared in the new definition, while dropped fields reset to their initial values. Pins, hidden flags, homepage placement, and recency are untouched.</p>\n' +
+								'\t\t\t\t\t<form method="GET" action="' + escapeAttribute(storeBase) + '">\n' +
+								'\t\t\t\t\t\t<input type="hidden" name="confirm" value="' + escapeAttribute(kind) + '" />\n' +
+								'\t\t\t\t\t\t<input type="hidden" name="id" value="' + escapeAttribute(id) + '" />\n' +
+								'\t\t\t\t\t\t<input type="hidden" name="confirmed" value="1" />\n' +
+								'\t\t\t\t\t\t<button type="submit">Confirm ' + escapeAttribute(verb) + '</button>\n' +
+								'\t\t\t\t\t</form>\n' +
+								'\t\t\t\t\t<p><a href="' + escapeAttribute(storeBase) + '">Cancel \u2014 change nothing</a></p>\n' +
+								'\t\t\t\t</div>\n' +
+								'\t\t\t</section>'
+							return new Response(
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Confirm ' + verb, authPath: authPath, menuApps: menu, body: body }),
+								{ status: 200, headers: pageHeaders() },
+							)
+						})
+					}
+					var confirmKind = storeQuery.get('confirm') || ''
+					var confirmId = storeQuery.get('id') || ''
+					if ((confirmKind === 'update' || confirmKind === 'restore') && confirmId !== '' && storeQuery.get('confirmed') === '1') {
+						return store_update_from_catalog(confirmId).then(function (result) {
+							if (!result.ok) return storePage(result.error, 400)
+							return Promise.resolve(storeRedirect())
+						})
+					}
+					var updateId = storeQuery.get('update') || ''
+					if (updateId !== '') {
+						return get_app_status(updateId).then(function (info) {
+							if (!info.installed || !info.inCatalog) return storePage('App "' + updateId + '" cannot be updated: it is not an installed catalog app.', 400)
+							if (info.status === 'behind-clean' || info.status === 'catalog-differing') {
+								return store_update_from_catalog(updateId).then(function (result) {
+									if (!result.ok) return storePage(result.error, 400)
+									return Promise.resolve(storeRedirect())
+								})
+							}
+							if (info.status === 'behind-modified') {
+								return get_app(updateId).then(function (entry) {
+									var label = 'error' in entry ? updateId : entry.definition.name
+									return confirmPage('update', updateId, label)
+								})
+							}
+							if (info.status === 'modified-current' || info.status === 'modified-ahead') {
+								return storePage('App "' + updateId + '" is modified: use its Restore control, not Update.', 400)
+							}
+							return storePage('App "' + updateId + '" has no update available.', 400)
+						})
+					}
+					var restoreId = storeQuery.get('restore') || ''
+					if (restoreId !== '') {
+						return get_app_status(restoreId).then(function (info) {
+							if (!info.installed || !info.inCatalog) return storePage('App "' + restoreId + '" cannot be restored: it is not an installed catalog app.', 400)
+							if (info.status === 'modified-current' || info.status === 'modified-ahead') {
+								return get_app(restoreId).then(function (entry) {
+									var label = 'error' in entry ? restoreId : entry.definition.name
+									return confirmPage('restore', restoreId, label)
+								})
+							}
+							return storePage('App "' + restoreId + '" has nothing to restore.', 400)
+						})
+					}
+					var installId = storeQuery.get('install') || ''
+					if (installId !== '') {
+						return get_app_status(installId).then(function (info) {
+							if (info.installed) return storePage('App "' + installId + '" is already installed.', 400)
+							return store_install_from_catalog(installId).then(function (result) {
+								if (!result.ok) return storePage(result.error, 400)
+								return Promise.resolve(storeRedirect())
+							})
+						})
+					}
+					var pinId = storeQuery.get('pin') || ''
+					var hideId = storeQuery.get('hide') || ''
+					var homeId = storeQuery.get('home') || ''
+					var want = storeQuery.get('want') === '1'
+					if (pinId !== '' || hideId !== '' || homeId !== '') {
+						var schain: Promise<unknown> = Promise.resolve()
+						if (pinId !== '') schain = schain.then(function (): Promise<unknown> { return set_pin(pinId, want) })
+						if (hideId !== '') schain = schain.then(function (): Promise<unknown> { return set_hide(hideId, want) })
+						if (homeId !== '') schain = schain.then(function (): Promise<unknown> { return set_home(homeId, want) })
+						return schain.then(function (): Response {
+							return storeRedirect()
+						})
+					}
+					return storePage('', 200)
+				}
+			}
+
 			// GET /apps/:id — one app page, same state MCP reads.
 			// GET with ?action=... is the UI action path: the edge rejects some
 			// same-origin POSTs, and a GET form works on the Scribe without a cookie.
@@ -800,7 +960,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						var homeId = params.get('home') || ''
 						var want = params.get('want') === '1'
 						var doClear = params.get('clear') === '1'
-						var keepEdit = params.get('edit') === '1'
 						var moveRaw = params.get('move') || ''
 						var chain: Promise<unknown> = Promise.resolve()
 						if (pinId !== '') chain = chain.then(function (): Promise<unknown> { return set_pin(pinId, want) })
@@ -811,7 +970,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						return chain.then(function (): Response {
 							return new Response(null, {
 								status: 303,
-								headers: { Location: appBasePath + '/apps' + (keepEdit ? '?edit=1' : '') },
+								headers: { Location: appBasePath + '/apps' },
 							})
 						})
 					})
@@ -882,14 +1041,17 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				return dashboardBody(dashErrorApp, dashError)
 			}
 
-			// GET /apps — Pinned / Recent / All-apps plus edit mode. Empty registry is honest.
+			// GET /apps — Pinned / Recent / All-apps as a launcher only.
+			// Edit mode is retired: management lives on the App Store
+			// combined list. The pin/hide/home mutation endpoints below
+			// are retained for existing links; the UI no longer offers
+			// an Edit mode. Empty registry is honest.
 			if (method === 'GET' && path === '/apps') {
 				var appsQuery = new URL(request.url).searchParams
 				var qPin = appsQuery.get('pin') || ''
 				var qHide = appsQuery.get('hide') || ''
 				var qWant = appsQuery.get('want') === '1'
 				var qClear = appsQuery.get('clear') === '1'
-				var qEdit = appsQuery.get('edit') === '1'
 				var qHomeToggle = appsQuery.get('home') || ''
 				if (qPin !== '' || qHide !== '' || qClear || qHomeToggle !== '') {
 					var mchain: Promise<unknown> = Promise.resolve()
@@ -900,11 +1062,10 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					return mchain.then(function (): Response {
 						return new Response(null, {
 							status: 303,
-							headers: { Location: appBasePath + '/apps' + (qEdit ? '?edit=1' : '') },
+							headers: { Location: appBasePath + '/apps' },
 						})
 					})
 				}
-				var editMode = qEdit
 				var appsBase = appBasePath + '/apps'
 				return Promise.all([list_apps(), get_pinned(), get_hidden(), get_recent(), get_homepage()]).then(function (parts): Promise<Response> {
 					var apps = parts[0]
@@ -925,7 +1086,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t\t\t<span class="tile-label">no apps yet</span>\n' +
 							'\t\t\t\t\t</li>\n' +
 							'\t\t\t\t</ul>\n' +
-							'\t\t\t\t<p class="empty-hint">Ask an agent member to add an app via MCP add_app — it appears here with no republish.</p>\n' +
+							'\t\t\t\t<p class="empty-hint">Open the App Store to install a shipped app, or ask an agent to add an app via MCP add_app — it appears here with no republish.</p>\n' +
 							'\t\t\t</section>' }),
 							{ status: 200, headers: pageHeaders() },
 						))
@@ -944,9 +1105,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						var tiled: typeof apps = pinnedApps.concat(recentApps)
 						if (pinnedApps.length > 0) sections.push(renderPinnedSection(pinnedApps, appBasePath))
 						if (recentApps.length > 0) sections.push(renderRecentSection(recentApps, appBasePath, appsBase))
-						if (editMode) {
-							sections.push(renderEditSection(apps, appBasePath, pinnedIds, hiddenIds, homepageIds, appsBase))
-						} else {
+						{
 							var visible: typeof apps = []
 							for (var vi = 0; vi < apps.length; vi++) {
 								if (hiddenIds.indexOf(apps[vi].id) === -1) visible.push(apps[vi])
@@ -956,7 +1115,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								sections.push(
 									'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
 									'\t\t\t\t<h2>All apps</h2>\n' +
-									'\t\t\t\t<p class="empty-hint">All apps are hidden. Open Edit to unhide.</p>\n' +
+									'\t\t\t\t<p class="empty-hint">All apps are hidden. Open the App Store to unhide.</p>\n' +
 									renderAllSection([], appBasePath, appsBase).split('\n').slice(2).join('\n'),
 								)
 							} else {
@@ -1022,6 +1181,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 
 			return Promise.resolve(notFoundPage(chrome))
 		})
+		})
 	})
 }
 
@@ -1041,7 +1201,23 @@ var app = {
 		var appBasePath = str(context.appBasePath, '')
 		var assetBasePath = str(context.assetBasePath, '/_assets')
 		var clientModuleUrl = str(context.clientModuleUrl, '')
-		var theme = resolveTheme(await getTheme())
+		// Shell-settings Phase 1: resolve the file theme exactly as today
+		// (including its once-per-publish cache), then merge the durable
+		// storage override fresh on every request, per field. With no
+		// override stored, rendering is byte-identical to today; a theme
+		// read failure never breaks the shell, it falls back to the file.
+		var fileThemeValues = fileThemeToValues(await getTheme())
+		try {
+			var mergedTheme = await get_shell_theme(fileThemeValues)
+			fileThemeValues = mergedTheme.effective
+		} catch (err) {
+		}
+		var theme = resolveTheme({
+			name: fileThemeValues.name,
+			title: fileThemeValues.title,
+			icon: fileThemeValues.icon,
+			background: fileThemeValues.background,
+		} as ThemeFile)
 		try {
 			var meta = await getPackageMeta()
 			theme.version = meta.version

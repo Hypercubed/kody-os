@@ -196,6 +196,16 @@ export interface AppDefinition {
 	 */
 	schemaVersion: number
 	/**
+	 * Catalog version: a positive integer, starting at 1 on the app's
+	 * first versioned catalog release, +1 on any change to its catalog
+	 * definition file. Distinct from schemaVersion (definition format
+	 * era) and from the package version. Required only for catalog
+	 * definitions (see validateCatalogDefinition); a generic add_app
+	 * definition without it stays valid, and a stored copy preserves
+	 * the value it was installed with.
+	 */
+	catalogVersion?: number
+	/**
 	 * Tile icon: a plain-text glyph or short mark (system fonts only, never
 	 * emoji), OR an inline SVG starting with `<svg`. SVG is sanitized at
 	 * validation time: allowlisted shapes (`svg, path, circle, rect, line,

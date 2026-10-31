@@ -20,7 +20,7 @@ This policy's own addition, and the header correction from v0.1.5 to v0.1.7 that
 ## Imports
 
 ```ts
-import main, { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app } from 'kody:@hypercubed/kody-os'
+import main, { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, get_launcher_state, backup, restore } from 'kody:@hypercubed/kody-os'
 import { mint_otp } from 'kody:@hypercubed/kody-os'
 
 const otp = await mint_otp() // { ok: true, code: '4821' } — single use, 10 min
@@ -41,7 +41,7 @@ Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain wh
 
 ## Adding an app
 
-Registry write, not a package change: no commit, no republish. No add control in the UI; agents call `add_app`. Not on home until pinned via Apps → Edit → **Add to home**. Full contract: [Adding an app](docs/adding-an-app.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
+Registry write, not a package change: no commit, no republish. Shipped catalog apps install from the browser App Store (`/apps/app-store`, seeded on first shell use against an empty registry); agents call `add_app` for custom apps. Not on home until added via the App Store row's **Add to home** control. The App Store is also the management surface (pin, hide, home, update, restore); the Apps page is a launcher only, with no Edit mode. Full contract: [Adding an app](docs/adding-an-app.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
 
 - Definition: meta + bundle (`entry: index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap) + `stateSchema` + `actions` (`set`/`append`; `increment`/`toggle`/`reset` are deprecated sugar). `ui.template` was removed in schemaVersion 4 (required only for schemaVersion 3 submissions, ignored by the renderer in every version) — never send it in a v4 definition, never branch on it.
 - `ui.hideState: true` hides the server-rendered state readout (stays in the DOM for bundle scripts to read initial state). Use when the bundle already displays state.

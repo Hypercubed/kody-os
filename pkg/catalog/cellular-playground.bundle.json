@@ -3,6 +3,7 @@
   "name": "Cellular Playground",
   "label": "Cellular Playground",
   "schemaVersion": 5,
+  "catalogVersion": 1,
   "icon": "▦",
   "category": "Games",
   "description": "MVP rewrite of Hypercubed/CellularPlayground in vanilla ES2019: Life, Brian's Brain and Seeds on a 20 by 14 board, step mode plus a slow self-started 500 ms Play timer. Cuts vs the original: 3 automata instead of 11, no requestAnimationFrame loop, no stats panel, no dialogs, no fullscreen, no pattern library, dead edges, board stored as a digit string rather than RLE.",

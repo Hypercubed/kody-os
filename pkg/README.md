@@ -27,7 +27,7 @@ Setting up a fork of kody-os (fork, publish, unlock, first app) is covered start
 
 ## How to know it is working
 
-- Home shows live widgets for pinned apps, or the honest **no widgets yet** empty state pointing at Apps → Edit → **Add to home**.
+- Home shows live widgets for pinned apps, or the honest **no widgets yet** empty state pointing at the App Store's **Add to home** control.
 - Apps lists installed apps as tiles, or the honest **no apps yet** empty state.
 - An app page shows its description, live state fields, and one form button per declared action.
 - Submitting an action works without JavaScript and returns to the app page showing the new state.

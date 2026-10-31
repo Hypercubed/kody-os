@@ -16,6 +16,7 @@
  */
 
 import aboutBundle from '../../catalog/about.bundle.json' with { type: 'json' }
+import appStoreBundle from '../../catalog/app-store.bundle.json' with { type: 'json' }
 import arrowGameBundle from '../../catalog/arrow-game.bundle.json' with { type: 'json' }
 import calculatorBundle from '../../catalog/calculator.bundle.json' with { type: 'json' }
 import calendarBundle from '../../catalog/calendar.bundle.json' with { type: 'json' }
@@ -35,6 +36,7 @@ import type { AppDefinition } from './types.ts'
 /** Import list, alphabetical by id. The order is the listing order. */
 var CATALOG: AppDefinition[] = [
 	aboutBundle as AppDefinition,
+	appStoreBundle as AppDefinition,
 	arrowGameBundle as AppDefinition,
 	calculatorBundle as AppDefinition,
 	calendarBundle as AppDefinition,

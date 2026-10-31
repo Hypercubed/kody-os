@@ -1,0 +1,27 @@
+{
+  "id": "app-store",
+  "name": "App Store",
+  "label": "App Store",
+  "schemaVersion": 5,
+  "catalogVersion": 1,
+  "icon": "⊞",
+  "category": "utilities",
+  "description": "Install and manage the shipped catalog apps from the browser: install, pin, hide, add to home, update, and restore, with no agent needed.",
+  "bundle": {
+    "entry": "index.html",
+    "files": {
+      "index.html": "<div class=\"store-body\">\n<p>Install and manage the apps shipped with kody-os, right here in the browser — no agent needed.</p>\n<p>The list below is the whole catalog plus every installed app, in one place. Install a catalog app to add it, or use a row's controls to pin it, hide it, add it to the home dashboard, update it, or restore it to its shipped version. Updates never run on their own.</p>\n<p>For a custom app that is not in the catalog, ask an agent to add it with MCP <code>add_app</code>. Removing an app is agent-only, through MCP <code>remove_app</code>.</p>\n</div>\n"
+    }
+  },
+  "ui": {
+    "title": "App Store",
+    "openAs": "page",
+    "actions": []
+  },
+  "stateSchema": {
+    "type": "object",
+    "initial": {},
+    "fields": {}
+  },
+  "actions": {}
+}

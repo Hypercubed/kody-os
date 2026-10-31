@@ -328,7 +328,7 @@ export function renderRecentSection(apps: AppSummary[], appBasePath: string, for
 	)
 }
 
-/** Render the All-apps section in browse mode with an Edit toggle. */
+/** Render the All-apps section in browse mode. The Apps page is a launcher only: app management lives on the App Store combined list, so there is no Edit toggle here. */
 export function renderAllSection(
 	apps: AppSummary[],
 	appBasePath: string,
@@ -336,81 +336,137 @@ export function renderAllSection(
 ): string {
 	var list = tilesList(apps, appBasePath)
 	return (
-		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' +
-		'<form method="GET" action="' +
-			escapeHtml(typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/') +
-			'" class="section-edit">' +
-		'<input type="hidden" name="edit" value="1" />' +
-		'<button type="submit">Edit</button></form></div>\n' +
+		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2></div>\n' +
 		list +
 		'\n</section>'
 	)
 }
 
-/** Render edit mode: every app with pin + hide + homepage toggles. */
-export function renderEditSection(
-	apps: AppSummary[],
+/** One row of the App Store combined list (see get_store_rows in registry.ts). */
+export interface CombinedListRow {
+	id: string
+	label: string
+	name: string
+	icon?: string
+	category?: string
+	description?: string
+	installed: boolean
+	inCatalog: boolean
+	status: string
+	modified: boolean
+	pinned: boolean
+	hidden: boolean
+	homepage: boolean
+}
+
+function storeBadge(row: CombinedListRow): string {
+	if (row.status === 'not-installed') return 'Not installed'
+	if (row.status === 'up-to-date') return 'Up to date'
+	if (row.status === 'behind-clean') return 'Update available'
+	if (row.status === 'catalog-differing') return 'Update available'
+	if (row.status === 'behind-modified') return 'Modified · update available'
+	if (row.status === 'modified-current') return 'Modified'
+	if (row.status === 'modified-ahead') return 'Ahead of catalog'
+	if (row.status === 'snapshot-less') return 'Installed'
+	if (row.status === 'storage-only') return 'Storage only'
+	if (row.status === 'storage-only-formerly') return 'Storage only · formerly in catalog'
+	return 'Installed'
+}
+
+function storeForm(storeBase: string, hiddenName: string, hiddenValue: string, extra: string, label: string): string {
+	return (
+		'<form method="GET" action="' +
+		escapeHtml(storeBase) +
+		'" class="store-control">' +
+		'<input type="hidden" name="' +
+		escapeHtml(hiddenName) +
+		'" value="' +
+		escapeHtml(hiddenValue) +
+		'" />' +
+		extra +
+		'<button type="submit">' +
+		escapeHtml(label) +
+		'</button></form>'
+	)
+}
+
+function storeToggleForm(storeBase: string, param: string, id: string, want: boolean, onLabel: string, offLabel: string, isOn: boolean): string {
+	return storeForm(
+		storeBase,
+		param,
+		id,
+		'<input type="hidden" name="want" value="' + (isOn ? '0' : '1') + '" />',
+		isOn ? offLabel : onLabel,
+	)
+}
+
+/**
+ * Render the App Store combined list: one row per id from the union of
+ * catalog and installed ids, alphabetical by id, unfiltered (hidden apps
+ * appear with an Unhide control). Controls are plain GET forms with no
+ * app-action class, so the client fast path never intercepts them.
+ * Catalog-only rows offer Install only and no Open link: there is
+ * nothing installed to open. Installed rows offer Open plus Pin/Hide/
+ * Home toggles (which change only their launcher lists) plus Update,
+ * Restore, or neither, per row status. No JavaScript is required.
+ */
+export function renderCombinedList(
+	rows: CombinedListRow[],
 	appBasePath: string,
-	pinnedIds: string[],
-	hiddenIds: string[],
-	homepageIds?: string[],
-	formBase?: string,
+	storeBase: string,
+	error?: string,
 ): string {
-	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/'
-	var homeIds = homepageIds || []
-	var rows: string[] = []
-	for (var i = 0; i < apps.length; i++) {
-		var app = apps[i]
-		var isPinned = pinnedIds.indexOf(app.id) !== -1
-		var isHidden = hiddenIds.indexOf(app.id) !== -1
-		var isHome = homeIds.indexOf(app.id) !== -1
-		rows.push(
-			'<li class="edit-row"><span class="edit-label">' +
-				escapeHtml(app.label) +
-			'</span>' +				'<form method="GET" action="' +
-				escapeHtml(base) +
-			'" class="edit-toggle">' +
-			'<input type="hidden" name="edit" value="1" />' +
-			'<input type="hidden" name="pin" value="' +
-				escapeHtml(app.id) +
-			'" /><input type="hidden" name="want" value="' +
-				(isPinned ? '0' : '1') +
-				'" /><button type="submit">' +
-				(isPinned ? 'Unpin' : 'Pin') +
-				'</button></form>' +
-			'<form method="GET" action="' +
-				escapeHtml(base) +
-			'" class="edit-toggle">' +
-			'<input type="hidden" name="edit" value="1" />' +
-			'<input type="hidden" name="hide" value="' +
-				escapeHtml(app.id) +
-				'" /><input type="hidden" name="want" value="' +
-				(isHidden ? '0' : '1') +
-				'" /><button type="submit">' +
-				(isHidden ? 'Unhide' : 'Hide') +
-				'</button></form>' +
-			'<form method="GET" action="' +
-				escapeHtml(base) +
-			'" class="edit-toggle">' +
-			'<input type="hidden" name="edit" value="1" />' +
-			'<input type="hidden" name="home" value="' +
-				escapeHtml(app.id) +
-				'" /><input type="hidden" name="want" value="' +
-				(isHome ? '0' : '1') +
-				'" /><button type="submit">' +
-				(isHome ? 'Remove from home' : 'Add to home') +
-				'</button></form></li>',
-			)
+	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
+	var items: string[] = []
+	for (var i = 0; i < rows.length; i++) {
+		var row = rows[i]
+		var rawIcon = row.icon || '#'
+		var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
+		var desc = typeof row.description === 'string' ? row.description : ''
+		var controls = ''
+		if (!row.installed) {
+			controls = storeForm(storeBase, 'install', row.id, '', 'Install')
+		} else {
+			controls =
+				'<a href="' +
+				escapeHtml(appBasePath + '/apps/' + row.id + '?from=' + encodeURIComponent(storeBase)) +
+				'">Open</a> ' +
+				storeToggleForm(storeBase, 'pin', row.id, true, 'Pin', 'Unpin', row.pinned) +
+				' ' +
+				storeToggleForm(storeBase, 'hide', row.id, true, 'Hide', 'Unhide', row.hidden) +
+				' ' +
+				storeToggleForm(storeBase, 'home', row.id, true, 'Add to home', 'Remove from home', row.homepage)
+			if (row.status === 'behind-clean' || row.status === 'catalog-differing') {
+				controls += ' ' + storeForm(storeBase, 'update', row.id, '', 'Update')
+			} else if (row.status === 'behind-modified') {
+				controls += ' ' + storeForm(storeBase, 'update', row.id, '', 'Update…')
+			} else if (row.status === 'modified-current' || row.status === 'modified-ahead') {
+				controls += ' ' + storeForm(storeBase, 'restore', row.id, '', 'Restore')
+			}
+		}
+		items.push(
+			'<li class="store-row"><span class="store-label">' +
+				'<span class="tile-icon" aria-hidden="true">' +
+				icon +
+				'</span> ' +
+				escapeHtml(row.label) +
+				'</span>' +
+				'<span class="store-desc">' +
+				escapeHtml(desc) +
+				'</span>' +
+				'<span class="store-badge">' +
+				escapeHtml(storeBadge(row)) +
+				'</span> ' +
+				controls +
+				'</li>',
+		)
 	}
 	return (
-		'<section class="category" id="apps" aria-label="Apps">\n' +
-		'<div class="section-head"><h2>All apps (edit)</h2>' +
-		'<form method="GET" action="' +
-			escapeHtml(base) +
-		'" class="section-edit">' +
-		'<button type="submit">Done</button></form></div>\n' +
-		'<ul class="edit-list">\n' +
-		rows.join('\n') +
+		'<section class="category" id="store" aria-label="App Store">\n' +
+		'<div class="section-head"><h2>All apps</h2></div>\n' +
+		errHtml +
+		'<ul class="store-list">\n' +
+		items.join('\n') +
 		'\n</ul>\n</section>'
 	)
 }
@@ -506,20 +562,17 @@ export function renderWidgetSection(
 
 /**
  * Render the widget dashboard grid. An empty homepage list renders an honest
- * empty state pointing at Apps → Edit → "Add to home".
+ * empty state pointing at the App Store's "Add to home" control.
  */
 export function renderDashboard(widgets: string[], appBasePath: string): string {
 	if (widgets.length === 0) {
-		var appsHref = escapeHtml(appBasePath + '/apps')
-		var editHref = escapeHtml(appBasePath + '/apps?edit=1')
+		var storeHref = escapeHtml(appBasePath + '/apps/app-store')
 		return (
 			'<section class="dashboard dashboard-empty" aria-label="Home">\n' +
 			'<h2>No widgets yet</h2>\n' +
-			'<p class="empty-hint">Pin apps to your home from <a href="' +
-				appsHref +
-			'">Apps</a> → <a href="' +
-				editHref +
-				'">Edit</a> → “Add to home”. They appear here live with no republish.</p>\n' +
+			'<p class="empty-hint">Install apps from the <a href="' +
+				storeHref +
+			'">App Store</a>, then use a row’s “Add to home” control. They appear here live with no republish.</p>\n' +
 			'</section>'
 		)
 	}

@@ -3,6 +3,7 @@
   "name": "3-Bit Art",
   "label": "3-Bit Art",
   "schemaVersion": 5,
+  "catalogVersion": 1,
   "icon": "◼",
   "category": "Art",
   "description": "MVP rewrite of Hypercubed/3-bit-art in vanilla ES2019: 16 by 16 drawing with a saved Pattern/Color toggle (default Pattern): Pattern shows 8 black-and-white 32 by 32 Bayer ordered-dither tiles with density set by ITU-R BT.709 luma of the standard 3-bit RGB color (chosen for Kindle legibility, so pixels read as greyscale tones); Color shows solid 3-bit RGB cube colors. No device detection (colorDepth reports 24-bit and the monochrome query is false on the Scribe); the mode is saved in state. Gallery of up to 12 drawings. Cuts vs the original: no canvas (div grid with SVG background tiles instead), no Angular/Material, drawing stored as a 256-digit string rather than 128-character base64 bit packing, no PNG or PXON export, no URL-hash sharing.",

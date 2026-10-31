@@ -6,6 +6,7 @@ The Counter bundle is the reference implementation for the bundle/shell interact
 
 Files:
 
+- `app-store.bundle.json` — App Store, the browser management surface. Stateless, no actions, page only. Its bundle is minimal descriptive HTML only; the combined catalog+installed list is rendered by the shell on the same page, so the bundle never needs to know installed state. Seeded on the first authenticated shell request against an empty registry, and re-seeded if the registry later becomes empty.
 - `about.bundle.json` — About kody-os, with links and embedded static QR codes for GitHub Sponsors, Ko-fi, and Buy Me a Coffee (for scanning from a Kindle Scribe with a phone). Stateless, no actions, page only, `ui.menuBar: true`; links open the donation sites in a new tab, and no payment is taken inside kody-os.
 - `help.bundle.json` — Help, the former static Help page as a catalog app. Stateless, no actions, page only, `ui.menuBar: true`; carries what the OS is, the agent `add_app` prompt, and the setup-guide pointer, with no installed-apps list. `GET /help` redirects to `/apps/help`.
 - `counter.bundle.json` — unified counter fixture. Retained as the contract fixture: smoke tests, guide, and fast-path verification depend on it. State (`count`) plus `set_count`/`reset_count` actions (effects arrays); the bundle stepper writes through the shared `set_count` action.
@@ -20,6 +21,10 @@ Files:
 - `three-bit-art.bundle.json` — 3-Bit Art bundle. 16 by 16 drawing with a saved Pattern/Color toggle (default Pattern): Pattern shows 32 by 32 Bayer ordered-dither tiles at BT.709 luma densities, Color shows solid 3-bit RGB cube colors. Gallery of up to 12 drawings, digit-string state, no canvas.
 
 Rules for all files: one unified shape (meta + `bundle` + `stateSchema` + `set`/`append` actions, optional `capabilities`, no `kind`), ES2019 only, system fonts only, zero emojis, all CSS and JS inlined, well under the 256 KiB cap, no external stylesheets or scripts. Shell-rendered UI actions are plain GET forms; bundle in-page buttons additionally write through the same `act()` handler via the GET action URL (`?action=<name>&...&format=json` guarded `fetch` with full-navigation fallback, preserving `k` when present).
+
+Catalog membership checklist: the file, one import line in `pkg/src/apps/catalog.ts` (alphabetical by id), one entry above, and a harness pass (validate + install in a blank store + empty initial state + directory/import match). Catalog bundles run with session authority: shipping a definition in the catalog is trusting its bundle code, exactly as `add_app` trusts any definition.
+
+Catalog versioning and install snapshots: every catalog definition carries `catalogVersion`, a positive integer starting at 1 on its first versioned release, incremented by exactly 1 on any change to that definition file, never reused, never decreased, never bumped for an unrelated app or a shell change, and distinct from `schemaVersion` and from the package version. A catalog definition without a valid `catalogVersion` fails catalog validation. The canonical stored definition preserves `catalogVersion` through `add_app` normalization. A store install or store update records an install snapshot separate from the definition (install-time `catalogVersion` plus a fingerprint of the canonical stored definition, content only); a snapshot is written only by store install/update (including seeding), never by generic `add_app`/`import_app`, deleted by `remove_app`, and never included in exports. Snapshot-less installs claim no status and get no update control under this scheme. The store never auto-updates.
 
 ## Install via MCP `add_app`
 

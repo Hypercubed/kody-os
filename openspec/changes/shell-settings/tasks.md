@@ -8,7 +8,7 @@ publishes anything (see §7).
 
 ## 1. Storage-based overrides
 
-- [ ] 1.1 Author `pkg/src/shell-theme.ts`
+- [x] 1.1 Author `pkg/src/shell-theme.ts`
   (server-side only, ES2019): storage key
   `kody-os.shell.theme`; the partial-override
   shape; per-field validation per design
@@ -23,7 +23,8 @@ publishes anything (see §7).
   field is cleared). Corrupt stored JSON reads
   as no override; an invalid stored field falls
   back to the file value for that field only.
-- [ ] 1.2 Wire the merge in `pkg/src/app.ts`
+  DONE 2026-10-31: module pkg/src/shell-theme.ts implemented (key kody-os.shell.theme, get/set/reset, per-field validation reusing grid check and icon sanitizer, corrupt/invalid read fallback); verified by memory-store tests in /tmp/kody-backend-tests.ts.
+- [x] 1.2 Wire the merge in `pkg/src/app.ts`
   `fetch()`: resolve the file theme exactly as
   today (including its once-per-publish cache),
   read the override fresh on every request via
@@ -31,6 +32,7 @@ publishes anything (see §7).
   per field, and render the merged theme on
   every page. With no override stored, rendering
   is byte-identical to today.
+  DONE 2026-10-31: merge wired into pkg/src/app.ts fetch() (override read fresh every request, file theme cache unchanged, no-override effective equals file values); shell-fetch rendering leg owed (kody dev/hosted out of scope).
 - [ ] 1.3 Verify Phase 1 in a blank store: set
   one field and confirm only that field changes;
   set with one invalid field and confirm nothing
@@ -45,6 +47,7 @@ publishes anything (see §7).
   Question 3) and record the result; do not add
   a cache to fix a slowness that was not
   measured.
+  PARTIAL 2026-10-31: blank-store cases verified via memory-store tests (set one field, invalid set writes nothing, corrupt JSON, reset one field, reset all, survives simulated republish); per-request override read timing (design Open Question 3) NOT measured or recorded — left open.
 
 ## 2. Agent access
 
