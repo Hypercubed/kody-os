@@ -6,6 +6,8 @@ The Counter bundle is the reference implementation for the bundle/shell interact
 
 Files:
 
+- `about.bundle.json` — About kody-os, with links and embedded static QR codes for GitHub Sponsors, Ko-fi, and Buy Me a Coffee (for scanning from a Kindle Scribe with a phone). Stateless, no actions, page only, `ui.menuBar: true`; links open the donation sites in a new tab, and no payment is taken inside kody-os.
+- `help.bundle.json` — Help, the former static Help page as a catalog app. Stateless, no actions, page only, `ui.menuBar: true`; carries what the OS is, the agent `add_app` prompt, and the setup-guide pointer, with no installed-apps list. `GET /help` redirects to `/apps/help`.
 - `counter.bundle.json` — unified counter fixture. Retained as the contract fixture: smoke tests, guide, and fast-path verification depend on it. State (`count`) plus `set_count`/`reset_count` actions (effects arrays); the bundle stepper writes through the shared `set_count` action.
 - `eight-ball.bundle.json` — Magic 8-Ball bundle. True random shake in-page via vanilla JS with zero navigation; the shake answer persists best-effort through the shared `record_answer` action when reachable.
 - `clock.bundle.json` — live clock bundle, modal placement (`placements: modal`). Vanilla JS, updates at most once per minute. Opens as a home overlay.

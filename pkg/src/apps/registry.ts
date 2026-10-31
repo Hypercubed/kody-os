@@ -536,6 +536,7 @@ export function validateDefinition(def: unknown): string | null {
 		}
 	}
 	if (ui['hideState'] !== undefined && typeof ui['hideState'] !== 'boolean') return 'definition.ui.hideState must be a boolean'
+	if (ui['menuBar'] !== undefined && typeof ui['menuBar'] !== 'boolean') return 'definition.ui.menuBar must be a boolean'
 	if (!isRecord(def['stateSchema'])) return 'definition.stateSchema must be an object'
 	var schema = def['stateSchema'] as Record<string, unknown>
 	if (schema['type'] !== 'object') return 'definition.stateSchema.type must be "object"'
@@ -1038,6 +1039,7 @@ export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<App
 								category: def.category,
 								description: def.description,
 								openAs: deriveOpenAs(def.ui),
+								menuBar: def.ui.menuBar === true,
 							})
 						})
 					})
@@ -1305,6 +1307,7 @@ export function add_app(
 			uiOut['openAs'] = deriveOpenAs(definition.ui)
 			if (definition.ui.actions !== undefined) uiOut['actions'] = definition.ui.actions
 			if (definition.ui.hideState !== undefined) uiOut['hideState'] = definition.ui.hideState
+			if (definition.ui.menuBar !== undefined) uiOut['menuBar'] = definition.ui.menuBar
 			var def: AppDefinition = {
 				id: definition.id,
 				name: definition.name,

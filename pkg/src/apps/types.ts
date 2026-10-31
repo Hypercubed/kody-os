@@ -132,6 +132,8 @@ export interface UiDef {
 	actions?: UiActionDef[]
 	/** Visually hide the server-rendered state readout (stays in the DOM so bundle scripts can read initial state). Use when the bundle already displays state. */
 	hideState?: boolean
+	/** Also show this app in the top menu bar when installed. Author-controlled, not a user toggle; hidden apps are excluded from the menu. Defaults to false. */
+	menuBar?: boolean
 }
 
 export interface BundleManifest {
@@ -227,6 +229,8 @@ export interface AppSummary {
 	description?: string
 	/** Default open mode from the Apps page (always present; derived from deprecated `placements` for old stored definitions). */
 	openAs: OpenAs
+	/** True when the definition carries `ui.menuBar: true`. Always present; false when the field is absent. */
+	menuBar: boolean
 }
 
 export interface ActOk {

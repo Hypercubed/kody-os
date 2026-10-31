@@ -267,6 +267,10 @@ function shellChrome(opts: {
 	closeLabel?: string
 	/** App pages opt into the page-mode expand/collapse controls. */
 	expandable?: boolean
+	/** Menu-bar apps, already filtered (hidden excluded) and sorted by label. Omitted on locked, 404, and transient pages. */
+	menuApps?: { id: string, label: string }[]
+	/** Id of the menu app currently being viewed, for aria-current. */
+	currentApp?: string
 }): string {
 	var safeBase = escapeAttribute(opts.appBasePath)
 	var safeTitle = escapeAttribute(opts.title)
@@ -299,6 +303,22 @@ function shellChrome(opts: {
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
 		: ''
+	var menuLinks = ''
+	if (opts.menuApps) {
+		for (var mi = 0; mi < opts.menuApps.length; mi++) {
+			var menuApp = opts.menuApps[mi]
+			menuLinks +=
+				'\t\t\t<a href="' +
+				safeBase +
+				'/apps/' +
+				escapeAttribute(menuApp.id) +
+				'"' +
+				(opts.currentApp === menuApp.id ? ' aria-current="page"' : '') +
+				'>' +
+				escapeAttribute(menuApp.label) +
+				'</a>\n'
+		}
+	}
 	var authLabel: AuthPath = opts.authPath ? opts.authPath : 'locked'
 	var footerLogout =
 		opts.authPath === 'via cookie' || opts.authPath === 'via key'
@@ -366,11 +386,7 @@ function shellChrome(opts: {
 			'/apps"' +
 			(opts.current === 'apps' ? ' aria-current="page"' : '') +
 			'>Apps</a>\n' +
-		'\t\t\t<a href="' +
-		safeBase +
-		'/help"' +
-		(opts.current === 'help' ? ' aria-current="page"' : '') +
-		'>Help</a>\n' +
+		menuLinks +
 		'\t\t</nav>\n' +
 		'\t\t<span class="os-clock" id="os-clock">' +
 		headerClock() +
@@ -621,22 +637,44 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var renderRecentSection = c.renderRecentSection
 				var renderWidgetSection = c.renderWidgetSection
 
+			/** Menu-bar links for one render: flagged, non-hidden apps, sorted by label (id breaks ties). */
+			function menuAppsFor(apps: { id: string, label: string, menuBar: boolean }[], hiddenIds: string[]): { id: string, label: string }[] {
+				var out: { id: string, label: string }[] = []
+				for (var mi = 0; mi < apps.length; mi++) {
+					if (apps[mi].menuBar && hiddenIds.indexOf(apps[mi].id) === -1) out.push({ id: apps[mi].id, label: apps[mi].label })
+				}
+				out.sort(function (a, b): number {
+					var al = a.label.toLowerCase()
+					var bl = b.label.toLowerCase()
+					if (al < bl) return -1
+					if (al > bl) return 1
+					if (a.id < b.id) return -1
+					if (a.id > b.id) return 1
+					return 0
+				})
+				return out
+			}
+
 			function appBody(id: string, withError: string, fromParam: string): Promise<Response> {
 				return get_app(id).then(function (entry): Promise<Response> {
 					if ('error' in entry) return Promise.resolve(notFoundPage(chrome))
-					return record_use(id).then(
-						function (): Response {
-							return renderAppPage(id, withError, entry.definition, entry.state, fromParam)
-						},
-						function (): Response {
-							return renderAppPage(id, withError, entry.definition, entry.state, fromParam)
-						},
-					)
+					return Promise.all([list_apps(), get_hidden()]).then(function (parts): Promise<Response> {
+						var menu = menuAppsFor(parts[0], parts[1])
+						return record_use(id).then(
+							function (): Response {
+								return renderAppPage(id, withError, entry.definition, entry.state, fromParam, menu)
+							},
+							function (): Response {
+								return renderAppPage(id, withError, entry.definition, entry.state, fromParam, menu)
+							},
+						)
+					})
 				})
 			}				function dashboardBody(widgetErrorId: string, widgetError: string): Promise<Response> {
-					return Promise.all([list_apps(), get_homepage()]).then(function (parts): Promise<Response> {
+					return Promise.all([list_apps(), get_homepage(), get_hidden()]).then(function (parts): Promise<Response> {
 						var apps = parts[0]
 						var homepageIds = parts[1]
+						var menu = menuAppsFor(apps, parts[2])
 						var byId: Record<string, number> = {}
 						for (var bi = 0; bi < apps.length; bi++) byId[apps[bi].id] = bi
 						var ordered: string[] = []
@@ -661,14 +699,14 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							var indented = ''
 							for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
 							return new Response(
-								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Home', current: 'home', authPath: authPath, body: indented }),
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Home', current: 'home', authPath: authPath, menuApps: menu, body: indented }),
 								{ status: widgetError ? 400 : 200, headers: pageHeaders() },
 							)
 						})
 					})
 				}
 
-				function renderAppPage(id: string, withError: string, definition: never, state: never, fromParam: string): Response {
+				function renderAppPage(id: string, withError: string, definition: never, state: never, fromParam: string, menu?: { id: string, label: string }[]): Response {
 					var defName = (definition as unknown as { name: string }).name || id
 					var homePath = joinPath(appBasePath, '/')
 					var appsPath = joinPath(appBasePath, '/apps')
@@ -681,7 +719,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -693,7 +731,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}
@@ -826,24 +864,14 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 			}
 
-			// GET /help — static reference in full chrome.
+			// GET /help — Help is a catalog app now; redirect to its app page, preserving the query string (so ?k= bookmarks keep working).
 			if (method === 'GET' && path === '/help') {
-				var body =
-					'\t\t\t<section class="app" aria-label="Help">\n' +
-					'\t\t\t\t<div class="app-body help-body">\n' +
-					'\t\t\t\t\t<p>kody-os is a minimal shared OS shell. The home page shows your live widgets; the Apps page lists installed apps and opening one shows its live state, and every action runs through the same handler the agents use.</p>\n' +
-					'<h3>Adding apps</h3>\n' +
-					'<p>Copy this prompt into a Kody-connected agent and fill in the bracketed parts. The browser has no add control; the agent adds the app with MCP <code>add_app</code> — a registry write, no republish.</p>\n' +
-					'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#docs/adding-an-app.md, then follow that definition contract. Use the package\'s add_app through the Kody MCP execute wrapper. Validate before writing, verify with list_apps and get_app_state, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 App id: [slug]<br>\u2013 Name: [display name]<br>\u2013 What it does: [one sentence]</code></p>\n' +
-					'\t\t\t\t\t<p>The new app appears on the Apps page immediately. Add it to the home dashboard from Apps → Edit → <strong>Add to home</strong>. Pins, hidden flags, homepage order, and recent use stay on this device.</p>\n' +
-					'\t\t\t\t\t<p>Setting up a fresh fork or opening the OS for the first time? Follow the setup guide: open the published guide with Kody search entity <code>package:kody-os#docs/setup.md</code> and follow its sequence, ending with your first installed app.</p>\n' +
-					'\t\t\t\t</div>\n' +
-					'\t\t\t</section>'
+				var helpQuery = new URL(request.url).search
 				return Promise.resolve(
-					new Response(
-						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Help', current: 'help', authPath: authPath, body: body }),
-						{ status: 200, headers: pageHeaders() },
-					),
+					new Response(null, {
+						status: 303,
+						headers: { Location: appBasePath + '/apps/help' + helpQuery },
+					}),
 				)
 			}
 
@@ -935,7 +963,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					for (var bi = 0; bi < apps.length; bi++) byId[apps[bi].id] = bi
 					if (apps.length === 0) {
 						return Promise.resolve(new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, body:
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body:
 							'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
 							'\t\t\t\t<h2>Apps</h2>\n' +
 							'\t\t\t\t<ul class="tiles">\n' +
@@ -1008,7 +1036,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								var olines = overlays[oii].split('\n')
 								for (var lj = 0; lj < olines.length; lj++) indentedSections += '\t\t\t' + olines[lj] + '\n'
 							}							return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, body: indentedSections }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body: indentedSections }),
 								{ status: 200, headers: pageHeaders() },
 							)
 						})
