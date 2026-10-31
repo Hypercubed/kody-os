@@ -104,28 +104,52 @@ model the owner directed on 2026-10-29.
    hosted version before implementation (tasks 0.4-0.5). If the re-probe
    passes, proceed to Decision 1 addendum; if it still fails, record the
    new evidence and keep the gate closed.
-1. **Cookie shape is decided after the probe, in a design addendum —
-   the requirement is the outcome, not the shape.** Both candidate
-   shapes MUST satisfy: verification against the current secret;
-   deletion/change invalidates all cookies; per-device logout works
-   without rotating the secret; 30-day expiry; HttpOnly cookie,
-   same name and prefix behavior as today. (A) Stateless
-   HMAC-signed cookie: payload plus signature, verified by
-   recomputation, no session registry — logout then needs an
-   explicit revocation record, which the addendum must define.
-   (B) Registry + secret binding: keep the session registry, and a
-   session authenticates only while it both matches the registry
-   and verifies against the current secret. The addendum SHALL pick
-   one, define logout and expiry under it, and define the new
-   cookie/session storage format (versioned, so old-format cookies
-   cannot authenticate). Rationale: picking the shape before the
-   probe risks specifying a mechanism the platform cannot run.
+
+   **Kody feedback 2026-10-31 (Kent, live confirmation).** Fix confirmed
+   live since #4577 — no app changes or republish needed for the platform
+   part. Signed-out visitors of internet-visible apps now get per-request
+   binding, so `ownerCredentialForVisitors` with `sign()` / `fetch()` /
+   `callTool()` works via the `kva1.` ticket. Error contract: no-binding
+   fails loudly as structured `invalid_request`; real refusal is
+   `credential_denied` — log `err.code` + `err.message`, never swallow
+   (a caught empty result is the old bug signature). No device-code /
+   low-JS sign-in yet — OTP + cookie is the supported path for now.
+   Cookie guidance: `__Host-${packageContext.cookiePrefix}session`,
+   HttpOnly, Secure, SameSite=Lax, Path=/, no Domain; payload =
+   (session id, issued-at, expiry, version) + `sign()` HMAC; recompute
+   + compare every request, no caching; rotation invalidates on next
+   check; per-session version or revoke list for single-device revoke;
+   budget one `sign()` per verification (shared 300/min/credential on
+   legacy path). OTP guidance: 5-10 min, single use, attempt limits per
+   code + per IP, constant-time compare. Kindle: server-rendered pages
+   + plain form POSTs. Supplier declaration (`need` shape for fork
+   safety) to be confirmed separately.
+1. **Cookie shape: (B) registry + secret binding per Kody 2026-10-31
+   guidance — no addendum needed for the pick.** Cookie name:
+   `__Host-${packageContext.cookiePrefix}session`; attributes: HttpOnly,
+   Secure, SameSite=Lax, Path=/, no Domain. Value: payload (session id,
+   issued-at, expiry, version) + `sign()` HMAC over the payload. Verify:
+   recompute HMAC via `credential().sign()` and constant-time compare
+   every request, no caching; registry lookup must also match (session
+   exists, not revoked, not expired) AND HMAC must verify against the
+   *current* secret — either check failing denies (locked). Rotation /
+   deletion of the secret invalidates every cookie on next check with no
+   cleanup. Per-device logout = per-session version bump or revoke-list
+   entry (no secret rotation). 30-day expiry retained. Old-format
+   (unbound registry, code-hash) cookies SHALL NOT authenticate.
+   Budget: exactly one `sign()` per verification (shared 300/min /
+   credential on legacy path). Rationale: Kent's checklist maps 1:1 to
+   shape (B); stateless (A) is rejected — per-device logout without a
+   revocation record cannot satisfy the logout requirement.
 2. **Minting gates on a bound secret.** `mint_otp` SHALL fail closed
    with a named machine-readable error when no secret is bound,
    instead of minting an OTP whose cookie could never verify.
-   Rationale: the failure must surface at mint time (owner/agent
-   context, where the secret state is checkable) rather than as a
-   mysterious locked device.
+   OTP: 4 digits, 10 minutes (within Kent's 5-10), single use, at most
+   5 outstanding, SHA-256 hash stored only; failed attempts capped per
+   code AND per IP/device-window with constant-time compare; plaintext
+   returned exactly once, never logged/rendered/stored. Rationale: the
+   failure must surface at mint time (owner/agent context, where the
+   secret state is checkable) rather than as a mysterious locked device.
 3. **Local preview gets an explicit dev-mode decision, in the
    addendum — never silent drift.** `kody dev` has no bound secret,
    so the new model would make local OTP testing impossible as
@@ -138,7 +162,10 @@ model the owner directed on 2026-10-29.
 4. **Fail closed everywhere the secret is absent or unreachable.**
    If derivation/signing fails for any reason in the fetch handler,
    the request is denied (locked), never served on a fallback.
-   Rationale: the legacy fallback is precisely what is being
+   Log `err.code` + `err.message` server-side and never swallow —
+   `invalid_request` (no binding / misuse) vs `credential_denied`
+   (refusal) distinguishes platform misuse from denial. Rationale: the
+   legacy fallback is precisely what is being
    removed; a silent fallback would reintroduce it.
 5. **Removal is total, verified by grep and by fetch.** No
    `?k=` handling, no stamping, no hidden `k` fields, no
@@ -200,8 +227,8 @@ This spec draft does not bump anything.
 
 ## Open Questions
 
-1. Cookie shape (Decision 1): stateless HMAC-signed vs. registry +
-   secret binding — decided in the post-probe addendum, not here.
+1. Cookie shape: DECIDED 2026-10-31 per Kody guidance — (B) registry +
+   secret binding (see Decision 1). No longer open.
 2. Dev-mode shape (Decision 3): mock-only bypass vs. mock secret
    binding — decided in the addendum.
 3. Whether anonymous device access needs an `internet_visible`
@@ -210,5 +237,8 @@ This spec draft does not bump anything.
    documents the owner step if one exists.
 4. Exact `mint_otp` error value for the unbound-secret case
    (machine-readable, named — string to be fixed in implementation).
-5. Cookie lifetime: confirm 30 days is retained under the chosen
-   shape, or record a different lifetime with rationale.
+5. Cookie lifetime: 30 days retained per Decision 1 (matches Kent's
+   issued-at/expiry payload + registry expiry).
+6. Supplier declaration (`need` shape for fork safety): pending Kody
+   confirmation per 2026-10-31 feedback — record answer in setup guide
+   when received.

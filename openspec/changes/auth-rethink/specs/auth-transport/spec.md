@@ -37,12 +37,18 @@ request, with no fallback comparison of any kind.
 A presented cookie SHALL authenticate only if it verifies against
 the CURRENT `access-key` secret (package-scope Kody secret,
 publisher-supplied need declared in `package.json`, HMAC via the
-scoped `credential().sign()` client). Since kody-hq/kody#4577 the
+scoped `credential().sign()` client). Cookie name SHALL be
+`__Host-${packageContext.cookiePrefix}session` with HttpOnly, Secure,
+SameSite=Lax, Path=/, no Domain. Value SHALL be payload (session id,
+issued-at, expiry, version) + `sign()` HMAC. Verification SHALL
+recompute the HMAC and constant-time compare every request with no
+caching, AND match the session registry (exists, not revoked/expired);
+exactly one `sign()` per verification. Error handling SHALL log
+`err.code` + `err.message` and never swallow (`invalid_request` vs
+`credential_denied` stays distinguishable). Since kody-hq/kody#4577 the
 credential client binding is available inside anonymous fetch via the
-per-request `kva1.` ticket, so `sign()` verification at request time
-is a supported platform path (Gate 0 re-testable); before that fix an
-empty binding made every anonymous `sign()` fail closed with
-`invalid_request`. The secret value SHALL never appear in code,
+per-request `kva1.` ticket (live, no republish needed), so `sign()`
+verification at request time is a supported platform path. The secret value SHALL never appear in code,
 `packageStorage`, logs, or chat. A cookie issued under a previous
 secret value SHALL NOT authenticate. With no secret bound, NO cookie
 SHALL authenticate, however it was issued.
@@ -86,12 +92,12 @@ after the change SHALL be the only way back in for device sessions
 Minting SHALL create a 4-digit OTP valid for 10 minutes and single
 use, storing only its SHA-256 hash, and SHALL fail closed with a
 named machine-readable error when no secret is bound. Failed unlock
-attempts SHALL be capped at 10 per 10-minute window device-wide,
-denying further attempts until the window passes. A correct OTP
-SHALL burn itself and mint the secret-bound cookie (HttpOnly,
-30-day expiry, no credential in any URL). Requests SHALL
-authenticate by cookie verification against the current secret,
-failing closed on unknown, expired, or previous-secret cookies.
+attempts SHALL be capped per code AND per IP/device-window with
+constant-time compare, denying further attempts until the window passes. A correct OTP
+SHALL burn itself and mint the secret-bound cookie (`__Host-` prefix,
+HttpOnly, Secure, SameSite=Lax, Path=/, 30-day expiry, no credential in any URL). Requests SHALL
+authenticate by cookie verification against the current secret (recompute + compare every request, one sign() per verify),
+failing closed on unknown, expired, revoked-version, or previous-secret cookies.
 The OTP plaintext SHALL be returned exactly once at mint time and
 never logged, rendered, or stored. The unlock form SHALL accept
 only the OTP (path form `/unlock/<otp>`, since the edge drops query
@@ -117,7 +123,7 @@ rotating the secret.
 
 #### Scenario: Logout revokes one device only
 - **WHEN** a device logs out
-- **THEN** that device's cookie stops working, other devices'
+- **THEN** that device's session version is bumped / revoke-listed so its cookie stops working, other devices'
   cookies keep working, and the secret is unchanged.
 
 ## MODIFIED Requirements

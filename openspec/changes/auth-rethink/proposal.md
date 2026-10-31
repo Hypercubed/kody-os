@@ -38,13 +38,12 @@ the secret invalidates all cookies at once.
   never verify. The secret is therefore required for the cookie/device
   path and remains owner-created in the Kody UI only; there is still
   no MCP or in-app set path.
-- OTP mechanics are unchanged: 4 digits, 10 minutes, single use, at
-  most 5 outstanding, device-wide failure cap, plaintext returned
-  exactly once. The unlock form still takes the OTP (path form
+- OTP mechanics: 4 digits, 10 minutes (within Kody 5-10), single use, at
+  most 5 outstanding, per-code + per-IP caps with constant-time compare,
+  plaintext returned exactly once. The unlock form still takes the OTP (path form
   `/unlock/<otp>`, since the edge drops query strings), then 303s to
-  a clean URL with the cookie set. Per-device logout and the 30-day
-  cookie lifetime are retained under whichever cookie shape the
-  implementation chooses (see design.md, Decision 1).
+  a clean URL with the cookie set. Per-device logout via per-session version / revoke list and the 30-day
+  cookie lifetime per Decision 1 (B) registry + secret binding: `__Host-` session cookie, HttpOnly/Secure/SameSite=Lax/Path=/, payload + sign() HMAC, one sign() per verify.
 - This change is gated: implementation SHALL NOT start until a live
   anonymous-fetch probe proves `credential().sign()` resolves inside
   an anonymous fetch request (design.md, Gate 0). If it does not
@@ -62,6 +61,11 @@ the secret invalidates all cookies at once.
   anonymous (`visitor: null`, `metaGetCurrentUser` still anonymous).
   Gate 0 is therefore re-testable on any hosted build containing
   the fix; see design.md Decision 0.
+- Kody feedback 2026-10-31 (live confirmation): fix is live, no app
+  changes or republish needed for the platform part; OTP + cookie is
+  the supported path (no device-code / low-JS sign-in yet); cookie and
+  OTP checklists folded into Decision 1 + specs (supplier declaration
+  pending separately).
 - BREAKING, by design: every existing device cookie, bookmark, and
   stored code stops working. MCP exports change (`get_access_code`
   removed). Version: MAJOR at implementation — see design.md.
