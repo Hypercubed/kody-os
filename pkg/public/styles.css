@@ -334,10 +334,15 @@ body {
 }
 
 /* Expanded view: the app page drops the desktop gutter, the width cap, and the
-   menu/status bars, and sits flush with the top. Height is never forced, so
-   content height and scrolling stay exactly as on the normal page. */
+   menu/status bars, and sits flush with the top. The whole viewport is
+   paper-white, so a short app no longer ends in a grey desk expanse: the
+   window fills the viewport height, and the app panel draws no border at
+   all (previously its bottom border survived, as a line under the content).
+   The striped titlebar stays, because it holds the collapse control. */
 #os-full:target {
 	padding: 0;
+	background: var(--paper);
+	min-height: 100vh;
 }
 
 #os-full:target .os-menubar,
@@ -351,6 +356,8 @@ body {
 	margin: 0;
 	border: 0;
 	box-shadow: none;
+	background: var(--paper);
+	min-height: 100vh;
 }
 
 #os-full:target main {
@@ -358,9 +365,7 @@ body {
 }
 
 #os-full:target .app {
-	border-top: 0;
-	border-right: 0;
-	border-left: 0;
+	border: 0;
 	box-shadow: none;
 }
 
@@ -613,6 +618,16 @@ button.tile:active .tile-icon {
 	background: var(--paper);
 	border: var(--rule);
 	box-shadow: var(--lift);
+}
+
+/* On an app page the panel already sits inside .os-window, so the panel
+   itself draws no second box: the window is the single frame. Panels
+   outside .os-window (modal overlays, logout confirm) are untouched and
+   keep their border, as do home widgets (.widget), which need their own
+   borders to separate from each other in the grid. */
+.os-window main .app {
+	border: 0;
+	box-shadow: none;
 }
 
 .app-titlebar.has-close {
@@ -1417,6 +1432,13 @@ button:active {
 		margin: 0;
 		border: 0;
 		box-shadow: none;
+	}
+
+	/* Narrow screens drop the window frame, so the app panel becomes the
+	   single frame again instead of leaving the page borderless. */
+	.os-window main .app {
+		border: var(--rule);
+		box-shadow: var(--lift);
 	}
 
 	.tiles {
