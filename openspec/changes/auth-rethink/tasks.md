@@ -1,8 +1,10 @@
 ## 0. Probe gate (blocking — before any implementation)
 
 - [x] 0.1 Run the Gate 0 probe from design.md Decision 0: confirm the secret is bound via MCP `get_access_status`, then present the derived code through the anonymous `/unlock/<code>` path form from a signed-out session and record whether the fetch handler accepts it. Handle the derived code transiently only; never record it in chat, logs, or files. Distinguish unbound secret vs. host not allowlisted vs. `sign()` unreachable before concluding
-- [x] 0.2 Record the probe result in `design.md` (Decision 0). If `sign()` does not resolve anonymously, STOP: do not start implementation tasks; return the spec for revisiting — **probe FAILED 2026-10-29; stopped here**
+- [x] 0.2 Record the probe result in `design.md` (Decision 0). If `sign()` does not resolve anonymously, STOP: do not start implementation tasks; return the spec for revisiting — **probe FAILED 2026-10-29 on v0.1.7; cause since identified upstream (empty anonymous binding, kody-hq/kody#4577); gate re-opened as RE-TESTABLE, see 0.4**
 - [x] 0.3 Establish whether anonymous device access needs an `internet_visible` approval beyond publish, and record the answer (plus the owner step, if any) for the setup guide — anonymous reachability established (locked page served anonymously); no distinct `internet_visible` setting verifiable from read-only sources, no additional approval needed for anonymous requests to reach the handler
+- [ ] 0.4 Re-run Gate 0 on a hosted build containing kody-hq/kody#4577 (merged 2026-10-30): confirm secret bound via MCP `get_access_status`, then present an OTP through the anonymous `/unlock/<otp>` path form from a signed-out session and record whether `credential().sign()` now resolves (cookie set + 303 to clean URL = PASS; 404 locked with no Set-Cookie = still FAIL). Record hosted version observed alongside the result
+- [ ] 0.5 If 0.4 PASSES, record PASS in design.md Decision 0 and open the Decision 1 + 3 addenda (tasks 1.1-1.2). If 0.4 still FAILS, record the new evidence (hosted version, failure mode) and keep the gate closed — do not start implementation
 
 ## 1. Design addendum (after the probe passes)
 

@@ -74,6 +74,10 @@ Every action SHALL complete as a plain form submission + redirect. The client mo
 - **WHEN** the fetch fast path is unavailable or fails and the Increment form is submitted
 - **THEN** the form submits natively and the server responds 303 to the app page, which shows the incremented count.
 
+#### Scenario: Stored key keeps links clean
+- **WHEN** the enhancement runs with a stored key and the server accepts it
+- **THEN** RETIRED by this change (see No credential in rendered output): enhancement SHALL NOT read, store, or attach any key material; authenticated enhancement relies on the cookie only.
+
 #### Scenario: No credential in rendered output
 - **WHEN** any authenticated shell page is fetched
 - **THEN** its HTML contains no `?k=` and no credential in any link, form, or redirect.

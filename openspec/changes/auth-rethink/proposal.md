@@ -50,6 +50,18 @@ the secret invalidates all cookies at once.
   an anonymous fetch request (design.md, Gate 0). If it does not
   resolve, the HMAC-verification design cannot check cookies at
   request time, and the spec is revisited instead of built.
+- Platform update 2026-10-30 (kody-hq/kody#4577, merged): anonymous
+  package-app requests now get their own credential client binding
+  via a host-signed visitor-less ticket (`kva1.`, purpose
+  `kody-package-app-anonymous-visit@v1`, carrying only audience +
+  nonce + expiry + that request's binding). Before this fix anonymous
+  requests passed an empty binding to `credential()`, so `sign()` /
+  `fetch()` threw `invalid_request` at first use — the exact Gate 0
+  failure observed 2026-10-29 on v0.1.7. The bridge/gateway now take
+  the binding from the ticket while still treating the request as
+  anonymous (`visitor: null`, `metaGetCurrentUser` still anonymous).
+  Gate 0 is therefore re-testable on any hosted build containing
+  the fix; see design.md Decision 0.
 - BREAKING, by design: every existing device cookie, bookmark, and
   stored code stops working. MCP exports change (`get_access_code`
   removed). Version: MAJOR at implementation — see design.md.

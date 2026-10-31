@@ -82,6 +82,28 @@ model the owner directed on 2026-10-29.
    Rationale: every cookie shape in Decision 1 needs the same call
    at request time; building first and discovering it fails would
    lock every anonymous device out.
+
+   **Platform fix 2026-10-30 (kody-hq/kody#4577, merged 06:35 UTC).**
+   Root cause of the Gate 0 failure is now known and fixed upstream:
+   anonymous package-app requests passed an empty binding to
+   `credential()`, so `issueClient` signed the handle with `''` and
+   `verifyCredentialClientHandle` refused it at first use
+   (`invalid_request`, "This credential client is not valid here...").
+   Every anonymous app request now gets a host-signed visitor-less
+   ticket (`kva1.`, purpose `kody-package-app-anonymous-visit@v1`)
+   carrying only audience (host, package, kodyId, source, commit) +
+   nonce + expiry + that request's binding. Bridge (`getCredentialClientTools`)
+   and gateway (`KodyFetchGateway`) take the binding from the ticket;
+   `applyPackageAppVisitTicketToGateway` maps it to `request: null`
+   + binding, still fully anonymous (`visitor: null`, `visitorFor` /
+   `createCallerContext` / `metaGetCurrentUser` unchanged). `issueClient`,
+   `signCredentialClientHandle`, and both ticket minters now refuse empty
+   bindings fail-closed. Consequence: `credential().sign()` SHOULD now
+   resolve inside anonymous fetch on any hosted build containing the fix.
+   Gate 0 moves from FAILED to RE-TESTABLE — re-run the probe on current
+   hosted version before implementation (tasks 0.4-0.5). If the re-probe
+   passes, proceed to Decision 1 addendum; if it still fails, record the
+   new evidence and keep the gate closed.
 1. **Cookie shape is decided after the probe, in a design addendum —
    the requirement is the outcome, not the shape.** Both candidate
    shapes MUST satisfy: verification against the current secret;
