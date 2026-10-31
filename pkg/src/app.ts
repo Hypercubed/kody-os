@@ -300,7 +300,26 @@ function shellChrome(opts: {
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
 		: ''
 	var authLabel: AuthPath = opts.authPath ? opts.authPath : 'locked'
-	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">' + escapeAttribute(authLabel) + ' \u00b7 v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + '\t\t</footer>\n'
+	var footerLogout =
+		opts.authPath === 'via cookie' || opts.authPath === 'via key'
+			? '\t\t\t<nav aria-label="Session"><a href="#logout-confirm">Logout</a></nav>\n'
+			: ''
+	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">' + escapeAttribute(authLabel) + ' \u00b7 v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + footerLogout + '\t\t</footer>\n'
+	var logoutModal =
+		opts.authPath === 'via cookie' || opts.authPath === 'via key'
+			? '\t<div class="overlay" id="logout-confirm" aria-label="Confirm log out">\n' +
+				'\t\t<div class="overlay-panel">\n' +
+				'\t\t\t<section class="app" aria-label="Log out">\n' +
+				'\t\t\t\t<h2 class="app-titlebar"><a class="os-box" href="#" aria-label="Close"></a><span class="app-title-plate">Log out</span></h2>\n' +
+				'\t\t\t\t<div class="app-body">\n' +
+				'\t\t\t\t\t<p>Are you sure you want to log out of this device?</p>\n' +
+				'\t\t\t\t\t<p><a href="' + safeBase + '/logout?confirm=1">Yes, log out</a></p>\n' +
+				'\t\t\t\t\t<p><a href="#">Cancel</a></p>\n' +
+				'\t\t\t\t</div>\n' +
+				'\t\t\t</section>\n' +
+				'\t\t</div>\n' +
+				'\t</div>\n'
+			: ''
 	return (
 		'<!doctype html>\n' +
 		'<html lang="en"\n' +
@@ -352,9 +371,6 @@ function shellChrome(opts: {
 		'/help"' +
 		(opts.current === 'help' ? ' aria-current="page"' : '') +
 		'>Help</a>\n' +
-			(opts.authPath === 'via cookie' || opts.authPath === 'via key'
-				? '\t\t<a href="' + safeBase + '/logout">Logout</a>\n'
-				: '') +
 		'\t\t</nav>\n' +
 		'\t\t<span class="os-clock" id="os-clock">' +
 		headerClock() +
@@ -373,6 +389,7 @@ function shellChrome(opts: {
 		'\n\t\t</main>\n' +
 		footerPath +
 		'\t</div>' +
+		logoutModal +
 		clientScript +
 		'\n</body>\n</html>'
 	)
@@ -830,8 +847,25 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				)
 			}
 
-			// GET /logout — revoke this device's session on both sides, then land home.
+			// GET /logout — confirm first, revoke only on ?confirm=1, then land home.
 			if (method === 'GET' && path === '/logout') {
+				var logoutQuery = new URL(request.url).searchParams
+				if (logoutQuery.get('confirm') !== '1') {
+					var logoutBody =
+						'\t\t\t<section class="app" aria-label="Log out">\n' +
+						'\t\t\t\t<div class="app-body">\n' +
+						'\t\t\t\t\t<p>Are you sure you want to log out of this device?</p>\n' +
+						'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/logout?confirm=1') + '">Yes, log out</a></p>\n' +
+						'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/') + '">Cancel</a></p>\n' +
+						'\t\t\t\t</div>\n' +
+						'\t\t\t</section>'
+					return Promise.resolve(
+						new Response(
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Log out', authPath: authPath, body: logoutBody }),
+							{ status: 200, headers: pageHeaders() },
+						),
+					)
+				}
 				return revokeSession(request).then(function (): Response {
 					var headers = new Headers(pageHeaders())
 					var doomed = clearSessionCookies(appBasePath, isSecureRequest(request))

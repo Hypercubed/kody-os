@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v1.3.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v1.3.2. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -85,7 +85,9 @@ kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)
 kody execute --target mock --file scripts/mint-dev-otp.ts # interim OTP mint (no params); returns a 4-digit single-use code, valid 10 minutes
 ```
 
-Seed `counter` fixture (writes before starting `kody dev`; a running preview keeps mock state in memory): seed first, then `catalog.ts` install as above — no Python step needed any more. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Or mint an OTP instead of seeding and enter it in the unlock form — footer then reads `via cookie`. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
+**Mock writes need a stopped server.** `kody dev` reads `~/.cache/kody/mock-sessions/default/state.json` once at startup and serves that snapshot from memory; `kody execute` writes the file, not the running process. A write made while the preview is running returns `{ ok: true }` and does land on disk, but the preview never shows it — and the preview's next write (any app action or state change) rewrites the file from its snapshot and silently deletes the CLI change. So stop `kody dev`, run the `registry`/`catalog`/`add-app`/seed writes, then start it again; "write now, restart later" loses the write as soon as the running preview acts. Verified 2026-10-31: `add-app.ts` with a new id → `{ ok: true }` and present on disk, `GET /apps/<id>` still 404, and the definition gone from the file after one `set_count` on the preview. Live-reload covers `src/` edits; it does not cover mock data.
+
+Seed `counter` fixture with the server stopped (see above): seed first, then `catalog.ts` install as above — no Python step needed any more. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Or mint an OTP instead of seeding and enter it in the unlock form — footer then reads `via cookie`. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
 
 ## Edge cases
 
