@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v1.5.1. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v2.0.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -21,25 +21,23 @@ This policy's own addition, and the header correction from v0.1.5 to v0.1.7 that
 
 ```ts
 import main, { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app } from 'kody:@hypercubed/kody-os'
-import { get_access_status, mint_otp } from 'kody:@hypercubed/kody-os'
+import { mint_otp } from 'kody:@hypercubed/kody-os'
 
-await get_access_status() // { configured: true } once the secret is bound
 const otp = await mint_otp() // { ok: true, code: '4821' } — single use, 10 min
 ```
 
 ## Device access gate
 
-Only `src/app.ts` fetch requests are gated; MCP exports are not. The owner mints a 4-digit OTP over MCP; typing it into the unlock form burns it and mints a session (random token, SHA-256 hash in `packageStorage()`, 30-day expiry, HttpOnly cookie named `<cookiePrefix>kody_os_auth` so the edge forwards it). Anonymous visitors can't read the Kody secret, so the secret-derived code is fallback-only.
+Only `src/app.ts` fetch requests are gated; MCP exports are not. The owner mints a 4-digit OTP over MCP; typing it into the unlock form burns it and mints a session (random token, SHA-256 hash in `packageStorage()`, 30-day expiry, HttpOnly cookie named `<cookiePrefix>kody_os_auth` so the edge forwards it). There is no other way in: OTP sessions and the owner-only Kody bypass below are the whole gate — no secret, no derived code, no stored-hash fallback. `?k=` is only a single-use OTP submission transport, never a session token, and no link, form, or redirect the shell renders carries a credential.
 
-- No MCP or in-app set path: create/rotate the code only in the Kody UI. Overwriting the secret rotates everything at once. Steps: [Device key](docs/device-key.md).
-- The secret value never appears in code, storage, logs, or chat; the handler recomputes per request.
+- No secret exists to create, rotate, or revoke: steps are in [Device key](docs/device-key.md). Session and OTP registries hold SHA-256 hashes only (`kody-os.auth.sessions.v2`, `kody-os.auth.otp.v2`); the v1 keys are never read since the v2.0.0 cutover, so every pre-cutover session and OTP stopped working then and each device needed a fresh OTP or Kody login. `scripts/clear-auth.ts` clears both v2 and v1 registries in a local/mock store and returns counts only.
 - Unlock form submits to path form `/unlock/<code>` (the edge drops query strings, so `?k=` never arrives); success sets the session cookie and 303-redirects to a clean URL. Wrong/expired codes re-render locked with an inline error; 10+ failures in 10 minutes locks out with a notice. Logout is device-sessions only.
-- Unauthenticated requests get the same honest 404. With no secret bound, only Kody-logged-in owners are served (login-only mode): the Kody bypass is owner-only (`isKodyOwnerVisitor` in `src/auth.ts` — platform visitor header with role `owner` plus a live `metaGetCurrentUser` confirm, fail-closed). Any other verified Kody visitor falls through to the device gate like an anonymous visitor. The device gate itself is unchanged, and MCP exports are still ungated by fetch.
+- Unauthenticated requests get the same honest 404. The Kody bypass is owner-only (`isKodyOwnerVisitor` in `src/auth.ts` — platform visitor header with role `owner` plus a live `metaGetCurrentUser` confirm, fail-closed). Any other verified Kody visitor falls through to the device gate like an anonymous visitor. MCP exports are still ungated by fetch.
 - Response headers on every HTML/JSON page: `no-store`, `no-referrer`, `nosniff`, `frame-ancestors 'none'`.
 
 ## App actions and the package-app edge
 
-Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain when the browser reports a foreign or `null` `Origin`. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })`. UI actions are GET forms (`GET /apps/:id?action=<name>`, hidden `k` field only on query-authenticated sessions); `POST /apps/:id` stays for API clients. Bundle scripts resolve action URLs against the shell-stamped `data-action-base="/apps/<id>"` container with `credentials: 'same-origin'`. Checklist: `src/apps/INTEGRATION.md`.
+Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain when the browser reports a foreign or `null` `Origin`. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })`. UI actions are GET forms (`GET /apps/:id?action=<name>`, no credential field — authentication rides the session cookie); `POST /apps/:id` stays for API clients. Bundle scripts resolve action URLs against the shell-stamped `data-action-base="/apps/<id>"` container with `credentials: 'same-origin'`. Checklist: `src/apps/INTEGRATION.md`.
 
 ## Adding an app
 
@@ -79,16 +77,16 @@ Run from `pkg/` only (repo root fails: missing `kody.app.entry`). Proxy bypass r
 cd pkg
 kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
 systemctl --user enable --now kody-os-dev.service # persistent across turns; verify with is-active + curl status
-kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}' # writes ACCESS_HASH_KEY
+kody execute --target mock --file scripts/mint-dev-otp.ts # mint a local-dev OTP (no params); returns a 4-digit single-use code, valid 10 minutes
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}' # install from catalog by id; op update/list also supported
 kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)" # install a definition file directly; params ARE the definition, no op wrapper
-kody execute --target mock --file scripts/mint-dev-otp.ts # interim OTP mint (no params); returns a 4-digit single-use code, valid 10 minutes
+kody execute --target mock --file scripts/clear-auth.ts # clear local sessions and OTPs (v2 + v1 keys); returns counts only
 ```
 
-**Mock writes need a stopped server.** `kody dev` reads `~/.cache/kody/mock-sessions/default/state.json` once at startup and serves that snapshot from memory; `kody execute` writes the file, not the running process. A write made while the preview is running returns `{ ok: true }` and does land on disk, but the preview never shows it — and the preview's next write (any app action or state change) rewrites the file from its snapshot and silently deletes the CLI change. So stop `kody dev`, run the `registry`/`catalog`/`add-app`/seed writes, then start it again; "write now, restart later" loses the write as soon as the running preview acts. Verified 2026-10-31: `add-app.ts` with a new id → `{ ok: true }` and present on disk, `GET /apps/<id>` still 404, and the definition gone from the file after one `set_count` on the preview. Live-reload covers `src/` edits; it does not cover mock data.
+**Mock writes need a stopped server.** `kody dev` reads `~/.cache/kody/mock-sessions/default/state.json` once at startup and serves that snapshot from memory; `kody execute` writes the file, not the running process. A write made while the preview is running returns `{ ok: true }` and does land on disk, but the preview never shows it — and the preview's next write (any app action or state change) rewrites the file from its snapshot and silently deletes the CLI change. So stop `kody dev`, run the `registry`/`catalog`/`add-app`/mint/clear writes, then start it again; "write now, restart later" loses the write as soon as the running preview acts. Verified 2026-10-31: `add-app.ts` with a new id → `{ ok: true }` and present on disk, `GET /apps/<id>` still 404, and the definition gone from the file after one `set_count` on the preview. Live-reload covers `src/` edits; it does not cover mock data.
 
-Seed `counter` fixture with the server stopped (see above): seed first, then `catalog.ts` install as above — no Python step needed any more. Open `http://127.0.0.1:4302/?k=local-dev-code-123456` — home shows `via key`, not locked. Or mint an OTP instead of seeding and enter it in the unlock form — footer then reads `via cookie`. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. `GET /apps/counter?action=set_count&value=7&format=json&k=...` → `{"ok":true,"state":{"count":7}}`; hidden state readout carries persisted value while bundle `counter-num` stays static template text.
+Seed `counter` fixture with the server stopped (see above): mint an OTP first, then `catalog.ts` install as above — no Python step needed any more. Start the preview and enter the minted code in the unlock form — footer then reads `via cookie` with a clean URL. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. A minted OTP is single use, so there is no repeatable authenticated `fetch` check: verify actions in the unlocked browser instead. Hidden state readout carries persisted value while bundle `counter-num` stays static template text.
 
 ## Edge cases
 

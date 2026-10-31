@@ -1,103 +1,107 @@
-# Device access: OTP sessions first, derived code as fallback
+# Device access: OTP sessions only
 
-The browser shell lock exists so the Kindle Scribe can open the OS without
-Kody login. The primary path is **OTP sessions**: the owner mints a short
-one-time code over MCP, the device holder types it once, and the browser
-keeps a session cookie after that. No code, token, or `?k=` ever appears in
-a URL.
+kody-os is private. There are exactly two ways into the browser shell,
+and no setup step for either beyond what the platform already provides:
 
-## Unlock a device (owner + device holder)
+1. **Kody login (owner).** A platform-verified Kody visitor with role
+   `owner` in the owning org skips the device gate. Any other verified
+   visitor, and any anonymous visitor, falls through to the device gate.
+   On a limited browser (e.g. the Kindle Scribe stock browser) use the
+   host-root platform sign-in route, not a path under the app:
+   `https://hypercubed.kody.run/-/auth/login?app=kody-os`
+   (with `return_to=/kody-os/` to land back in the app). The platform
+   sign-in also offers a "sign in on another device" code flow for
+   limited browsers. This is a platform path, not a kody-os path: there
+   is no sign-in button inside kody-os itself.
+2. **One-time code (OTP) device login.** The owner mints a 4-digit code
+   with the `mint_otp` MCP export. The code is single use, valid for 10
+   minutes, and at most 5 may be outstanding at once. Entering it in the
+   shell's unlock form (or opening `/unlock/<code>`, or submitting it
+   as `?k=` on a GET) burns it and mints a 30-day session: a random
+   25-character bearer whose SHA-256 hash is stored, carried in an
+   HttpOnly session cookie. The raw code and the raw bearer are never
+   stored in package storage, logged, or rendered anywhere. (The
+   unlock interstitial also writes the session token to `localStorage`
+   under `kody_os_auth` as a carrier; fetches authenticate with the
+   cookie, not with that stored value.)
 
-1. The owner calls the package MCP export `mint_otp`. It returns
-   `{ ok: true, code: "<4 digits>", error: "" }` — the plaintext exactly
-   once. It is never logged, rendered, or stored; only its SHA-256 hash
-   rests in `packageStorage`, valid 10 minutes, at most 5 outstanding
-   (minting a 6th while 5 are live returns `{ ok: false, error: "too many
-   outstanding codes" }`).
-2. On the device, open the app and type the 4 digits into the unlock form.
-   A correct OTP is burned on first use and mints a session: a random
-   25-char token whose SHA-256 hash is stored with 30-day expiry, carried
-   in an HttpOnly session cookie, and mirrored to `localStorage` under the
-   familiar `kody_os_auth` key so the enhancement fast path keeps working.
-   Later requests authenticate by session-cookie hash lookup — the address
-   bar stays clean from the first submit onward.
-3. A used or expired OTP reads exactly like a wrong code, with a named
-   inline error. At most 10 failed unlock attempts are allowed per 10-minute
-   window device-wide; further attempts are denied ("Too many attempts")
-   until the window passes, and any success clears the counter.
+There is no other way in. There is no secret to create, no value to
+configure, no derived code, no stored-hash fallback, and no code-hash
+cookie. A bookmarked or replayed code is inert: it was already burned,
+or it expired. A device that loses its cookie needs a fresh OTP or a
+Kody login.
 
-The session bearer is revocable without touching anything else: it expires
-30 days after minting, and the in-app Logout link (shown only on device
-sessions, never on Kody-login sessions) deletes the server-side token and
-clears the cookie at once.
+## How the gate reads
 
-No code, token, or `?k=` value is ever rendered into links, forms, or
-redirects: the unlock form submits to `/unlock/<code>` (rewritten in place
-by a small inline script; without JavaScript the plain GET still works
-where the platform passes query strings), and a successful unlock
-303-redirects to the clean app home while setting the cookie.
+- The shell footer names the active path: `via kody`, `via cookie`, or
+  `locked`, followed by the package version and build number.
+- A valid session cookie authenticates every request by hash lookup.
+  The cookie name carries the platform cookie prefix when one is
+  supplied; the legacy bare name is still accepted on read so existing
+  cookies keep working, and logout clears both names.
+- The `?k=` parameter is only a single-use OTP submission transport.
+  It never authenticates a session token, never appears in a link, form,
+  redirect, or bookmark the shell renders, and is stripped from action
+  arguments (along with `from` and `format`) before an action runs.
+  Authentication after unlock rides the cookie alone; same-origin
+  fetches (the shell client enhancement and bundle bridge actions) send
+  the cookie and attach no credential to the URL.
+- Unlock attempts are capped device-wide: 10 failures per 10-minute
+  window, after which further attempts read exactly like a wrong code
+  until the window passes. A successful unlock clears the counter.
+- Logout is per-device: it revokes only the session presenting that
+  request's cookie (a silent no-op for missing or unknown tokens) and
+  clears the cookie. Other devices' sessions are untouched.
 
-### Scribe cookie caveat
+## Cutover invalidation (v2.0.0)
 
-The Scribe browser keeps storage for the session at best. Within one Scribe
-session the cookie works: enter one OTP, browse with clean URLs. Once the
-Scribe session ends, the cookie is gone — mint and enter a fresh OTP for
-the next session. Verified working on-device (2026-10-26/27).
+Version 2.0.0 moved the session and OTP registries to versioned keys:
+`kody-os.auth.sessions.v2` and `kody-os.auth.otp.v2`. The v1 keys are
+never read, never migrated, and never a fallback, so every session and
+outstanding OTP minted before the cutover stopped working when 2.0.0
+went live. Affected devices need a fresh OTP or Kody login. There is
+no secret to rotate and therefore no rotation kill switch: sessions
+end by per-device logout or 30-day expiry.
 
-## Fallback: the derived device code (secret path)
+To clear sessions and OTPs from a local/mock store, run from `pkg/`:
 
-Anonymous `credential()` calls never resolve for signed-out visitors, so
-the secret-derived path cannot serve the device gate on its own — but it
-remains in place as fallback (for example where the platform passes query
-strings, and for local preview). The legacy mechanics are unchanged:
+```bash
+kody execute --target mock --file scripts/clear-auth.ts
+```
 
-- The code is **derived inside the package** as HMAC-SHA256 of the fixed
-  domain string `kody-os/access-key/v1` under a package-scope Kody secret,
-  encoded in the unambiguous alphabet and grouped exactly like the old
-  generated codes. The secret value never appears in code, storage, logs,
-  or chat; the handler recomputes the code per request.
-- There is no MCP or in-app set path: key management is Kody-UI-only.
-  Need name: `access-key` (declared in `pkg/package.json` under
-  `kody.credentials`: kind `secret` plus description; publisher supply is
-  the default package behavior).
-- **Create the secret (owner, one time):** sign in to Kody as the package
-  owner and open the credential creation form
-  (`https://kody.codes/@<org>/-/credentials/new?kind=secret&name=access-key`,
-  replacing `<org>` with the organization slug). Save any random value —
-  it is never shown again and never typed anywhere.
-- **Hosts matter:** Kody's edge drops any cookie or signature whose host
-  is not whitelisted on the credential. Open the secret's detail page and
-  add the app's hosted hostname (for example `hypercubed.kody.run`) to its
-  hosts, or every request falls through to locked. Nothing is ever fetched
-  from that hostname.
-- **Rotate the code (owner, any time):** reopen the same `access-key`
-  secret in the Kody UI and overwrite its value, then save. The derived
-  code changes at once: every existing bookmark and cookie stops working
-  immediately. No republish, no code or storage write.
-- **Read the current code (owner, via MCP):** call the package MCP export
-  `get_access_code`. When a secret is bound it returns `{ ok: true, code:
-  "<derived-code>" }`; otherwise `{ ok: false, code: "" }` — a locked /
-  not-applicable signal, never a guessable value, and never the secret
-  itself.
+It returns only counts cleared, never hashes, tokens, or codes, and
+touches no app definition or app state. It is a local/mock maintenance
+tool, not a live cutover mechanism: ad-hoc hosted execute cannot write
+package storage (it has no package provenance), so the live cutover
+invalidation is the versioned-key move itself, not a script run.
 
-## Login-only mode (no secret, stays private)
+## Local preview
 
-With no `access-key` secret defined, the app serves Kody-logged-in visitors
-only (`via kody`) and denies anonymous requests at the device gate. This
-mode needs no `internet_visible` approval: keep the package private.
+The local preview (`kody dev --target mock`) uses the same gate against
+its own mock store, which is separate from the hosted store. A fresh
+mock store is locked until you mint a local OTP:
 
-## Footer: version and build
+```bash
+cd pkg
+kody execute --target mock --file scripts/mint-dev-otp.ts
+```
 
-Every page footer names the active auth path (`via kody`, `via cookie`,
-`via key`, or `locked`) followed by the package version and build number
-from `pkg/package.json`, e.g. `via cookie · v0.1.4 · b2`. The build number
-increments on every publish; the version bumps on user-visible changes.
+Mint while `kody dev` is stopped, then start it (or restart it
+afterward): writes made while the preview is running never reach its
+in-memory snapshot. Enter the minted code in the unlock form; the
+footer then reads `via cookie` with a clean URL. A later restart with
+the mock store intact does not need a fresh code — only a store reset
+or a lost cookie does.
 
-## Local preview note
+## Exports
 
-Local `kody dev` has no bound secret, so the derived path is empty there
-and the pre-secret stored-hash fallback applies: seed a throwaway dev hash
-in the mock store (a local test fixture, not key management) as described
-in [Adding an app](adding-an-app.md). OTP minting works the same locally
-(the mock store stands in for `packageStorage`), so the full
-unlock → cookie → act loop is testable without the hosted secret.
+- `mint_otp` — mint a 4-digit OTP (returns the code exactly once).
+- There is no access-code readout export and no session-listing export.
+  Session and OTP registries hold SHA-256 hashes only, so no export
+  can present a device's raw bearer or code.
+
+## See also
+
+- [Setup](setup.md) — the two ways in, from the operator's side.
+- [Agent guide](../AGENTS.md) — the gate, the local-dev flow, and the
+  mock-write ordering rule.

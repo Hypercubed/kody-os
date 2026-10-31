@@ -119,8 +119,8 @@ export function renderBundleContent(def: AppDefinition, actionBase?: string): st
  *
  * Forms use GET because Kody's edge rejects cross-origin POSTs to a package-app
  * subdomain; some browsers and embedded views report a null origin even for a
- * same-origin form. The code travels as a hidden `k` field so the bookmark path
- * keeps working without a cookie.
+ * same-origin form. Authentication rides the HttpOnly session cookie;
+ * no credential travels in a form, link, or redirect.
  */
 /** Render the JSON state seed for one app section (Phase 2, decided 2026-10-30).
  * The seed is a <script type="application/json"> element carrying the full
@@ -141,7 +141,7 @@ export function renderStateSeed(def: AppDefinition, state: AppState): string {
 	return '<script type="application/json" data-kody-state-seed="1" data-app-id="' + escapeHtml(def.id) + '">' + json + '</script>'
 }
 
-export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, code?: string, fromPath?: string): string {
+export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, fromPath?: string): string {
 	var bundleHtml: string
 	try {
 		bundleHtml = renderBundleContent(def, appBasePath + '/apps/' + def.id)
@@ -158,10 +158,6 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 			return '<p data-field="' + escapeHtml(field) + '"' + hiddenAttr + '>' + escapeHtml(field) + ': ' + '<span>' + escapeHtml(value) + '</span></p>'
 		})
 		.join('\n')
-	var codeField =
-		typeof code === 'string' && code !== ''
-			? '<input type="hidden" name="k" value="' + escapeHtml(code) + '" />'
-			: ''
 	var fromField =
 		typeof fromPath === 'string' && fromPath !== ''
 			? '<input type="hidden" name="from" value="' + escapeHtml(fromPath) + '" />'
@@ -173,7 +169,6 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 				'<form class="app-action" method="GET" action="' +
 				escapeHtml(appBasePath + '/apps/' + def.id) +
 				'">' +
-				codeField +
 				fromField +
 				'<input type="hidden" name="action" value="' +
 				escapeHtml(entry.action) +
@@ -200,7 +195,6 @@ export function renderAppPanel(
 	appBasePath: string,
 	backHref: string,
 	backLabel: string,
-	code?: string,
 	error?: string,
 	withHeader?: boolean,
 	fromPath?: string,
@@ -208,7 +202,7 @@ export function renderAppPanel(
 	expandHref?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
-	var content = renderAppSection(def, state, appBasePath, code, fromPath)
+	var content = renderAppSection(def, state, appBasePath, fromPath)
 	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
 	var back =
 		backHref !== '' && backLabel !== ''
@@ -250,9 +244,9 @@ export function renderAppPanel(
  * so the overlay markup contains exactly one `section.app`. Fully present
  * in server-rendered HTML.
  */
-export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string, code?: string): string {
+export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string): string {
 	var fromPath = appBasePath + '/apps#app-' + def.id
-	var panel = renderAppPanel(def, state, appBasePath, '', '', code, undefined, undefined, fromPath, '#apps', appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/apps'))
+	var panel = renderAppPanel(def, state, appBasePath, '', '', undefined, undefined, fromPath, '#apps', appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/apps'))
 	return (
 		'<div class="overlay" id="app-' +
 		escapeHtml(def.id) +
@@ -321,17 +315,12 @@ export function renderPinnedSection(apps: AppSummary[], appBasePath: string): st
 }
 
 /** Render the Recent section with a Clear control (omitted when empty by the caller). */
-export function renderRecentSection(apps: AppSummary[], appBasePath: string, code?: string, formBase?: string): string {
-	var codeField =
-		typeof code === 'string' && code !== ''
-			? '<input type="hidden" name="k" value="' + escapeHtml(code) + '" />'
-			: ''
+export function renderRecentSection(apps: AppSummary[], appBasePath: string, formBase?: string): string {
 	return (
 		'<section class="category" id="recent" aria-label="Recent">\n' +'<div class="section-head"><h2>Recent</h2>' +
 		'<form method="GET" action="' +
 			escapeHtml(typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/') +
 			'" class="section-clear">' +
-		codeField +
 		'<input type="hidden" name="clear" value="1" />' +
 		'<button type="submit">Clear</button></form></div>\n' +
 		tilesList(apps, appBasePath) +
@@ -343,20 +332,14 @@ export function renderRecentSection(apps: AppSummary[], appBasePath: string, cod
 export function renderAllSection(
 	apps: AppSummary[],
 	appBasePath: string,
-	code?: string,
 	formBase?: string,
 ): string {
-	var codeField =
-		typeof code === 'string' && code !== ''
-			? '<input type="hidden" name="k" value="' + escapeHtml(code) + '" />'
-			: ''
 	var list = tilesList(apps, appBasePath)
 	return (
 		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' +
 		'<form method="GET" action="' +
 			escapeHtml(typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/') +
 			'" class="section-edit">' +
-		codeField +
 		'<input type="hidden" name="edit" value="1" />' +
 		'<button type="submit">Edit</button></form></div>\n' +
 		list +
@@ -370,14 +353,9 @@ export function renderEditSection(
 	appBasePath: string,
 	pinnedIds: string[],
 	hiddenIds: string[],
-	code?: string,
 	homepageIds?: string[],
 	formBase?: string,
 ): string {
-	var codeField =
-		typeof code === 'string' && code !== ''
-			? '<input type="hidden" name="k" value="' + escapeHtml(code) + '" />'
-			: ''
 	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/'
 	var homeIds = homepageIds || []
 	var rows: string[] = []
@@ -392,7 +370,6 @@ export function renderEditSection(
 			'</span>' +				'<form method="GET" action="' +
 				escapeHtml(base) +
 			'" class="edit-toggle">' +
-			codeField +
 			'<input type="hidden" name="edit" value="1" />' +
 			'<input type="hidden" name="pin" value="' +
 				escapeHtml(app.id) +
@@ -404,7 +381,6 @@ export function renderEditSection(
 			'<form method="GET" action="' +
 				escapeHtml(base) +
 			'" class="edit-toggle">' +
-			codeField +
 			'<input type="hidden" name="edit" value="1" />' +
 			'<input type="hidden" name="hide" value="' +
 				escapeHtml(app.id) +
@@ -416,7 +392,6 @@ export function renderEditSection(
 			'<form method="GET" action="' +
 				escapeHtml(base) +
 			'" class="edit-toggle">' +
-			codeField +
 			'<input type="hidden" name="edit" value="1" />' +
 			'<input type="hidden" name="home" value="' +
 				escapeHtml(app.id) +
@@ -433,7 +408,6 @@ export function renderEditSection(
 		'<form method="GET" action="' +
 			escapeHtml(base) +
 		'" class="section-edit">' +
-		codeField +
 		'<button type="submit">Done</button></form></div>\n' +
 		'<ul class="edit-list">\n' +
 		rows.join('\n') +
@@ -479,16 +453,11 @@ export function renderWidgetSection(
 	appBasePath: string,
 	index: number,
 	total: number,
-	code?: string,
 	error?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
-	var content = renderAppSection(def, state, appBasePath, code, appBasePath + '/')
+	var content = renderAppSection(def, state, appBasePath, appBasePath + '/')
 	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
-	var codeField =
-		typeof code === 'string' && code !== ''
-			? '<input type="hidden" name="k" value="' + escapeHtml(code) + '" />'
-			: ''
 	var upDisabled = index <= 0 ? ' disabled' : ''
 	var downDisabled = index >= total - 1 ? ' disabled' : ''
 	return (
@@ -512,7 +481,6 @@ export function renderWidgetSection(
 		'<form method="GET" action="' +
 		escapeHtml(appBasePath + '/') +
 		'" class="widget-move move-left">' +
-		codeField +
 		'<input type="hidden" name="home" value="' +
 			escapeHtml(def.id) +
 			'" /><input type="hidden" name="move" value="-1" />' +
@@ -524,7 +492,6 @@ export function renderWidgetSection(
 		'<form method="GET" action="' +
 			escapeHtml(appBasePath + '/') +
 		'" class="widget-move move-right">' +
-		codeField +
 		'<input type="hidden" name="home" value="' +
 			escapeHtml(def.id) +
 			'" /><input type="hidden" name="move" value="1" />' +
@@ -541,7 +508,7 @@ export function renderWidgetSection(
  * Render the widget dashboard grid. An empty homepage list renders an honest
  * empty state pointing at Apps → Edit → "Add to home".
  */
-export function renderDashboard(widgets: string[], appBasePath: string, code?: string): string {
+export function renderDashboard(widgets: string[], appBasePath: string): string {
 	if (widgets.length === 0) {
 		var appsHref = escapeHtml(appBasePath + '/apps')
 		var editHref = escapeHtml(appBasePath + '/apps?edit=1')

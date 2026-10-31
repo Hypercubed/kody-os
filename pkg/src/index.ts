@@ -142,7 +142,7 @@ export {
 	validateDefinition,
 } from './apps/index.ts'
 export { actFromForm } from './apps/index.ts'
-export { getAccessCode as get_access_code, getAccessStatus as get_access_status, mintOtp as mint_otp } from './auth.ts'
+export { mintOtp as mint_otp } from './auth.ts'
 export type {
 	ActionArgDef,
 	ActionDef,

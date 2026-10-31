@@ -1,8 +1,8 @@
 {
   "name": "@hypercubed/kody-os",
-  "version": "1.5.1",
+  "version": "2.0.0",
   "private": true,
-  "build": 19,
+  "build": 20,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -22,13 +22,6 @@
       "entry": "./src/app.ts",
       "client": "./src/client/index.ts",
       "assets": "./public"
-    },
-    "credentials": {
-      "access-key": {
-        "kind": "secret",
-        "description": "Device access key for the kody-os shell: the publisher (owner) holds random key material in a package secret, and the app derives the Scribe bookmark code from it via HMAC. No secret defined means Kody-login-only access.",
-        "ownerCredentialForVisitors": true
-      }
     }
   }
 }

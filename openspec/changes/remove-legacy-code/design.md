@@ -57,13 +57,27 @@ secret-binding of OTP cookies. This change implements ONLY the
 removal half, on the OTP registry sessions as they exist today,
 with no secret involved. It does not unblock, implement, or
 supersede auth-rethink: auth-rethink stays parked and untouched
-by this change. If auth-rethink is ever revived, it starts from
-this change's end state (no secret, no derived code) and its
-proposal/design MUST be rewritten — its Gate 0 record and its
-"secret required" premises do not carry over. Where this change
-and auth-rethink differ on the `?k=` submission transport
-(Decision 2), this change's decision governs the implemented
-behavior.
+by this change, as a future plan only. If auth-rethink is ever
+revived, it starts from this change's end state (no secret, no
+derived code) and its proposal/design MUST be rewritten — its
+Gate 0 record and its "secret required" premises do not carry
+over, and its "current `access-key` secret" premise is gone
+entirely: a revived secret-binding design would have to
+re-establish a secret need from scratch, not reuse the removed
+legacy access key. Where this change and auth-rethink differ on
+the `?k=` submission transport (Decision 2), this change's
+decision governs the implemented behavior.
+
+Update 2026-10-31: Kody limited-browser sign-in
+(kody-hq/kody#4666, merged 2026-10-31; owner-verified via the
+host-root `/-/auth/login` route for kody-os from the Scribe,
+`hypercubed.kody.run/-/auth/login?app=kody-os`) is what
+removes the last practical reason to keep the legacy path: a
+Scribe visitor can now arrive as a platform-verified Kody
+visitor without the derived code. That does not change the
+two-path model above — Kody visitor or OTP-issued session —
+and it does not make OTP redundant: OTP remains the device
+path for a visitor who is not Kody-signed-in.
 
 ## Decisions
 
@@ -112,22 +126,34 @@ behavior.
    code) for OTP unlocks, as it already is today.
 4. **Browser storage holds a session token, never a code.**
    `localStorage` key `kody_os_auth` is retained as the
-   Scribe-oriented fallback carrier for the OTP-minted session
-   token, exactly as the unlock handler writes it today. No
-   unlock path SHALL write a device code to storage, and the
-   enhancement (`src/client/index.ts`) SHALL NOT read a code
-   from the DOM or the URL: the hidden-field and `?k=`-URL
-   fallbacks in `readDomKey` are removed, and the stored-value
-   attach is retained only for session tokens. The enhancement
-   SHALL NOT write anything to storage. (Whether the stored
-   session token re-authenticates enhancement fetches on a
-   cookie-less browser is Open Question 2; the implementation
-   SHALL establish and record the answer, and SHALL NOT claim
-   a property the check does not show.)
+   carrier for the OTP-minted session token, exactly as the
+   unlock interstitial writes it. No unlock path SHALL write a
+   device code to storage, and the enhancement
+   (`src/client/index.ts`) SHALL NOT read a code from the DOM
+   or the URL: the hidden-field and `?k=`-URL fallbacks in
+   `readDomKey` are removed. RESOLVED 2026-10-31 (Open
+   Question 2): the stored-value attach is NOT retained either.
+   The server accepts `?k=` only as a single-use OTP
+   submission (it burns the value and mints a session, or
+   counts a failure); it never accepts a session token as
+   `?k=`, so attaching the stored session token could not
+   authenticate an enhancement fetch and would instead count
+   toward the failure cap. The enhancement therefore attaches
+   no credential at all: same-origin fetches authenticate with
+   the HttpOnly session cookie, and a cookie-less browser falls
+   back to native submit. The bridge (`src/bridge/bridge.js`)
+   follows the same rule: its `readKeyFromPage` attach is
+   removed, and its fetches already send
+   `credentials: 'same-origin'`. The enhancement SHALL NOT
+   write anything to storage.
 5. **Local dev uses the same OTP ceremony against the mock
    target — no stored hash, no dev bypass in fetch code.**
-   `pkg/scripts/seed-dev-hash.ts` is retired and a new
-   `pkg/scripts/mint-dev-otp.ts` takes its place: it imports
+   `pkg/scripts/seed-dev-hash.ts` is retired and
+   `pkg/scripts/mint-dev-otp.ts` takes its place (implementation
+   note 2026-10-31: the mint script already existed when this
+   change was implemented, so it was kept with an updated header
+   comment rather than added; `pkg/scripts/clear-auth.ts` was
+   added in the same change): it imports
    `mintOtp` and `resolveStore` (the same
    `kody execute --target mock --file <script>` pattern the
    seed script uses) and returns a fresh OTP for the mock
@@ -201,9 +227,30 @@ behavior.
 Cutover is a republish: derived codes, bookmarks, and
 code-hash cookies stop working immediately; the owner mints
 fresh OTPs per legacy-path device after the owner re-approves
-the capability set. No data migration: apps and their state
-are untouched (auth storage is separate from app storage),
-and the stale code-hash key is left inert. `pkg/docs/device-key.md`,
+the capability set, or signs in via Kody login (including the
+limited-browser `/-/auth/login` route, kody-hq/kody#4666).
+CUTOVER INVALIDATION, added 2026-10-31 per the owner's
+direction to invalidate all existing OTP access first: the
+session and OTP registries move to versioned keys
+(`kody-os.auth.sessions.v2` and `kody-os.auth.otp.v2`) in the
+same change. The v1 keys (`kody-os.auth.sessions` and
+`kody-os.auth.otp`) are never read, never migrated, and never
+a fallback, so every pre-cutover OTP session and outstanding
+OTP stops working at cutover — this supersedes the earlier
+line that existing OTP-minted sessions keep working — and
+each device needs a fresh OTP or Kody login. This is a
+one-time migration effect of the version cutover, not a
+runtime revoke feature: after cutover, no action invalidates
+all sessions at once (per-device logout and 30-day expiry
+only). No data migration: apps and their state are untouched
+(auth storage is separate from app storage), and the stale
+code-hash key is left inert. `pkg/scripts/clear-auth.ts`
+(added in the same change, following the mint-dev-otp
+pattern) clears the v2 and v1 session/OTP registries in a
+local/mock store and returns counts only; it is NOT the live
+cutover mechanism — ad-hoc hosted execute cannot write
+package storage (no package provenance) — and no live storage
+write or live clear call is part of this change. `pkg/docs/device-key.md`,
 `pkg/AGENTS.md`, `pkg/README.md`,
 `pkg/docs/adding-an-app.md`, and the setup guide's auth
 section (if landed) are rewritten/corrected in the same
@@ -216,25 +263,28 @@ Rollback is a republish of the prior commit (see Decision 7).
 
 MAJOR at implementation, in the same commit as the code, per
 `pkg/AGENTS.md` (MCP exports removed; auth behavior changes
-so existing codes and bookmarks stop working; `0.x` does not
-soften the rule). Exact target depends on landing order: if
-the app-store change (MINOR) has landed, `0.2.0` → `1.0.0`;
-if this change lands first, `0.1.7` → `1.0.0`. PATCH resets
-to 0, BUILD +1 on publish, `pkg/AGENTS.md` + `pkg/README.md`
-headers updated in the same commit. This spec draft does not
-bump anything.
+so existing codes and bookmarks stop working). The draft's
+earlier `0.1.7` / `0.2.0` → `1.0.0` targets are superseded:
+live is now v1.5.1 build 19 (published 2026-10-31), so the
+MAJOR target is `1.5.1` → `2.0.0`. PATCH resets to 0, BUILD
++1 on publish (so `2.0.0` build 20), `pkg/AGENTS.md` +
+`pkg/README.md` headers updated in the same commit. This spec
+draft does not bump anything.
 
 ## Open Questions
 
 1. Whether the app-store change lands before or after this
    one (landing order fixes the version target and which
    change owns removing any `k`-field store forms).
-2. Whether the `localStorage` session token re-authenticates
-   enhancement fetches on a cookie-less browser today, and
-   whether any behavior change is needed for Scribe action
-   forms after the code-carrying paths are removed —
-   established by the implementation checks in task 2.1 and
-   recorded in this design file.
+2. RESOLVED 2026-10-31: the `localStorage` session token
+   does NOT re-authenticate enhancement fetches — the server
+   accepts `?k=` only as an OTP submission, so attaching the
+   token would fail and count toward the failure cap. The
+   attach is therefore removed from both the enhancement and
+   the bridge; cookie-less browsers fall back to native
+   submit. (Live `kody dev` verification of the cookie-less
+   path was unavailable in the implementation VM; see task
+   2.1.)
 3. Whether a global session revoke (storage epoch or
    revoke-all export) should follow as a separate change.
    Out of scope here; recorded only so the absence is a

@@ -131,32 +131,6 @@
     return out;
   }
 
-  function readKeyFromPage(section) {
-    try {
-      var search = window.location.search || '';
-      var at = search.indexOf('k=');
-      if (at !== -1) {
-        var rest = search.slice(at + 2);
-        var amp = rest.indexOf('&');
-        var raw = amp === -1 ? rest : rest.slice(0, amp);
-        try { return decodeURIComponent(raw); } catch (err) { return raw; }
-      }
-    } catch (err) {}
-    try {
-      if (section && section.querySelector) {
-        var hidden = section.querySelector('input[name="k"]');
-        if (hidden && hidden.value) return hidden.value;
-      }
-    } catch (err) {}
-    try {
-      if (typeof window.localStorage !== 'undefined' && window.localStorage) {
-        var stored = window.localStorage.getItem('kody_os_auth');
-        if (typeof stored === 'string' && stored !== '') return stored;
-      }
-    } catch (err) {}
-    return '';
-  }
-
   function createStore(section, opts) {
     opts = opts || {};
     /* Defensive: a seed <script> also carries data-app-id, so a caller
@@ -230,8 +204,6 @@
         parts.push(encodeURIComponent(argNames[i]) + '=' + encodeURIComponent(String(d.args[argNames[i]])));
       }
       parts.push('format=json');
-      var key = readKeyFromPage(section);
-      if (key !== '') parts.push('k=' + encodeURIComponent(key));
       var sep = actionBase.indexOf('?') === -1 ? '?' : '&';
       var url = actionBase + sep + parts.join('&');
       var fetchFn = opts.fetchFn || (typeof fetch !== 'undefined' ? fetch : null);

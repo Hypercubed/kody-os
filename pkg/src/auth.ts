@@ -1,20 +1,25 @@
 /**
- * Device access gate for the kody-os shell.
+ * Device access gate for the kody-os shell, OTP-only (v2.0.0).
  *
- * The Kindle Scribe browser cannot use Kody's login/handoff flow, so the OS
- * carries its own lock: a device access code derived inside the package as
- * HMAC-SHA256 (via the scoped `credential().sign()` client) of a fixed domain
- * string under a package-scope Kody secret. A request proves the code either
- * with `?k=<code>` (bookmarkable, the Scribe-safe path) or with an HttpOnly
- * cookie set by the plain HTML unlock form (progressive enhancement).
+ * Exactly two ways in: a platform-verified Kody visitor (owner-only
+ * bypass, see isKodyOwnerVisitor), or a session cookie issued only by
+ * burning a one-time code. There is no third path: no derived code, no
+ * stored-hash fallback, no code-hash cookie, no secret, and no
+ * credential carried in a URL, link, form, or redirect other than the
+ * single-use OTP submission itself (unlock-form POST, the
+ * `/unlock/<otp>` path form, or the no-JavaScript `?k=` GET
+ * submission). A presented OTP burns on first use; a bookmarked or
+ * replayed OTP is inert.
  *
- * The secret value never enters code, storage, logs, or chat: the handler
- * recomputes the code per request and compares, so rotation is a secret-value
- * overwrite in the Kody UI that invalidates every old cookie and bookmark at
- * once. While no secret is bound (before the owner creates it, or in local
- * preview), verification falls back to the pre-secret SHA-256 hash in
- * packageStorage(), preserving today's behavior exactly.
- * The raw code is never stored, never logged, and never rendered by the shell.
+ * Cutover invalidation (v2.0.0): session and OTP registries moved to
+ * versioned keys (`kody-os.auth.sessions.v2` and
+ * `kody-os.auth.otp.v2`). The v1 keys (`kody-os.auth.sessions` and
+ * `kody-os.auth.otp`) are never read by this code, are not migrated,
+ * and are not a fallback. Every pre-cutover OTP session and
+ * outstanding OTP therefore stops working at cutover, and every
+ * device needs a fresh OTP or Kody login to get back in. There is
+ * no secret to rotate and no rotation kill switch: sessions end by
+ * per-device logout or 30-day expiry.
  *
  * Server-side only. The browser never imports this file.
  *
@@ -23,23 +28,17 @@
 
 import { resolveStore } from './apps/storage.ts'
 import type { KeyStore } from './apps/storage.ts'
-// @ts-ignore Kody supplies this virtual module only in the hosted Worker / kody dev. Static imports (not dynamic) because the publish stamp gate only seals literal credential() calls bound to this import, and server files calling credential() must not use dynamic import().
-import { credential, kody, packageContext } from 'kody:runtime'
+// @ts-ignore Kody supplies this virtual module only in the hosted Worker / kody dev.
+import { kody, packageContext } from 'kody:runtime'
 
-/** packageStorage() key holding the hex SHA-256 of the normalized code. */
-export const ACCESS_HASH_KEY = 'kody-os.auth.code_hash'
-
-/** Cookie name carrying the stored hash (never the raw code). */
-export const ACCESS_COOKIE = 'kody_os_auth'
-
-/** One year: the Scribe keeps storage only per session, desktop browsers keep this. */
-export const ACCESS_COOKIE_MAX_AGE = 31536000
+/** Bare session-cookie name when the platform supplies no cookie prefix. */
+export const SESSION_COOKIE_BARE = 'kody_os_auth'
 
 /**
  * Cookie name the platform forwards: only names starting with the app's
  * packageContext.cookiePrefix reach the fetch handler, so the session
- * (and legacy) cookie must carry the prefix. Local preview has no prefix
- * and keeps the bare name.
+ * cookie must carry the prefix. Local preview has no prefix and keeps
+ * the bare name.
  */
 export function sessionCookieName(): string {
 	try {
@@ -47,13 +46,13 @@ export function sessionCookieName(): string {
 		if (ctx && typeof ctx.cookiePrefix === 'string' && ctx.cookiePrefix !== '') return ctx.cookiePrefix + 'kody_os_auth'
 	} catch (err) {
 	}
-	return ACCESS_COOKIE
+	return SESSION_COOKIE_BARE
 }
 
 /** Read the session cookie: prefixed name first, legacy bare name as fallback. */
 function readSessionCookie(request: Request): string {
 	var names = [sessionCookieName()]
-	if (names[0] !== ACCESS_COOKIE) names.push(ACCESS_COOKIE)
+	if (names[0] !== SESSION_COOKIE_BARE) names.push(SESSION_COOKIE_BARE)
 	for (var i = 0; i < names.length; i++) {
 		var value = readCookie(request, names[i])
 		if (value !== '') return value
@@ -63,16 +62,18 @@ function readSessionCookie(request: Request): string {
 
 /** Unambiguous lowercase alphabet: no i/l/o/u/0/1 to misread on e-ink. */
 var ALPHABET = 'abcdefghjkmnpqrstvwxyz23456789'
-var CODE_LENGTH = 25
-var CODE_GROUP = 5
 
 /**
- * OTP sessions (Phase D): the secret-derived path cannot serve signed-out
- * visitors, so the device gate mints single-use 4-digit OTPs (via MCP) that
- * burn into 30-day session bearers. Only hashes rest in packageStorage.
+ * OTP sessions: the device gate mints single-use 4-digit OTPs (via MCP)
+ * that burn into 30-day session bearers. Only hashes rest in
+ * packageStorage. Registry keys are versioned: v2 is the only key this
+ * code reads or writes; v1 keys are ignored at cutover (see header).
  */
-export const OTP_REGISTRY_KEY = 'kody-os.auth.otp'
-export const SESSION_REGISTRY_KEY = 'kody-os.auth.sessions'
+export const OTP_REGISTRY_KEY = 'kody-os.auth.otp.v2'
+export const SESSION_REGISTRY_KEY = 'kody-os.auth.sessions.v2'
+/** Legacy v1 keys, never read by this code; cleared for completeness by scripts/clear-auth.ts only. */
+export const LEGACY_OTP_REGISTRY_KEY = 'kody-os.auth.otp'
+export const LEGACY_SESSION_REGISTRY_KEY = 'kody-os.auth.sessions'
 export const FAIL_KEY = 'kody-os.auth.fail2'
 export const OTP_TTL_MS = 600000
 export const OTP_MAX_OUTSTANDING = 5
@@ -107,166 +108,33 @@ export interface MintOtpResult {
 
 export interface AccessCheck {
 	ok: boolean
-	/** Query matched and no valid cookie: links must keep carrying the code. */
-	viaQuery: boolean
-	/** A valid cookie was presented. */
+	/** A valid session cookie was presented. */
 	viaCookie: boolean
-	/** A platform-verified Kody visitor was served without the device key. */
+	/** A platform-verified Kody visitor was served without the device gate. */
 	viaKody: boolean
-	/** Normalized code that matched via `?k=`, else ''. */
-	code: string
-	/** Stored hash, so the caller can set the cookie without re-reading storage. */
-	hash: string
 	/**
 	 * Raw session token when this request freshly minted an OTP session, else ''.
-	 * The caller sets the session cookie from this (never from `hash`); later
-	 * requests present it in the cookie and verify by hash lookup.
+	 * The caller sets the session cookie from this; later requests present
+	 * it in the cookie and verify by hash lookup.
 	 */
 	sessionToken: string
 }
 
 /** Active auth path rendered in the shell footer. */
-export type AuthPath = 'via kody' | 'via cookie' | 'via key' | 'locked'
+export type AuthPath = 'via kody' | 'via cookie' | 'locked'
 
 /** Map one access check to its footer path. */
 export function authPathFor(check: AccessCheck): AuthPath {
 	if (!check.ok) return 'locked'
 	if (check.viaKody) return 'via kody'
 	if (check.viaCookie) return 'via cookie'
-	return 'via key'
+	return 'locked'
 }
 
-export interface AccessStatus {
-	configured: boolean
-}
-
-/** Case- and dash-insensitive form: "ABCDE-fghjk" and "abcdefghjk" are one code. */
+/** Case- and dash-insensitive form for submitted OTP codes. */
 export function normalizeCode(input: string): string {
 	var raw = typeof input === 'string' ? input : ''
 	return raw.toLowerCase().replace(/[\s\-]+/g, '')
-}
-
-/** Present a normalized code in groups of five, e.g. abcde-fghjk-mnpqr. */
-export function formatCode(code: string): string {
-	var groups: string[] = []
-	for (var i = 0; i < code.length; i += CODE_GROUP) {
-		groups.push(code.slice(i, i + CODE_GROUP))
-	}
-	return groups.join('-')
-}
-
-/** Package-scope credential need holding the device-key secret (see package.json `kody.credentials`). */
-export const ACCESS_KEY_NEED = 'access-key'
-
-/**
- * Fixed domain string the device code is derived from. Public and constant:
- * knowing it grants nothing without the secret, and it must never change
- * (changing it would rotate every bookmark and cookie, like a secret edit).
- */
-export const ACCESS_KEY_DOMAIN = 'kody-os/access-key/v1'
-
-/**
- * Host label the HMAC is bound to (Kody signs only for a credential host;
- * nothing is ever fetched from it). Resolved per request as the app's own
- * hostname — packageContext hosted URL first, request URL second — so every
- * install and the MCP readout agree without hardcoding. '' when unresolvable
- * (callers fail closed). The secret must list this hostname.
- */
-export async function accessKeyHost(request?: Request): Promise<string> {
-	function hostnameOf(url: string): string {
-		try {
-			var host = new URL(url).hostname
-			return host !== '' ? host : ''
-		} catch (err) {
-		return ''
-	}
-}
-	try {
-		var ctx = (typeof packageContext === 'object' && packageContext !== null) ? packageContext as { hostedUrl?: unknown; clientModuleUrl?: unknown } : null
-		if (ctx) {
-			if (typeof ctx.clientModuleUrl === 'string') {
-				var fromClient = hostnameOf(ctx.clientModuleUrl)
-				if (fromClient !== '') return fromClient
-			}
-			if (typeof ctx.hostedUrl === 'string') {
-				var canonical = hostnameOf(ctx.hostedUrl)
-				if (canonical !== '') return canonical
-			}
-		}
-	} catch (err) {
-	}
-	if (request) {
-		var fromUrl = hostnameOf(request.url)
-		if (fromUrl !== '') return fromUrl
-		try {
-			var forwarded = request.headers.get('x-forwarded-host') || ''
-			var direct = request.headers.get('host') || ''
-			var first = (forwarded !== '' ? forwarded : direct).split(',')[0]
-			var bare = first.replace(/^\s+|\s+$/g, '').split(':')[0]
-			if (bare !== '') return bare
-		} catch (err) {
-		}
-	}
-	return ''
-}
-
-/**
- * Map an HMAC hex signature deterministically into the unambiguous alphabet,
- * grouped exactly like today's generated codes (`abcde-fghjk-...`). Pure:
- * the same signature always yields the same code, so the handler recomputes
- * verification per request without storing anything. When one digest yields
- * fewer than CODE_LENGTH letters, the pool extends via local SHA-256 chaining
- * (still deterministic, still secret-free). Returns '' on bad input.
- */
-export async function encodeDerivedCode(signatureHex: string): Promise<string> {
-	var clean = signatureHex.toLowerCase().replace(/[^0-9a-f]+/g, '')
-	if (clean === '' || clean.length % 2 !== 0) return ''
-	var pool: number[] = []
-	for (var i = 0; i < clean.length; i += 2) {
-		pool.push(parseInt(clean.slice(i, i + 2), 16))
-	}
-	var out = ''
-	// 240 = 8 * 30, so every alphabet letter is equally likely.
-	for (var round = 0; round < 8 && out.length < CODE_LENGTH; round++) {
-		for (var j = 0; j < pool.length && out.length < CODE_LENGTH; j++) {
-			if (pool[j] < 240) out += ALPHABET.charAt(pool[j] % ALPHABET.length)
-		}
-		if (out.length < CODE_LENGTH) {
-			try {
-				var digest = await crypto.subtle.digest('SHA-256', new Uint8Array(pool))
-				pool = Array.from(new Uint8Array(digest))
-			} catch (err) {
-				return ''
-			}
-		}
-	}
-	if (out.length < CODE_LENGTH) return ''
-	return formatCode(out)
-}
-
-/**
- * Task 5.1 probe: derive the device code as HMAC-SHA256 of the fixed domain
- * string under the package-scope secret, via the scoped `credential().sign()`
- * client. Returns '' when the credential is unbound or missing (no secret
- * created yet, or local preview with no signing-capable `kody:runtime`), so
- * callers fall back to the stored-hash check. Never throws; the secret value
- * never enters code or storage — only the signature is read.
- */
-export async function deriveAccessCode(request?: Request): Promise<string> {
-	try {
-		var host = await accessKeyHost(request)
-		if (host === '') return ''
-		// Static import binding (see top of file): the stamp gate seals this call site.
-		// NOTE: no typeof guard here — the gate treats any non-call use of the
-		// credential binding as a runtime-known key and refuses to stamp.
-		var client = await credential("access-key")
-		if (!client || typeof client.sign !== 'function') return ''
-		var signature = await client.sign({ type: 'hmac', algorithm: 'hmac-sha256', message: ACCESS_KEY_DOMAIN, encoding: 'hex', host: host })
-		if (typeof signature !== 'string' || signature === '') return ''
-		return await encodeDerivedCode(signature)
-	} catch (err) {
-		return ''
-	}
 }
 
 /** SHA-256 of the normalized code, lowercase hex. */
@@ -333,7 +201,8 @@ async function writeEntryList(store: KeyStore, key: string, list: { h: string; e
 /**
  * Mint a 4-digit OTP: stores only its SHA-256 hash (10-minute expiry, at most
  * OTP_MAX_OUTSTANDING live codes, pruned on write). Returns the plaintext
- * exactly once; it is never logged, rendered, or stored.
+ * exactly once; it is never logged, rendered, or stored. No secret gate
+ * of any kind: OTP minting needs only packageStorage.
  */
 export async function mintOtp(store?: KeyStore): Promise<MintOtpResult> {
 	var target = store ? store : await resolveStore()
@@ -506,86 +375,14 @@ export async function clearUnlockFails(store?: KeyStore): Promise<void> {
 	await target.set(FAIL_KEY, '')
 }
 
-/** Stored hash, or '' when no code has been configured yet (fail closed). */
-export async function readAccessHash(store?: KeyStore): Promise<string> {
-	var target = store ? store : await resolveStore()
-	try {
-		var raw = await target.get(ACCESS_HASH_KEY)
-		return typeof raw === 'string' ? raw : ''
-	} catch (err) {
-		return ''
-	}
-}
-
 /**
- * Whether the gate can serve anonymous device-key requests. True when the
- * package secret is bound (derived code recomputes) or a pre-secret stored
- * hash exists. False means login-only: Kody-verified visitors pass, anonymous
- * requests are denied. Never reveals the hash.
- */
-export async function getAccessStatus(request?: Request, store?: KeyStore): Promise<AccessStatus> {
-	var derived = await deriveAccessCode(request)
-	if (derived !== '') return { configured: true }
-	var hash = await readAccessHash(store)
-	return { configured: hash !== '' }
-}
-
-/**
- * MCP readout of the currently derived device code. Returns the derived code
- * when a secret is bound, or a locked/not-applicable signal when no secret
- * exists. Never returns a guessable fallback value and never the secret
- * itself — only the derived code (or an empty code with `ok: false`).
- */
-export interface AccessCodeResult {
-	ok: boolean
-	code: string
-}
-
-export async function getAccessCode(request?: Request): Promise<AccessCodeResult> {
-	var derived = await deriveAccessCode(request)
-	if (derived === '') return { ok: false, code: '' }
-	return { ok: true, code: derived }
-}
-
-/**
- * Check a submitted code (unlock form). When the package secret is bound,
- * the recomputed derived code is authoritative; otherwise the pre-secret
- * stored hash applies (fallback preserves today's behavior exactly).
- * The returned `hash` is the cookie value: the hash of the derived code on
- * the derived path, the stored hash on the fallback path — never raw.
+ * Check a submitted OTP (unlock form). A live 4-digit code burns here
+ * into a fresh session. Nothing else authenticates: no derived code, no
+ * stored hash, no code-hash cookie.
  */
 export async function checkCode(code: string, store?: KeyStore, request?: Request): Promise<AccessCheck> {
 	var target = store ? store : await resolveStore()
-	var derived = await deriveAccessCode(request)
 	var normalized = normalizeCode(code)
-	if (derived !== '') {
-		var derivedHash = await hashCode(derived)
-		if (normalized !== '' && hashesMatch(normalized, normalizeCode(derived))) {
-			try {
-				await clearUnlockFails(target)
-			} catch (err) {
-			}
-			return { ok: true, viaQuery: false, viaCookie: false, viaKody: false, code: normalized, hash: derivedHash, sessionToken: '' }
-		}
-	} else {
-		var hash = await readAccessHash(target)
-		if (hash !== '' && normalized !== '') {
-			var storedOk = false
-			try {
-				storedOk = hashesMatch(await hashCode(normalized), hash)
-			} catch (err) {
-				storedOk = false
-			}
-			if (storedOk) {
-				try {
-					await clearUnlockFails(target)
-				} catch (err) {
-				}
-				return { ok: true, viaQuery: false, viaCookie: false, viaKody: false, code: normalized, hash: hash, sessionToken: '' }
-			}
-		}
-	}
-	// OTP single-use path: a live 4-digit code burns here into a fresh session.
 	if (normalized !== '') {
 		var burned = false
 		try {
@@ -599,17 +396,14 @@ export async function checkCode(code: string, store?: KeyStore, request?: Reques
 			} catch (err) {
 			}
 			var fresh = await createSession(target)
-			return { ok: true, viaQuery: false, viaCookie: false, viaKody: false, code: '', hash: fresh.hash, sessionToken: fresh.token }
+			return { ok: true, viaCookie: false, viaKody: false, sessionToken: fresh.token }
 		}
-	}
-	if (normalized !== '') {
 		try {
 			await recordUnlockFail(target)
 		} catch (err) {
 		}
 	}
-	var fallbackHash = derived !== '' ? await hashCode(derived) : await readAccessHash(target)
-	return { ok: false, viaQuery: false, viaCookie: false, viaKody: false, code: '', hash: fallbackHash, sessionToken: '' }
+	return { ok: false, viaCookie: false, viaKody: false, sessionToken: '' }
 }
 
 /**
@@ -629,7 +423,7 @@ export function visitorHeader(request: Request): string {
 /**
  * True only for a platform-verified Kody visitor: the visitor header is
  * present AND a live `kody.metaGetCurrentUser({})` call succeeds. Anonymous
- * (the call throws) always returns false, falling through to the device-key
+ * (the call throws) always returns false, falling through to the device
  * gate. Never fails open: any error means false.
  *
  * This is authentication only, NOT authorization: it does not check that
@@ -691,7 +485,7 @@ function asString(value: unknown): string {
  * `kody.metaGetCurrentUser({})` call succeeds and does not contradict
  * that identity. Anyone else — member, billing, non-member, anonymous, or
  * a visitor whose live identity disagrees with the header — returns false
- * and falls through to the device-key gate. Never fails open: any error,
+ * and falls through to the device gate. Never fails open: any error,
  * missing field, or mismatch means false.
  *
  * Role, not username, is the owner signal: in a personal org the owner is
@@ -757,12 +551,12 @@ function queryCode(request: Request): string {
 }
 
 /**
- * Authenticate one request: a valid cookie wins (clean URLs on desktop), then
- * `?k=` (the bookmark path the Scribe depends on). When the package secret is
- * bound, the recomputed derived code is authoritative and the cookie carries
- * its hash; otherwise the pre-secret stored hash applies (fallback preserves
- * today's behavior exactly). No code and no expected value never authorizes
- * anything.
+ * Authenticate one request: a valid session cookie wins, then the
+ * single-use OTP submission in `?k=` (the Scribe-safe GET form, and
+ * the transport the `/unlock/<otp>` path form is re-attached as).
+ * A burned OTP mints a fresh session on first success. Wrong codes
+ * and a full failure window both read exactly like a wrong code.
+ * No other credential authenticates anything.
  */
 export async function authenticate(request: Request, store?: KeyStore): Promise<AccessCheck> {
 	var target = store ? store : await resolveStore()
@@ -771,51 +565,15 @@ export async function authenticate(request: Request, store?: KeyStore): Promise<
 	if (fromCookie !== '') {
 		try {
 			if (await verifySession(fromCookie, target)) {
-				return { ok: true, viaQuery: false, viaCookie: true, viaKody: false, code: '', hash: '', sessionToken: '' }
+				return { ok: true, viaCookie: true, viaKody: false, sessionToken: '' }
 			}
 		} catch (err) {
 		}
 	}
-	// Legacy device-key paths (derived code, then stored hash): semantics
-	// byte-identical to before; a legacy cookie still carries the code hash.
-	var hash = await readAccessHash(target)
-	var derived = await deriveAccessCode(request)
-	var expected = derived !== '' ? await hashCode(derived) : hash
-	var denied: AccessCheck = { ok: false, viaQuery: false, viaCookie: false, viaKody: false, code: '', hash: hash, sessionToken: '' }
 	var fromQuery = normalizeCode(queryCode(request))
-	if (expected !== '') {
-		var cookieOk = fromCookie !== '' && hashesMatch(fromCookie.toLowerCase(), expected)
-		var queryOk = false
-		if (fromQuery !== '') {
-			if (derived !== '') {
-				queryOk = hashesMatch(fromQuery, normalizeCode(derived))
-			} else {
-				try {
-					queryOk = hashesMatch(await hashCode(fromQuery), hash)
-				} catch (err) {
-					queryOk = false
-				}
-			}
-		}
-		if (cookieOk || queryOk) {
-			return {
-				ok: true,
-				viaQuery: queryOk && !cookieOk,
-				viaCookie: cookieOk,
-				viaKody: false,
-				// A valid cookie already authorizes: keep the code out of later links.
-				code: queryOk && !cookieOk ? fromQuery : '',
-				hash: expected,
-				sessionToken: '',
-			}
-		}
-	}
-	// OTP single-use path for the Scribe-safe GET form (`?k=<4 digits>`):
-	// burn the OTP here and mint a session on first success. Wrong codes and
-	// a full failure window both read exactly like a wrong code.
-	if (fromQuery === '') return denied
+	if (fromQuery === '') return { ok: false, viaCookie: false, viaKody: false, sessionToken: '' }
 	try {
-		if (!(await unlockAllowed(target))) return denied
+		if (!(await unlockAllowed(target))) return { ok: false, viaCookie: false, viaKody: false, sessionToken: '' }
 	} catch (err) {
 	}
 	var burned = false
@@ -829,14 +587,14 @@ export async function authenticate(request: Request, store?: KeyStore): Promise<
 			await recordUnlockFail(target)
 		} catch (err) {
 		}
-		return denied
+		return { ok: false, viaCookie: false, viaKody: false, sessionToken: '' }
 	}
 	try {
 		await clearUnlockFails(target)
 	} catch (err) {
 	}
 	var fresh = await createSession(target)
-	return { ok: true, viaQuery: false, viaCookie: true, viaKody: false, code: '', hash: fresh.hash, sessionToken: fresh.token }
+	return { ok: true, viaCookie: true, viaKody: false, sessionToken: fresh.token }
 }
 
 /** True when the request reached us over HTTPS (directly or via a proxy header). */
@@ -849,26 +607,10 @@ export function isSecureRequest(request: Request): boolean {
 	}
 }
 
-/** Long-lived HttpOnly cookie holding the hash, scoped to the OS mount path. */
-export function accessCookie(hash: string, appBasePath: string, secure: boolean): string {
-	var path = appBasePath && appBasePath.charAt(0) === '/' ? appBasePath : '/'
-	if (path.charAt(path.length - 1) !== '/') path += '/'
-	var parts = [
-		sessionCookieName() + '=' + hash,
-		'Path=' + path,
-		'Max-Age=' + String(ACCESS_COOKIE_MAX_AGE),
-		'HttpOnly',
-		'SameSite=Lax',
-	]
-	if (secure) parts.push('Secure')
-	return parts.join('; ')
-}
-
 /**
  * Session bearer cookie holding the raw session token (HttpOnly, 30 days to
- * match the stored session expiry). Same cookie name as the legacy hash
- * cookie; the server tries the session hash lookup first, then the legacy
- * code-hash comparison, so both cookie kinds keep working.
+ * match the stored session expiry). Authentication is by session hash
+ * lookup only; no code-hash cookie exists.
  */
 export function sessionCookie(token: string, appBasePath: string, secure: boolean): string {
 	var path = appBasePath && appBasePath.charAt(0) === '/' ? appBasePath : '/'

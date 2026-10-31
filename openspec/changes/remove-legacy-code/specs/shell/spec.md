@@ -31,10 +31,13 @@ Every action SHALL complete as a plain form submission + redirect.
 The client module (`src/client/index.ts`) MAY enhance forms in
 place when `fetch` is available and MUST fall back to native
 submit on any failure. The enhancement SHALL NOT read, store, or
-attach any device code from `localStorage` or the DOM: the
+attach any credential from `localStorage` or the DOM: the
 hidden-field and `?k=`-URL key fallbacks are removed, and the
-only stored value it MAY read is the OTP-minted session token
-under `kody_os_auth`, which it SHALL NOT write. Rendered links
+stored session-token attach is removed as well (Open Question 2
+resolution, design.md Decision 4: the server accepts `?k=` only
+as an OTP submission, so a session token attached as `?k=` could
+not authenticate and would count toward the failure cap).
+Same-origin fetches authenticate with the session cookie. Rendered links
 and forms SHALL NOT carry any credential and SHALL NOT depend on
 enhancement. The client module SHALL NOT import `kody:` or
 `node:` modules. No tile link, form, or redirect SHALL carry a
@@ -55,9 +58,10 @@ SHALL NOT appear in any rendered output afterward.
 
 #### Scenario: Enhancement never attaches a code
 - **WHEN** an app action form is enhanced in place
-- **THEN** the fetch URL carries no code value; at most the stored
-  session token is attached, and only where the server accepts
-  it as a session credential.
+- **THEN** the fetch URL carries no credential at all: the
+  session cookie authenticates the same-origin fetch, and no
+  stored value is attached (the server accepts `?k=` only as
+  an OTP submission).
 
 ### Requirement: Home launcher lists installed apps
 

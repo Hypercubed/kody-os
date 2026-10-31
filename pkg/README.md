@@ -2,7 +2,7 @@
 
 Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v1.5.1** — data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view.
+Current: **v2.0.0** — data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed).
 
 ## Screenshots
 
@@ -19,7 +19,7 @@ Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
 - **Apps** — every installed app as a tile; edit mode pins, hides, and reorders the home dashboard.
 - **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs.
 - **Feeds** — apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
-- **Access** — the browser shell is locked by one-time codes so e-ink devices open it without Kody login. Each code is 4 digits, single use, valid 10 minutes; entering it burns the code and mints a 30-day session cookie with clean, code-free URLs. A derived device code (HMAC of the Kody `access-key` secret, UI-managed, never stored) remains as fallback. Agents use MCP exports, which are never gated. Full steps: [Device key](docs/device-key.md).
+- **Access** — the browser shell is locked by one-time codes so e-ink devices open it without Kody login. Each code is 4 digits, single use, valid 10 minutes; entering it burns the code and mints a 30-day session cookie with clean, code-free URLs. There is no other way in besides owner Kody login, and no secret to configure. Agents use MCP exports, which are never gated. Full steps: [Device key](docs/device-key.md).
 
 ## Setup
 
@@ -59,10 +59,11 @@ export NO_PROXY='*' no_proxy='*'
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
 ```
 
-Seed the dev gate code and install the `counter` fixture (one-time per fresh mock store). No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state.
+Mint a local-dev OTP and install the `counter` fixture (one-time per fresh mock store). No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. Mint while the server is stopped, then start it promptly: the code is single use, valid 10 minutes, and burns into a 30-day session cookie.
 
 ```sh
-kody execute --target mock --file scripts/seed-dev-hash.ts --params '{"code":"local-dev-code-123456"}'
+kody execute --target mock --file scripts/mint-dev-otp.ts
+# → { "ok": true, "code": "4821" } — example only; use the code you actually get
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}'
 ```
 
@@ -79,20 +80,9 @@ kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Open `http://127.0.0.1:4302/?k=local-dev-code-123456` (VSCode port-forward 4302 to reach it remotely). Home shows `via key` when unlocked; Apps lists `counter`; `GET /apps/counter` returns 200; old `hello-counter` id returns 404.
+Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely) and enter the minted code in the unlock form. The footer reads `via cookie` with a clean URL; Apps lists `counter`; old `hello-counter` id returns 404. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does. A minted OTP is single use, so there is no repeatable authenticated fetch check: verify actions in the unlocked browser instead.
 
-Alternative unlock, and the flow that survives the planned remove-legacy-code change: skip the seed step and mint a one-time code instead. It is single use, valid 10 minutes, and burns into a 30-day session cookie, so start the server promptly after minting and enter the code in the unlock form (do not store the code anywhere).
-
-```sh
-kody execute --target mock --file scripts/mint-dev-otp.ts
-# → { "ok": true, "code": "4821" } — example only; use the code you actually get
-kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}'
-kody dev --target mock
-```
-
-With this path the footer reads `via cookie` with a clean URL, not `via key`. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does.
-
-Useful checks: `kody dev check --target mock --offline`, `kody dev fetch "/apps/counter?k=local-dev-code-123456" --target mock` (seeded path only — a minted OTP is single use, so do not use it as a repeatable fetch check), `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`.
+Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`. To clear local sessions and OTPs: `kody execute --target mock --file scripts/clear-auth.ts` (returns counts only).
 
 ## Theme file
 

@@ -86,6 +86,16 @@ in substance; "device key" wording retired.)
 - **WHEN** a request carries no verified visitor identity
 - **THEN** the session-cookie gate applies exactly as without this change.
 
+#### Scenario: Limited-browser Kody login counts as the Kody path, not a third path
+- **WHEN** a visitor on a limited browser signs in via Kody's
+  package-app sign-in route (`/-/auth/login`, plain HTML /
+  sign-in-on-another-device, kody-hq/kody#4666) and arrives
+  with platform-verified visitor identity
+- **THEN** the request is served as a Kody visitor (`via kody`),
+  with no derived code, no stored hash, and no device-key
+  credential involved; this does not add a login path beyond
+  the two named above.
+
 ### Requirement: No derived key exists; no secret is consulted
 
 There SHALL be no derived key, no UI-managed secret, and no
@@ -107,9 +117,15 @@ all.
 
 Because no secret exists, there is no rotation semantic and no
 rotation kill switch. Session invalidation is per-device logout
-or 30-day expiry only. A global session revoke does not exist.
-Docs and code SHALL NOT claim that any action invalidates all
-sessions at once.
+or 30-day expiry only. A global session revoke does not exist
+as a runtime feature. Docs and code SHALL NOT claim that any
+runtime action invalidates all sessions at once. EXCEPTION —
+one-time cutover only (v2.0.0): the session and OTP registries
+moved to versioned keys (`kody-os.auth.sessions.v2`,
+`kody-os.auth.otp.v2`) and the v1 keys are never read, so
+every pre-cutover session and outstanding OTP stopped working
+at cutover. That is a migration effect of the version cutover,
+not a revoke feature, and it does not recur.
 
 #### Scenario: Logout revokes one device only
 - **WHEN** a device logs out
@@ -120,6 +136,13 @@ sessions at once.
 - **WHEN** a session is older than 30 days
 - **THEN** it no longer authenticates, and only a fresh OTP
   (or Kody login) restores access.
+
+#### Scenario: Pre-cutover sessions stop at the v2.0.0 cutover
+- **WHEN** a session or OTP minted before v2.0.0 is presented
+  after the cutover
+- **THEN** it no longer authenticates (the v1 registry keys
+  are never read), and only a fresh OTP (or Kody login)
+  restores access.
 
 ### Requirement: OTP sessions are the only device path
 
@@ -140,7 +163,10 @@ form since the edge drops query strings, or the no-JavaScript
 `?k=` GET submission); a correct OTP SHALL land on a clean URL
 with the cookie set, and a presented OTP SHALL never be stamped
 onward into any link, form, or redirect. Per-device logout SHALL
-revoke that device's session only.
+revoke that device's session only. OTP is retained in full
+by this change: removing the legacy access key does NOT
+remove OTP, and no future secret-binding plan is implemented
+here (see design.md, Relationship to auth-rethink).
 
 #### Scenario: OTP unlocks a fresh device
 - **WHEN** the owner mints an OTP via MCP and enters it on a device

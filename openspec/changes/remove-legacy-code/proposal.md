@@ -19,6 +19,18 @@ no secret-binding of cookies, no new invalidation mechanism. The
 secret-bound redesign in the parked `auth-rethink` change is NOT
 implemented here (see design.md, Relationship to auth-rethink).
 
+Update 2026-10-31: the legacy path is no longer needed as a
+Scribe fallback. Kody's plain-HTML / device sign-in for
+package-app visitors (kody-hq/kody#4666, merged 2026-10-31)
+gives the platform-verified Kody visitor path on a limited
+browser, and the owner verified the host-root `/-/auth/login`
+route for kody-os working from the Scribe on 2026-10-31
+(`hypercubed.kody.run/-/auth/login?app=kody-os`, not under
+`/kody-os`). The legacy
+access key can therefore be removed entirely now, without
+removing the device gate wholesale: the OTP path is RETAINED
+in full (see below), and Kody login is the other way in.
+
 ## What Changes
 
 - Exactly two ways in: a platform-verified Kody visitor, or a
@@ -30,7 +42,8 @@ implemented here (see design.md, Relationship to auth-rethink).
   on action forms, no link/form/redirect stamping of any
   credential, and no code written to browser storage by any
   unlock path.
-- The OTP ceremony is unchanged and is now the only device path:
+- The OTP ceremony is RETAINED in full and is not removed
+  wholesale: it is unchanged and is now the only device path:
   4 digits, 10 minutes, single use, at most 5 outstanding,
   device-wide failure cap of 10 per 10 minutes, plaintext
   returned exactly once at mint time, no secret gate on
@@ -51,8 +64,15 @@ implemented here (see design.md, Relationship to auth-rethink).
   design.md).
 - BREAKING, by design: every derived code, `?k=` bookmark, and
   code-hash cookie stops working, and two MCP exports are
-  removed. Existing OTP-minted sessions keep working. Version:
-  MAJOR at implementation — see design.md.
+  removed. SUPERSEDED 2026-10-31 (owner direction: invalidate
+  all existing OTP access first): existing OTP-minted sessions
+  do NOT keep working. At cutover the session and OTP
+  registries move to versioned keys (`kody-os.auth.sessions.v2`
+  and `kody-os.auth.otp.v2`); the v1 keys are never read, never
+  migrated, and never a fallback, so every pre-cutover session
+  and outstanding OTP stops working and each device needs a
+  fresh OTP or Kody login. Version: MAJOR at implementation —
+  see design.md.
 
 ## Capabilities
 

@@ -9,7 +9,7 @@ The app layer in `src/apps/` is wired into `src/app.ts` and verified live
 - `src/apps/storage.ts` — `packageStorage()` with shared in-memory fallback; `createMemoryStore()` for isolated/fresh stores.
 - `src/apps/registry.ts` — `list_apps`, `get_app`, `get_app_state`, `act`, `add_app`, `remove_app`, `export_app`, `import_app`, `validateDefinition`.
 - `src/apps/forms.ts` — `actFromForm(id, entries)` — the UI path; funnels into the same `act()` MCP uses.
-- `src/apps/client.ts` — browser-safe (zero runtime imports) HTML builders: `renderHomeTiles`, `renderAppSection(def, state, appBasePath, code?)`. Counter comes from `pkg/catalog/counter.bundle.json` via `add_app` (no in-code harness).
+- `src/apps/client.ts` — browser-safe (zero runtime imports) HTML builders: `renderHomeTiles`, `renderAppSection(def, state, appBasePath, fromPath?)`. Counter comes from `pkg/catalog/counter.bundle.json` via `add_app` (no in-code harness).
 
 ## Edge rule: app actions are GET, never POST
 
@@ -29,9 +29,10 @@ Rules for every current and future app:
    rows carry `data-field` hooks with a plain `<span>` value node, and the app
    panel `section.app` carries `data-app-id` — styling unchanged, hooks only
    for the guarded in-place refresh.
-2. On the `?k=` path, also render a hidden `k` field carrying the code. A GET
-   form **discards the action's query string**, so the code must travel as form
-   data, not only in the action.
+2. No form carries a credential: authentication rides the session cookie,
+   so action forms carry only `action` (and `from` where present). `?k=` is
+   only a single-use OTP submission transport for the unlock path, never a
+   session token, and never a hidden field.
 3. Handle `GET /apps/:id?action=<name>` by removing `k`, `from`, and
    `format` from the query entries and passing the rest to
    `actFromForm(id, entries)`. Without `format=json`: on success, 303 back to
@@ -51,9 +52,9 @@ Rules for every current and future app:
    session cookie, and 303-redirects to the clean app home. Without
    JavaScript the plain GET still works wherever the platform preserves
    the query string.
-6. Keep the code out of storage and logs. `renderAppSection` receives the
-   normalized code only for the hidden field; never write it to
-   `packageStorage()`.
+6. Keep credentials out of rendered output, storage, and logs. No
+   renderer receives a credential; auth registries hold SHA-256 hashes
+   only (see Storage keys below), never a raw code or bearer.
 
 The browser client (`src/client/index.ts`) adds a guarded same-origin GET
 fast path: it intercepts only `form.app-action`, and only when `fetch`,
@@ -70,7 +71,7 @@ JS-only POST path, a timer/polling loop, or client routing.
 1. **Home/launcher:** `GET /` → `list_apps()` → themed tile grid. Empty
    registry renders the honest "no apps yet" state.
 2. **App page:** `GET /apps/:id` → `get_app(id)` →
-   `renderAppSection(def, state, appBasePath, code)`. Unknown id → 404 page in
+   `renderAppSection(def, state, appBasePath)`. Unknown id → 404 page in
    shell chrome.
 3. **Actions:** `GET /apps/:id?action=...` → `actFromForm(id, entries)` → 303
    redirect on ok; 400 with the inline error on `{ ok:false }`. With
@@ -101,7 +102,9 @@ JS-only POST path, a timer/polling loop, or client routing.
 
 ## Storage keys (all under packageStorage(), 16 MiB budget — keep definitions small)
 
-- `kody-os.auth.code_hash` — hex SHA-256 of the device access code (never the raw code)
+- `kody-os.auth.otp.v2` — OTP hashes `{ h, exp }[]`, 10-minute TTL, max 5 outstanding (v1 key never read since the v2.0.0 cutover)
+- `kody-os.auth.sessions.v2` — session hashes `{ h, exp }[]`, 30-day TTL (v1 key never read since the v2.0.0 cutover)
+- `kody-os.auth.fail2` — unlock rate-limit counter `{ n, start }`, 10 fails per 10 minutes device-wide
 - `kody-os.apps.registry` — `string[]` of installed app ids
 - `kody-os.apps.def.<id>` — the `AppDefinition` JSON
 - `kody-os.apps.state.<id>` — the live `AppState` JSON

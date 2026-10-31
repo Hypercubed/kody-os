@@ -10,7 +10,9 @@ import '../bridge/bridge.js'
  *
  * App actions stay plain GET forms, so the page works with no JavaScript: a
  * submit navigates and the server redirects or re-renders with an inline
- * error. Where fetch, querySelector, and JSON parsing all exist, forms with
+ * error. Same-origin fetches authenticate with the HttpOnly session cookie;
+ * no credential is attached to any fetch URL. Where fetch, querySelector,
+ * and JSON parsing all exist, forms with
  * class "app-action" are submitted in place as the same GET URL plus
  * format=json (Accept: application/json); matching [data-app-id]
  * [data-field] value spans update without navigation and a
@@ -35,46 +37,6 @@ function readPakConfig(): Record<string, unknown> {
 }
 
 var pakConfig = readPakConfig()
-
-/**
- * Key delivery for the enhancement path: prefer the stored bearer written by
- * the unlock form (the full device code, or an OTP-minted session token under
- * the same key name), fall back to the page's own DOM (hidden `k` field or
- * `?k=` URL). Every read is guarded: absent or disabled storage returns ''
- * and the caller falls back to the plain URL, then to native submit on
- * any failure.
- */
-function readStoredKey(): string {
-	try {
-		if (typeof window.localStorage === 'undefined' || window.localStorage === null) return ''
-		var stored = window.localStorage.getItem('kody_os_auth')
-		return typeof stored === 'string' ? stored : ''
-	} catch (err) {
-		return ''
-	}
-}
-
-function readDomKey(form: HTMLFormElement): string {
-	try {
-		var hidden = form.querySelector('input[name="k"]') as unknown as HTMLInputElement | null
-		if (hidden && typeof hidden.value === 'string' && hidden.value !== '') return hidden.value
-		var search = window.location.search || ''
-		var at = search.indexOf('k=')
-		if (at !== -1) {
-			var rest = search.slice(at + 2)
-			var amp = rest.indexOf('&')
-			var raw = amp === -1 ? rest : rest.slice(0, amp)
-			try {
-				return decodeURIComponent(raw)
-			} catch (decodeErr) {
-				return raw
-			}
-		}
-	} catch (err) {
-		return ''
-	}
-	return ''
-}
 
 var canFastPath =
 	typeof fetch !== 'undefined' &&
@@ -102,16 +64,6 @@ if (canFastPath) {
 					parts.push('format=json')
 					var sep = rawAction.indexOf('?') === -1 ? '?' : '&'
 					var url = rawAction + sep + parts.join('&')
-					try {
-						var stored = readStoredKey()
-						if (stored === '') stored = readDomKey(form)
-						if (stored !== '' && url.indexOf('k=') === -1) {
-							url += '&k=' + encodeURIComponent(stored)
-						}
-					} catch (keyErr) {
-						// Never break the submit for a key lookup: fall through
-						// with the plain URL, then native submit on failure.
-					}
 					try {
 						var probe = document.createElement('a')
 						probe.href = url
