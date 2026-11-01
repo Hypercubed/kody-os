@@ -7,11 +7,19 @@ Capture the shipped Phase 2 browser shell so future changes (theme, routing, Scr
 
 ### Requirement: Home launcher lists installed apps
 
-The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections with edit mode — SHALL live behind the Apps menu link instead of at `/`. Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. With no apps installed at all, both `/` and the Apps page SHALL render honest empty states with guidance toward adding apps.
+The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections, as a launcher only, with no Edit mode — SHALL live behind the Apps menu link instead of at `/`. App management (pin, hide, home, install, update, restore) lives on the App Store combined list (see App Store page below); the Apps page's former Edit mode is retired. Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. A fresh install SHALL open with the App Store installed (see app-registry); with no apps installed at all (seeding has failed or not yet run), both `/` and the Apps page SHALL render honest empty states with guidance toward adding apps, including the App Store path.
 
 #### Scenario: Empty registry is honest
 - **WHEN** no apps are installed
 - **THEN** both `/` and the Apps page respond 200 with honest empty states and guidance toward adding apps.
+
+#### Scenario: Fresh install opens with the App Store
+- **WHEN** a blank install receives its first shell request
+- **THEN** the Apps page shows the App Store tile, and `/` shows its honest no-widgets state (the store is not on the homepage by default).
+
+#### Scenario: Apps page has no Edit mode
+- **WHEN** the Apps page is fetched
+- **THEN** it shows Pinned, Recent, and All tiles with no Edit control; pin, hide, and home controls are on the App Store combined list instead.
 
 #### Scenario: Landing is the dashboard
 - **WHEN** apps are pinned to the homepage
@@ -38,7 +46,7 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 The shell SHALL render a Pinned section above Recent listing pinned apps in pin order. A pinned app that is also hidden SHALL still appear in Pinned. An empty pinned list SHALL omit the section entirely. Pinned tiles SHALL span two grid columns (three per row at full width) at the standard tile height, with the icon fixed left and the label plus description stacked right. Every tile link on the Apps screen (Pinned, Recent, All apps) SHALL carry the app description as a `title` tooltip.
 
 #### Scenario: Hidden pinned app stays visible in Pinned only
-- **WHEN** a pinned app is hidden via edit mode
+- **WHEN** a pinned app is hidden via the App Store combined list
 - **THEN** it remains in the Pinned section and disappears from the All apps section.
 
 #### Scenario: Pinned tiles are double-wide with descriptions
@@ -56,18 +64,6 @@ The shell SHALL render a Recent section listing the most recently used apps (mos
 #### Scenario: Clear empties Recent without touching apps
 - **WHEN** Clear is submitted
 - **THEN** the Recent section disappears and installed apps, pins, and hidden flags are unchanged.
-
-### Requirement: Edit mode with pin and hide toggles
-
-The All apps section SHALL offer an Edit control inline in its header that switches the section into edit mode: it lists every installed app including hidden and pinned ones with their current pin/hide/homepage state, each with a pin toggle, a hide toggle, and an add/remove-from-homepage toggle that persist immediately. Exiting edit mode SHALL return to the normal filtered view. The edit UI SHALL NOT expose a remove or delete control; removal is MCP-only via `remove_app`.
-
-#### Scenario: Edit shows hidden apps that browsing hides
-- **WHEN** an app is hidden and edit mode is opened
-- **THEN** the app appears in the edit list with its hidden state set, while the normal All apps section omits it.
-
-#### Scenario: Edit mode offers no removal control
-- **WHEN** edit mode is opened for any installed app
-- **THEN** the row offers pin, hide, and homepage toggles, with no remove or delete control.
 
 ### Requirement: App pages render definition plus live state
 The shell SHALL render one page per app at `GET /apps/:id` showing the app's title (in the shell window's titlebar only — the panel itself SHALL NOT repeat a title header), its description when present, every state field, and one HTML form button per declared UI action. Unknown ids SHALL return the 404 page. Modal overlays SHALL keep the panel's own title header, since the underlying page chrome shows the Apps title, not the app's. The app page titlebar SHALL additionally carry a page-mode expand control at the far right, opposite the close box (see `App page expands to fill the window`).
@@ -237,3 +233,67 @@ the next render; no separate menu write SHALL exist.
   `install_from_catalog`, or import
 - **THEN** its link appears on the next Home, Apps, or app page
   render, and no menu-specific storage key is written.
+
+### Requirement: App Store page is the single combined list
+
+The App Store app page (`GET /apps/app-store`) SHALL render, server-side in the normal shell chrome, a single combined list as defined in the app-registry spec: one row per id from the union of catalog ids and installed ids, deduplicated by id, in alphabetical-by-id order, each row showing the app's icon, label, description, and status badge. The App Store itself appears as a row like any other app; it is not excluded from its own list. The list is unfiltered, so hidden apps appear in it. A row for an app that is not installed SHALL offer an Install control as a plain GET form (`?install=<id>`, no `app-action` class, authentication via the session cookie, no credential field) and no Open link, no Pin, Hide, or Home control, and no Update or Restore control — no launching from the catalog. A row for an installed app SHALL show its status and Pin/Unpin, Hide/Unhide, and Add to home/Remove from home controls as plain GET forms (no `app-action` class), each responding 303 back to the store page; installed rows offer no Open link (the Apps page is the launcher). An installed catalog app with a snapshot SHALL additionally show its update status under the app-registry spec: behind-and-clean and catalog-differing rows offer an Update control; behind-and-modified rows offer a confirmed update (see below), not a plain Update control; modified-at-current-version rows offer Restore catalog version; ahead rows offer Restore catalog version, never Update; up-to-date rows offer neither. A row for an installed catalog app without a snapshot SHALL show Installed with no update control under this scheme. A row for an installed app with no catalog entry SHALL show Storage only (formerly in the catalog where a snapshot exists, otherwise custom/storage-only) with launcher controls only. Submitting an Install form SHALL install the app through the registry's install-from-catalog path and respond 303 back to the store page. An unknown `install` id SHALL respond 400, re-render the store page with an inline `role="alert"` error, and change nothing. The listing SHALL require no JavaScript. The Help page SHALL present the App Store as the browser path for installing shipped apps and for managing installed apps, with the agent/`add_app` path retained for custom apps.
+
+#### Scenario: Behind-and-clean row offers update
+- **WHEN** an installed catalog app matches its snapshot at a lower version than the catalog
+- **THEN** its row shows Update, and submitting it updates the app and returns 303 to the store page.
+
+#### Scenario: Snapshot-less row offers no update
+- **WHEN** an installed catalog app has no snapshot
+- **THEN** its row shows Installed and no Update or Restore control.
+
+#### Scenario: Combined list shows catalog, installed, and storage-only apps once each
+- **WHEN** the App Store page is fetched with catalog apps installed and uninstalled, plus an installed app with no catalog entry, plus the App Store itself
+- **THEN** every id from the union appears exactly once, in alphabetical-by-id order, with its icon, label, description, and status badge — including `app-store` itself.
+
+#### Scenario: Catalog-only row has no launch control
+- **WHEN** a catalog app that is not installed is rendered in the combined list
+- **THEN** its row offers Install and no link to its app page, since there is nothing installed to open.
+
+#### Scenario: Install round-trips without JavaScript
+- **WHEN** an Install form is submitted with JavaScript unavailable
+- **THEN** the server responds 303 to the store page, the app is installed, and its row now shows Installed.
+
+#### Scenario: Installed rows offer no Install control
+- **WHEN** an installed catalog app's row is rendered
+- **THEN** it shows Installed and no Install form for that id.
+
+#### Scenario: Installed row offers launcher controls
+- **WHEN** an installed app's row is rendered in the combined list
+- **THEN** it offers Pin/Unpin, Hide/Unhide, and Add to home/Remove from home controls, each responding 303 back to the store page without changing its definition, state, or snapshot.
+
+#### Scenario: Storage-only row offers launcher controls only
+- **WHEN** an installed app with no catalog entry is rendered in the combined list
+- **THEN** its row shows Storage only with launcher controls, and no Install, Update, Restore, or catalog status control.
+
+#### Scenario: Unknown install id is a clean error
+- **WHEN** the store page is requested with an unknown `install` id
+- **THEN** it responds 400 with an inline error, the store page still renders, and storage is unchanged.
+
+#### Scenario: Store page keeps shell constraints
+- **WHEN** the App Store page is fetched
+- **THEN** it carries the normal chrome, exactly one `<style>` block, zero external stylesheets, and no mutating POST form.
+
+### Requirement: Confirmed update for a modified app
+
+Submitting an update (or restore) for a modified catalog app SHALL NOT apply the update immediately. It SHALL first render a confirmation page (server-rendered, no JavaScript required, normal shell chrome) stating that updating will replace the app's definition — bundle files, stateSchema, actions, capabilities, and metadata — with the catalog copy and that the user's custom definition changes will be lost and cannot be recovered afterwards unless the app was exported first, and stating that state is preserved for fields still declared in the new definition while dropped fields reset to their initial values. Only an explicit confirmation submission on that page SHALL apply the update, through the registry update path, and respond 303 back to the store page. Declining or leaving the confirmation page SHALL change nothing. An update or restore for an unknown id, an uninstalled id, or a non-catalog id SHALL respond 400, re-render the store page with an inline `role="alert"` error, and change nothing.
+
+#### Scenario: Modified update waits for confirmation
+- **WHEN** a confirmed update is requested for a modified catalog app
+- **THEN** the store renders the confirmation page with the loss and state-preservation wording, and storage is unchanged until confirmation.
+
+#### Scenario: Confirmed update replaces definition and keeps surviving state
+- **WHEN** the confirmation is submitted for a modified catalog app
+- **THEN** its definition is replaced with the catalog copy, state for surviving fields is preserved, dropped fields reset, pins and homepage placement are untouched, and a new snapshot is recorded.
+
+#### Scenario: Declined update changes nothing
+- **WHEN** the confirmation page is left without confirming
+- **THEN** the installed definition, state, and snapshot are unchanged.
+
+#### Scenario: Ahead app offers restore, not update
+- **WHEN** an installed catalog app is modified and ahead of the catalog
+- **THEN** its row offers Restore catalog version with the confirmation and warning, never an Update control.

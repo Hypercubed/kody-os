@@ -5,7 +5,7 @@
  *   bun tests/agent-tools-harness.ts
  *
  * Proves, against fresh in-memory stores:
- *   Catalog reads: list_catalog returns the 7 shipped apps in
+ *   Catalog reads: list_catalog returns the 16 shipped apps in
  *     alphabetical order with label/category/description;
  *     get_catalog_definition returns a full definition for a known
  *     id and null for an unknown id.
@@ -47,7 +47,7 @@ function clone<T>(v: T): T {
 // Catalog reads (no store needed).
 {
 	var listed = list_catalog()
-	check('list_catalog returns 7 apps', listed.length === 7, 'got ' + listed.length)
+	check('list_catalog returns 16 apps', listed.length === 16, 'got ' + listed.length)
 	var ids = listed.map(function (s): string { return s.id })
 	check('list_catalog is alphabetical', JSON.stringify(ids) === JSON.stringify(ids.slice().sort()), ids.join(','))
 	check('list_catalog entries carry label/category/description', listed.every(function (s): boolean {
