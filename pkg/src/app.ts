@@ -607,6 +607,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var renderDashboard = c.renderDashboard
 				var renderOverlaySection = c.renderOverlaySection
 				var renderAllSection = c.renderAllSection
+				var manageAppsLink = c.manageAppsLink
 				var renderPinnedSection = c.renderPinnedSection
 				var renderRecentSection = c.renderRecentSection
 				var renderWidgetSection = c.renderWidgetSection
@@ -1077,7 +1078,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						return Promise.resolve(new Response(
 							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body:
 							'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
-							'\t\t\t\t<h2>Apps</h2>\n' +
+							'\t\t\t\t<div class="section-head"><h2>Apps</h2>' + manageAppsLink(appBasePath, appsBase) + '</div>\n' +
 							'\t\t\t\t<ul class="tiles">\n' +
 							'\t\t\t\t\t<li class="tile tile-empty" aria-label="No apps yet">\n' +
 							'\t\t\t\t\t\t<span class="tile-icon" aria-hidden="true"></span>\n' +
@@ -1120,10 +1121,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							tiled = tiled.concat(visible)
 							if (visible.length === 0) {
 								sections.push(
-									'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
-									'\t\t\t\t<h2>All apps</h2>\n' +
-									'\t\t\t\t<p class="empty-hint">All apps are hidden. Open the App Store to unhide.</p>\n' +
-									renderAllSection([], appBasePath, appsBase).split('\n').slice(2).join('\n'),
+									renderAllSection([], appBasePath, appsBase, 'All apps are hidden. Open the App Store to unhide.'),
 								)
 							} else {
 								sections.push(renderAllSection(visible, appBasePath, appsBase))

@@ -328,15 +328,26 @@ export function renderRecentSection(apps: AppSummary[], appBasePath: string, for
 	)
 }
 
-/** Render the All-apps section in browse mode. The Apps page is a launcher only: app management lives on the App Store combined list, so there is no Edit toggle here. */
+/** Always-visible management entry point: hiding the App Store removes its
+ * tile but never removes this link, so pin/hide/home stays reachable. */
+export function manageAppsLink(appBasePath: string, formBase?: string): string {
+	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/apps'
+	return '<a class="section-manage" href="' + escapeHtml(base + '/app-store') + '">Manage apps</a>'
+}
+
+/** Render the All-apps section in browse mode. The Apps page is a launcher only:
+ * app management lives on the App Store combined list, so there is no Edit
+ * toggle here; the Manage apps link sits in the All apps header instead. */
 export function renderAllSection(
 	apps: AppSummary[],
 	appBasePath: string,
 	formBase?: string,
+	hint?: string,
 ): string {
 	var list = tilesList(apps, appBasePath)
 	return (
-		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2></div>\n' +
+		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' + manageAppsLink(appBasePath, formBase) + '</div>\n' +
+		(typeof hint === 'string' && hint !== '' ? '<p class="empty-hint">' + escapeHtml(hint) + '</p>\n' : '') +
 		list +
 		'\n</section>'
 	)

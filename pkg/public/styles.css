@@ -453,6 +453,30 @@ main {
 	min-height: 3rem;
 }
 
+/* Always-visible management entry point: hiding the App Store removes its
+   tile but never removes this link, so pin/hide/home stays reachable. */
+.section-head .section-manage {
+	margin: 0.3rem 0.35rem 0.3rem 0;
+	padding: 0 0.6rem;
+	min-height: 3rem;
+	border: 1px solid #000;
+	background: var(--paper);
+	color: #000;
+	font-size: 0.75rem;
+	font-weight: bold;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.section-head .section-manage:hover {
+	background: var(--shade);
+}
+
+.section-head .section-manage:active {
+	background: #000;
+	color: #fff;
+}
+
 .tiles {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
