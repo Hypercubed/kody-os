@@ -759,7 +759,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						return Promise.all([list_apps(), get_hidden(), get_store_rows()]).then(function (parts): Promise<Response> {
 							var menu = menuAppsFor(parts[0], parts[1])
 							var rows = parts[2]
-							var listHtml = renderCombinedList(rows, appBasePath, storeBase, withError)
+							var listHtml = renderCombinedList(rows, storeBase, withError)
 							return get_app('app-store').then(function (entry): Response {
 								var body = ''
 								if ('error' in entry) {
@@ -775,11 +775,9 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 										{ status: status, headers: pageHeaders() },
 									)
 								}
-								var panel = renderAppPanel(entry.definition, entry.state, appBasePath, '', '', '', false, '')
-								var lines = panel.split('\n')
+								var lines = listHtml.split('\n')
 								var indented = ''
 								for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
-								indented += '\t\t\t' + listHtml.split('\n').join('\n\t\t\t') + '\n'
 								return new Response(
 									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, currentApp: 'app-store', expandable: true, body: indented }),
 									{ status: status, headers: pageHeaders() },
@@ -1110,6 +1108,15 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							for (var vi = 0; vi < apps.length; vi++) {
 								if (hiddenIds.indexOf(apps[vi].id) === -1) visible.push(apps[vi])
 							}
+							visible.sort(function (a, b): number {
+								var al = a.label.toLowerCase()
+								var bl = b.label.toLowerCase()
+								if (al < bl) return -1
+								if (al > bl) return 1
+								if (a.id < b.id) return -1
+								if (a.id > b.id) return 1
+								return 0
+							})
 							tiled = tiled.concat(visible)
 							if (visible.length === 0) {
 								sections.push(

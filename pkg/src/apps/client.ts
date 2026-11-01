@@ -377,7 +377,9 @@ function storeForm(storeBase: string, hiddenName: string, hiddenValue: string, e
 	return (
 		'<form method="GET" action="' +
 		escapeHtml(storeBase) +
-		'" class="store-control">' +
+		'" class="store-control store-control-' +
+		escapeHtml(hiddenName) +
+		'">' +
 		'<input type="hidden" name="' +
 		escapeHtml(hiddenName) +
 		'" value="' +
@@ -405,14 +407,13 @@ function storeToggleForm(storeBase: string, param: string, id: string, want: boo
  * catalog and installed ids, alphabetical by id, unfiltered (hidden apps
  * appear with an Unhide control). Controls are plain GET forms with no
  * app-action class, so the client fast path never intercepts them.
- * Catalog-only rows offer Install only and no Open link: there is
- * nothing installed to open. Installed rows offer Open plus Pin/Hide/
+ * Catalog-only rows offer Install only. Installed rows offer Pin/Hide/
  * Home toggles (which change only their launcher lists) plus Update,
- * Restore, or neither, per row status. No JavaScript is required.
+ * Restore, or neither, per row status. No Open link: the Apps page is
+ * the launcher. No JavaScript is required.
  */
 export function renderCombinedList(
 	rows: CombinedListRow[],
-	appBasePath: string,
 	storeBase: string,
 	error?: string,
 ): string {
@@ -428,9 +429,6 @@ export function renderCombinedList(
 			controls = storeForm(storeBase, 'install', row.id, '', 'Install')
 		} else {
 			controls =
-				'<a href="' +
-				escapeHtml(appBasePath + '/apps/' + row.id + '?from=' + encodeURIComponent(storeBase)) +
-				'">Open</a> ' +
 				storeToggleForm(storeBase, 'pin', row.id, true, 'Pin', 'Unpin', row.pinned) +
 				' ' +
 				storeToggleForm(storeBase, 'hide', row.id, true, 'Hide', 'Unhide', row.hidden) +
@@ -445,19 +443,22 @@ export function renderCombinedList(
 			}
 		}
 		items.push(
-			'<li class="store-row"><span class="store-label">' +
-				'<span class="tile-icon" aria-hidden="true">' +
+			'<li class="store-row"><span class="store-main">' +
+				'<span class="store-label"><span class="store-icon" aria-hidden="true">' +
 				icon +
-				'</span> ' +
+				'</span>' +
 				escapeHtml(row.label) +
+				'</span>' +
+				'<span class="store-badge">' +
+				escapeHtml(storeBadge(row)) +
+				'</span>' +
+				'</span>' +
+				'<span class="store-controls">' +
+				controls +
 				'</span>' +
 				'<span class="store-desc">' +
 				escapeHtml(desc) +
 				'</span>' +
-				'<span class="store-badge">' +
-				escapeHtml(storeBadge(row)) +
-				'</span> ' +
-				controls +
 				'</li>',
 		)
 	}

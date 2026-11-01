@@ -3,10 +3,10 @@
   "name": "Help",
   "label": "Help",
   "schemaVersion": 5,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "icon": "?",
   "category": "utilities",
-  "description": "What kody-os is and how apps get added, including the agent prompt and the setup guide pointer. No state, no actions.",
+  "description": "An overview of kody-os and how apps are added.",
   "bundle": {
     "entry": "index.html",
     "files": {

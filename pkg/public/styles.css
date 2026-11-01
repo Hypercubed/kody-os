@@ -611,6 +611,147 @@ button.tile:active .tile-icon {
 	font-size: 0.875rem;
 }
 
+/* ---- App Store combined list: one bordered row per app ---- */
+
+.store-list {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.6rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Floats, not flex: the description flows around the fixed right-hand
+   button block. The row clears its own floats. */
+.store-row {
+	display: block;
+	margin: 0;
+	padding: 0.55rem 0.7rem;
+	border: var(--rule);
+	background: var(--paper);
+}
+
+.store-row::after {
+	content: "";
+	display: block;
+	clear: both;
+}
+
+/* Left column: icon + name, with the status tag stacked right below. */
+.store-main {
+	float: left;
+	width: 10rem;
+	margin: 0 0.9rem 0 0;
+}
+
+.store-label {
+	display: flex;
+	align-items: center;
+	margin: 0 0 0.2rem;
+	font-size: 0.9375rem;
+	font-weight: bold;
+}
+
+/* Right column: button block pinned to the top right, sized by its
+   content. nowrap keeps every control on one row. */
+.store-controls {
+	float: right;
+	display: flex;
+	flex-wrap: nowrap;
+	justify-content: flex-end;
+	margin: 0 0 0.3rem 0.75rem;
+}
+
+/* Compact buttons so the whole control set fits one row. */
+.store-row .store-control button {
+	padding: 0.2rem 0.4rem;
+	font-size: 0.75rem;
+	white-space: nowrap;
+}
+
+/* Reserve the width of each control's longest label ("Unpin", "Unhide",
+   "Remove from home", "Update…") so toggling never resizes the row. The
+   additions are the button's horizontal padding (0.8rem) and borders (4px). */
+.store-control-install button {
+	min-width: calc(7ch + 0.8rem + 4px);
+}
+
+.store-control-pin button {
+	min-width: calc(5ch + 0.8rem + 4px);
+}
+
+.store-control-hide button {
+	min-width: calc(6ch + 0.8rem + 4px);
+}
+
+.store-control-home button {
+	min-width: calc(16ch + 0.8rem + 4px);
+}
+
+.store-control-update button {
+	min-width: calc(7ch + 0.8rem + 4px);
+}
+
+.store-control-restore button {
+	min-width: calc(7ch + 0.8rem + 4px);
+}
+
+/* Small fixed icon plate: the SVG or glyph no longer renders at its
+   intrinsic size inside the row. */
+.store-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	margin: 0 0.5rem 0 0;
+	font-size: 1rem;
+	font-weight: bold;
+	line-height: 1;
+}
+
+.store-icon svg {
+	width: 1.25rem;
+	height: 1.25rem;
+	stroke: currentColor;
+}
+
+.store-desc {
+	display: block;
+	margin: 0;
+	color: #333;
+	font-size: 0.8125rem;
+	line-height: 1.3;
+}
+
+/* Nothing to flow when there is no description. */
+.store-desc:empty {
+	display: none;
+}
+
+.store-badge {
+	display: inline-block;
+	margin: 0;
+	padding: 0.15rem 0.4rem;
+	border: 1px solid #000;
+	background: var(--shade);
+	font-size: 0.6875rem;
+	font-weight: bold;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.store-row form.store-control {
+	display: inline-block;
+	margin: 0 0.35rem 0 0;
+}
+
+.store-controls form.store-control:last-child {
+	margin-right: 0;
+}
+
 /* ---- App window: every app gets the same panel ---- */
 
 .app {
@@ -769,6 +910,11 @@ button.tile:active .tile-icon {
 
 .category + .category {
 	margin-top: 1.2rem;
+}
+
+/* App Store: the combined list follows the store app panel directly. */
+.app + .category {
+	margin-top: 1rem;
 }
 
 .section-clear,
@@ -1447,5 +1593,18 @@ button:active {
 
 	.widgets {
 		grid-template-columns: 1fr;
+	}
+
+	/* Store rows stack: no fixed columns or floats to squeeze. */
+	.store-main,
+	.store-controls {
+		float: none;
+		width: auto;
+		margin: 0 0 0.4rem;
+	}
+
+	.store-controls {
+		flex-wrap: wrap;
+		justify-content: flex-start;
 	}
 }

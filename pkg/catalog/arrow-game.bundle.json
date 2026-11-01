@@ -3,10 +3,10 @@
   "name": "Arrow Game",
   "label": "Arrow Game",
   "schemaVersion": 5,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "icon": "→",
   "category": "Games",
-  "description": "MVP rewrite of Hypercubed/arrow-game in vanilla ES2019: remove the blue arrows, red arrows are blocked and cost a life, a life every 5 levels, checkpoint fallback. Cuts vs the original: no animations, no timer or speed meter, no keyboard skip; tap to remove, drag is best-effort.",
+  "description": "A puzzle about clearing the blue arrows; a red arrow costs a life, and a new life arrives every five levels.",
   "bundle": {
     "entry": "index.html",
     "files": {

@@ -1840,7 +1840,7 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 								name: name,
 								icon: installedDef ? installedDef.icon : (catalogEntry ? catalogEntry.icon : undefined),
 								category: installedDef ? installedDef.category : (catalogEntry ? catalogEntry.category : undefined),
-								description: installedDef ? installedDef.description : (catalogEntry ? catalogEntry.description : undefined),
+								description: catalogEntry && catalogEntry.description !== undefined ? catalogEntry.description : (installedDef ? installedDef.description : undefined),
 								installed: info.installed,
 								inCatalog: info.inCatalog,
 								status: info.status,

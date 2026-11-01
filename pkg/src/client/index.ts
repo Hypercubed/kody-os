@@ -168,6 +168,86 @@ if (canFastPath) {
 }
 
 /**
+ * App Store controls (enhancement layer).
+ *
+ * Store rows stay plain GET forms, so every control works with no JavaScript
+ * (submit navigates and the server 303s back to the store). Where fetch and
+ * DOMParser exist, the submit is intercepted, fetched as HTML, and only the
+ * #store section is swapped in place. No navigation, so scroll position is
+ * retained. Any failure falls back to a native form.submit().
+ *
+ * Delegated on document because the row forms are replaced after each swap.
+ * ES2019 ceiling: no ?. and no ?? in this file.
+ */
+if (canFastPath && typeof DOMParser !== 'undefined') {
+	document.addEventListener('submit', function (event: Event): void {
+		var target = event.target as HTMLElement | null
+		if (!target || target.tagName !== 'FORM') return
+		var form = target as unknown as HTMLFormElement
+		if (!form.classList || !form.classList.contains('store-control')) return
+		if (form.getAttribute('data-busy') === '1') {
+			event.preventDefault()
+			return
+		}
+		form.setAttribute('data-busy', '1')
+		event.preventDefault()
+		try {
+			var rawAction = form.getAttribute('action') || form.action || window.location.href
+			var parts: string[] = []
+			var els = form.elements
+			for (var j = 0; j < els.length; j++) {
+				var field = els[j] as unknown as HTMLInputElement
+				var fname = field.name
+				if (!fname) continue
+				var ftype = field.type
+				if ((ftype === 'checkbox' || ftype === 'radio') && !field.checked) continue
+				parts.push(encodeURIComponent(fname) + '=' + encodeURIComponent(field.value))
+			}
+			var sep = rawAction.indexOf('?') === -1 ? '?' : '&'
+			var url = parts.length > 0 ? rawAction + sep + parts.join('&') : rawAction
+			try {
+				var probe = document.createElement('a')
+				probe.href = url
+				var gotOrigin = String(probe.protocol + '//' + probe.host)
+				var pageOrigin = String(window.location.protocol + '//' + window.location.host)
+				if (gotOrigin !== pageOrigin) {
+					form.submit()
+					return
+				}
+			} catch (guardErr) {
+				form.submit()
+				return
+			}
+			fetch(url, { headers: { Accept: 'text/html' }, credentials: 'same-origin', redirect: 'follow' })
+				.then(function (response: Response): Promise<string> {
+					return response.text()
+				})
+				.then(function (text: string): void {
+					var fresh: Element | null = null
+					try {
+						var doc = new DOMParser().parseFromString(text, 'text/html')
+						fresh = doc.getElementById('store')
+					} catch (parseErr) {
+						form.submit()
+						return
+					}
+					var current = document.getElementById('store')
+					if (!fresh || !current) {
+						form.submit()
+						return
+					}
+					current.innerHTML = fresh.innerHTML
+				})
+				.catch(function (): void {
+					form.submit()
+				})
+		} catch (err) {
+			form.submit()
+		}
+	})
+}
+
+/**
  * Header clock tick (enhancement layer).
  * The bar carries server-rendered UTC text so the output is complete on its
  * own. Where JavaScript runs, replace it immediately with the browser's local

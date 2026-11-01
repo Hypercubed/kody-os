@@ -3,10 +3,10 @@
   "name": "App Store",
   "label": "App Store",
   "schemaVersion": 5,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "icon": "⊞",
   "category": "utilities",
-  "description": "Install and manage the shipped catalog apps from the browser: install, pin, hide, add to home, update, and restore, with no agent needed.",
+  "description": "Install and manage the apps shipped with kody-os.",
   "bundle": {
     "entry": "index.html",
     "files": {
