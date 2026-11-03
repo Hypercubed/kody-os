@@ -2,11 +2,13 @@
  *
  * Tests the bundle exactly as stored in ../three-bit-art.bundle.json:
  * one canvas replaces the 16 by 16 div grid, pattern mode draws the value's
- * fixed 32 by 32 one-bit pattern block per cell and the rasterized block keeps
- * its feature counts at the real cell size, color mode fills solid colors, pointer hit-testing and
+ * fixed 16 by 16 one-bit pattern block per cell at an integer device-pixel
+ * scale (cell size a multiple of 16, no gap, no grey between cells),
+ * color mode fills solid colors, pointer hit-testing and
  * the keyboard cursor paint the intended cell, the gallery renders canvas
- * thumbnails and Load/Delete still work, palette swatches keep their SVG
- * previews, and a browser without a 2D context gets the honest fallback.
+ * thumbnails and Load/Delete still work, palette swatches are canvases
+ * built directly at a multiple-of-16 device size, and a browser without
+ * a 2D context gets the honest fallback.
  *
  * jsdom has no canvas implementation, so getContext is stubbed with a
  * recording context (one per canvas). That exercises the bundle's own
@@ -113,45 +115,41 @@ async function main() {
   check(window.tbCanvas && window.tbCtx, "canvas and 2D context acquired");
   check(!doc.querySelector("#tb-grid .tb-cell"), "no per-cell divs inside the board");
   check(window.tbCanvas.width % 16 === 0 && window.tbCanvas.height % 16 === 0, "backing store divides into 16 cells");
-  check(window.tbCellDev >= 8, "cell size is usable (" + window.tbCellDev + ")");
+  check(window.tbCellDev >= 16 && window.tbCellDev % 16 === 0, "cell size is a multiple of 16 (" + window.tbCellDev + ")");
+  check(window.tbGapDev === 0, "no gap inset inside a cell");
+  check(window.tbCanvas.width === window.tbCellDev * 16, "backing store equals cell size times 16");
   check(doc.getElementById("tb-fail").style.display === "none", "fallback hidden when canvas works");
   check(doc.querySelectorAll(".tb-pal").length === 8, "eight palette swatches");
-  check(
-    doc.querySelector(".tb-pal").style.backgroundImage.indexOf("data:image/svg+xml") !== -1,
-    "palette keeps SVG previews"
-  );
-  check(
-    doc.querySelector(".tb-pal").style.backgroundImage.indexOf("width%3D'32'") !== -1,
-    "palette previews use 32 by 32 blocks"
-  );
-  check(doc.querySelectorAll(".tb-pal")[1].style.backgroundImage.indexOf("patternUnits") !== -1, "palette blocks repeat the 8 by 8 tile");
+  check(doc.querySelector(".tb-pal").tagName === "CANVAS", "palette swatches are canvases, not scaled images");
+  check(doc.querySelector(".tb-pal").width % 16 === 0, "palette device size is a multiple of 16 (" + doc.querySelector(".tb-pal").width + ")");
+  check(window.tbPalCanvases && window.tbPalCanvases.length === 8, "one palette tile per value");
   check(window.TB_PATTERNS && window.TB_PATTERNS.length === 8, "eight pattern blocks");
-  check(window.TB_PATTERNS[0].length === 32 && window.TB_PATTERNS[0][0].length === 32, "pattern blocks are 32 by 32");
+  check(window.TB_PATTERNS[0].length === 16 && window.TB_PATTERNS[0][0].length === 16, "pattern blocks are 16 by 16");
   var dens = [], v, r, c, densTotal;
   for (v = 0; v < 8; v++) {
     densTotal = 0;
-    for (r = 0; r < 32; r++) {
-      for (c = 0; c < 32; c++) { densTotal += window.TB_PATTERNS[v][r][c]; }
+    for (r = 0; r < 16; r++) {
+      for (c = 0; c < 16; c++) { densTotal += window.TB_PATTERNS[v][r][c]; }
     }
     dens.push(densTotal);
   }
-  check(dens[0] === 1024 && dens[7] === 0, "black and white stay solid");
-  check(dens[4] === 960, "blue is 93.8% black");
-  check(dens[1] === 768 && dens[5] === 768, "red and magenta are 75% black");
-  check(dens[2] === 256 && dens[6] === 256 && dens[3] === 64, "green, cyan, and yellow counts match");
+  check(dens[0] === 256 && dens[7] === 0, "black and white stay solid");
+  check(dens[4] === 240, "blue is 93.8% black");
+  check(dens[1] === 192 && dens[5] === 192, "red and magenta are 75% black");
+  check(dens[2] === 64 && dens[6] === 64 && dens[3] === 16, "green, cyan, and yellow counts match");
   function row(vv, rr) { return window.TB_PATTERNS[vv][rr].join(""); }
-  function rep(s) { return s + s + s + s; }
+  function rep(s) { return s + s; }
   check(row(1, 0) === rep("11101110") && row(1, 1) === rep("01110111") && row(1, 2) === rep("10111011") && row(1, 3) === rep("11011101"), "red is down-right diagonal bands");
-  check(row(2, 0) === rep("11111111") && row(2, 1) === rep("00000000") && row(2, 4) === rep("11111111") && row(2, 28) === rep("11111111"), "green is horizontal rules");
+  check(row(2, 0) === rep("11111111") && row(2, 1) === rep("00000000") && row(2, 4) === rep("11111111") && row(2, 12) === rep("11111111"), "green is horizontal rules");
   check(row(3, 0) === rep("10001000") && row(3, 1) === rep("00000000") && row(3, 4) === rep("10001000"), "yellow is a sparse dot lattice");
   check(row(4, 0) === rep("01110111") && row(4, 1) === rep("11111111") && row(4, 4) === rep("01110111"), "blue is black with sparse white dots");
   check(row(5, 0) === rep("11101110") && row(5, 1) === rep("11011101") && row(5, 2) === rep("10111011") && row(5, 3) === rep("01110111"), "magenta is down-left diagonal bands");
   check(row(6, 0) === rep("10001000") && row(6, 1) === rep("10001000"), "cyan is vertical rules");
   var redDiag = true, magentaDiag = true, greenLines = true, cyanLines = true, yellowDots = true, blueDots = true;
   var greenRows = 0, cyanCols = 0, yellowCount = 0, blueWhite = 0;
-  for (r = 0; r < 32; r++) {
+  for (r = 0; r < 16; r++) {
     var allGreen = true;
-    for (c = 0; c < 32; c++) {
+    for (c = 0; c < 16; c++) {
       if (window.TB_PATTERNS[1][r][c] !== (((((c - r) % 4) + 4) % 4) !== 3 ? 1 : 0)) { redDiag = false; }
       if (window.TB_PATTERNS[5][r][c] !== (((c + r) % 4 !== 3) ? 1 : 0)) { magentaDiag = false; }
       if (window.TB_PATTERNS[2][r][c] !== ((r % 4 === 0) ? 1 : 0)) { greenLines = false; }
@@ -164,9 +162,9 @@ async function main() {
     }
     if (allGreen) { greenRows++; }
   }
-  for (c = 0; c < 32; c++) {
+  for (c = 0; c < 16; c++) {
     var allCyan = true;
-    for (r = 0; r < 32; r++) { if (window.TB_PATTERNS[6][r][c] !== 1) { allCyan = false; } }
+    for (r = 0; r < 16; r++) { if (window.TB_PATTERNS[6][r][c] !== 1) { allCyan = false; } }
     if (allCyan) { cyanCols++; }
   }
   check(redDiag, "red diagonals match the formula");
@@ -175,16 +173,19 @@ async function main() {
   check(cyanLines, "cyan lines match the formula");
   check(yellowDots, "yellow dots match the formula");
   check(blueDots, "blue dots are the exact inverse of yellow");
-  check(greenRows === 8, "green has 8 horizontal lines per block");
-  check(cyanCols === 8, "cyan has 8 vertical lines per block");
-  check(yellowCount === 64, "yellow has 64 black dots per block");
-  check(blueWhite === 64, "blue has 64 white dots per block");
+  check(greenRows === 4, "green has 4 horizontal lines per block");
+  check(cyanCols === 4, "cyan has 4 vertical lines per block");
+  check(yellowCount === 16, "yellow has 16 black dots per block");
+  check(blueWhite === 16, "blue has 16 white dots per block");
 
-  // Raster contract. The 32 by 32 matrix can be right while the offscreen
-  // tile that actually reaches the board loses rows: mapping source rows with
-  // rounded edges collapses a 1-pixel line to zero height at cells under 32
-  // device pixels, leaving green 6 lines at 30 px and 4 at 28 px. These
-  // checks read the pixels the bundle painted into each tile canvas.
+  // Raster contract. The 16 by 16 matrix can be right while the offscreen
+  // tile that actually reaches the board is resampled to a non-multiple
+  // size: a 32-pixel block at 28 or 56 device pixels, or a 48-pixel
+  // button showing a 32-pixel block, makes pattern pixels 1 or 2 device
+  // pixels wide irregularly and anti-aliases edges into grey. These
+  // checks read the pixels the bundle painted into each tile canvas
+  // and require the tile size to be a multiple of 16, with the tile
+  // filling the whole cell and no grey between cells.
   function tileGrid(canvas) {
     var w = canvas.width, h = canvas.height, grid = [], i;
     for (i = 0; i < w * h; i++) { grid.push(0); }
@@ -240,10 +241,10 @@ async function main() {
   }
   var tiles = window.tbTileCanvases;
   check(tiles && tiles.length === 8 && tiles.filter(Boolean).length === 8, "one offscreen block per value");
-  var tileSize = window.tbCellDev - window.tbGapDev * 2;
+  var tileSize = window.tbCellDev;
   check(
-    tileSize >= 2 && tiles[2].width === tileSize && tiles[2].height === tileSize,
-    "blocks rasterize at the cell size (" + tileSize + " device px)"
+    tileSize >= 16 && tileSize % 16 === 0 && tiles[2].width === tileSize && tiles[2].height === tileSize,
+    "blocks rasterize at the full cell size (" + tileSize + " device px)"
   );
   var rasters = [], st = [], gi;
   for (gi = 0; gi < 8; gi++) {
@@ -252,10 +253,10 @@ async function main() {
   }
   check(rasters[0].count() === rasters[0].w * rasters[0].h, "black rasterizes solid black");
   check(rasters[7].count() === 0, "white rasterizes solid white");
-  check(runs(st[2].rowsBlack) === 8 && runs(st[2].colsBlack) === 1, "green raster keeps 8 horizontal lines at " + tileSize + " px");
-  check(runs(st[6].colsBlack) === 8 && runs(st[6].rowsBlack) === 1, "cyan raster keeps 8 vertical lines at " + tileSize + " px");
-  check(runs(st[3].rowsBlack) === 8 && runs(st[3].colsBlack) === 8, "yellow raster keeps 8 by 8 dot rows and columns");
-  check(runs(st[4].rowsWhite) === 8 && runs(st[4].colsWhite) === 8, "blue raster keeps 64 white dots");
+  check(runs(st[2].rowsBlack) === 4 && runs(st[2].colsBlack) === 1, "green raster keeps 4 horizontal lines at " + tileSize + " px");
+  check(runs(st[6].colsBlack) === 4 && runs(st[6].rowsBlack) === 1, "cyan raster keeps 4 vertical lines at " + tileSize + " px");
+  check(runs(st[3].rowsBlack) === 4 && runs(st[3].colsBlack) === 4, "yellow raster keeps 4 by 4 dot rows and columns");
+  check(runs(st[4].rowsWhite) === 4 && runs(st[4].colsWhite) === 4, "blue raster keeps 16 white dots");
   check(
     rasters[4].count() > rasters[4].w * rasters[4].h * 0.9,
     "blue raster stays above 90% black"
@@ -272,9 +273,10 @@ async function main() {
   const images = full.filter(function (c) {
     return c.kind === "image";
   });
-  check(fills.length >= 257, "draws background plus one rect per cell (" + fills.length + ")");
+  check(fills.length >= 1, "draws a background fill (" + fills.length + ")");
   check(images.length >= 256, "pattern mode draws one pattern tile per cell (" + images.length + ")");
-  check(full.some(function (c) { return c.style === "#888"; }), "board gutter/background is drawn");
+  check(!full.some(function (c) { return c.style === "#888"; }), "no grey gutter or background in the board");
+  check(full.some(function (c) { return c.style === "#fff"; }), "board background is white, not grey");
 
   window.tbColor = 1;
   window.tbPaint(0);
