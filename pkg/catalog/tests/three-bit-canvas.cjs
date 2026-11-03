@@ -141,8 +141,8 @@ async function main() {
   function rep(s) { return s + s; }
   check(row(1, 0) === rep("11101110") && row(1, 1) === rep("01110111") && row(1, 2) === rep("10111011") && row(1, 3) === rep("11011101"), "red is down-right diagonal bands");
   check(row(2, 0) === rep("11111111") && row(2, 1) === rep("00000000") && row(2, 4) === rep("11111111") && row(2, 12) === rep("11111111"), "green is horizontal rules");
-  check(row(3, 0) === rep("10001000") && row(3, 1) === rep("00000000") && row(3, 4) === rep("10001000"), "yellow is a sparse dot lattice");
-  check(row(4, 0) === rep("01110111") && row(4, 1) === rep("11111111") && row(4, 4) === rep("01110111"), "blue is black with sparse white dots");
+  check(row(3, 0) === rep("00000000") && row(3, 2) === rep("00100010") && row(3, 6) === rep("00100010"), "yellow is a sparse dot lattice, shifted to 2, 6, 10, 14");
+  check(row(4, 0) === rep("11111111") && row(4, 2) === rep("11011101") && row(4, 6) === rep("11011101"), "blue is black with sparse white dots, shifted to 2, 6, 10, 14");
   check(row(5, 0) === rep("11101110") && row(5, 1) === rep("11011101") && row(5, 2) === rep("10111011") && row(5, 3) === rep("01110111"), "magenta is down-left diagonal bands");
   check(row(6, 0) === rep("10001000") && row(6, 1) === rep("10001000"), "cyan is vertical rules");
   var redDiag = true, magentaDiag = true, greenLines = true, cyanLines = true, yellowDots = true, blueDots = true;
@@ -154,8 +154,8 @@ async function main() {
       if (window.TB_PATTERNS[5][r][c] !== (((c + r) % 4 !== 3) ? 1 : 0)) { magentaDiag = false; }
       if (window.TB_PATTERNS[2][r][c] !== ((r % 4 === 0) ? 1 : 0)) { greenLines = false; }
       if (window.TB_PATTERNS[6][r][c] !== ((c % 4 === 0) ? 1 : 0)) { cyanLines = false; }
-      if (window.TB_PATTERNS[3][r][c] !== ((r % 4 === 0 && c % 4 === 0) ? 1 : 0)) { yellowDots = false; }
-      if (window.TB_PATTERNS[4][r][c] !== ((r % 4 === 0 && c % 4 === 0) ? 0 : 1)) { blueDots = false; }
+      if (window.TB_PATTERNS[3][r][c] !== ((r % 4 === 2 && c % 4 === 2) ? 1 : 0)) { yellowDots = false; }
+      if (window.TB_PATTERNS[4][r][c] !== ((r % 4 === 2 && c % 4 === 2) ? 0 : 1)) { blueDots = false; }
       if (window.TB_PATTERNS[2][r][c] !== 1) { allGreen = false; }
       if (window.TB_PATTERNS[3][r][c] === 1) { yellowCount++; }
       if (window.TB_PATTERNS[4][r][c] === 0) { blueWhite++; }
