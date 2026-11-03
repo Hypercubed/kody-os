@@ -113,7 +113,7 @@ async function main() {
   const calls = withCanvas.calls;
   const doc = window.document;
 
-  check(definition.catalogVersion >= 16, "definition carries catalogVersion 16 or later");
+  check(definition.catalogVersion >= 17, "definition carries catalogVersion 17 or later");
   check(window.tbState.data.length === 256, "state seeds a 256-cell drawing");
   check(window.tbCanvas && window.tbCtx, "canvas and 2D context acquired");
   check(!doc.querySelector("#tb-grid .tb-cell"), "no per-cell divs inside the board");
@@ -266,9 +266,26 @@ async function main() {
   check(bayerRed.countStyle("#ffffff") === (1024 - redBlack) * bpp * bpp, "red Bayer tile keeps white minority pixels");
   check(bayerGreen.countStyle("#00ff00") === (1024 - greenBlack) * bpp * bpp, "green Bayer tile colours exactly its white pixels");
   check(bayerGreen.countStyle("#000000") === greenBlack * bpp * bpp, "green Bayer tile keeps black minority pixels");
-  // Cycle back to Color.
+  // Cycle back to Color, capturing call order: tile rebuild must
+  // happen before the board draw, otherwise the board draws old
+  // tiles, records the new mode as drawn, and stays one mode behind
+  // the button and palette until the next paint — which looks like
+  // a wrong set on the board, or a switch that only lands later.
+  calls.length = 0;
   doc.getElementById("tb-mode").click();
   check(window.tbState.mode === "color", "mode button wraps bayer-color back to color");
+  (function () {
+    var tileFills = [], boardCalls = [], i, cc;
+    for (i = 0; i < calls.length; i++) {
+      cc = calls[i];
+      if (cc.kind === "fill" && window.tbTileCanvases.indexOf(cc.canvas) >= 0) { tileFills.push(i); }
+      if (cc.canvas === window.tbCanvas) { boardCalls.push(i); }
+    }
+    check(tileFills.length > 0 && boardCalls.length >= 256, "mode change rebuilds tiles and redraws the board (" + tileFills.length + " tile fills, " + boardCalls.length + " board calls)");
+    if (tileFills.length > 0 && boardCalls.length > 0) {
+      check(Math.max.apply(null, tileFills) < Math.min.apply(null, boardCalls), "tile rebuild happens before board draw on mode change");
+    }
+  })();
   check(doc.getElementById("tb-mode").textContent === "Color", "mode button labels color after wrap");
 
   calls.length = 0;
