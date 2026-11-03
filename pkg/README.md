@@ -59,12 +59,12 @@ export NO_PROXY='*' no_proxy='*'
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
 ```
 
-Mint a local-dev OTP and install the `counter` fixture (one-time per fresh mock store). No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. Mint while the server is stopped, then start it promptly: the code is single use, valid 10 minutes, and burns into a 30-day session cookie.
+Mint a local-dev OTP and install the `app-store` catalog app (one-time per fresh mock store). Install it explicitly: the shell's automatic first-run seed only fires on an empty registry, so adding any other app first silently skips the App Store. No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. Mint while the server is stopped, then start it promptly: the code is single use, valid 10 minutes, and burns into a 30-day session cookie.
 
 ```sh
 kody execute --target mock --file scripts/mint-dev-otp.ts
 # → { "ok": true, "code": "4821" } — example only; use the code you actually get
-kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"counter"}'
+kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}'
 ```
 
 To install your own definition file instead of (or in addition to) a catalog app, use `scripts/add-app.ts` — its params *are* the definition, with no op wrapper (that wrapper belongs to `scripts/registry.ts`):
@@ -80,7 +80,7 @@ kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely) and enter the minted code in the unlock form. The footer reads `via cookie` with a clean URL; Apps lists `counter`; old `hello-counter` id returns 404. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does. A minted OTP is single use, so there is no repeatable authenticated fetch check: verify actions in the unlocked browser instead.
+Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely) and enter the minted code in the unlock form. The footer reads `via cookie` with a clean URL; the Apps page lists the **App Store**. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does. A minted OTP is single use, so there is no repeatable authenticated fetch check: verify actions in the unlocked browser instead.
 
 Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`. To clear local sessions and OTPs: `kody execute --target mock --file scripts/clear-auth.ts` (returns counts only).
 
