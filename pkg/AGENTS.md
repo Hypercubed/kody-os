@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v2.2.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v2.3.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -41,12 +41,14 @@ Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain wh
 
 ## Adding an app
 
-Registry write, not a package change: no commit, no republish. Shipped catalog apps install from the browser App Store (`/apps/app-store`, seeded on first shell use against an empty registry); agents call `add_app` for custom apps. Not on home until added via the App Store row's **Add to home** control. The App Store is also the management surface (pin, hide, home, update, restore); the Apps page is a launcher only, with no Edit mode. Full contract: [Adding an app](docs/adding-an-app.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
+Registry write, not a package change: no commit, no republish. Shipped catalog apps install from the browser App Store (`/apps/app-store`, seeded on first shell use against an empty registry); agents call `add_app` for custom apps. Not on home until added via Apps Edit's **Add to home** control. The App Store is a data app that installs, updates, and restores catalog apps through the shell management API; pin, hide, and home live in Apps Edit (`/apps?edit=1`), not in the Store. Full contract: [Adding an app](docs/adding-an-app.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
 
 - Definition: meta + bundle (`entry: index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap) + `stateSchema` + `actions` (`set`/`append`; `increment`/`toggle`/`reset` are deprecated sugar). `ui.template` was removed in schemaVersion 4 (required only for schemaVersion 3 submissions, ignored by the renderer in every version) — never send it in a v4 definition, never branch on it.
 - `ui.hideState: true` hides the server-rendered state readout (stays in the DOM for bundle scripts to read initial state). Use when the bundle already displays state.
 - `ui.menuBar: true` also shows the app in the top menu bar while installed (after Apps, alphabetically by label). Author-controlled, not a user toggle; hidden apps are excluded, and uninstalling removes the link. Help and About use it.
 - `capabilities.feeds`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }` — HTTPS only, served via `GET /feed/:app/:name` with storage caching. Data-only declarations; the route takes the feed name, never a URL.
+- `capabilities.proxy`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }`, same limits as feeds — HTTPS only, served via `GET /proxy/:app/:name` with storage caching. The route takes the proxy name, never a URL.
+- `capabilities.manageApps`: boolean. Only a bundle declaring this may use the shell management API (`GET /manage/rows|install|update|restore`); undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority.
 - Bundle scripts run same-origin with full session authority: installing an app = trusting its code. Review third-party bundles before `import_app`.
 
 ## Smoke tests
@@ -92,6 +94,6 @@ Seed the `app-store` catalog app with the server stopped (see above): mint an OT
 
 - No root-export side effects: no jobs, file writes, or installs.
 - Missing runtime context falls back to shared in-memory storage, starting empty with an honest "no apps yet" tile.
-- Works without JavaScript (form submit + PRG); the client only enhances `form.app-action` with `?format=json` in-place patching (guarded, falls back to native submit).
+- Works without JavaScript (form submit + PRG); the client only enhances `form.app-action` with `?format=json` in-place patching (guarded, falls back to native submit). Exception: the App Store itself requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`, and the rest of the shell still works without JavaScript.
 - Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.

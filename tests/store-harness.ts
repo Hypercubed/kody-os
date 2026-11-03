@@ -3,8 +3,9 @@
  *
  *   bun tests/store-harness.ts
  *
- * Proves, against fresh in-memory stores, the parts of the app-store
- * change that do not need a live shell fetch (kody dev / hosted):
+ * Proves, against fresh in-memory stores, the parts of the data-only
+ * App Store change that do not need a live shell fetch (kody dev /
+ * hosted):
  *   Seeding: blank store seeds only app-store, idempotently; a
  *     non-empty store is untouched; remove-all re-seeds.
  *   Store install: unknown id fails with no write; a store install
@@ -18,23 +19,27 @@
  *   Snapshot-less: a catalog app installed via generic add_app claims
  *     no status and gets no update control.
  *   Storage-only: a custom app (no catalog entry) gets a Storage
- *     only badge and launcher controls, no Install/Update/Restore.
- *   Render: combined rows are the union of catalog + installed ids,
- *     deduplicated, alphabetical; catalog-only rows offer Install
- *     only; installed rows offer Pin/Hide/Home plus Update, Restore,
- *     or neither per status; no Open link, no app-action class, no
- *     POST form — plain GET forms only. Hidden apps still appear,
- *     with an Unhide control.
+ *     only status, no Install/Update/Restore through the management API.
+ *   Management API: rows are the union of catalog + installed ids,
+ *     deduplicated, alphabetical, with capabilities disclosed; an
+ *     undeclared caller is permission-denied; a modified restore
+ *     requires confirmation and applies on confirm.
+ *   Edit render: Apps Edit lists every installed app including
+ *     hidden ones, with Pin/Hide/Home as plain GET forms only —
+ *     no Open link to an app page, no app-action class, no POST form.
+ *     Hidden apps still appear, with an Unhide control.
  *
- * NOT covered here on purpose: the HTTP dispatch leg (303s, inline
- * errors, the modified-update confirmation page) — that needs
- * `kody dev` (mock) or a hosted fetch, which this environment does
- * not have (no kody CLI). The dispatch code paths call exactly the
- * functions proven here, in the order shown in pkg/src/app.ts.
+ * NOT covered here on purpose: the HTTP dispatch leg (JSON responses,
+ * plain 404s for undeclared callers) — that needs `kody dev` (mock)
+ * or a hosted fetch, which this environment does not have (no kody
+ * CLI). The dispatch code paths call exactly the functions proven
+ * here, in the order shown in pkg/src/app.ts. The bundle's own
+ * rendering and confirmation UI are covered by
+ * pkg/catalog/tests/app-store-tests.cjs (jsdom, mocked fetch).
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, readInstallSnapshot, remove_app, renderCombinedList, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
+import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
 
 var failures: string[] = []
 
@@ -104,11 +109,12 @@ function clone<T>(v: T): T {
 	check('generic re-add does not move snapshot', snapAfterTamper !== null && snapBefore !== null && snapAfterTamper.fingerprint === snapBefore.fingerprint, JSON.stringify(snapAfterTamper))
 	var tamperedStatus = await get_app_status('counter', store)
 	check('tampered counter is modified-current', tamperedStatus.status === 'modified-current', tamperedStatus.status)
-	var rows = await get_store_rows(store)
-	var counterRow = null
-	for (var ri = 0; ri < rows.length; ri++) if (rows[ri].id === 'counter') counterRow = rows[ri]
-	var html = renderCombinedList(rows, '/apps/app-store')
-	check('modified-current row renders Restore, not Update', html.indexOf('name="restore" value="counter"') !== -1 && html.indexOf('name="update" value="counter"') === -1, '')
+	var manageRows = await manage_rows('app-store', store)
+	check('management rows are permission-gated to the Store', manageRows.ok === true, JSON.stringify(manageRows))
+	var deniedRows = await manage_rows('counter', store)
+	check('management rows deny an undeclared caller', deniedRows.ok === false && (deniedRows as { permissionDenied?: boolean }).permissionDenied === true, JSON.stringify(deniedRows))
+	var restoreNo = await manage_restore('app-store', 'counter', false, store)
+	check('modified-current restore requires confirmation', restoreNo.ok === false && (restoreNo as { needsConfirmation?: boolean }).needsConfirmation === true, JSON.stringify(restoreNo))
 	var updated = await store_update_from_catalog('counter', store)
 	check('store update succeeds', updated.ok === true, JSON.stringify(updated))
 	var entryState = await import('../pkg/src/apps/index.ts').then(function (m) { return m.get_app_state('counter', store) })
@@ -137,19 +143,28 @@ function clone<T>(v: T): T {
 	var ids = rows.map(function (r) { return r.id })
 	check('combined rows are catalog + installed, deduplicated', rows.length === 17, rows.length + ' rows')
 	check('combined rows are alphabetical', JSON.stringify(ids) === JSON.stringify(ids.slice().sort()), ids.join(','))
-	var html = renderCombinedList(rows, '/apps/app-store')
-	check('render has no Open link', html.indexOf('<a ') === -1, '')
-	check('render has no app-action class', html.indexOf('app-action') === -1, '')
-	check('render has no POST form', html.indexOf('method="POST"') === -1 && html.indexOf("method='POST'") === -1, '')
-	check('catalog-only row renders Install only', html.indexOf('name="install" value="calculator"') !== -1, '')
-	check('snapshot-less row renders no Update/Restore', html.indexOf('name="update" value="xkcd"') === -1 && html.indexOf('name="restore" value="xkcd"') === -1, '')
-	check('storage-only row renders no Install/Update/Restore', html.indexOf('name="install" value="my-note"') === -1 && html.indexOf('name="update" value="my-note"') === -1 && html.indexOf('name="restore" value="my-note"') === -1, '')
+	var storeRow = null
+	for (var si = 0; si < rows.length; si++) if (rows[si].id === 'app-store') storeRow = rows[si]
+	check('store row discloses manageApps', storeRow !== null && (storeRow as { capabilities: { manageApps: boolean } }).capabilities.manageApps === true, JSON.stringify(storeRow))
+	var snapshotLessUpdate = await manage_update('app-store', 'xkcd', false, store)
+	check('snapshot-less app has no update via management API', snapshotLessUpdate.ok === false, JSON.stringify(snapshotLessUpdate))
+	var storageOnlyUpdate = await manage_update('app-store', 'my-note', false, store)
+	check('storage-only app has no update via management API', storageOnlyUpdate.ok === false, JSON.stringify(storageOnlyUpdate))
+	var storageOnlyRestore = await manage_restore('app-store', 'my-note', false, store)
+	check('storage-only app has nothing to restore', storageOnlyRestore.ok === false, JSON.stringify(storageOnlyRestore))
 	await set_hide('xkcd', true, store)
-	var rowsAfterHide = await get_store_rows(store)
-	var xkcdRow = null
-	for (var hi = 0; hi < rowsAfterHide.length; hi++) if (rowsAfterHide[hi].id === 'xkcd') xkcdRow = rowsAfterHide[hi]
-	var htmlAfterHide = renderCombinedList(rowsAfterHide, '/apps/app-store')
-	check('hidden app still appears with Unhide control', xkcdRow !== null && (xkcdRow as { hidden: boolean }).hidden === true && htmlAfterHide.indexOf('Unhide') !== -1, '')
+	var appsAfterHide = await list_apps(store)
+	var pinnedAfterHide = await get_pinned(store)
+	var hiddenAfterHide = await get_hidden(store)
+	var homepageAfterHide = await get_homepage(store)
+	var editHtml = renderEditSection(appsAfterHide, pinnedAfterHide, hiddenAfterHide, homepageAfterHide, '', '/apps')
+	check('edit render has no app page link', editHtml.indexOf('/apps/xkcd') === -1 && editHtml.indexOf('/apps/counter') === -1, '')
+	check('edit render has no app-action class', editHtml.indexOf('app-action') === -1, '')
+	check('edit render has no POST form', editHtml.indexOf('method="POST"') === -1 && editHtml.indexOf("method='POST'") === -1, '')
+	check('edit render keeps edit mode on submit', editHtml.indexOf('name="edit" value="1"') !== -1, '')
+	check('hidden app still appears in Edit with Unhide control', editHtml.indexOf('xkcd') !== -1 && editHtml.indexOf('Unhide') !== -1, '')
+	var allHtml = renderAllSection(appsAfterHide, '', '/apps', undefined, true)
+	check('all section offers Edit when apps exist', allHtml.indexOf('?edit=1') !== -1, '')
 }
 
 if (failures.length === 0) {

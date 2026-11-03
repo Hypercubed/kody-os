@@ -1,6 +1,6 @@
 {
   "name": "@hypercubed/kody-os",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "build": 29,
   "type": "module",

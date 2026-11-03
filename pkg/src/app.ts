@@ -1,7 +1,7 @@
 import { SHELL_CSS } from './shell-css.ts'
 import { SESSION_COOKIE_BARE, authenticate, authPathFor, checkCode, isKodyOwnerVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
-import { serveFeed } from './feeds.ts'
+import { serveFeed, serveProxy } from './feeds.ts'
 import { fileThemeToValues, get_shell_theme } from './shell-theme.ts'
 import type { AuthPath } from './auth.ts'
 
@@ -572,20 +572,21 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			var clear_recent = m.clear_recent
 			var ensure_app_store_seeded = m.ensure_app_store_seeded
 			var get_app = m.get_app
-			var get_app_status = m.get_app_status
 			var get_hidden = m.get_hidden
 			var get_homepage = m.get_homepage
 			var get_pinned = m.get_pinned
 			var get_recent = m.get_recent
-			var get_store_rows = m.get_store_rows
 			var list_apps = m.list_apps
+			var manage_install = m.manage_install
+			var manage_restore = m.manage_restore
+			var manage_rows = m.manage_rows
+			var manage_update = m.manage_update
 			var move_home = m.move_home
 			var record_use = m.record_use
 			var set_hide = m.set_hide
 			var set_home = m.set_home
 			var set_pin = m.set_pin
 			var store_install_from_catalog = m.store_install_from_catalog
-			var store_update_from_catalog = m.store_update_from_catalog
 		// App-store seeding: first authenticated shell request against an
 		// empty registry installs only the App Store, before routing.
 		// Seeding never runs from MCP reads (this is dispatch only), and
@@ -603,8 +604,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 		return seedDone.then(function (): Promise<Response> {
 		return import('./apps/client.ts').then(function (c): Promise<Response> {				var isModalApp = c.isModalApp
 				var renderAppPanel = c.renderAppPanel
-				var renderCombinedList = c.renderCombinedList
 				var renderDashboard = c.renderDashboard
+				var renderEditSection = c.renderEditSection
 				var renderOverlaySection = c.renderOverlaySection
 				var renderAllSection = c.renderAllSection
 				var manageAppsLink = c.manageAppsLink
@@ -744,143 +745,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 			}
 
-			// GET /apps/app-store — the App Store page: the bundle panel plus
-			// the server-rendered combined list, and all store controls.
-			// Plain GET forms + 303 only, no app-action class, no POST.
-			// An ?action= query falls through to the generic app page
-			// below (the store has no ui actions, so it errors there).
-			if (method === 'GET' && path === '/apps/app-store') {
-				var storeQuery = new URL(request.url).searchParams
-				if (!storeQuery.get('action')) {
-					var storeBase = appBasePath + '/apps/app-store'
-					var storeRedirect = function (): Response {
-						return new Response(null, { status: 303, headers: { Location: storeBase } })
-					}
-					var storePage = function (withError: string, status: number): Promise<Response> {
-						return Promise.all([list_apps(), get_hidden(), get_store_rows()]).then(function (parts): Promise<Response> {
-							var menu = menuAppsFor(parts[0], parts[1])
-							var rows = parts[2]
-							var listHtml = renderCombinedList(rows, storeBase, withError)
-							return get_app('app-store').then(function (entry): Response {
-								var body = ''
-								if ('error' in entry) {
-									body =
-										'\t\t\t<section class="app" aria-label="App Store">\n' +
-										'\t\t\t\t<div class="app-body">\n' +
-										'\t\t\t\t\t<p>The App Store app is not installed. The combined list below still works; install a catalog app from it, or ask an agent to install the App Store with install_from_catalog.</p>\n' +
-										'\t\t\t\t</div>\n' +
-										'\t\t\t</section>\n' +
-										listHtml
-									return new Response(
-										shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
-										{ status: status, headers: pageHeaders() },
-									)
-								}
-								var lines = listHtml.split('\n')
-								var indented = ''
-								for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
-								return new Response(
-									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, currentApp: 'app-store', expandable: true, body: indented }),
-									{ status: status, headers: pageHeaders() },
-								)
-							})
-						})
-					}
-					var confirmPage = function (kind: string, id: string, label: string): Promise<Response> {
-						return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
-							var menu = menuAppsFor(parts[0], parts[1])
-							var verb = kind === 'restore' ? 'Restore catalog version' : 'Update'
-							var body =
-								'\t\t\t<section class="app" aria-label="Confirm ' + escapeAttribute(verb.toLowerCase()) + '">\n' +
-								'\t\t\t\t<div class="app-body">\n' +
-								'\t\t\t\t\t<h2>Confirm ' + escapeAttribute(verb) + ': ' + escapeAttribute(label) + '</h2>\n' +
-								'\t\t\t\t\t<p>Updating will replace this app\u2019s definition \u2014 bundle files, stateSchema, actions, capabilities, and metadata \u2014 with the catalog copy. Your custom definition changes will be lost and cannot be recovered afterwards unless you exported the app first.</p>\n' +
-								'\t\t\t\t\t<p>State is preserved for fields still declared in the new definition, while dropped fields reset to their initial values. Pins, hidden flags, homepage placement, and recency are untouched.</p>\n' +
-								'\t\t\t\t\t<form method="GET" action="' + escapeAttribute(storeBase) + '">\n' +
-								'\t\t\t\t\t\t<input type="hidden" name="confirm" value="' + escapeAttribute(kind) + '" />\n' +
-								'\t\t\t\t\t\t<input type="hidden" name="id" value="' + escapeAttribute(id) + '" />\n' +
-								'\t\t\t\t\t\t<input type="hidden" name="confirmed" value="1" />\n' +
-								'\t\t\t\t\t\t<button type="submit">Confirm ' + escapeAttribute(verb) + '</button>\n' +
-								'\t\t\t\t\t</form>\n' +
-								'\t\t\t\t\t<p><a href="' + escapeAttribute(storeBase) + '">Cancel \u2014 change nothing</a></p>\n' +
-								'\t\t\t\t</div>\n' +
-								'\t\t\t</section>'
-							return new Response(
-								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Confirm ' + verb, authPath: authPath, menuApps: menu, body: body }),
-								{ status: 200, headers: pageHeaders() },
-							)
-						})
-					}
-					var confirmKind = storeQuery.get('confirm') || ''
-					var confirmId = storeQuery.get('id') || ''
-					if ((confirmKind === 'update' || confirmKind === 'restore') && confirmId !== '' && storeQuery.get('confirmed') === '1') {
-						return store_update_from_catalog(confirmId).then(function (result) {
-							if (!result.ok) return storePage(result.error, 400)
-							return Promise.resolve(storeRedirect())
-						})
-					}
-					var updateId = storeQuery.get('update') || ''
-					if (updateId !== '') {
-						return get_app_status(updateId).then(function (info) {
-							if (!info.installed || !info.inCatalog) return storePage('App "' + updateId + '" cannot be updated: it is not an installed catalog app.', 400)
-							if (info.status === 'behind-clean' || info.status === 'catalog-differing') {
-								return store_update_from_catalog(updateId).then(function (result) {
-									if (!result.ok) return storePage(result.error, 400)
-									return Promise.resolve(storeRedirect())
-								})
-							}
-							if (info.status === 'behind-modified') {
-								return get_app(updateId).then(function (entry) {
-									var label = 'error' in entry ? updateId : entry.definition.name
-									return confirmPage('update', updateId, label)
-								})
-							}
-							if (info.status === 'modified-current' || info.status === 'modified-ahead') {
-								return storePage('App "' + updateId + '" is modified: use its Restore control, not Update.', 400)
-							}
-							return storePage('App "' + updateId + '" has no update available.', 400)
-						})
-					}
-					var restoreId = storeQuery.get('restore') || ''
-					if (restoreId !== '') {
-						return get_app_status(restoreId).then(function (info) {
-							if (!info.installed || !info.inCatalog) return storePage('App "' + restoreId + '" cannot be restored: it is not an installed catalog app.', 400)
-							if (info.status === 'modified-current' || info.status === 'modified-ahead') {
-								return get_app(restoreId).then(function (entry) {
-									var label = 'error' in entry ? restoreId : entry.definition.name
-									return confirmPage('restore', restoreId, label)
-								})
-							}
-							return storePage('App "' + restoreId + '" has nothing to restore.', 400)
-						})
-					}
-					var installId = storeQuery.get('install') || ''
-					if (installId !== '') {
-						return get_app_status(installId).then(function (info) {
-							if (info.installed) return storePage('App "' + installId + '" is already installed.', 400)
-							return store_install_from_catalog(installId).then(function (result) {
-								if (!result.ok) return storePage(result.error, 400)
-								return Promise.resolve(storeRedirect())
-							})
-						})
-					}
-					var pinId = storeQuery.get('pin') || ''
-					var hideId = storeQuery.get('hide') || ''
-					var homeId = storeQuery.get('home') || ''
-					var want = storeQuery.get('want') === '1'
-					if (pinId !== '' || hideId !== '' || homeId !== '') {
-						var schain: Promise<unknown> = Promise.resolve()
-						if (pinId !== '') schain = schain.then(function (): Promise<unknown> { return set_pin(pinId, want) })
-						if (hideId !== '') schain = schain.then(function (): Promise<unknown> { return set_hide(hideId, want) })
-						if (homeId !== '') schain = schain.then(function (): Promise<unknown> { return set_home(homeId, want) })
-						return schain.then(function (): Response {
-							return storeRedirect()
-						})
-					}
-					return storePage('', 200)
-				}
-			}
-
 			// GET /apps/:id — one app page, same state MCP reads.
 			// GET with ?action=... is the UI action path: the edge rejects some
 			// same-origin POSTs, and a GET form works on the Scribe without a cookie.
@@ -888,6 +752,63 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var gid = firstPathSegment(path, '/apps/')
 				if (!gid) return Promise.resolve(notFoundPage(chrome))
 					var query = new URL(request.url).searchParams
+					// App Store is a data app now: /apps/app-store is its
+					// generic app page, not a shell special case. Three
+					// shell-owned exceptions remain, all without rows:
+					// (1) old Store launcher URLs (?pin/?hide/?home=)
+					// render an inline error pointing at Apps Edit and
+					// change nothing; (2) a removed Store renders a
+					// short fallback with its own install path; (3)
+					// ?install-store=1 installs only the Store itself
+					// (the management API cannot self-install, because
+					// it requires a stored manageApps declaration the
+					// removed Store does not have).
+					if (gid === 'app-store' && (query.get('pin') !== null || query.get('hide') !== null || query.get('home') !== null)) {
+						return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
+							var menu = menuAppsFor(parts[0], parts[1])
+							var body =
+								'\t\t\t<section class="app" aria-label="App Store">\n' +
+								'\t\t\t\t<div class="app-body">\n' +
+								'\t\t\t\t\t<p role="alert">Launcher management moved to Apps Edit. This link changed nothing.</p>\n' +
+								'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/apps?edit=1') + '">Open Apps Edit</a></p>\n' +
+								'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/apps/app-store') + '">Back to App Store</a></p>\n' +
+								'\t\t\t\t</div>\n' +
+								'\t\t\t</section>'
+							return new Response(
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+								{ status: 400, headers: pageHeaders() },
+							)
+						})
+					}
+					if (gid === 'app-store' && query.get('install-store') === '1') {
+						return store_install_from_catalog('app-store').then(function (result) {
+							if (!result.ok) return Promise.resolve(notFoundPage(chrome))
+							return Promise.resolve(new Response(null, { status: 303, headers: { Location: appBasePath + '/apps/app-store' } }))
+						})
+					}
+					if (gid === 'app-store' && !query.get('action')) {
+						return get_app('app-store').then(function (entry): Promise<Response> | Response {
+							if (!('error' in entry)) return appBody(gid, '', query.get('from') || '')
+							return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
+								var menu = menuAppsFor(parts[0], parts[1])
+								var body =
+									'\t\t\t<section class="app" aria-label="App Store">\n' +
+									'\t\t\t\t<div class="app-body">\n' +
+									'\t\t\t\t\t<p>The App Store app is not installed.</p>\n' +
+									'\t\t\t\t\t<form method="GET" action="' + escapeAttribute(appBasePath + '/apps/app-store') + '">\n' +
+									'\t\t\t\t\t\t<input type="hidden" name="install-store" value="1" />\n' +
+									'\t\t\t\t\t\t<button type="submit">Install App Store</button>\n' +
+									'\t\t\t\t\t</form>\n' +
+									'\t\t\t\t\t<p>Or ask an agent to install it with install_from_catalog.</p>\n' +
+									'\t\t\t\t</div>\n' +
+									'\t\t\t</section>'
+								return new Response(
+									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+									{ status: 200, headers: pageHeaders() },
+								)
+							})
+						})
+					}
 					// Modal tiles link here with ?touch=1: record the open in recent, then send
 					// the browser back to the Apps page with the overlay fragment. Fragment links
 					// alone never reach the server, so without this an opened modal never counts
@@ -1040,11 +961,12 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				return dashboardBody(dashErrorApp, dashError)
 			}
 
-			// GET /apps — Pinned / Recent / All-apps as a launcher only.
-			// Edit mode is retired: management lives on the App Store
-			// combined list. The pin/hide/home mutation endpoints below
-			// are retained for existing links; the UI no longer offers
-			// an Edit mode. Empty registry is honest.
+			// GET /apps — Pinned / Recent / All-apps as a launcher, plus
+			// Edit mode (?edit=1): one row per installed app, including
+			// hidden ones, with Pin/Hide/Home controls. The App Store
+			// no longer offers launcher controls; install/update/
+			// restore live there, pin/hide/home live here. Empty
+			// registry is honest, with no Edit toggle.
 			if (method === 'GET' && path === '/apps') {
 				var appsQuery = new URL(request.url).searchParams
 				var qPin = appsQuery.get('pin') || ''
@@ -1052,6 +974,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var qWant = appsQuery.get('want') === '1'
 				var qClear = appsQuery.get('clear') === '1'
 				var qHomeToggle = appsQuery.get('home') || ''
+				var qEdit = appsQuery.get('edit') === '1'
 				if (qPin !== '' || qHide !== '' || qClear || qHomeToggle !== '') {
 					var mchain: Promise<unknown> = Promise.resolve()
 					if (qPin !== '') mchain = mchain.then(function (): Promise<unknown> { return set_pin(qPin, qWant) })
@@ -1061,7 +984,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					return mchain.then(function (): Response {
 						return new Response(null, {
 							status: 303,
-							headers: { Location: appBasePath + '/apps' },
+							headers: { Location: appBasePath + '/apps' + (qEdit ? '?edit=1' : '') },
 						})
 					})
 				}
@@ -1104,7 +1027,10 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						var tiled: typeof apps = pinnedApps.concat(recentApps)
 						if (pinnedApps.length > 0) sections.push(renderPinnedSection(pinnedApps, appBasePath))
 						if (recentApps.length > 0) sections.push(renderRecentSection(recentApps, appBasePath, appsBase))
-						{
+						if (qEdit) {
+							sections.push(renderEditSection(apps, pinnedIds, hiddenIds, homepageIds, appBasePath, appsBase))
+							tiled = tiled.concat(apps)
+						} else {
 							var visible: typeof apps = []
 							for (var vi = 0; vi < apps.length; vi++) {
 								if (hiddenIds.indexOf(apps[vi].id) === -1) visible.push(apps[vi])
@@ -1121,10 +1047,10 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							tiled = tiled.concat(visible)
 							if (visible.length === 0) {
 								sections.push(
-									renderAllSection([], appBasePath, appsBase, 'All apps are hidden. Open the App Store to unhide.'),
+									renderAllSection([], appBasePath, appsBase, 'All apps are hidden. Use Edit to unhide.', true),
 								)
 							} else {
-								sections.push(renderAllSection(visible, appBasePath, appsBase))
+								sections.push(renderAllSection(visible, appBasePath, appsBase, undefined, true))
 							}
 						}
 						var modalIds: string[] = []
@@ -1159,6 +1085,73 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						})
 					}
 				})
+			}
+
+			// GET /manage/<action> — bundle management API for the
+			// data-only App Store (see registry.ts manage_*). GET only,
+			// no POST; the acting app is named by ?app= and must have a
+			// stored manageApps declaration, or the response is the
+			// feed-style plain 404 with no detail. Other failures are
+			// JSON so the bundle can render them, including
+			// needsConfirmation for modified apps and capability
+			// expansion. Placed after the /apps/ branches, inside
+			// dispatch, so the device gate has already run.
+			if (method === 'GET' && path.indexOf('/manage/') !== -1) {
+				var manageQuery = new URL(request.url).searchParams
+				var actingId = manageQuery.get('app') || ''
+				var targetId = manageQuery.get('id') || ''
+				var manageAction = firstPathSegment(path.slice(path.indexOf('/manage/')), '/manage/')
+				var jsonHeaders: Record<string, string> = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' }
+				var plain404 = new Response('management not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
+				if (actingId === '') return Promise.resolve(plain404)
+				if (manageAction === 'rows') {
+					return manage_rows(actingId).then(function (result) {
+						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
+						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
+					})
+				}
+				if (manageAction === 'install' && targetId !== '') {
+					return manage_install(actingId, targetId).then(function (result) {
+						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
+						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
+					})
+				}
+				if (manageAction === 'update' && targetId !== '') {
+					return manage_update(actingId, targetId, manageQuery.get('confirmed') === '1').then(function (result) {
+						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
+						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
+					})
+				}
+				if (manageAction === 'restore' && targetId !== '') {
+					return manage_restore(actingId, targetId, manageQuery.get('confirmed') === '1').then(function (result) {
+						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
+						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
+					})
+				}
+				return Promise.resolve(plain404)
+			}
+
+			// GET /proxy/:app/:name — generic proxy capability (see feeds.ts):
+			// allowlisted upstream fetch + storage cache, served same-origin.
+			// Inside dispatch, so the device gate in fetch() has already run.
+			// Placed after the /apps/ branches so an app id of "proxy"
+			// still renders its app page. Unknown apps/proxies are plain 404s.
+			if (method === 'GET') {
+				var proxyAt = path.indexOf('/proxy/')
+				if (proxyAt !== -1) {
+					var proxyRoute = path.slice(proxyAt)
+					var proxyParts = proxyRoute.split('/')
+					if (proxyParts.length === 4) {
+						var proxyApp = ''
+						var proxyName = ''
+						try { proxyApp = decodeURIComponent(proxyParts[2]) } catch (err) { proxyApp = '' }
+						try { proxyName = decodeURIComponent(proxyParts[3]) } catch (err) { proxyName = '' }
+						if (proxyApp !== '' && proxyName !== '') {
+							return serveProxy(proxyApp, proxyName)
+						}
+					}
+					return Promise.resolve(new Response('proxy not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }))
+				}
 			}
 
 			// GET /feed/:app/:name — generic feed capability (see feeds.ts):

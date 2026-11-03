@@ -329,155 +329,117 @@ export function renderRecentSection(apps: AppSummary[], appBasePath: string, for
 }
 
 /** Always-visible management entry point: hiding the App Store removes its
- * tile but never removes this link, so pin/hide/home stays reachable. */
+ * tile but never removes this link, so the Store stays reachable. */
 export function manageAppsLink(appBasePath: string, formBase?: string): string {
 	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/apps'
 	return '<a class="section-manage" href="' + escapeHtml(base + '/app-store') + '">Manage apps</a>'
 }
 
-/** Render the All-apps section in browse mode. The Apps page is a launcher only:
- * app management lives on the App Store combined list, so there is no Edit
- * toggle here; the Manage apps link sits in the All apps header instead. */
+/** Edit-mode entry point, shown only when at least one app is installed.
+ * The caller decides availability: an all-hidden registry still offers
+ * Edit, even though its visible All list is empty. */
+export function editAppsLink(appBasePath: string, formBase?: string): string {
+	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/apps'
+	return '<a class="section-edit" href="' + escapeHtml(base + '?edit=1') + '">Edit</a>'
+}
+
+/** Render the All-apps section in browse mode. The Apps page is a launcher:
+ * the All apps header carries the Manage apps link (to the Store) and,
+ * when at least one app is installed, the Edit link (to Edit mode). */
 export function renderAllSection(
 	apps: AppSummary[],
 	appBasePath: string,
 	formBase?: string,
 	hint?: string,
+	editAvailable?: boolean,
 ): string {
 	var list = tilesList(apps, appBasePath)
+	var editLink = editAvailable === true ? ' ' + editAppsLink(appBasePath, formBase) : ''
 	return (
-		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' + manageAppsLink(appBasePath, formBase) + '</div>\n' +
+		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' + manageAppsLink(appBasePath, formBase) + editLink + '</div>\n' +
 		(typeof hint === 'string' && hint !== '' ? '<p class="empty-hint">' + escapeHtml(hint) + '</p>\n' : '') +
 		list +
 		'\n</section>'
 	)
 }
 
-/** One row of the App Store combined list (see get_store_rows in registry.ts). */
-export interface CombinedListRow {
-	id: string
-	label: string
-	name: string
-	icon?: string
-	category?: string
-	description?: string
-	installed: boolean
-	inCatalog: boolean
-	status: string
-	modified: boolean
-	pinned: boolean
-	hidden: boolean
-	homepage: boolean
-}
-
-function storeBadge(row: CombinedListRow): string {
-	if (row.status === 'not-installed') return 'Not installed'
-	if (row.status === 'up-to-date') return 'Up to date'
-	if (row.status === 'behind-clean') return 'Update available'
-	if (row.status === 'catalog-differing') return 'Update available'
-	if (row.status === 'behind-modified') return 'Modified · update available'
-	if (row.status === 'modified-current') return 'Modified'
-	if (row.status === 'modified-ahead') return 'Ahead of catalog'
-	if (row.status === 'snapshot-less') return 'Installed'
-	if (row.status === 'storage-only') return 'Storage only'
-	if (row.status === 'storage-only-formerly') return 'Storage only · formerly in catalog'
-	return 'Installed'
-}
-
-function storeForm(storeBase: string, hiddenName: string, hiddenValue: string, extra: string, label: string): string {
+function editToggleForm(formBase: string, param: string, id: string, want: boolean, onLabel: string, offLabel: string, isOn: boolean): string {
 	return (
 		'<form method="GET" action="' +
-		escapeHtml(storeBase) +
-		'" class="store-control store-control-' +
-		escapeHtml(hiddenName) +
+		escapeHtml(formBase) +
+		'" class="edit-control edit-control-' +
+		escapeHtml(param) +
 		'">' +
+		'<input type="hidden" name="edit" value="1" />' +
 		'<input type="hidden" name="' +
-		escapeHtml(hiddenName) +
+		escapeHtml(param) +
 		'" value="' +
-		escapeHtml(hiddenValue) +
+		escapeHtml(id) +
 		'" />' +
-		extra +
+		'<input type="hidden" name="want" value="' + (isOn ? '0' : '1') + '" />' +
 		'<button type="submit">' +
-		escapeHtml(label) +
+		escapeHtml(isOn ? offLabel : onLabel) +
 		'</button></form>'
 	)
 }
 
-function storeToggleForm(storeBase: string, param: string, id: string, want: boolean, onLabel: string, offLabel: string, isOn: boolean): string {
-	return storeForm(
-		storeBase,
-		param,
-		id,
-		'<input type="hidden" name="want" value="' + (isOn ? '0' : '1') + '" />',
-		isOn ? offLabel : onLabel,
-	)
-}
-
-/**
- * Render the App Store combined list: one row per id from the union of
- * catalog and installed ids, alphabetical by id, unfiltered (hidden apps
- * appear with an Unhide control). Controls are plain GET forms with no
- * app-action class, so the client fast path never intercepts them.
- * Catalog-only rows offer Install only. Installed rows offer Pin/Hide/
- * Home toggles (which change only their launcher lists) plus Update,
- * Restore, or neither, per row status. No Open link: the Apps page is
- * the launcher. No JavaScript is required.
- */
-export function renderCombinedList(
-	rows: CombinedListRow[],
-	storeBase: string,
-	error?: string,
+/** Render the Apps Edit section: one row per installed app, every
+ * installed app including hidden ones, alphabetical by label with id
+ * as tie-break, each row with Pin/Unpin, Hide/Unhide, and Add to
+ * home/Remove from home as plain GET forms through the /apps
+ * mutation route, 303-ing back to ?edit=1. Pinned/Recent stay tiles;
+ * only this section lists rows. No JavaScript is required. */
+export function renderEditSection(
+	apps: AppSummary[],
+	pinnedIds: string[],
+	hiddenIds: string[],
+	homepageIds: string[],
+	appBasePath: string,
+	formBase?: string,
 ): string {
-	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
+	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/apps'
+	var sorted = apps.slice()
+	sorted.sort(function (a, b): number {
+		var al = a.label.toLowerCase()
+		var bl = b.label.toLowerCase()
+		if (al < bl) return -1
+		if (al > bl) return 1
+		if (a.id < b.id) return -1
+		if (a.id > b.id) return 1
+		return 0
+	})
 	var items: string[] = []
-	for (var i = 0; i < rows.length; i++) {
-		var row = rows[i]
-		var rawIcon = row.icon || '#'
+	for (var i = 0; i < sorted.length; i++) {
+		var app = sorted[i]
+		var rawIcon = app.icon || '#'
 		var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
-		var desc = typeof row.description === 'string' ? row.description : ''
-		var controls = ''
-		if (!row.installed) {
-			controls = storeForm(storeBase, 'install', row.id, '', 'Install')
-		} else {
-			controls =
-				storeToggleForm(storeBase, 'pin', row.id, true, 'Pin', 'Unpin', row.pinned) +
-				' ' +
-				storeToggleForm(storeBase, 'hide', row.id, true, 'Hide', 'Unhide', row.hidden) +
-				' ' +
-				storeToggleForm(storeBase, 'home', row.id, true, 'Add to home', 'Remove from home', row.homepage)
-			if (row.status === 'behind-clean' || row.status === 'catalog-differing') {
-				controls += ' ' + storeForm(storeBase, 'update', row.id, '', 'Update')
-			} else if (row.status === 'behind-modified') {
-				controls += ' ' + storeForm(storeBase, 'update', row.id, '', 'Update…')
-			} else if (row.status === 'modified-current' || row.status === 'modified-ahead') {
-				controls += ' ' + storeForm(storeBase, 'restore', row.id, '', 'Restore')
-			}
-		}
+		var isPinned = pinnedIds.indexOf(app.id) !== -1
+		var isHidden = hiddenIds.indexOf(app.id) !== -1
+		var isHome = homepageIds.indexOf(app.id) !== -1
+		var controls =
+			editToggleForm(base, 'pin', app.id, true, 'Pin', 'Unpin', isPinned) +
+			' ' +
+			editToggleForm(base, 'hide', app.id, true, 'Hide', 'Unhide', isHidden) +
+			' ' +
+			editToggleForm(base, 'home', app.id, true, 'Add to home', 'Remove from home', isHome)
 		items.push(
-			'<li class="store-row"><span class="store-main">' +
-				'<span class="store-label"><span class="store-icon" aria-hidden="true">' +
+			'<li class="edit-row"><span class="edit-main">' +
+				'<span class="edit-label"><span class="edit-icon" aria-hidden="true">' +
 				icon +
 				'</span>' +
-				escapeHtml(row.label) +
-				'</span>' +
-				'<span class="store-badge">' +
-				escapeHtml(storeBadge(row)) +
+				escapeHtml(app.label) +
 				'</span>' +
 				'</span>' +
-				'<span class="store-controls">' +
+				'<span class="edit-controls">' +
 				controls +
-				'</span>' +
-				'<span class="store-desc">' +
-				escapeHtml(desc) +
 				'</span>' +
 				'</li>',
 		)
 	}
 	return (
-		'<section class="category" id="store" aria-label="App Store">\n' +
-		'<div class="section-head"><h2>All apps</h2></div>\n' +
-		errHtml +
-		'<ul class="store-list">\n' +
+		'<section class="category" id="apps-edit" aria-label="Edit apps">\n' +
+		'<div class="section-head"><h2>Edit apps</h2><a class="section-done" href="' + escapeHtml(base) + '">Done</a></div>\n' +
+		'<ul class="edit-list">\n' +
 		items.join('\n') +
 		'\n</ul>\n</section>'
 	)

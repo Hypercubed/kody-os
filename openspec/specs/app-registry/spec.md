@@ -345,22 +345,21 @@ state under the update-status requirement, plus these rules:
 
 - Not installed (catalog only): Install only. No Pin, Hide, Home, Update,
   Restore, or Open control.
-- Installed: Pin/Unpin, Hide/Unhide, and Add to home/Remove from home
-  controls, which change only their launcher lists and never the
-  definition, state, or snapshot; plus Update, Restore, or neither
-  according to the update-status requirement.
-- Installed with no catalog entry: Storage only badge and launcher
-  controls only; no Install, Update, or Restore control. Where a
+- Installed: Update, Restore, or neither according to the
+  update-status requirement. Pin, Hide, and Home live in Apps Edit,
+  not in the Store list.
+- Installed with no catalog entry: Storage only badge and no
+  catalog control; no Install, Update, or Restore control. Where a
   snapshot exists for such an id the row MAY be labelled formerly in
   the catalog; where none exists it is custom/storage-only. Neither
   variant claims a modified or update status.
-- Installed catalog app with no snapshot: Installed badge and launcher
-  controls only; no update control under this scheme.
+- Installed catalog app with no snapshot: Installed badge and no
+  catalog control; no update control under this scheme.
 - The App Store itself (`app-store`) appears as a row like any other
   app when installed; it is not excluded from its own list.
-- The list is unfiltered: hidden apps appear in it, so a hidden app
-  (including a hidden App Store) can be unhidden from the list. Hide
-  affects the Apps launcher tiles only.
+- The list is unfiltered: hidden apps appear in it. Hide affects
+  the Apps launcher tiles only; unhiding happens in Apps Edit, not
+  in the Store list.
 - No launching from the catalog: a row for an app that is not installed
   SHALL offer no Open link to `/apps/:id`; a row for an installed app
   MAY link to its app page.
@@ -373,13 +372,13 @@ state under the update-status requirement, plus these rules:
 - **WHEN** a catalog app is not installed
 - **THEN** its row offers Install and no Pin, Hide, Home, Update, Restore, or Open control.
 
-#### Scenario: Storage-only row offers launcher controls only
+#### Scenario: Storage-only row offers no catalog control
 - **WHEN** an installed app has no catalog entry
-- **THEN** its row shows Storage only with Pin, Hide, and Home controls, and no Install, Update, or Restore control.
+- **THEN** its row shows Storage only, and no Install, Update, or Restore control.
 
 #### Scenario: Hidden app still appears in the combined list
 - **WHEN** an installed app is hidden
-- **THEN** its row still appears in the combined list with an Unhide control, even though it is absent from the Apps launcher tiles.
+- **THEN** its row still appears in the combined list, even though it is absent from the Apps launcher tiles, and it can be unhidden from Apps Edit.
 
 #### Scenario: Combined list is alphabetical by id
 - **WHEN** the combined list is rendered with catalog-only, installed, and storage-only apps
@@ -388,6 +387,54 @@ state under the update-status requirement, plus these rules:
 #### Scenario: Update preserves launcher placement
 - **WHEN** a pinned, homepage app is updated or restored from the combined list
 - **THEN** its pin and homepage placement are unchanged afterwards.
+
+### Requirement: Bundle management API
+
+The shell SHALL expose a GET-only management API for bundles declaring
+`manageApps`: read store rows, install, update, and restore, reusing
+the store install/update paths with snapshot, state-preservation, and
+status rules unchanged. The acting app SHALL be named by the request,
+and an app whose stored definition does not declare `manageApps`
+SHALL receive the feed-style plain 404 with no write and no
+capability detail. A behind-modified update, any restore, and any
+update adding a capability SHALL return a needs-confirmation
+response naming what is at stake, and SHALL NOT apply until the
+bundle submits an explicit confirmation. The management API is a
+browser path only; agents keep using `install_from_catalog` /
+`update_from_catalog`, and the agent is the installer that surfaces
+capabilities before calling them.
+
+#### Scenario: An undeclared app is refused
+- **WHEN** an app without declared `manageApps` calls the management API
+- **THEN** the response is a plain 404, and no registry write occurs.
+
+#### Scenario: A modified update waits for confirmation
+- **WHEN** the Store requests an update for a behind-modified app
+- **THEN** the API returns needs-confirmation, and only a confirm submission applies the update.
+
+### Requirement: Declared capabilities
+
+An app definition MAY declare `capabilities`: `feeds` (up to 8
+allowlisted HTTPS upstream feeds, as before), `proxy` (up to 8
+allowlisted generic HTTPS upstreams, same limits as feeds, served
+via `GET /proxy/<app>/<name>`), and `manageApps` (boolean). Unknown
+capability keys, non-boolean `manageApps`, non-HTTPS or credentialed
+upstream URLs, duplicate upstream names, and out-of-range TTL/size
+values SHALL fail validation with no write. Sanitization SHALL store
+the canonical defaults-applied form. Store rows SHALL disclose
+declared capabilities in plain words (manageApps as a statement,
+feed and proxy hosts listed) before install. An update adding a
+capability — `manageApps`, a new feed host, or a new proxy host —
+SHALL require confirmation naming the additions; removing a
+capability or changing only TTL/size parameters SHALL NOT.
+
+#### Scenario: Unknown capability key fails validation
+- **WHEN** a definition declares an unknown capability key
+- **THEN** validation fails and nothing is written.
+
+#### Scenario: Capability expansion requires confirmation
+- **WHEN** a Store update would add a new proxy host
+- **THEN** the API returns needs-confirmation naming that host, and declining changes nothing.
 
 ### Requirement: First use seeds only the App Store
 

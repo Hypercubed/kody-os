@@ -32,6 +32,7 @@ export type {
 	ToggleEffect,
 	UiActionDef,
 	UiDef,
+	ProxyDecl,
 } from './types.ts'
 export { createMemoryStore, resolveStore } from './storage.ts'
 export type { AddAppOptions, ListAppsOptions, InstallExport } from './registry.ts'
@@ -43,6 +44,7 @@ export {
 	backup,
 	BUNDLE_CAP_BYTES,
 	canonicalizeDefinition,
+	capabilityAdditions,
 	clear_recent,
 	delete_backup,
 	deleteInstallSnapshot,
@@ -65,6 +67,10 @@ export {
 	install_from_catalog,
 	list_apps,
 	list_backups,
+	manage_install,
+	manage_restore,
+	manage_rows,
+	manage_update,
 	migrateAction,
 	migrateDefinition,
 	move_home,
@@ -80,15 +86,15 @@ export {
 	set_pinned,
 	store_install_from_catalog,
 	store_update_from_catalog,
+	summarizeCapabilities,
 	SUPPORTED_SCHEMA_VERSIONS,
 	update_from_catalog,
 	validateCatalogDefinition,
 	validateDefinition,
 	writeInstallSnapshot,
 } from './registry.ts'
-export type { AppStoreStatus, AppStoreStatusInfo, BackupEntry, BackupSummary, InstallSnapshot, StoreRow } from './registry.ts'
+export type { AppStoreStatus, AppStoreStatusInfo, BackupEntry, BackupSummary, CapabilitySummary, InstallSnapshot, ManageResult, StoreRow } from './registry.ts'
 export { actFromForm } from './forms.ts'
 export { get_catalog_definition, list_catalog } from './catalog.ts'
 export type { CatalogSummary } from './catalog.ts'
-export { escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderCombinedList, renderDashboard, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'
-export type { CombinedListRow } from './client.ts'
+export { editAppsLink, escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'

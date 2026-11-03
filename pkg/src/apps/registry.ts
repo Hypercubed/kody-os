@@ -31,6 +31,7 @@ import type {
 	OpenAs,
 	AppState,
 	AppSummary,
+	ProxyDecl,
 	StateFieldDef,
 } from './types.ts'
 import { get_catalog_definition, list_catalog } from './catalog.ts'
@@ -342,24 +343,19 @@ function validateBundleManifest(def: Record<string, unknown>): string | null {
 	return null
 }
 
-function validateCapabilities(def: Record<string, unknown>): string | null {
-	var caps = def['capabilities']
-	if (caps === undefined) return null
-	if (!isRecord(caps)) return 'definition.capabilities must be an object'
-	var feeds = (caps as Record<string, unknown>)['feeds']
-	if (feeds === undefined) return null
-	if (!Array.isArray(feeds)) return 'definition.capabilities.feeds must be an array'
-	if (feeds.length > 8) return 'definition.capabilities.feeds allows at most 8 feeds'
+function validateUpstreamEntries(kind: string, entries: unknown): string | null {
+	if (!Array.isArray(entries)) return 'definition.capabilities.' + kind + ' must be an array'
+	if (entries.length > 8) return 'definition.capabilities.' + kind + ' allows at most 8 entries'
 	var seen: string[] = []
-	for (var i = 0; i < feeds.length; i++) {
-		var feed = feeds[i]
-		var prefix = 'definition.capabilities.feeds[' + String(i) + ']'
-		if (!isRecord(feed)) return prefix + ' must be an object'
-		var name = feed['name']
+	for (var i = 0; i < entries.length; i++) {
+		var entry = entries[i]
+		var prefix = 'definition.capabilities.' + kind + '[' + String(i) + ']'
+		if (!isRecord(entry)) return prefix + ' must be an object'
+		var name = entry['name']
 		if (typeof name !== 'string' || !NAME_RE.test(name)) return prefix + '.name must match ^[a-z0-9][a-z0-9-]{0,63}$'
 		if (seen.indexOf(name) !== -1) return prefix + '.name is duplicated'
 		seen.push(name)
-		var url = feed['url']
+		var url = entry['url']
 		if (typeof url !== 'string') return prefix + '.url must be a string'
 		try {
 			var parsed = new URL(url)
@@ -368,11 +364,11 @@ function validateCapabilities(def: Record<string, unknown>): string | null {
 		} catch (err) {
 			return prefix + '.url must be a valid URL'
 		}
-		var ttl = feed['ttlSeconds']
+		var ttl = entry['ttlSeconds']
 		if (ttl !== undefined && (!Number.isSafeInteger(ttl) || (ttl as number) < 60 || (ttl as number) > 86400)) {
 			return prefix + '.ttlSeconds must be an integer from 60 to 86400'
 		}
-		var maxBytes = feed['maxBytes']
+		var maxBytes = entry['maxBytes']
 		if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || (maxBytes as number) < 1024 || (maxBytes as number) > 262144)) {
 			return prefix + '.maxBytes must be an integer from 1024 to 262144'
 		}
@@ -380,23 +376,111 @@ function validateCapabilities(def: Record<string, unknown>): string | null {
 	return null
 }
 
+function validateCapabilities(def: Record<string, unknown>): string | null {
+	var caps = def['capabilities']
+	if (caps === undefined) return null
+	if (!isRecord(caps)) return 'definition.capabilities must be an object'
+	var capsRec = caps as Record<string, unknown>
+	for (var key of Object.keys(capsRec)) {
+		if (key !== 'feeds' && key !== 'manageApps' && key !== 'proxy') return 'definition.capabilities.' + key + ' is unknown'
+	}
+	if (capsRec['manageApps'] !== undefined && typeof capsRec['manageApps'] !== 'boolean') return 'definition.capabilities.manageApps must be a boolean'
+	if (capsRec['feeds'] !== undefined) {
+		var feedsErr = validateUpstreamEntries('feeds', capsRec['feeds'])
+		if (feedsErr) return feedsErr
+	}
+	if (capsRec['proxy'] !== undefined) {
+		var proxyErr = validateUpstreamEntries('proxy', capsRec['proxy'])
+		if (proxyErr) return proxyErr
+	}
+	return null
+}
+
+function sanitizeUpstreamEntries(entries: unknown): { name: string; url: string; ttlSeconds: number; maxBytes: number }[] {
+	var out: { name: string; url: string; ttlSeconds: number; maxBytes: number }[] = []
+	if (!Array.isArray(entries)) return out
+	for (var i = 0; i < entries.length; i++) {
+		var entry = entries[i] as Record<string, unknown>
+		out.push({
+			name: entry['name'] as string,
+			url: entry['url'] as string,
+			ttlSeconds: typeof entry['ttlSeconds'] === 'number' ? (entry['ttlSeconds'] as number) : 3600,
+			maxBytes: typeof entry['maxBytes'] === 'number' ? (entry['maxBytes'] as number) : 65536,
+		})
+	}
+	return out
+}
+
 /** Normalize declared capabilities at install time so the handler only ever
  * sees defaults-applied values. Assumes validateCapabilities already passed. */
 function sanitizeCapabilities(caps: unknown): import('./types.ts').AppCapabilities | undefined {
 	if (!isRecord(caps)) return undefined
-	var feeds = (caps as Record<string, unknown>)['feeds']
-	if (!Array.isArray(feeds)) return undefined
-	var out: import('./types.ts').FeedDecl[] = []
-	for (var i = 0; i < feeds.length; i++) {
-		var feed = feeds[i] as Record<string, unknown>
-		out.push({
-			name: feed['name'] as string,
-			url: feed['url'] as string,
-			ttlSeconds: typeof feed['ttlSeconds'] === 'number' ? (feed['ttlSeconds'] as number) : 3600,
-			maxBytes: typeof feed['maxBytes'] === 'number' ? (feed['maxBytes'] as number) : 65536,
-		})
+	var capsRec = caps as Record<string, unknown>
+	var out: import('./types.ts').AppCapabilities = {}
+	var hasAny = false
+	if (capsRec['feeds'] !== undefined) {
+		out.feeds = sanitizeUpstreamEntries(capsRec['feeds']) as import('./types.ts').FeedDecl[]
+		hasAny = true
 	}
-	return { feeds: out }
+	if (capsRec['manageApps'] !== undefined) {
+		out.manageApps = capsRec['manageApps'] as boolean
+		hasAny = true
+	}
+	if (capsRec['proxy'] !== undefined) {
+		out.proxy = sanitizeUpstreamEntries(capsRec['proxy']) as ProxyDecl[]
+		hasAny = true
+	}
+	return hasAny ? out : undefined
+}
+
+function upstreamHosts(entries: { url?: string }[] | undefined): string[] {
+	var hosts: string[] = []
+	if (!entries) return hosts
+	for (var i = 0; i < entries.length; i++) {
+		var url = entries[i].url
+		if (typeof url !== 'string') continue
+		try {
+			var host = new URL(url).hostname
+			if (host !== '' && hosts.indexOf(host) === -1) hosts.push(host)
+		} catch (err) {
+		}
+	}
+	return hosts
+}
+
+/** Plain-words summary of an app's declared capabilities, for Store
+ * disclosure. Feed and proxy hosts are listed; manageApps is a flag. */
+export interface CapabilitySummary {
+	manageApps: boolean
+	feedHosts: string[]
+	proxyHosts: string[]
+}
+
+export function summarizeCapabilities(def: AppDefinition | null | undefined): CapabilitySummary {
+	if (!def || !def.capabilities) return { manageApps: false, feedHosts: [], proxyHosts: [] }
+	return {
+		manageApps: def.capabilities.manageApps === true,
+		feedHosts: upstreamHosts(def.capabilities.feeds),
+		proxyHosts: upstreamHosts(def.capabilities.proxy),
+	}
+}
+
+/** Capabilities the new definition adds over the old one, in plain
+ * words, for the update-confirmation gate. Removing a capability or
+ * changing only TTL/size parameters is not an addition. */
+export function capabilityAdditions(oldDef: AppDefinition | null | undefined, newDef: AppDefinition | null | undefined): string[] {
+	var additions: string[] = []
+	if (!newDef) return additions
+	var oldSummary = summarizeCapabilities(oldDef)
+	var newSummary = summarizeCapabilities(newDef)
+	if (newSummary.manageApps && !oldSummary.manageApps) additions.push('manage other apps')
+	for (var i = 0; i < newSummary.feedHosts.length; i++) {
+		if (oldSummary.feedHosts.indexOf(newSummary.feedHosts[i]) === -1) additions.push('feed host ' + newSummary.feedHosts[i])
+	}
+	for (var j = 0; j < newSummary.proxyHosts.length; j++) {
+		if (oldSummary.proxyHosts.indexOf(newSummary.proxyHosts[j]) === -1) additions.push('proxy host ' + newSummary.proxyHosts[j])
+	}
+	return additions
 }
 
 /** Supported definition versions: 3 = legacy single-`effect` shape, 4 = v2 `effects[]` sequence, 5 = bridge era (nested/object values). */
@@ -1660,6 +1744,116 @@ export function ensure_app_store_seeded(store?: KeyStore): Promise<{ ok: true; s
 	})
 }
 
+/**
+ * Bundle management API (data-only App Store). These functions are
+ * the browser-facing management path: they reuse the store
+ * install/update logic and snapshot rules, and they add the two
+ * gates the shell Store page used to own — the manageApps
+ * capability check, and the confirmation gate for modified apps
+ * and for capability expansion. They are NOT MCP exports: agents
+ * keep using install_from_catalog / update_from_catalog, and
+ * the agent is the installer that surfaces capabilities before
+ * calling them. The shell route translates a permission failure
+ * into the feed-style plain 404; other failures keep their
+ * error text so the bundle can render them.
+ */
+export type ManageResult =
+	| { ok: true; id?: string; rows?: StoreRow[] }
+	| { ok: false; error: string; needsConfirmation?: boolean; additions?: string[]; permissionDenied?: boolean }
+
+function checkManagePermission(active: KeyStore, actingId: string): Promise<boolean> {
+	return readJson<AppDefinition>(active, defKey(actingId)).then(function (def) {
+		return def !== null && def !== undefined && def.capabilities !== undefined && def.capabilities.manageApps === true
+	})
+}
+
+export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageResult> {
+	return resolveStore(store).then(function (active: KeyStore) {
+		return checkManagePermission(active, actingId).then(function (allowed) {
+			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
+			return get_store_rows(active).then(function (rows) {
+				return { ok: true as const, rows: rows }
+			})
+		})
+	})
+}
+
+export function manage_install(actingId: string, targetId: string, store?: KeyStore): Promise<ManageResult> {
+	return resolveStore(store).then(function (active: KeyStore) {
+		return checkManagePermission(active, actingId).then(function (allowed) {
+			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
+			return get_app_status(targetId, active).then(function (info) {
+				if (info.installed) return { ok: false as const, error: 'App "' + targetId + '" is already installed.' }
+				return store_install_from_catalog(targetId, active).then(function (result) {
+					if (!result.ok) return result
+					return { ok: true as const, id: targetId }
+				})
+			})
+		})
+	})
+}
+
+function manage_update_with_status(
+	actingId: string,
+	targetId: string,
+	confirmed: boolean,
+	store: KeyStore | undefined,
+	kind: 'update' | 'restore',
+): Promise<ManageResult> {
+	return resolveStore(store).then(function (active: KeyStore) {
+		return checkManagePermission(active, actingId).then(function (allowed) {
+			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
+			return get_app_status(targetId, active).then(function (info) {
+				if (!info.installed || !info.inCatalog) {
+					return { ok: false as const, error: 'App "' + targetId + '" cannot be ' + kind + 'd: it is not an installed catalog app.' }
+				}
+				if (kind === 'update') {
+					if (info.status === 'modified-current' || info.status === 'modified-ahead') {
+						return { ok: false as const, error: 'App "' + targetId + '" is modified: use Restore, not Update.' }
+					}
+					if (info.status !== 'behind-clean' && info.status !== 'catalog-differing' && info.status !== 'behind-modified') {
+						return { ok: false as const, error: 'App "' + targetId + '" has no update available.' }
+					}
+				} else {
+					if (info.status !== 'modified-current' && info.status !== 'modified-ahead') {
+						return { ok: false as const, error: 'App "' + targetId + '" has nothing to restore.' }
+					}
+				}
+				return Promise.all([
+					readJson<AppDefinition>(active, defKey(targetId)),
+					Promise.resolve(get_catalog_definition(targetId)),
+				]).then(function (pair) {
+					var installedDef = pair[0]
+					var catalogDef = pair[1]
+					var additions = capabilityAdditions(installedDef, catalogDef)
+					var needsConfirm = info.status === 'behind-modified' || additions.length > 0
+					if (kind === 'restore') needsConfirm = true
+					if (needsConfirm && !confirmed) {
+						return {
+							ok: false as const,
+							error: 'Confirmation required before ' + kind + 'ing "' + targetId + '".',
+							needsConfirmation: true,
+							additions: additions,
+						}
+					}
+					return store_update_from_catalog(targetId, active).then(function (result) {
+						if (!result.ok) return result
+						return { ok: true as const, id: targetId }
+					})
+				})
+			})
+		})
+	})
+}
+
+export function manage_update(actingId: string, targetId: string, confirmed: boolean, store?: KeyStore): Promise<ManageResult> {
+	return manage_update_with_status(actingId, targetId, confirmed, store, 'update')
+}
+
+export function manage_restore(actingId: string, targetId: string, confirmed: boolean, store?: KeyStore): Promise<ManageResult> {
+	return manage_update_with_status(actingId, targetId, confirmed, store, 'restore')
+}
+
 export type AppStoreStatus =
 	| 'not-installed'
 	| 'up-to-date'
@@ -1781,6 +1975,9 @@ export interface StoreRow {
 	pinned: boolean
 	hidden: boolean
 	homepage: boolean
+	/** Declared capabilities of the catalog definition when present,
+	 * else of the installed definition, for Store disclosure. */
+	capabilities: CapabilitySummary
 }
 
 /**
@@ -1834,6 +2031,7 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 							}
 							var label = installedDef ? (installedDef.label || installedDef.name) : (catalogEntry ? catalogEntry.label : want)
 							var name = installedDef ? installedDef.name : (catalogEntry ? catalogEntry.name : want)
+							var catalogDef = get_catalog_definition(want)
 							rows.push({
 								id: want,
 								label: label,
@@ -1848,6 +2046,7 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 								pinned: pinned.indexOf(want) !== -1,
 								hidden: hidden.indexOf(want) !== -1,
 								homepage: homepage.indexOf(want) !== -1,
+								capabilities: summarizeCapabilities(catalogDef !== null ? catalogDef : installedDef),
 							})
 						})
 					})

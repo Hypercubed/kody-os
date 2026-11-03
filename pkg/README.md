@@ -2,7 +2,7 @@
 
 Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v2.2.0** — always-visible Manage apps link in the All apps header, app-store rows with in-place actions and compact controls, alphabetical Apps launcher, catalog-sourced store descriptions, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed).
+Current: **v2.3.0** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), always-visible Manage apps link in the All apps header, alphabetical Apps launcher, catalog-sourced store descriptions, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed).
 
 ## Screenshots
 
@@ -16,9 +16,9 @@ Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
 ## What it does
 
 - **Home** — pinned widgets with live content, reorderable with corner arrows; honest empty state when nothing is pinned yet.
-- **Apps** — every installed app as a tile; edit mode pins, hides, and reorders the home dashboard.
+- **Apps** — every installed app as a tile; Edit mode pins, hides, and adds apps to the home dashboard.
 - **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs.
-- **Feeds** — apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
+- **Feeds** — apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, and generic allowlisted upstreams (`capabilities.proxy`) read through `GET /proxy/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
 - **Access** — the browser shell is locked by one-time codes so e-ink devices open it without Kody login. Each code is 4 digits, single use, valid 10 minutes; entering it burns the code and mints a 30-day session cookie with clean, code-free URLs. There is no other way in besides owner Kody login, and no secret to configure. Agents use MCP exports, which are never gated. Full steps: [Device key](docs/device-key.md).
 
 ## Setup
@@ -27,7 +27,7 @@ Setting up a fork of kody-os (fork, publish, unlock, first app) is covered start
 
 ## How to know it is working
 
-- Home shows live widgets for pinned apps, or the honest **no widgets yet** empty state pointing at the App Store's **Add to home** control.
+- Home shows live widgets for pinned apps, or the honest **no widgets yet** empty state pointing at Apps Edit's **Add to home** control.
 - Apps lists installed apps as tiles, or the honest **no apps yet** empty state.
 - An app page shows its description, live state fields, and one form button per declared action.
 - Submitting an action works without JavaScript and returns to the app page showing the new state.

@@ -40,3 +40,19 @@ definitions.
 #### Scenario: Catalog app without a version is not a valid catalog entry
 - **WHEN** a catalog definition carries no valid `catalogVersion`
 - **THEN** it fails catalog validation and is not offered as a versioned catalog app.
+
+### Requirement: Capability authoring rules
+
+An app author SHALL declare capabilities only as `feeds`, `proxy`,
+or `manageApps` under the app-registry capability rules: unknown keys
+fail validation, upstream entries are bare HTTPS URLs with TTL
+60..86400 and maxBytes 1024..262144, and `manageApps` is a boolean.
+An author writing a managing app SHALL declare `manageApps` and
+SHALL use the documented management API routes, not the bridge, and
+SHALL render its own confirmation UI for modified apps and
+capability expansion. Capabilities SHALL be described in plain words
+for installers, never as a promise of sandboxing.
+
+#### Scenario: A managing bundle declares manageApps
+- **WHEN** a bundle calls the management API
+- **THEN** its stored definition declares `manageApps`, or the API returns a plain 404.

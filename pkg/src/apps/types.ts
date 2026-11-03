@@ -154,12 +154,40 @@ export interface FeedDecl {
 	maxBytes?: number
 }
 
+/** Generic upstream proxy entry, shaped like a feed declaration.
+ * Route: GET /proxy/<app>/<name>. The route never takes a URL from
+ * the request: only a declared entry, matched by name against the
+ * stored definition, is fetched. */
+export interface ProxyDecl {
+	/** Proxy slug used in the route: GET /proxy/<app>/<name>. Same slug rule as app ids. */
+	name: string
+	/** Upstream URL. HTTPS only; validated at install and again at serve time. */
+	url: string
+	/** Cache lifetime in seconds. Defaults to 3600. Range 60..86400. */
+	ttlSeconds?: number
+	/** Maximum upstream body kept, in characters. Defaults to 65536. Range 1024..262144. */
+	maxBytes?: number
+}
+
 /** Optional server-side capabilities an app declares. Apps remain data: the
  * package implements each capability generically; a definition only names
- * what it needs, never code. */
+ * what it needs, never code. Declared capabilities are installer
+ * disclosure (shown before install, and an update adding one requires
+ * confirmation) plus a server-side allowlist for honest apps — not a
+ * sandbox: bundle scripts run same-origin with session authority, so a
+ * declaration does not stop a malicious bundle from calling a shell
+ * route directly. See bundle-capabilities. */
 export interface AppCapabilities {
 	/** Allowlisted upstream feeds this app may read through GET /feed/<app>/<name>. */
 	feeds?: FeedDecl[]
+	/** True when the app may use the shell's app management API
+	 * (read store rows, install, update, restore from the catalog).
+	 * The API refuses callers whose stored definition does not declare
+	 * this, with the feed-style plain 404. */
+	manageApps?: boolean
+	/** Allowlisted generic upstreams this app may read through
+	 * GET /proxy/<app>/<name>. */
+	proxy?: ProxyDecl[]
 }
 
 /** Legacy helper kept for import compatibility. Every unified app carries a bundle manifest, so this returns true when a bundle manifest is present. */
