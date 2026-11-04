@@ -69,7 +69,7 @@ app — gives the browser a control panel for it.
   no theme in app state and calls no `act()`.
 - Docs: a `pkg/docs/shell-settings.md` doc and a
   `capabilities.theme` row in
-  `pkg/docs/adding-an-app.md`.
+  `pkg/.agents/skills/adding-an-app/SKILL.md`.
 
 The work is phased, in order, and each phase is
 usable on its own:
@@ -119,7 +119,7 @@ usable on its own:
   (new), `pkg/src/apps/catalog.ts` (one import
   line, alphabetical), `pkg/catalog/README.md`
   (one entry), `pkg/docs/shell-settings.md` (new),
-  `pkg/docs/adding-an-app.md` (one row),
+  `pkg/.agents/skills/adding-an-app/SKILL.md` (one row),
   `pkg/AGENTS.md` (capability paragraph, rides
   with the version bump).
 - No `act()` change, no effect-operator change, no

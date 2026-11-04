@@ -34,7 +34,7 @@ requires.
 - [ ] 2.1 Update every `pkg/catalog/` reference
   repo-wide to `catalog/`: `pkg/src/apps/catalog.ts`
   (see 2.3), `pkg/scripts/catalog.ts` (read from
-  `../catalog/`), `pkg/docs/adding-an-app.md`,
+  `../catalog/`), `pkg/.agents/skills/adding-an-app/SKILL.md`,
   `pkg/docs/setup.md`, `pkg/README.md`, and
   `pkg/AGENTS.md`. Repo-wide grep sweep for
   `pkg/catalog` must come back empty except in

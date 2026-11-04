@@ -2,7 +2,7 @@
 
 Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v2.4.0** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed).
+Current: **v2.4.1** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed).
 
 ## Screenshots
 
@@ -36,13 +36,13 @@ Setting up a fork of kody-os (fork, publish, unlock, first app) is covered start
 
 An app is a JSON definition in package storage, not code. An agent calls MCP `add_app` and the app appears on the Apps page with no republish. The same definition works in the hosted OS and the local `kody dev` preview; the two stores are separate, so add it to each target.
 
-See [Adding an app](docs/adding-an-app.md) for the definition contract, both paths, verification, homepage placement, export, and removal. See [Scribe limitations](docs/scribe-limitations.md) for the binding Kindle Scribe constraints.
+See [Adding an app](.agents/skills/adding-an-app/SKILL.md) for the definition contract, both paths, verification, homepage placement, export, and removal. See [Scribe limitations](docs/scribe-limitations.md) for the binding Kindle Scribe constraints.
 
 ### Recommended prompt
 
 Copy this to your Kody-connected agent and fill in the bracketed parts:
 
-> Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity `package:kody-os#docs/adding-an-app.md` and the Scribe constraints at `package:kody-os#docs/scribe-limitations.md`, then follow that definition contract. Use the package's `add_app` through the Kody MCP `execute` wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous. When the need is a small toy with JS behavior (random shake, live clock), write a bundle (entry `index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap, vanilla ES2019, inlined, zero emojis); otherwise stay on the shared validated-state operators.
+> Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity `package:kody-os#.agents/skills/adding-an-app/SKILL.md` and the Scribe constraints at `package:kody-os#docs/scribe-limitations.md`, then follow that definition contract. Use the package's `add_app` through the Kody MCP `execute` wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous. When the need is a small toy with JS behavior (random shake, live clock), write a bundle (entry `index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap, vanilla ES2019, inlined, zero emojis); otherwise stay on the shared validated-state operators.
 >
 > - App id: [slug]
 > - Name: [display name]
@@ -89,5 +89,9 @@ Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:
 Forks rebrand by editing `os-theme.json` (all fields optional): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph or a sanitized inline SVG; empty keeps the default Kody mark), `background` (`desk`, `paper`, or a custom 8×8 grid object `{ "grid": [r0..r7] }` of eight 0-255 row bytes, MSB left, drawn black on paper as a repeating tile). Invalid grids or SVG fall back to the stock look, as do a missing file, missing field, or broken JSON.
 
 Every shell page also links `public/favicon.png` (the official Kody mark, served at `<app>/_assets/favicon.png`) as its favicon, and the same file is the default upper-left header mark when `os-theme.json` sets no `icon`.
+
+## License
+
+Kody OS is licensed under the MIT License. See [`LICENSE`](LICENSE) in this package. An identical copy lives at the repository root.
 
 

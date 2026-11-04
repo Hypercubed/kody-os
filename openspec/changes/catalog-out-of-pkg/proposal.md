@@ -71,7 +71,7 @@ public repo (see `public-pinned-catalog`).
   updated to check manifest agreement instead of
   import agreement.
 - `pkg/` references: `pkg/src/apps/catalog.ts`,
-  `pkg/scripts/catalog.ts`, `pkg/docs/adding-an-app.md`,
+  `pkg/scripts/catalog.ts`, `pkg/.agents/skills/adding-an-app/SKILL.md`,
   `pkg/docs/setup.md`, `pkg/README.md`, and
   `pkg/AGENTS.md` paths and copy updated from
   `pkg/catalog/` to `catalog/`.

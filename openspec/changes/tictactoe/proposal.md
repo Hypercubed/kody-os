@@ -24,5 +24,5 @@ Tic-tac-toe was scoped as human-vs-agent plus a roster and session layer, but th
 ## Impact
 
 - One bundle definition plus its files (installed via `add_app`, no shell changes).
-- `pkg/docs/adding-an-app.md`: tictactoe joins the 8-ball as a canonical bundle example.
+- `pkg/.agents/skills/adding-an-app/SKILL.md`: tictactoe joins the 8-ball as a canonical bundle example.
 - No registry, shell, or export changes.

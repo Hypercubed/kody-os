@@ -23,7 +23,7 @@ dev; and troubleshooting. The App Store (browser install of catalog
 apps) is specified but not implemented at the time of writing; the
 guide SHALL state that plainly and SHALL NOT describe store seeding
 as current behavior. The guide SHALL link to
-`pkg/docs/adding-an-app.md` for app detail instead of duplicating
+`pkg/.agents/skills/adding-an-app/SKILL.md` for app detail instead of duplicating
 it, SHALL NOT link to `pkg/docs/device-key.md` (that document
 describes the legacy fallback slated for removal under
 remove-legacy-code; the link is deferred until its rewrite),
@@ -33,7 +33,7 @@ name the `access-key` secret, rotation, or `get_access_status` at
 all. `pkg/README.md` SHALL point to the guide as the setup entry
 point, and the guide SHALL be readable via the Kody search entity
 `package:<scope>/kody-os#docs/setup.md` (scope rewritten per fork),
-like `adding-an-app.md`.
+like the adding-an-app skill.
 
 #### Scenario: Guide covers fork to first app in order
 - **WHEN** the guide is read start to finish

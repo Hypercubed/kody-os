@@ -104,7 +104,7 @@ in full (see below), and Kody login is the other way in.
   mock OTP-mint script for local dev),
   `pkg/docs/device-key.md` (rewritten to the OTP-only model),
   `pkg/AGENTS.md` + `pkg/README.md` (gate, exports, version,
-  local-dev copy), `pkg/docs/adding-an-app.md` (device-key
+  local-dev copy), `pkg/.agents/skills/adding-an-app/SKILL.md` (device-key
   passages). The `pkg/README.md` update is explicit: its
   Access bullet and its entire Local development section are
   the user-facing copy that would otherwise keep instructing

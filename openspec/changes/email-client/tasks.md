@@ -127,7 +127,7 @@
   list (compose, destinations, sender rules,
   subscriptions, caching).
 - [ ] 5.2 Add a `capabilities.email` row to
-  `pkg/docs/adding-an-app.md`, next to the
+  `pkg/.agents/skills/adding-an-app/SKILL.md`, next to the
   `capabilities.feeds` row, and update the
   "Adding an app" capability paragraph in
   `pkg/AGENTS.md` to name email as the second

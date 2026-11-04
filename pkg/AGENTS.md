@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v2.4.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v2.4.1. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -41,7 +41,7 @@ Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain wh
 
 ## Adding an app
 
-Registry write, not a package change: no commit, no republish. Shipped catalog apps install from the browser App Store (`/apps/app-store`, seeded on first shell use against an empty registry); agents call `add_app` for custom apps. Not on home until added via Apps Edit's **Add to home** control. The App Store is a data app that installs, updates, and restores catalog apps through the shell management API; pin, hide, and home live in Apps Edit (`/apps?edit=1`), not in the Store. Full contract: [Adding an app](docs/adding-an-app.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
+Registry write, not a package change: no commit, no republish. Shipped catalog apps install from the browser App Store (`/apps/app-store`, seeded on first shell use against an empty registry); agents call `add_app` for custom apps. Not on home until added via Apps Edit's **Add to home** control. The App Store is a data app that installs, updates, and restores catalog apps through the shell management API; pin, hide, and home live in Apps Edit (`/apps?edit=1`), not in the Store. Full contract: [Adding an app](.agents/skills/adding-an-app/SKILL.md) — stateful bundles must follow its Bundle/shell interaction contract and pre-`add_app` checklist, not just the definition contract. Scribe constraints: [Scribe limitations](docs/scribe-limitations.md).
 
 - Definition: meta + bundle (`entry: index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap) + `stateSchema` + `actions` (`set`/`append`; `increment`/`toggle`/`reset` are deprecated sugar). `ui.template` was removed in schemaVersion 4 (required only for schemaVersion 3 submissions, ignored by the renderer in every version) — never send it in a v4 definition, never branch on it.
 - `ui.hideState: true` hides the server-rendered state readout (stays in the DOM for bundle scripts to read initial state). Use when the bundle already displays state.

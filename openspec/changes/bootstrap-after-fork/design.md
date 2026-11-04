@@ -65,7 +65,7 @@ seed from.
    The primary bootstrap artifact in the docs
    SHALL be a copy-paste agent prompt (in the
    style of the existing setup prompt and the
-   adding-an-app recommended prompt): fetch
+   adding-an-app skill's recommended prompt): fetch
    the three bundles from the pinned release,
    validate each before writing, install via
    `add_app`, verify with `list_apps` and by

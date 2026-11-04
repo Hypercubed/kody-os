@@ -2,7 +2,7 @@
 
 A minimal OS shell shared by humans and agents, built with a Kindle Scribe in mind but working in most browsers. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly.
 
-Current package version: **v2.4.0** (build 29). See `pkg/package.json` for the authoritative version.
+Current package version: **v2.4.1** (build 30). See `pkg/package.json` for the authoritative version.
 
 ![Home dashboard](pkg/public/screenshots/home.png)
 ![All apps](pkg/public/screenshots/apps.png)
@@ -33,13 +33,14 @@ pkg/                 The Kody package — the only directory that ships to Kody.
   src/               Shell source: app.ts (fetch handler), auth.ts, feeds.ts,
                      client/, bridge/, and apps/ (registry, catalog, forms, client).
   catalog/           Shipped app definitions (*.bundle.json) plus catalog tests.
-  docs/              Package-user docs: setup, adding-an-app, device-key,
+  docs/              Package-user docs: setup, device-key,
                      scribe-limitations, style-guide.
   scripts/           kody dev helpers: mint-dev-otp, registry, catalog, add-app, clear-auth.
   public/            Theme, favicon, screenshots, and styles.css (inlined into src/shell-css.ts).
   package.json       Single source of truth for version and build.
   README.md          Package-user README (ships with the package).
   AGENTS.md          Package-user agent guide (ships with the package).
+  .agents/skills/    Agent skills shipped with the package (adding-an-app).
 openspec/            Specs and change proposals (see "Working with specs" below).
   specs/             Canonical, current specs (shell, app-registry, authoring, …).
   changes/           Active change proposals: proposal.md, design.md, tasks.md, spec deltas.
@@ -123,3 +124,7 @@ The specs live in `openspec/changes/catalog-out-of-pkg/`, `openspec/changes/publ
 ## Security
 
 See [`docs/security-review-2026-10-27.md`](docs/security-review-2026-10-27.md) for the full review. The headline: the shell's trust boundary is who can install or publish an app, not the bundle code itself. Bundle scripts run with session authority by design; the capability declarations in a bundle are installer disclosure plus a server-side allowlist for honest apps, not isolation. Never commit secrets, tokens, or credentials to this repo, and never paste one into a chat or file to "make something work" — use the secure entry flow for any credential that must be stored.
+
+## License
+
+kody-os is licensed under the MIT License. See [`LICENSE`](LICENSE) at the repository root. An identical copy ships inside the package as [`pkg/LICENSE`](pkg/LICENSE), so forks and package users see the same license.

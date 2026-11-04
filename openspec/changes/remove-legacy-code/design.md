@@ -252,7 +252,7 @@ cutover mechanism — ad-hoc hosted execute cannot write
 package storage (no package provenance) — and no live storage
 write or live clear call is part of this change. `pkg/docs/device-key.md`,
 `pkg/AGENTS.md`, `pkg/README.md`,
-`pkg/docs/adding-an-app.md`, and the setup guide's auth
+`pkg/.agents/skills/adding-an-app/SKILL.md`, and the setup guide's auth
 section (if landed) are rewritten/corrected in the same
 change; stale claims (rotation invalidates "everything",
 secret-derived code as fallback, `via key`, secret required

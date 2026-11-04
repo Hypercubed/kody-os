@@ -43,7 +43,7 @@ this change's implementation scope.
   setup sequence (one canonical procedure, no
   diverging copy) and to correct any
   `pkg/catalog/` or bundled-examples references.
-- [ ] 2.2 Update `pkg/docs/adding-an-app.md`
+- [ ] 2.2 Update `pkg/.agents/skills/adding-an-app/SKILL.md`
   for the new catalog source (public repo
   pinned release, not `pkg/catalog/`) and
   update `catalog/README.md` bootstrap notes

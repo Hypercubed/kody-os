@@ -6,6 +6,6 @@
 
 ## 2. Guide + verification
 
-- [ ] 2.1 Document tictactoe-solo as the second canonical bundle example in `pkg/docs/adding-an-app.md`
+- [ ] 2.1 Document tictactoe-solo as the second canonical bundle example in `pkg/.agents/skills/adding-an-app/SKILL.md`
 - [ ] 2.2 Run static checks and verify live on preview: install → play to a win, a loss, and a draw → remove cleanly
 - [ ] 2.3 Verify `openspec validate` passes for the change

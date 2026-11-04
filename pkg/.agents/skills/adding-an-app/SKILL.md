@@ -1,3 +1,8 @@
+---
+name: adding-an-app
+description: Add a custom app to a kody-os install — definition contract, bundle contract, state schema, set/append actions, and the pre-add_app checklist. Use when the user wants to add, author, validate, install, update, export, or remove an app, asks how app definitions, bundles, or actions work, or asks about the bundle/shell interaction contract, and when an app's display goes stale after a shell action.
+---
+
 # Adding an app
 
 An app is a JSON definition in `packageStorage()`. Adding one is a registry write: no source change, no commit, no publish, no republish. The same definition works in the hosted OS and the local preview; the two stores are separate, so add it to each target you use.
@@ -77,7 +82,7 @@ ReKindle is existence proof that guarded vanilla JS can run in a Kindle browser.
 
 Unlock is a 4-digit one-time code, single use, valid 10 minutes (owner mints it over MCP with `mint_otp`). The unlock form's inline script rewrites the submit to the path form `/unlock/<code>` — Kody's edge drops query strings before the fetch handler runs, so `?k=` in the browser never arrives; the code lives in the path for one request and the success redirect lands on the clean app home. A correct code burns on first use and mints a session: a random token whose SHA-256 hash is stored (30-day expiry) and carried in a `kody_os_auth` HttpOnly cookie (prefixed with the platform's `cookiePrefix` so the edge forwards it). The unlock interstitial also writes the session token to `localStorage` under `kody_os_auth` as a carrier. After unlock, authentication rides the cookie alone: the client enhancement's `fetch` (`format=json`) fast path and bundle bridge actions send the cookie (`credentials: 'same-origin'`) and attach no credential to the URL, falling back to native submit on any failure. Without JavaScript the plain GET still submits (works wherever the platform preserves the query string). Failed unlocks are capped at 10 per 10-minute window device-wide. `?k=` is only a single-use OTP submission transport; it never carries a session token and never appears in a rendered link, form, or redirect.
 
-The device gate is a latch, not multi-user auth: one shared gate per OS install, valid from any browser that completes it. Treat anyone holding an unlocked browser as holding the device. There is no per-user separation. There is no fallback path: OTP sessions and Kody-owner login are the only ways in; see [Device key](device-key.md).
+The device gate is a latch, not multi-user auth: one shared gate per OS install, valid from any browser that completes it. Treat anyone holding an unlocked browser as holding the device. There is no per-user separation. There is no fallback path: OTP sessions and Kody-owner login are the only ways in; see [Device key](../../../docs/device-key.md).
 
 ### Bundle contract
 
@@ -190,7 +195,7 @@ Run every item before calling `add_app`. The verification path is exactly one: t
 
 Scribe posture for bundle content: ES2019 only — see the canonical ceiling in `scribe-limitations.md` (no post-ES2019 syntax or APIs); system fonts only, zero emojis, all CSS and JS inlined, no external stylesheets or scripts. Guarded `fetch` of the same-origin GET action with `?format=json` is allowed where `fetch` and JSON parsing exist; never require timers, WebSockets, client-side routing, animations, auto-refresh, or polling. Large tap targets and high-contrast black-on-white still apply. Full device findings: `scribe-limitations.md`.
 
-Styling: see [Style guide](style-guide.md). The shell's inlined theme provides the shared `os-*` classes (buttons, displays, keypads, panels, rows) — use the class names in bundle markup; do not copy or redefine them, and do not load an external stylesheet. Bundle-only CSS stays inline in the bundle.
+Styling: see [Style guide](../../../docs/style-guide.md). The shell's inlined theme provides the shared `os-*` classes (buttons, displays, keypads, panels, rows) — use the class names in bundle markup; do not copy or redefine them, and do not load an external stylesheet. Bundle-only CSS stays inline in the bundle.
 
 Trust boundary: a bundle runs its own JS in the page. It has no direct storage access and no access to other apps or the registry; every persistence goes through `act()` (shell GET forms, or bundle `fetch` of the same-origin GET action URL — resolved against the container's `data-action-base` — with `?format=json` and `credentials: 'same-origin'`, with full-navigation fallback where `fetch`/JSON parsing are absent). Keep bundles toy-scoped and self-contained; anything needing shared validated state belongs in `set`/`append` actions.
 
@@ -438,7 +443,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - **`{ ok: false, error }` from `add_app`:** validation failed and nothing was written. Fix the named field and retry.
 - **App is on Apps but not the home dashboard:** add it with Apps Edit's **Add to home** control. New apps are not automatically homepage widgets.
 - **App added to hosted but not local (or the reverse):** the stores are separate. Run the same add against the other target; use `list_apps()` in the target you are checking.
-- **Local preview shows the locked 404:** a fresh mock store has no session. Run `scripts/mint-dev-otp.ts` before starting `kody dev`, then enter the code in the unlock form (see [Device key](device-key.md)).
+- **Local preview shows the locked 404:** a fresh mock store has no session. Run `scripts/mint-dev-otp.ts` before starting `kody dev`, then enter the code in the unlock form (see [Device key](../../../docs/device-key.md)).
 - **Local add is missing in a running preview:** `kody dev` loaded the mock store at startup. Run the registry write before starting it, or stop and restart it. `kody dev fetch` attaches only to a server started without an explicit `--port`.
 - **`kody dev --target prod` throws `local:<kody.id>`:** it does not provide the hosted `packageStorage()`. Use the hosted MCP/execute path for the real app.
 - **`--invoke` with `add_app` fails:** this package exports only the root, so there is no `/add_app` subpath. Use the `--code`/`--file` wrappers shown here.
@@ -451,7 +456,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 
 ## See also
 
-- [Agent guide](../AGENTS.md)
-- [App-layer integration](../src/apps/INTEGRATION.md)
-- [Package README](../README.md)
-- [Scribe limitations](scribe-limitations.md)
+- [Agent guide](../../../AGENTS.md)
+- [App-layer integration](../../../src/apps/INTEGRATION.md)
+- [Package README](../../../README.md)
+- [Scribe limitations](../../../docs/scribe-limitations.md)

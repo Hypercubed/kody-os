@@ -1,8 +1,8 @@
 # Example apps
 
-Installable reference definitions. Each file installs verbatim via MCP `add_app` with no shell or package changes. Nothing here seeds automatically: install each file explicitly through `add_app` (hosted MCP path or the `kody dev` local path in `docs/adding-an-app.md`), so every file proves verbatim install.
+Installable reference definitions. Each file installs verbatim via MCP `add_app` with no shell or package changes. Nothing here seeds automatically: install each file explicitly through `add_app` (hosted MCP path or the `kody dev` local path in `.agents/skills/adding-an-app/SKILL.md`), so every file proves verbatim install.
 
-The Counter bundle is the reference implementation for the bundle/shell interaction contract in `docs/adding-an-app.md` (state-span initial read, shell-form capture/sequencing, single-flight queue, `data-action-base` resolution). Copy its pattern for a new stateful bundle; do not copy its stricter-than-ceiling script style as a rule (see the ceiling note in the Tests section below).
+The Counter bundle is the reference implementation for the bundle/shell interaction contract in `.agents/skills/adding-an-app/SKILL.md` (state-span initial read, shell-form capture/sequencing, single-flight queue, `data-action-base` resolution). Copy its pattern for a new stateful bundle; do not copy its stricter-than-ceiling script style as a rule (see the ceiling note in the Tests section below).
 
 Files:
 
@@ -61,7 +61,7 @@ Verify each install:
 
 ## Pre-`add_app` authoring checklist
 
-Before calling `add_app` on a new bundle, run the checklist in `docs/adding-an-app.md` (definition validates; bundle renders in `kody dev`; state initializes from the shell span; shell-form actions stay in sync under rapid/overlapping input; ES2019 scan clean; no `window.location.pathname`-only action URLs; stateful bundle follows the interaction contract). The verification path is exactly one: the `kody dev` end-to-end check in that guide plus the jsdom harness pattern below. There is no other supported local verification path, and no reference to removed preview tooling remains in this package.
+Before calling `add_app` on a new bundle, run the checklist in `.agents/skills/adding-an-app/SKILL.md` (definition validates; bundle renders in `kody dev`; state initializes from the shell span; shell-form actions stay in sync under rapid/overlapping input; ES2019 scan clean; no `window.location.pathname`-only action URLs; stateful bundle follows the interaction contract). The verification path is exactly one: the `kody dev` end-to-end check in that guide plus the jsdom harness pattern below. There is no other supported local verification path, and no reference to removed preview tooling remains in this package.
 
 ## Tests
 
@@ -87,4 +87,4 @@ node pkg/catalog/tests/three-bit-canvas.cjs
 
 Ceiling note: the harness checks the Counter bundle's stricter-than-ceiling style (no arrow functions, `const`/`let`, `async`/`await`, or template literals in its script). That style is this bundle's conservative choice, not the binding rule — the binding ceiling is ES2019 and earlier, stated once in `docs/scribe-limitations.md`. Do not reject a new bundle for using `const`, an arrow function, or `async`/`await` alone; reject it for post-ES2019 syntax or APIs.
 
-The live complement to the harness is the `kody dev` end-to-end leg in `docs/adding-an-app.md`: seed the counter fixture through `pkg/scripts/registry.ts`, start `kody dev --target mock`, and check the real shell rendering with `kody dev fetch` (app page markup, action submit, fresh state on reload). The harness simulates the shell-client patch; `kody dev` is the check that the real shell renders the markup the harness assumes.
+The live complement to the harness is the `kody dev` end-to-end leg in `.agents/skills/adding-an-app/SKILL.md`: seed the counter fixture through `pkg/scripts/registry.ts`, start `kody dev --target mock`, and check the real shell rendering with `kody dev fetch` (app page markup, action submit, fresh state on reload). The harness simulates the shell-client patch; `kody dev` is the check that the real shell renders the markup the harness assumes.

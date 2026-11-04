@@ -21,7 +21,7 @@
  * is tried first, so an agent that installed jsdom in the repo tree
  * needs no extra setup.
  *
- * The separate live check is `kody dev` (see docs/adding-an-app.md,
+ * The separate live check is `kody dev` (see .agents/skills/adding-an-app/SKILL.md,
  * "Add to the local preview"): seed this definition through
  * pkg/scripts/registry.ts, start `kody dev --target mock`, open
  * /apps/counter, step it, then use Reset and

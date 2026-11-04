@@ -54,7 +54,7 @@ with no agent sync step and no mail stored in app state.
   search, and one open message from the live routes.
   It keeps no mail in app state and calls no `act()`.
 - Docs: a `pkg/docs/email.md` capability doc and a
-  `capabilities.email` row in `pkg/docs/adding-an-app.md`.
+  `capabilities.email` row in `pkg/.agents/skills/adding-an-app/SKILL.md`.
 
 ## Capabilities
 
@@ -84,7 +84,7 @@ with no agent sync step and no mail stored in app state.
   `pkg/src/apps/catalog.ts` (one import line,
   alphabetical), `pkg/catalog/README.md` (one entry),
   `pkg/docs/email.md` (new),
-  `pkg/docs/adding-an-app.md` (one row).
+  `pkg/.agents/skills/adding-an-app/SKILL.md` (one row).
 - No registry effect-op change, no `act()` change, no
   MCP export change, no storage-key or export-format
   change, no auth-mechanism change. Agents already reach

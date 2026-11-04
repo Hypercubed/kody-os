@@ -4,7 +4,7 @@
 
 Server-rendered HTML + plain forms + full-page navigation. The Scribe runs Chromium 80 with working JS, fetch, timers, events, DOM, and storage — so vanilla JS and the fetch fast path are normal tools, not gambles. No React/Vue/Svelte/Alpine/HTMX-bundle, no client-side router: still unjustified weight for an e-ink browser with limited memory.
 
-Amendment, 2026-10-29 (agent-app-authoring Phase 1): the vanilla-only decision stands for the shell itself, and per-app framework vendoring is not the recommended path. A single framework provided by the shell itself, free to every stateful app, is the Phase 2 direction of that change; its selection has not landed and no provided surface exists yet. Until it lands, stateful bundles follow the hand-rolled contract in `adding-an-app.md`. See the binding-ceiling section below and the shell-provided-framework note in that guide.
+Amendment, 2026-10-29 (agent-app-authoring Phase 1): the vanilla-only decision stands for the shell itself, and per-app framework vendoring is not the recommended path. A single framework provided by the shell itself, free to every stateful app, is the Phase 2 direction of that change; its selection has not landed and no provided surface exists yet. Until it lands, stateful bundles follow the hand-rolled contract in the adding-an-app skill. See the binding-ceiling section below and the shell-provided-framework note in that guide.
 
 ## Decision rule (from starter) applied
 

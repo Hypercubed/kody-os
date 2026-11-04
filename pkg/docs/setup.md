@@ -7,7 +7,7 @@ order, from a copy of the package to a working OS with a first app
 installed. Each step has a check; do not skip the checks, because
 several failure modes look like a working setup until the check.
 
-The guide links to [Adding an app](adding-an-app.md) for the app
+The guide links to [Adding an app](../.agents/skills/adding-an-app/SKILL.md) for the app
 definition contract. It does not duplicate that contract.
 
 ## Before you start: visibility
@@ -128,7 +128,7 @@ Add your first app through your agent with the package's
 `add_app` export, using one of the bundled example definitions
 in `pkg/catalog/` (for example `counter`). The agent validates
 the definition before writing, and the app appears on the Apps
-page with no republish. See [Adding an app](adding-an-app.md)
+page with no republish. See [Adding an app](../.agents/skills/adding-an-app/SKILL.md)
 for the definition contract, verification, homepage placement,
 export, and removal.
 
@@ -156,7 +156,7 @@ The bundled example definitions in `pkg/catalog/` are the
 catalog today. Installing an app means trusting its code: bundle
 scripts run same-origin with full session authority, so review
 third-party definitions before importing them. The trust rule and
-the full contract live in [Adding an app](adding-an-app.md).
+the full contract live in [Adding an app](../.agents/skills/adding-an-app/SKILL.md).
 
 ## Local development
 

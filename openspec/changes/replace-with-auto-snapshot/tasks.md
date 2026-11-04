@@ -18,8 +18,8 @@
   DONE 2026-10-31: unknown name, unknown format tag, and corrupt install payload all return {ok:false} with the install content untouched.
 ## 3. Guide + prompt
 
-- [ ] 3.1 Document the backup contract in `pkg/docs/adding-an-app.md` (capture before risky ops, what is/isn't included, budget guidance) and verify the Kody file path opens post-publish
-  PARTIAL 2026-10-31: backup contract documented in pkg/docs/adding-an-app.md (capture before risky ops, what is/isn't included, budget guidance); Kody file-path post-publish verification owed.
+- [ ] 3.1 Document the backup contract in `pkg/.agents/skills/adding-an-app/SKILL.md` (capture before risky ops, what is/isn't included, budget guidance) and verify the Kody file path opens post-publish
+  PARTIAL 2026-10-31: backup contract documented in pkg/.agents/skills/adding-an-app/SKILL.md (capture before risky ops, what is/isn't included, budget guidance); Kody file-path post-publish verification owed.
 - [ ] 3.2 Verify `openspec validate` passes for the change
 
   PARTIAL 2026-10-31: openspec validate binary unavailable in this environment; change shape checked manually.

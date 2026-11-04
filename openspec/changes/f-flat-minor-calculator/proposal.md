@@ -63,7 +63,7 @@ replacement for it.
   bytecode step in the app.
 - Docs: one row in `pkg/catalog/README.md`
   and, if the app is later shipped in the
-  catalog, one entry in `pkg/docs/adding-an-app.md`
+  catalog, one entry in `pkg/.agents/skills/adding-an-app/SKILL.md`
   is not needed (the app follows the existing
   contract); instead the change documents the
   generation step in `pkg/docs/` only when
@@ -95,7 +95,7 @@ replacement for it.
 - v1: one `add_app` definition, written to
   the live store and to the local mock store
   separately (the two stores are separate,
-  per `pkg/docs/adding-an-app.md`). No file
+  per `pkg/.agents/skills/adding-an-app/SKILL.md`). No file
   in `pkg/` changes, so no version decision
   is triggered by v1 at all.
 - Phase 2 (only on user direction):

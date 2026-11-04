@@ -2,7 +2,7 @@
 
 Style guide v1.0 — 27 October 2026, for `@hypercubed/kody-os`.
 Package location: `docs/style-guide.md`, linked from
-`docs/adding-an-app.md`.
+`.agents/skills/adding-an-app/SKILL.md`.
 
 Status: in the package. The shared `os-*` classes are provided
 by the shell theme (see section 5). A bundle uses the class
@@ -21,7 +21,7 @@ minimalism (strictly monochrome, high contrast, large tap
 targets, text first, no gradients, no animations). The problem
 it does not yet solve is drift.
 
-`docs/adding-an-app.md` tells a bundle author the hard
+`.agents/skills/adding-an-app/SKILL.md` tells a bundle author the hard
 constraints — ES2019 only, system fonts, no emojis, inline
 CSS/JS only, no external stylesheets or scripts, no per-app
 frameworks, no timers, WebSockets, polling, or animations —
@@ -103,7 +103,7 @@ recreate.
    without JavaScript. JavaScript may enhance it (a
    slide, a calculation, a shuffle), but must never be
    the only way to see the content. This is the same
-   posture as `docs/adding-an-app.md`; this guide does
+   posture as `.agents/skills/adding-an-app/SKILL.md`; this guide does
    not relax it.
 
 ## 4. Tokens
@@ -369,7 +369,7 @@ Rules that follow from the table:
 - **Apps list.** Tiles are the shell's, not the
   bundle's. A bundle supplies only a monochrome icon
   (plain-text glyph or sanitized inline SVG, per
-  `docs/adding-an-app.md`) and a label. Tile order
+  `.agents/skills/adding-an-app/SKILL.md`) and a label. Tile order
   must be explainable: Recent in recency order, All
   Apps in a stated order (alphabetical is the
   default), Pinned as chosen. Do not leave two lists
@@ -465,10 +465,10 @@ has none.
 
 ## 9. Sources and attribution
 
-- `docs/adding-an-app.md` in `@hypercubed/kody-os`:
+- `.agents/skills/adding-an-app/SKILL.md` in `@hypercubed/kody-os`:
   the definition contract, bundle contract, tile-icon
   rules, and Scribe posture this guide builds on.
-  Where the two disagree, `adding-an-app.md` wins on
+  Where the two disagree, the adding-an-app skill wins on
   contract (schema, bundle size, operators) and this
   guide wins on visual style.
 - CodeFronts, "Classic Mac System 7 Window Chrome",

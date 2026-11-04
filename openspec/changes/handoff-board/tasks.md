@@ -9,5 +9,5 @@
 ## 2. Snapshot, docs, publish proof
 
 - [ ] 2.1 Verify Refresh snapshots the listing into ordinary state (export/import round-trips) and the taken-at marker distinguishes live from snapshot
-- [ ] 2.2 Document the external-data app pattern in `pkg/docs/adding-an-app.md` (declare dep, read at render, snapshot via `set`, pinning + staleness + runs-as notes) and verify ES2019 grep zero hits for `?.`/`??`/`replaceAll`/`.at(` plus `openspec validate --changes` passes
+- [ ] 2.2 Document the external-data app pattern in `pkg/.agents/skills/adding-an-app/SKILL.md` (declare dep, read at render, snapshot via `set`, pinning + staleness + runs-as notes) and verify ES2019 grep zero hits for `?.`/`??`/`replaceAll`/`.at(` plus `openspec validate --changes` passes
 - [ ] 2.3 Publish and record the exact capability-approval flow encountered (or its absence), install the board on Kody prod, and verify live queue + snapshot + outage degradation end to end

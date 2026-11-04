@@ -23,5 +23,5 @@ kody-os apps only show their own stored state today. Proving an app can display 
 
 ## Impact
 
-- `pkg/package.json` (new `kody.dependencies` entry for `@hypercubed/handoff`), `pkg/src/app.ts` (board read path with failure isolation), `pkg/catalog/handoff-board.bundle.json` (new installable example), `pkg/docs/adding-an-app.md` (external-data app pattern).
+- `pkg/package.json` (new `kody.dependencies` entry for `@hypercubed/handoff`), `pkg/src/app.ts` (board read path with failure isolation), `pkg/catalog/handoff-board.bundle.json` (new installable example), `pkg/.agents/skills/adding-an-app/SKILL.md` (external-data app pattern).
 - No change to the app definition schema, MCP surface, or export format (snapshots export as ordinary state). Static-dependency version pinning + capability approval + runs-as identity per prior analysis; test will surface the actual approval flow.

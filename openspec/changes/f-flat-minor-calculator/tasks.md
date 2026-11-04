@@ -132,7 +132,7 @@
   readable by scrolling, not truncated.
 - [ ] 3.4 Author the icon: a monochrome
   SVG mark per the icon rules in
-  `pkg/docs/adding-an-app.md` (no emoji,
+  `pkg/.agents/skills/adding-an-app/SKILL.md` (no emoji,
   allowlisted elements only, ~2 KiB),
   and a one-line description crediting
   Hypercubed/f-flat-minor and stating the

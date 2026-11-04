@@ -192,7 +192,7 @@ publishes anything (see §7).
   scope (including grid / SVG not editable in
   the panel), and the out-of-scope list.
 - [ ] 5.2 Add a `capabilities.theme` row to
-  `pkg/docs/adding-an-app.md`, next to the
+  `pkg/.agents/skills/adding-an-app/SKILL.md`, next to the
   `capabilities.feeds` and `capabilities.email`
   rows, and update the "Adding an app"
   capability paragraph in `pkg/AGENTS.md` to

@@ -45,7 +45,7 @@ release, with opt-in at every step.
   explicitly, because a user who starts empty
   and later wants a Store must not have to
   bootstrap everything to get it.
-- `pkg/docs/adding-an-app.md` and the catalog
+- `pkg/.agents/skills/adding-an-app/SKILL.md` and the catalog
   README are updated for the new catalog source:
   catalog apps come from the public repo's
   pinned release, not from `pkg/catalog/`, and
@@ -75,7 +75,7 @@ release, with opt-in at every step.
 ## Impact
 
 - `pkg/docs/setup.md`, `pkg/README.md` (setup
-  sections), `pkg/docs/adding-an-app.md`,
+  sections), `pkg/.agents/skills/adding-an-app/SKILL.md`,
   `catalog/README.md` (bootstrap and
   release-cutting notes, shared with
   `public-pinned-catalog`).

@@ -28,5 +28,5 @@ There is no way to capture the entire package state — every app, every app sta
 
 - `pkg/src/apps/registry.ts`: snapshot read/write/delete, replace-with-auto-snapshot restore, envelope format tag.
 - `pkg/src/index.ts`: export the backup surface.
-- `pkg/docs/adding-an-app.md` + README prompt: backup/restore contract for agents (capture before risky ops).
+- `pkg/.agents/skills/adding-an-app/SKILL.md` + README prompt: backup/restore contract for agents (capture before risky ops).
 - No shell route changes, no new dependencies, no storage-budget change (snapshots share the 16 MiB budget — documented, with count guidance).
