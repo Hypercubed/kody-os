@@ -180,11 +180,118 @@ if (canFastPath) {
  * ES2019 ceiling: no ?. and no ?? in this file.
  */
 if (canFastPath && typeof DOMParser !== 'undefined') {
+	function formGetUrl(form: HTMLFormElement): string {
+		var rawAction = form.getAttribute('action') || form.action || window.location.href
+		var parts: string[] = []
+		var els = form.elements
+		for (var j = 0; j < els.length; j++) {
+			var field = els[j] as unknown as HTMLInputElement
+			var fname = field.name
+			if (!fname) continue
+			var ftype = field.type
+			if ((ftype === 'checkbox' || ftype === 'radio') && !field.checked) continue
+			parts.push(encodeURIComponent(fname) + '=' + encodeURIComponent(field.value))
+		}
+		if (parts.length === 0) return rawAction
+		var sep = rawAction.indexOf('?') === -1 ? '?' : '&'
+		return rawAction + sep + parts.join('&')
+	}
+
+	function isSameOrigin(url: string): boolean {
+		try {
+			var probe = document.createElement('a')
+			probe.href = url
+			return String(probe.protocol + '//' + probe.host) === String(window.location.protocol + '//' + window.location.host)
+		} catch (err) {
+			return false
+		}
+	}
+
+	/* Edit toggles (pin/hide/home) stay plain GET forms. Swapping just the
+	   Edit list from the redirected HTML keeps the page (and its scroll
+	   position) in place; focus returns to the equivalent toggle. */
+	function submitEditToggle(form: HTMLFormElement, event: Event): void {
+		if (form.getAttribute('data-busy') === '1') {
+			event.preventDefault()
+			return
+		}
+		form.setAttribute('data-busy', '1')
+		event.preventDefault()
+		try {
+			var url = formGetUrl(form)
+			if (!isSameOrigin(url)) {
+				form.submit()
+				return
+			}
+			var row = form.closest('.edit-row')
+			var rowIndex = -1
+			if (row && row.parentNode) {
+				var rows = row.parentNode.querySelectorAll('.edit-row')
+				for (var i = 0; i < rows.length; i++) {
+					if (rows[i] === row) {
+						rowIndex = i
+						break
+					}
+				}
+			}
+			var toggleClass = form.className
+			fetch(url, { headers: { Accept: 'text/html' }, credentials: 'same-origin', redirect: 'follow' })
+				.then(function (response: Response): Promise<string> {
+					return response.text()
+				})
+				.then(function (text: string): void {
+					var freshDoc: Document
+					try {
+						freshDoc = new DOMParser().parseFromString(text, 'text/html')
+					} catch (parseErr) {
+						form.submit()
+						return
+					}
+					var freshSection = freshDoc.getElementById('apps-edit')
+					var currentSection = document.getElementById('apps-edit')
+					var freshList = freshSection ? freshSection.querySelector('.edit-list') : null
+					var currentList = currentSection ? currentSection.querySelector('.edit-list') : null
+					if (!freshList || !currentList) {
+						form.submit()
+						return
+					}
+					currentList.innerHTML = freshList.innerHTML
+					if (rowIndex === -1) return
+					var freshRows = currentList.querySelectorAll('.edit-row')
+					var freshRow = freshRows[rowIndex] as HTMLElement | undefined
+					if (!freshRow) return
+					var toggles = freshRow.querySelectorAll('form.edit-toggle')
+					for (var j = 0; j < toggles.length; j++) {
+						if (toggles[j].className !== toggleClass) continue
+						var button = toggles[j].querySelector('button') as HTMLElement | null
+						if (button) {
+							try {
+								button.focus({ preventScroll: true })
+							} catch (focusErr) {
+								button.focus()
+							}
+						}
+						break
+					}
+				})
+				.catch(function (): void {
+					form.submit()
+				})
+		} catch (err) {
+			form.submit()
+		}
+	}
+
 	document.addEventListener('submit', function (event: Event): void {
 		var target = event.target as HTMLElement | null
 		if (!target || target.tagName !== 'FORM') return
 		var form = target as unknown as HTMLFormElement
-		if (!form.classList || !form.classList.contains('store-control')) return
+		if (!form.classList) return
+		if (form.classList.contains('edit-toggle')) {
+			submitEditToggle(form, event)
+			return
+		}
+		if (!form.classList.contains('store-control')) return
 		if (form.getAttribute('data-busy') === '1') {
 			event.preventDefault()
 			return

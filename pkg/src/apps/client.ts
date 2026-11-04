@@ -328,24 +328,24 @@ export function renderRecentSection(apps: AppSummary[], appBasePath: string, for
 	)
 }
 
-/** Always-visible management entry point: hiding the App Store removes its
- * tile but never removes this link, so the Store stays reachable. */
-export function manageAppsLink(appBasePath: string, formBase?: string): string {
-	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/apps'
-	return '<a class="section-manage" href="' + escapeHtml(base + '/app-store') + '">Manage apps</a>'
-}
-
 /** Edit-mode entry point, shown only when at least one app is installed.
  * The caller decides availability: an all-hidden registry still offers
- * Edit, even though its visible All list is empty. */
+ * Edit, even though its visible All list is empty. A GET form matches the
+ * Clear control, so both header actions render as the same button. */
 export function editAppsLink(appBasePath: string, formBase?: string): string {
 	var base = typeof formBase === 'string' && formBase !== '' ? formBase : appBasePath + '/apps'
-	return '<a class="section-edit" href="' + escapeHtml(base + '?edit=1') + '">Edit</a>'
+	return (
+		'<form method="GET" action="' +
+		escapeHtml(base) +
+		'" class="section-edit">' +
+		'<input type="hidden" name="edit" value="1" />' +
+		'<button type="submit">Edit</button></form>'
+	)
 }
 
 /** Render the All-apps section in browse mode. The Apps page is a launcher:
- * the All apps header carries the Manage apps link (to the Store) and,
- * when at least one app is installed, the Edit link (to Edit mode). */
+ * the All apps header carries the Edit link (to Edit mode) when at least one
+ * app is installed. */
 export function renderAllSection(
 	apps: AppSummary[],
 	appBasePath: string,
@@ -356,18 +356,45 @@ export function renderAllSection(
 	var list = tilesList(apps, appBasePath)
 	var editLink = editAvailable === true ? ' ' + editAppsLink(appBasePath, formBase) : ''
 	return (
-		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' + manageAppsLink(appBasePath, formBase) + editLink + '</div>\n' +
+		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' + editLink + '</div>\n' +
 		(typeof hint === 'string' && hint !== '' ? '<p class="empty-hint">' + escapeHtml(hint) + '</p>\n' : '') +
 		list +
 		'\n</section>'
 	)
 }
 
-function editToggleForm(formBase: string, param: string, id: string, want: boolean, onLabel: string, offLabel: string, isOn: boolean): string {
+/** Monochrome line icon for one Edit toggle. Strokes follow the button's
+ * text color, so the icon inverts with the pressed state. */
+function editToggleIcon(param: string): string {
+	if (param === 'pin') {
+		return (
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+			'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"/>' +
+			'</svg>'
+		)
+	}
+	if (param === 'hide') {
+		return (
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+			'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>' +
+			'</svg>'
+		)
+	}
+	return (
+		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+		'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' +
+		'</svg>'
+	)
+}
+
+/** One state toggle for an Edit row: an icon-only submit button. Its
+ * aria-checked and pressed appearance carry the current state; the hidden
+ * `want` field submits the opposite value, so no JavaScript is required. */
+function editToggleForm(formBase: string, param: string, id: string, label: string, isOn: boolean): string {
 	return (
 		'<form method="GET" action="' +
 		escapeHtml(formBase) +
-		'" class="edit-control edit-control-' +
+		'" class="edit-toggle edit-control edit-control-' +
 		escapeHtml(param) +
 		'">' +
 		'<input type="hidden" name="edit" value="1" />' +
@@ -377,8 +404,14 @@ function editToggleForm(formBase: string, param: string, id: string, want: boole
 		escapeHtml(id) +
 		'" />' +
 		'<input type="hidden" name="want" value="' + (isOn ? '0' : '1') + '" />' +
-		'<button type="submit">' +
-		escapeHtml(isOn ? offLabel : onLabel) +
+		'<button type="submit" role="switch" aria-checked="' +
+		(isOn ? 'true' : 'false') +
+		'" aria-label="' +
+		escapeHtml(label) +
+		'" class="edit-toggle-btn' +
+		(isOn ? ' edit-toggle-btn-on' : '') +
+		'">' +
+		editToggleIcon(param) +
 		'</button></form>'
 	)
 }
@@ -417,19 +450,18 @@ export function renderEditSection(
 		var isHidden = hiddenIds.indexOf(app.id) !== -1
 		var isHome = homepageIds.indexOf(app.id) !== -1
 		var controls =
-			editToggleForm(base, 'pin', app.id, true, 'Pin', 'Unpin', isPinned) +
-			' ' +
-			editToggleForm(base, 'hide', app.id, true, 'Hide', 'Unhide', isHidden) +
-			' ' +
-			editToggleForm(base, 'home', app.id, true, 'Add to home', 'Remove from home', isHome)
+			editToggleForm(base, 'pin', app.id, 'Pinned', isPinned) +
+			editToggleForm(base, 'hide', app.id, 'Hidden', isHidden) +
+			editToggleForm(base, 'home', app.id, 'On home', isHome)
 		items.push(
 			'<li class="edit-row"><span class="edit-main">' +
-				'<span class="edit-label"><span class="edit-icon" aria-hidden="true">' +
+				'<span class="edit-icon" aria-hidden="true">' +
 				icon +
 				'</span>' +
+				'<span class="edit-label">' +
 				escapeHtml(app.label) +
-				'</span>' +
-				'</span>' +
+				'</span></span>' +
+				(app.description ? '<span class="edit-desc">' + escapeHtml(app.description) + '</span>' : '') +
 				'<span class="edit-controls">' +
 				controls +
 				'</span>' +
@@ -438,7 +470,7 @@ export function renderEditSection(
 	}
 	return (
 		'<section class="category" id="apps-edit" aria-label="Edit apps">\n' +
-		'<div class="section-head"><h2>Edit apps</h2><a class="section-done" href="' + escapeHtml(base) + '">Done</a></div>\n' +
+		'<div class="section-head"><h2>Edit apps</h2><form method="GET" action="' + escapeHtml(base) + '" class="section-done"><button type="submit">Done</button></form></div>\n' +
 		'<ul class="edit-list">\n' +
 		items.join('\n') +
 		'\n</ul>\n</section>'

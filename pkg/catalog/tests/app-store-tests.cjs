@@ -81,6 +81,16 @@ async function main() {
   check(items.length === 2, "two rows render from mocked management API");
   check(items[0] && items[0].textContent.indexOf("Install") !== -1, "not-installed row offers Install");
   check(items[1] && items[1].textContent.indexOf("Update…") !== -1, "behind-modified row offers Update…");
+  const firstChildren = Array.prototype.slice.call(items[0].children);
+  const mainIndex = firstChildren.indexOf(items[0].querySelector(".store-main"));
+  const bodyIndex = firstChildren.indexOf(items[0].querySelector(".store-body"));
+  const controlsIndex = firstChildren.indexOf(items[0].querySelector(".store-controls"));
+  check(mainIndex === 0, "row starts with the tile-sized icon/title block");
+  check(bodyIndex !== -1 && controlsIndex !== -1 && bodyIndex < controlsIndex, "description fills the middle before the controls");
+  const mainKids = Array.prototype.slice.call(items[0].querySelector(".store-main").children);
+  check(mainKids[0].className === "store-icon" && mainKids[1].className === "store-label", "icon and title are stacked in the tile block");
+  check(!items[0].querySelector(".store-badge"), "no Installed or Not installed label");
+  check(items[1].querySelector(".store-badge").textContent.indexOf("update available") !== -1, "other status labels stay");
   check(doc.body.textContent.indexOf("Can manage other apps") !== -1, "manageApps is disclosed in plain words");
   check(doc.querySelector(".store-nojs").style.display === "none", "no-JavaScript note is hidden once the script runs");
   check(calls[0] === "/manage/rows?app=app-store", "first fetch is the management rows API");
