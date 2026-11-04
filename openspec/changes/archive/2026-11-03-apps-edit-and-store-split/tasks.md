@@ -51,3 +51,6 @@ commits, pushes, or publishes anything.
   lives on the Store. Record the version decision in the
   implementation commit (MINOR per proposal.md, build +1 on
   publish).
+
+## Close-out (2026-11-03)
+Closed out at the user's direction. Tasks 1.x, 2.x, and 3.2 were done in Entire 60e76b7 (v2.3.0). Task 3.1 (verify in `kody dev`) was NOT run in this VM — no `kody` CLI here — and was substituted by the catalog/store/jsdom harnesses, which pass at close-out. Layout commit f89133f (v2.4.0) superseded the form, not the function, of the Edit controls after this change was implemented: Edit entry is now a GET form (not a link), Edit toggles are icon-only switches with `aria-checked`, and the Manage apps link was removed from the All-apps header in that commit. That removal supersedes this change's "Manage apps link stays" wording and was not restored; the canonical shell spec was updated at close-out to match the current layout.

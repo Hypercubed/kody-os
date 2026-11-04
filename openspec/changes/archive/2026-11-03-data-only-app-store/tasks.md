@@ -80,3 +80,6 @@ are implemented first.
   and `pkg/AGENTS.md` for the new store bundle.
   Record the version decision in the implementation
   commit (MINOR per proposal.md, build +1 on publish).
+
+## Close-out (2026-11-03)
+Closed out at the user's direction. Tasks 1.x, 2.x, 3.x, and 4.2 were done in Entire 60e76b7 (v2.3.0). Task 4.1 (verify in `kody dev`) was NOT run in this VM — no `kody` CLI here — and was substituted by the catalog/store/jsdom harnesses, which pass at close-out. Layout commit f89133f (v2.4.0) restyled the Store rows (tile-sized icon/title block, description in the middle, controls at the top right, no badge on not-installed rows) and extended the app-store jsdom tests; the canonical shell spec was updated at close-out to match.

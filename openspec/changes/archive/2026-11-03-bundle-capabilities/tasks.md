@@ -65,3 +65,6 @@ task in this file commits, pushes, or publishes anything.
   `pkg/docs/adding-an-app.md`. Record the version
   decision in the implementation commit (MINOR per
   proposal.md, build +1 on publish).
+
+## Close-out (2026-11-03)
+Closed out at the user's direction. All tasks were done in Entire 60e76b7 (v2.3.0); no kody-dev leg was left open for this change. Catalog, store, and app-store harnesses pass at close-out.
