@@ -1,9 +1,0 @@
-{
-  "checkpoints": {
-    "primary": {
-      "type": "git-refs"
-    }
-  },
-  "enabled": false,
-  "telemetry": true
-}
