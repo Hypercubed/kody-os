@@ -162,9 +162,15 @@ function clone<T>(v: T): T {
 	check('edit render has no app-action class', editHtml.indexOf('app-action') === -1, '')
 	check('edit render has no POST form', editHtml.indexOf('method="POST"') === -1 && editHtml.indexOf("method='POST'") === -1, '')
 	check('edit render keeps edit mode on submit', editHtml.indexOf('name="edit" value="1"') !== -1, '')
-	check('hidden app still appears in Edit with Unhide control', editHtml.indexOf('xkcd') !== -1 && editHtml.indexOf('Unhide') !== -1, '')
+	// Layout commit f89133f: Edit toggles are icon-only switches, not
+	// Pin/Unpin text buttons. A hidden app's Hide toggle carries
+	// aria-checked="true" and aria-label="Hidden"; submitting it sends
+	// want=0, i.e. Unhide. The check below proves that toggle exists.
+	check('hidden app still appears in Edit with Unhide toggle', editHtml.indexOf('xkcd') !== -1 && editHtml.indexOf('name="hide" value="xkcd"') !== -1 && editHtml.indexOf('aria-checked="true"') !== -1 && editHtml.indexOf('aria-label="Hidden"') !== -1, '')
 	var allHtml = renderAllSection(appsAfterHide, '', '/apps', undefined, true)
-	check('all section offers Edit when apps exist', allHtml.indexOf('?edit=1') !== -1, '')
+	// Layout commit f89133f: Edit is a GET form matching the Clear
+	// control, not a link, so the check is for the form + hidden field.
+	check('all section offers Edit when apps exist', allHtml.indexOf('name="edit" value="1"') !== -1 && allHtml.indexOf('>Edit<') !== -1, '')
 }
 
 if (failures.length === 0) {

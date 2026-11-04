@@ -19,7 +19,7 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 
 #### Scenario: Apps page offers Edit mode
 - **WHEN** the Apps page is fetched with at least one app installed
-- **THEN** the All apps header shows an Edit link; with no apps installed it shows no Edit link.
+- **THEN** the All apps header shows an Edit button (a GET form, matching the Clear control); with no apps installed it shows no Edit button.
 
 #### Scenario: Landing is the dashboard
 - **WHEN** apps are pinned to the homepage
@@ -236,11 +236,11 @@ the next render; no separate menu write SHALL exist.
 
 ### Requirement: Apps Edit
 
-The Apps page SHALL offer Edit mode at `GET /apps?edit=1`, shown only when at least one app is installed. Edit mode SHALL list every installed app, including hidden ones, alphabetical by label with id as tie-break, each row with Pin/Unpin, Hide/Unhide, and Add to home/Remove from home controls as plain GET forms through the `/apps` mutation route, each responding 303 back to `?edit=1`. Pinned and Recent SHALL stay tiles in both modes. The "All apps are hidden" hint SHALL point at Apps Edit, not at the App Store. A Store request carrying `?pin=`, `?hide=`, or `?home=` SHALL render an inline error naming that launcher management moved to Apps Edit, and SHALL change nothing.
+The Apps page SHALL offer Edit mode at `GET /apps?edit=1`, shown only when at least one app is installed. Edit mode SHALL list every installed app, including hidden ones, alphabetical by label with id as tie-break, each row with Pin, Hide, and Home state toggles as plain GET forms through the `/apps` mutation route, each responding 303 back to `?edit=1`. Toggles are icon-only buttons: `aria-checked` carries the current state and the submitted `want` value is the opposite, so no JavaScript is required. Pinned and Recent SHALL stay tiles in both modes. The "All apps are hidden" hint SHALL point at Apps Edit, not at the App Store. A Store request carrying `?pin=`, `?hide=`, or `?home=` SHALL render an inline error naming that launcher management moved to Apps Edit, and SHALL change nothing.
 
 #### Scenario: Edit lists a hidden app and unhiding returns it to browse
 - **WHEN** Edit mode is opened with a hidden app installed
-- **THEN** the hidden app appears as a row with an Unhide control, and submitting it 303s back to Edit mode with the app visible in browse mode.
+- **THEN** the hidden app appears as a row with its Hide toggle in the on state, and submitting it 303s back to Edit mode with the app visible in browse mode.
 
 #### Scenario: Edit mutations stay in Edit mode
 - **WHEN** a Pin, Hide, or Home control is submitted from Edit mode
@@ -248,11 +248,11 @@ The Apps page SHALL offer Edit mode at `GET /apps?edit=1`, shown only when at le
 
 #### Scenario: Empty registry shows no Edit toggle
 - **WHEN** the Apps page is fetched with no apps installed
-- **THEN** it shows the honest empty state with no Edit link.
+- **THEN** it shows the honest empty state with no Edit button.
 
 ### Requirement: App Store page is a data app
 
-The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for the installed store bundle, not a shell special case. The bundle SHALL render a single combined list as defined in the app-registry spec: one row per id from the union of catalog ids and installed ids, deduplicated by id, in alphabetical-by-id order, each row showing the app's icon, label, description, and status badge. The App Store itself appears as a row like any other app; it is not excluded from its own list. The list is unfiltered, so hidden apps appear in it. Rows SHALL be fetched through the shell management API, and install/update/restore SHALL be management API calls (see app-registry), re-rendering the rows on success and showing an error on failure without changing storage for a failed id. A row for an app that is not installed SHALL offer an Install control and no Open link, no Pin, Hide, or Home control, and no Update or Restore control — no launching from the catalog. An installed catalog app with a snapshot SHALL additionally show its update status under the app-registry spec: behind-and-clean and catalog-differing rows offer an Update control; behind-and-modified rows offer a confirmed update (see below), not a plain Update control; modified-at-current-version rows offer Restore catalog version; ahead rows offer Restore catalog version, never Update; up-to-date rows offer neither. A row for an installed catalog app without a snapshot SHALL show Installed with no update control under this scheme. A row for an installed app with no catalog entry SHALL show Storage only (formerly in the catalog where a snapshot exists, otherwise custom/storage-only) with no catalog control. The Store SHALL require JavaScript: without it, the page shows a note pointing at agent `add_app`, with no rows. When the store app is not installed, the page SHALL render a short fallback note plus the Store install path, with no rows and no other controls. The Help page SHALL present the App Store as the browser path for installing shipped apps, with the agent/`add_app` path retained for custom apps.
+The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for the installed store bundle, not a shell special case. The bundle SHALL render a single combined list as defined in the app-registry spec: one row per id from the union of catalog ids and installed ids, deduplicated by id, in alphabetical-by-id order, each row showing the app's icon, label, and description, with a status badge where its status is not plain not-installed (not-installed rows carry no badge). The App Store itself appears as a row like any other app; it is not excluded from its own list. The list is unfiltered, so hidden apps appear in it. Rows SHALL be fetched through the shell management API, and install/update/restore SHALL be management API calls (see app-registry), re-rendering the rows on success and showing an error on failure without changing storage for a failed id. A row for an app that is not installed SHALL offer an Install control and no Open link, no Pin, Hide, or Home control, and no Update or Restore control — no launching from the catalog. An installed catalog app with a snapshot SHALL additionally show its update status under the app-registry spec: behind-and-clean and catalog-differing rows offer an Update control; behind-and-modified rows offer a confirmed update (see below), not a plain Update control; modified-at-current-version rows offer Restore catalog version; ahead rows offer Restore catalog version, never Update; up-to-date rows offer neither. A row for an installed catalog app without a snapshot SHALL show Installed with no update control under this scheme. A row for an installed app with no catalog entry SHALL show Storage only (formerly in the catalog where a snapshot exists, otherwise custom/storage-only) with no catalog control. The Store SHALL require JavaScript: without it, the page shows a note pointing at agent `add_app`, with no rows. When the store app is not installed, the page SHALL render a short fallback note plus the Store install path, with no rows and no other controls. The Help page SHALL present the App Store as the browser path for installing shipped apps, with the agent/`add_app` path retained for custom apps.
 
 #### Scenario: Behind-and-clean row offers update
 - **WHEN** an installed catalog app matches its snapshot at a lower version than the catalog
@@ -264,7 +264,7 @@ The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for
 
 #### Scenario: Combined list shows catalog, installed, and storage-only apps once each
 - **WHEN** the App Store page is fetched with catalog apps installed and uninstalled, plus an installed app with no catalog entry, plus the App Store itself
-- **THEN** every id from the union appears exactly once, in alphabetical-by-id order, with its icon, label, description, and status badge — including `app-store` itself.
+- **THEN** every id from the union appears exactly once, in alphabetical-by-id order, with its icon, label, and description, and a status badge where applicable — including `app-store` itself.
 
 #### Scenario: Catalog-only row has no launch control
 - **WHEN** a catalog app that is not installed is rendered in the combined list
