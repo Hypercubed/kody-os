@@ -208,14 +208,14 @@
 
 ## 6. Catalog shipping (Phase 2, optional)
 
-- [ ] 6.1 Only on user direction: add
+- [x] 6.1 Only on user direction: add
   `pkg/catalog/link-drop.bundle.json`
   (`catalogVersion` 1), one import line
   in `pkg/src/apps/catalog.ts`
   (alphabetical by id), and one entry in
   `pkg/catalog/README.md`, in the pattern
   of the existing catalog apps.
-- [ ] 6.2 Run the catalog harness and
+- [x] 6.2 Run the catalog harness and
   confirm all catalog checks pass with the
   new app included.
 - [ ] 6.3 Apply the version decision in the
@@ -595,3 +595,22 @@
   assertions (rule present, qualified
   only, no unqualified
   `section.widget .app-body` rule).
+## Close-out note (2026-11-04, catalog shipping only)
+
+- Section 6 catalog shipping is done
+  except the commit: `pkg/catalog/link-drop.bundle.json`
+  (catalogVersion 1, byte-identical to
+  the working bundle), import + list
+  entry in `pkg/src/apps/catalog.ts`,
+  README entry, tests moved to
+  `pkg/catalog/tests/`, working folder
+  removed, catalog harness ALL PASSED
+  (18 apps), package MINOR bump to
+  2.6.0 (build stays 30) with headers
+  updated. Task 6.3 stays open because
+  its version decision applies "in the
+  same commit" and no commit was
+  directed. This change itself is NOT
+  archived: sections 2 (human-browser),
+  5 (Scribe), and 7 (hygiene/archive)
+  remain open.

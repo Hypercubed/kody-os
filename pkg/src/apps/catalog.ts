@@ -27,6 +27,7 @@ import dailyFeedBundle from '../../catalog/daily-feed.bundle.json' with { type: 
 import eightBallBundle from '../../catalog/eight-ball.bundle.json' with { type: 'json' }
 import helpBundle from '../../catalog/help.bundle.json' with { type: 'json' }
 import hoodieWeatherBundle from '../../catalog/hoodie-weather.bundle.json' with { type: 'json' }
+import linkDropBundle from '../../catalog/link-drop.bundle.json' with { type: 'json' }
 import macPuzzleBundle from '../../catalog/mac-puzzle.bundle.json' with { type: 'json' }
 import newsBundle from '../../catalog/news.bundle.json' with { type: 'json' }
 import probeBundle from '../../catalog/probe.bundle.json' with { type: 'json' }
@@ -48,6 +49,7 @@ var CATALOG: AppDefinition[] = [
 	eightBallBundle as AppDefinition,
 	helpBundle as AppDefinition,
 	hoodieWeatherBundle as AppDefinition,
+	linkDropBundle as AppDefinition,
 	macPuzzleBundle as AppDefinition,
 	newsBundle as AppDefinition,
 	probeBundle as AppDefinition,

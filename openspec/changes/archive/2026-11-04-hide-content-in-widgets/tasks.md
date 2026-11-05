@@ -5,15 +5,15 @@ directed. All tasks are unchecked.
 
 ## 0. Open questions
 
-- [ ] 0.1 Decide open question 0.1
+- [x] 0.1 Decide open question 0.1
   (explicit `data-context` attribute):
   confirm the default (no attribute in
   v1) or direct a shell change.
-- [ ] 0.2 Decide open question 0.2
+- [x] 0.2 Decide open question 0.2
   (shared theme utility class): confirm
   the default (per-app rules) or direct
   a theme change.
-- [ ] 0.3 Decide open question 0.3
+- [x] 0.3 Decide open question 0.3
   (adding-an-app skill section): confirm
   the skill gains a widget-visibility
   section once the reference proves out.
@@ -45,14 +45,14 @@ directed. All tasks are unchecked.
 
 ## 2. Authoring guidance
 
-- [ ] 2.1 Draft the widget-visibility
+- [x] 2.1 Draft the widget-visibility
   section for the adding-an-app skill:
   the `section.widget` pattern, the
   app-specific-selector rule, the
   widget-only inverse pattern, and the
   hiding-semantics limits (DOM/JS
   still live, not access control).
-- [ ] 2.2 On user direction, apply the
+- [x] 2.2 On user direction, apply the
   skill edit as a `pkg/` docs change
   with its own commit decision; do not
   sweep it into unrelated work.
@@ -128,7 +128,7 @@ directed. All tasks are unchecked.
 
 ## 5. Hygiene and archive
 
-- [ ] 5.1 Confirm this change touched
+- [x] 5.1 Confirm this change touched
   nothing outside
   `openspec/changes/hide-content-in-widgets/`
   except work the user separately
@@ -139,7 +139,7 @@ directed. All tasks are unchecked.
   and the reference implementation
   with the scope named explicitly
   (Entire vs GitHub vs Kody-live).
-- [ ] 5.3 When the change is done or
+- [x] 5.3 When the change is done or
   superseded, archive it under
   `openspec/changes/archive/` following
   the repo's existing archive pattern.
@@ -351,3 +351,71 @@ directed. All tasks are unchecked.
   assertions (rule present, qualified
   only, no unqualified
   `section.widget .app-body` rule).
+
+## Close-out note (2026-11-04, archived)
+
+Closed out at the user's direction
+("Make sure everything is in the
+catalogs and close out
+openspec/changes/hide-content-in-widgets"):
+spec delta synced to canonical
+`openspec/specs/widget-visibility/spec.md`
+and this folder moved to
+`openspec/changes/archive/2026-11-04-hide-content-in-widgets/`.
+No commit, push, or Kody publish was
+made as part of this close-out; task
+5.2 stays open for a separate direction
+naming the scope (Entire vs GitHub vs
+Kody-live).
+
+Decisions recorded: open question 0.1
+decided — no `data-context` attribute
+in v1, the `section.widget` wrapper is
+the signal; 0.2 decided — no shared
+theme utility class, app-specific
+selectors are the convention; 0.3
+decided — yes, a widget-visibility
+section was added to the adding-an-app
+skill (`pkg/.agents/skills/adding-an-app/SKILL.md`,
+before the pre-`add_app` checklist),
+so tasks 2.1 and 2.2 are done.
+
+Verified: both reference
+implementations in tests and the
+catalog harness — Link Drop install
+block + Clear All hidden in widgets
+(Node + DOM tests pass), Hoodie
+Weather buttons + note hidden by CSS
+and Restore form hidden by JS
+(jsdom widget tests pass), catalog
+harness ALL CATALOG CHECKS PASSED
+(18 apps after the Link Drop catalog
+work); widget selectors verified
+qualified (no unqualified widget
+rules); mock store verified against
+the catalog (hoodie v5, link-drop,
+probe v4 all byte-identical to the
+catalog files). Canonical spec
+differs from the change delta in one
+wording only: its Purpose says "CSS,
+with bundle JS only where CSS has no
+hook" instead of "CSS only", because
+the Restore-form reference uses JS.
+
+Substituted: no human-browser or
+Scribe verification was run — the
+preview browser and the Scribe are
+not available to this environment —
+so the harness and jsdom checks stand
+in for the rendered-widget checks.
+
+Left open, honestly: tasks 4.1–4.4
+(logged-in preview of widget/page/
+modal, link-drop full page, second-app
+leak check with a second app pinned,
+Scribe confirmation) were not run and
+are not checked off; task 5.2
+(commit/publish) awaits a separate
+direction. The archived change is the
+record as it stood, not rewritten to
+look cleaner.

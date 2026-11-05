@@ -1,6 +1,6 @@
 /* Link Drop DOM wiring test (spec tasks 3.4 and 4.3 logic, Node stub).
  * Run with node:
- *   node link-drop-wip/link-drop-dom-tests.cjs
+ *   node pkg/catalog/tests/link-drop-dom-tests.cjs
  * Stubs only the DOM surface the bundle uses: getElementById,
  * querySelectorAll for the seed script, querySelector, readyState,
  * addEventListener, and element style/textContent/innerHTML/

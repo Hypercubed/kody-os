@@ -181,6 +181,20 @@ A bundle with no shared actions needs none of this; a bundle whose buttons are t
 - **SchemaVersion 5:** the current definition version is 5 (supported: 3, 4, 5). Version 5 adds `object` fields and arrays of objects; nested values must be JSON-serializable, depth cap 10. Version 5 is MAJOR for the durable schema; existing v4 definitions still validate and still work, and re-adding an id restamps it to 5 with state preserved by default.
 - **Fallback rules:** hand-rolled bundles that follow rules 4–6 remain valid — the validator does not reject a bundle for not using the bridge. Stateless and presentational bundles need not use it at all. Per-app vendoring or compilation (Svelte, Lit pieces, microframeworks) is allowed only as a documented fallback with its pinned version and update owner recorded with the bundle, never as the default path. Svelte and Lit are not provided by the shell as shipped (they need downleveling/ESM conversion); a couple of polyfills are a narrow, case-by-case exception for an otherwise ceiling-clean candidate, not a general pipeline.
 
+### Widget visibility (hide content in widgets)
+
+A bundle can hide chosen content when it is displayed as a home widget, using CSS only — no shell change and no context API. The widget wrapper is `<section class="widget" data-app-id="<id>">`; app pages and modals use `<section class="app">`. Bundle CSS is inlined verbatim and unscoped, so a `section.widget` ancestor selector matches only in widgets.
+
+Rules:
+
+- Qualify every widget rule with an id or class unique to the app (for example `section.widget #my-install { display: none; }`, or `section.widget[data-app-id="my-app"] .app-body { ... }` for the shell body). Never use unqualified element or shared-class selectors under `section.widget`: bundle styles apply document-wide, so such a rule would hide matching content in other apps' widgets on the same home page.
+- Hiding means `display: none` only. Hidden content stays in the DOM, bundle JS keeps running, and hiding changes no state, action, capability, or permission. It is not a privacy boundary.
+- The inverse pattern (widget-only content) hides by default and reveals under `section.widget` with an explicit display value.
+- Shell action forms (`form.app-action`) carry no app-specific CSS hook — the action name lives only in a hidden input — so bundle CSS cannot hide one app's shell form without leaking into others, and `:has()` is unavailable on the Scribe's Chromium 80. Hide a shell form from bundle JS instead: the bundle's existing claim function can set `style.display = 'none'` when its section is a widget (Hoodie Weather's Restore form does this).
+- Reference implementations: Link Drop (install block and Clear All hidden in widgets, link list visible) and Hoodie Weather (buttons and rewrite note hidden by CSS, Restore form hidden by JS, forecast and verdict visible; widget body vertically centered with a `section.widget[data-app-id="hoodie-weather"] .app-body` flex rule).
+
+Do not invent a context signal: there is no `data-context` attribute and no shared theme utility class for page-only content in v1.
+
 ### Pre-`add_app` authoring checklist
 
 Run every item before calling `add_app`. The verification path is exactly one: the `kody dev` end-to-end check below plus the jsdom harness pattern in `pkg/catalog/README.md`. There is no other supported local verification path.

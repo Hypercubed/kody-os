@@ -1,6 +1,6 @@
 /* Link Drop bundle tests (spec tasks 3.1-3.4).
  * Run with node from the repo root or the working dir:
- *   node link-drop-wip/link-drop-tests.cjs
+ *   node pkg/catalog/tests/link-drop-tests.cjs
  * Loads the bundle script with document undefined, so DOM wiring
  * is skipped and the pure functions (ldParseEntry, ldEscape,
  * ldIsHttpUrl, ldFormatTime, ldBuildEntry, ldAppBase,
