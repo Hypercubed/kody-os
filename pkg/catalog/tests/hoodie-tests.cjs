@@ -146,6 +146,7 @@ function makeDom(bundleHtml, options) {
 
   const section = doc.createElement("section");
   section.setAttribute("data-app-id", "hoodie-weather");
+  if (options.sectionClass) { section.setAttribute("class", options.sectionClass); }
   doc.body.appendChild(section);
 
   const bundle = doc.createElement("div");
@@ -555,6 +556,29 @@ async function test(name, fn) {
     assert(ctx.calls.every(function (c) { return c.url.indexOf("action=set_location") === -1; }), "no label write on failure");
   });
 
-  console.log(failures === 0 ? "\nALL TESTS PASSED" : "\n" + failures + " TEST(S) FAILED");
+    await test("Widget CSS hides buttons and note, qualified selectors only", async function () {
+    const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    assert(styleMatch, "no style block");
+    const css = styleMatch[1];
+    assert(css.indexOf("section.widget .hw-btn") !== -1, "widget rule for buttons missing");
+    assert(css.indexOf("section.widget .hw-note") !== -1, "widget rule for note missing");
+    assert(css.indexOf('section.widget[data-app-id="hoodie-weather"] .app-body') !== -1, "widget centering rule missing");
+    assert(css.indexOf("justify-content: center") !== -1, "widget centering justify missing");
+    assert(css.indexOf("min-height: 8rem") !== -1, "widget centering min-height missing");
+    assert(css.indexOf("section.widget .app-body") === -1, "unqualified widget app-body rule leaks");
+    assert(css.indexOf("section.widget p") === -1, "unqualified widget p rule leaks");
+    assert(css.indexOf("section.widget a") === -1, "unqualified widget a rule leaks");
+    assert(css.indexOf("section.widget button") === -1, "unqualified widget button rule leaks");
+    assert(css.indexOf("section.widget div") === -1, "unqualified widget div rule leaks");
+  });
+
+  await test("Widget hides restore form, page shows it", async function () {
+    const widget = makeDom(html, { sectionClass: "widget" });
+    assert(widget.form.style.display === "none", "restore form not hidden in widget");
+    const page = makeDom(html, { sectionClass: "app" });
+    assert(page.form.style.display !== "none", "restore form hidden on page");
+  });
+
+console.log(failures === 0 ? "\nALL TESTS PASSED" : "\n" + failures + " TEST(S) FAILED");
   process.exit(failures === 0 ? 0 : 1);
 })();

@@ -1,4 +1,4 @@
-# Send Link App Specification
+# Link Drop App Specification
 
 ## Purpose
 
@@ -7,18 +7,18 @@ any browser via a bookmarklet, and shows
 them most-recent-first for opening later,
 including on the Kindle Scribe. This spec
 delta is new: there is no existing
-send-link spec to modify.
+link-drop spec to modify.
 
 ## Requirements
 
-### Requirement: Send Link app definition
+### Requirement: Link Drop app definition
 
 The app SHALL be defined as a data app with
 no shell route, no MCP export, and no
 capability declaration.
 
-- Id: `send-link`.
-- Label: "Send Link".
+- Id: `link-drop`.
+- Label: "Link Drop".
 - Category: `utilities`.
 - `schemaVersion`: 5.
 - Placements: `page` only.
@@ -38,16 +38,16 @@ capability declaration.
 #### Scenario: Install in a blank store
 
 - WHEN the definition is installed via
-  `add_app` into a store with no `send-link`
+  `add_app` into a store with no `link-drop`
   app
 - THEN `add_app` returns `{ ok: true, id:
-  "send-link" }`, `list_apps` includes
-  `send-link`, and `get_app_state` returns
+  "link-drop" }`, `list_apps` includes
+  `link-drop`, and `get_app_state` returns
   `{ links: [] }`.
 
 #### Scenario: Existing apps untouched
 
-- WHEN `send-link` is installed, sent to,
+- WHEN `link-drop` is installed, sent to,
   or cleared
 - THEN no other app's definition or state
   changes, and no shell route, capability,
@@ -63,7 +63,7 @@ atomically: one action, one appended entry,
 no read-modify-write in the sender.
 
 - URL form:
-  `/apps/send-link?action=send&entry=<encoded>`
+  `/apps/link-drop?action=send&entry=<encoded>`
   with the app base derived from the app
   page's location, never hardcoded.
 - The entry SHALL be JSON text with keys

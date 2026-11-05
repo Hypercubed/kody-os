@@ -4,7 +4,7 @@
 
 - [ ] 0.1 Answer design.md open questions
   1-6, or record the spec defaults as the
-  decisions: id `send-link`, `maxEntryBytes`
+  decisions: id `link-drop`, `maxEntryBytes`
   2048, page placement only, no per-item
   delete in v1, title plus URL plus
   timestamp only, mock bookmarklet sending
@@ -26,8 +26,8 @@
 ## 1. Definition and bundle
 
 - [x] 1.1 Write the definition:
-  `schemaVersion` 5, id `send-link`,
-  label "Send Link", category `utilities`,
+  `schemaVersion` 5, id `link-drop`,
+  label "Link Drop", category `utilities`,
   page placement, `ui.hideState: true`,
   state field `links` (array of strings,
   initial `[]`, `maxItems` 500), action
@@ -209,7 +209,7 @@
 ## 6. Catalog shipping (Phase 2, optional)
 
 - [ ] 6.1 Only on user direction: add
-  `pkg/catalog/send-link.bundle.json`
+  `pkg/catalog/link-drop.bundle.json`
   (`catalogVersion` 1), one import line
   in `pkg/src/apps/catalog.ts`
   (alphabetical by id), and one entry in
@@ -236,7 +236,7 @@
   internally consistent, all tasks
   unchecked).
 - [ ] 7.2 Confirm no file outside
-  `openspec/changes/send-link-to-kody-os/`
+  `openspec/changes/link-drop-to-kody-os/`
   was changed by writing this change
   itself. The app, the catalog files, and
   any version bump are implementation
@@ -244,7 +244,7 @@
   change document.
 - [ ] 7.3 When the change is done, archive
   it to
-  `openspec/changes/archive/<YYYY-MM-DD>-send-link-to-kody-os/`
+  `openspec/changes/archive/<YYYY-MM-DD>-link-drop-to-kody-os/`
   and add a close-out note to tasks.md
   recording what was actually verified,
   what was substituted, and what was left
@@ -259,15 +259,15 @@
   entry, or version change was made.
 - Open question section 0 was NOT answered by the user in
   this turn; implementation used the spec defaults
-  throughout: id `send-link`, `maxEntryBytes` 2048, page
+  throughout: id `link-drop`, `maxEntryBytes` 2048, page
   placement only, no per-item delete, title plus URL plus
   timestamp only, mock bookmarklet sending to localhost
   accepted as the mock story.
-- Working files live in `send-link-wip/` at the repo root
-  (untracked, NOT the catalog): `send-link.bundle.json`
-  (10,755 bytes, definition plus bundle), `send-link-tests.cjs`,
-  `send-link-dom-tests.cjs`. Section 6 will move the bundle
-  to `pkg/catalog/send-link.bundle.json` and the tests to
+- Working files live in `link-drop-wip/` at the repo root
+  (untracked, NOT the catalog): `link-drop.bundle.json`
+  (10,755 bytes, definition plus bundle), `link-drop-tests.cjs`,
+  `link-drop-dom-tests.cjs`. Section 6 will move the bundle
+  to `pkg/catalog/link-drop.bundle.json` and the tests to
   `pkg/catalog/tests/`; the tests already look for the bundle
   next to themselves, one level up, and in the catalog, so
   the move needs no test-path edit.
@@ -291,10 +291,10 @@
   hardcoded host), DOM order, DOM javascript:-entry safety,
   DOM install-block move below a non-empty list.
 - Section 4 done except 4.3: mock store backed up to
-  /tmp/mock-state-before-send-link.json on be-quite-900
+  /tmp/mock-state-before-link-drop.json on be-quite-900
   (410,450 bytes) before install. Mock install via
   `kody execute --target mock --file scripts/add-app.ts`
-  from pkg/ returned `{ ok: true, id: "send-link" }`.
+  from pkg/ returned `{ ok: true, id: "link-drop" }`.
   Mock act sequence, all with before/after state checks:
   send oldest -> 1 entry; send newest -> 2 entries;
   duplicate newest send -> 3 entries (no dedupe, as
@@ -308,7 +308,7 @@
   lastError null) via nohup from this work, not from the
   user's terminal; the user may restart it in their own
   terminal if they prefer that session to own it. Mock
-  store file after restart still holds send-link with only
+  store file after restart still holds link-drop with only
   the "After clear" entry; old/new test entries are gone.
 - Dev-stop trap, recorded for next time: a pinned command
   running `pkill -f 'kody dev --target mock'` matched its
@@ -345,14 +345,14 @@
   Muse. Unauthenticated curl returns the Locked page,
   not the app, so no browser rendering is claimed from
   curl. The user should open
-  http://127.0.0.1:4302/apps/send-link in their
+  http://127.0.0.1:4302/apps/link-drop in their
   already-logged-in preview browser to confirm the list
   and install block.
 
 ## Implementation notes (2026-11-04, user-directed bookmarklet fix)
 
 - At the user's direction, the "Or copy this code" paragraph
-  and its `<code id="sl-code">` snippet were removed from the
+  and its `<code id="ld-code">` snippet were removed from the
   install block entirely. The install block is now the
   draggable bookmarklet link only, plus the session
   requirement and new-tab notes. This deviates from the
@@ -361,15 +361,15 @@
   this note records the deviation.
 - The bookmarklet now carries an absolute URL, fixing a
   real bug in the first implementation: the old base was a
-  path (for example `/kody-os/apps/send-link`), and
+  path (for example `/kody-os/apps/link-drop`), and
   `window.open` with a path resolves against the sending
   page's origin, not kody-os — so a bookmarklet built on
   the app page would have sent to the wrong host from any
-  other site. The new pure functions are `slAppBase`
-  (path derivation, unchanged), `slAbsoluteUrl` (prefixes
+  other site. The new pure functions are `ldAppBase`
+  (path derivation, unchanged), `ldAbsoluteUrl` (prefixes
   a path base with the page origin, or protocol plus host
   as fallback, and leaves an already-absolute base alone),
-  and `slAppUrl` (origin plus path). At render time the
+  and `ldAppUrl` (origin plus path). At render time the
   bundle prefers the shell-stamped `data-action-base`
   attribute, falls back to the pathname derivation, then
   makes the result absolute.
@@ -389,9 +389,9 @@
 - Mock reinstall: dev stopped with the self-avoiding
   `moc[k]` pkill pattern (worked cleanly this time, no
   self-kill), mock store backed up to
-  /tmp/mock-state-before-send-link-v2.json (421,750 bytes),
+  /tmp/mock-state-before-link-drop-v2.json (421,750 bytes),
   re-add via scripts/add-app.ts returned
-  `{ ok: true, id: "send-link" }`. State was NOT preserved
+  `{ ok: true, id: "link-drop" }`. State was NOT preserved
   by the re-add: the mock store came back with
   `{ links: [] }`, despite the "preserves state by
   default" comment in scripts/add-app.ts — that comment
@@ -440,7 +440,7 @@
   minimum height per line.
 - The install instructions now include, as the user asked,
   an agent route: "Or ask your agent to add a link: tell
-  them the app is send-link and the action is send, and
+  them the app is link-drop and the action is send, and
   give them the link." The per-item-delete note stays
   ("There is no per-item delete in v1; Clear All removes
   everything"), now referring to the top button.
@@ -453,8 +453,8 @@
   and javascript:-safety unchanged).
 - Mock reinstall: dev stopped with the self-avoiding
   `moc[k]` pattern, mock store backed up to
-  /tmp/mock-state-before-send-link-v3.json (423,354 bytes),
-  re-add returned `{ ok: true, id: "send-link" }`, and
+  /tmp/mock-state-before-link-drop-v3.json (423,354 bytes),
+  re-add returned `{ ok: true, id: "link-drop" }`, and
   the mock store file was checked for the new wording
   ("appear below" absent, "ask your agent" and "Clear All"
   present). The full act sequence was re-run under the
@@ -473,7 +473,7 @@
   removed from the install block, and the agent sentence
   became a copyable prompt instead of prose: "Or ask
   your agent. Tell your agent:" followed by
-  `Add the link [link] to my kody-os "send-link" app`
+  `Add the link [link] to my kody-os "link-drop" app`
   in a code block. The "Two things to know: " prefix was
   also removed; the signed-in requirement and new-tab
   sentences themselves stay, now as a plain paragraph.
@@ -490,7 +490,7 @@
   things to know" prefix), DOM tests 4 checks unchanged.
 - Mock reinstall: dev was already stopped from the
   previous fix, so no new stop was needed; re-add
-  returned `{ ok: true, id: "send-link" }`, and the mock
+  returned `{ ok: true, id: "link-drop" }`, and the mock
   store file was checked ("Two things to know" absent,
   prompt present). State handling differed from the
   earlier re-adds: this re-add preserved state instead
@@ -522,8 +522,8 @@
   distinctive phrases), DOM tests 4 checks unchanged.
 - Mock reinstall: dev stopped with the self-avoiding
   `moc[k]` pattern, mock store backed up to
-  /tmp/mock-state-before-send-link-v5.json (423,477 bytes),
-  re-add returned `{ ok: true, id: "send-link" }`, and
+  /tmp/mock-state-before-link-drop-v5.json (423,477 bytes),
+  re-add returned `{ ok: true, id: "link-drop" }`, and
   the mock store file was checked (paragraph absent,
   agent prompt present). This re-add preserved state:
   the single "After clear" test entry survived untouched,
@@ -531,3 +531,67 @@
   (ready, mock, http://127.0.0.1:4302/, lastError null)
   via nohup from this work. No catalog, version, commit,
   push, publish, or live change was made for this fix.
+
+## Implementation notes (2026-11-04, renamed to Link Drop; hoodie centered)
+
+- Rename (user-directed, before any live
+  install or catalog entry, so no live
+  migration was needed): the app formerly
+  Send Link is now Link Drop everywhere
+  it is defined — id `link-drop`, label
+  and title Link Drop, DOM ids and JS
+  functions `sl-*` → `ld-*`, agent prompt
+  now names the `link-drop` app, working
+  folder `send-link-wip/` →
+  `link-drop-wip/`, openspec change
+  `send-link-to-kody-os/` →
+  `link-drop-to-kody-os/` (spec folder
+  `send-link` → `link-drop`), and all
+  references in the hide-content-in-widgets
+  change renamed the same way. A repo-wide
+  grep after the rename finds no remaining
+  `send-link`, `Send Link`, or `sl-*`
+  references in those files. Generic
+  sentences about sending a link to
+  kody-os (bookmarklet drag text, page
+  intro) were left alone — they describe
+  the action and the platform, not the
+  app name. Link Drop tests pass under
+  their new names (Node + DOM).
+- Mock migration: `link-drop` installed
+  in the mock store, the two existing
+  entries (test "After clear" and the
+  user's real "HackerWeb" entry) copied
+  over in order via `send` acts, then
+  `send-link` removed from the mock
+  store and verified absent. Mock
+  hoodie-weather updated to
+  catalogVersion 5 in the same cycle
+  with Louisville, CO preserved.
+  Dev restarted as pid 206828 (ready,
+  mock). No live change, no commit,
+  push, or publish.
+- Hoodie vertical centering in widgets:
+  the shell already centers Counter and
+  Eight Ball bodies with an
+  aria-label-scoped rule (`.app-body` as
+  a flex column, `justify-content:
+  center`, `min-height: 8rem`), but
+  Hoodie Weather was not in that list
+  and the widget box itself is not a
+  flex column, so the mechanism is a
+  minimum-height body, not full-height
+  stretching. The app-local equivalent
+  was added to the hoodie bundle
+  instead of a shell change:
+  `section.widget[data-app-id="hoodie-weather"]
+  .app-body { flex: 1; display: flex;
+  flex-direction: column;
+  justify-content: center; min-height:
+  8rem; }` — scoped by `data-app-id`
+  so it cannot leak into other widgets.
+  CatalogVersion 4 → 5; widget CSS
+  test extended with centering
+  assertions (rule present, qualified
+  only, no unqualified
+  `section.widget .app-body` rule).

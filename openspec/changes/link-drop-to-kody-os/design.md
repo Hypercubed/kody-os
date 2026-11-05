@@ -1,4 +1,4 @@
-# Design: send-link-to-kody-os
+# Design: link-drop-to-kody-os
 
 ## Context
 
@@ -47,7 +47,7 @@ every number they depend on before shipping.
   append `/apps/probe`), then navigates or
   beacons to
   `?action=append_report&tag=...&d=...`.
-  The send-link bookmarklet does the same
+  The link-drop bookmarklet does the same
   derivation from the kody-os page's location,
   not from the sending page's location.
 
@@ -264,7 +264,7 @@ The app page renders the bookmarklet; the
 bookmarklet's target URL is derived at
 render time from the app page's own location
 (the Probe `actBase` derivation: path up to
-`/apps/`, plus `/apps/send-link`), never
+`/apps/`, plus `/apps/link-drop`), never
 hardcoded to a host. Rationale: the same
 definition installed on hosted Kody, on the
 mock preview, and on a dev install must each
@@ -382,10 +382,10 @@ safely.
 
 ## Open Questions
 
-1. App id: is `send-link` the right id, or
+1. App id: is `link-drop` the right id, or
    should it be `links` or `reading-list`
    to name the list rather than the act?
-   The spec uses `send-link` throughout; a
+   The spec uses `link-drop` throughout; a
    rename before implementation is a
    search-and-replace in this change and in
    the bookmarklet, not a redesign, but it

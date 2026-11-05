@@ -1,6 +1,6 @@
-/* Send Link DOM wiring test (spec tasks 3.4 and 4.3 logic, Node stub).
+/* Link Drop DOM wiring test (spec tasks 3.4 and 4.3 logic, Node stub).
  * Run with node:
- *   node send-link-wip/send-link-dom-tests.cjs
+ *   node link-drop-wip/link-drop-dom-tests.cjs
  * Stubs only the DOM surface the bundle uses: getElementById,
  * querySelectorAll for the seed script, querySelector, readyState,
  * addEventListener, and element style/textContent/innerHTML/
@@ -22,9 +22,9 @@ function check(name, ok, detail) {
 
 function findBundle() {
   var candidates = [
-    path.join(__dirname, 'send-link.bundle.json'),
-    path.join(__dirname, '..', 'send-link.bundle.json'),
-    path.join(__dirname, '..', 'pkg', 'catalog', 'send-link.bundle.json')
+    path.join(__dirname, 'link-drop.bundle.json'),
+    path.join(__dirname, '..', 'link-drop.bundle.json'),
+    path.join(__dirname, '..', 'pkg', 'catalog', 'link-drop.bundle.json')
   ];
   for (var i = 0; i < candidates.length; i++) {
     if (fs.existsSync(candidates[i])) { return candidates[i]; }
@@ -50,7 +50,7 @@ function makeEl() {
 function runWithLinks(links) {
   var parent = { moved: [], appendChild: function (el) { this.moved.push(el); } };
   var els = {};
-  ['sl-install', 'sl-list', 'sl-note', 'sl-bookmarklet', 'sl-clear-form'].forEach(function (id) {
+  ['ld-install', 'ld-list', 'ld-note', 'ld-bookmarklet', 'ld-clear-form'].forEach(function (id) {
     els[id] = makeEl();
     els[id].parentNode = parent;
   });
@@ -67,7 +67,7 @@ function runWithLinks(links) {
     addEventListener: function () {},
     currentScript: null
   };
-  var ctx = { document: doc, window: { location: { pathname: '/kody-os/apps/send-link', origin: 'http://127.0.0.1:4302' } }, console: console };
+  var ctx = { document: doc, window: { location: { pathname: '/kody-os/apps/link-drop', origin: 'http://127.0.0.1:4302' } }, console: console };
   vm.createContext(ctx);
   vm.runInContext(script, ctx);
   return { els: els, parent: parent };
@@ -75,39 +75,39 @@ function runWithLinks(links) {
 
 var empty = runWithLinks([]);
 check('empty: list hidden, install shown, bookmarklet absolute, clear form absolute',
-  empty.els['sl-list'].style.display === 'none' &&
-  empty.els['sl-install'].style.display === '' &&
-  empty.els['sl-bookmarklet'].attrs.href &&
-  empty.els['sl-bookmarklet'].attrs.href.indexOf('http://127.0.0.1:4302/kody-os/apps/send-link?action=send&entry=') !== -1 &&
-  empty.els['sl-clear-form'].attrs.action === 'http://127.0.0.1:4302/kody-os/apps/send-link?action=clear' &&
-  html.indexOf('sl-code') === -1 && html.indexOf('Or copy this code') === -1,
-  JSON.stringify({ list: empty.els['sl-list'].style.display, href: empty.els['sl-bookmarklet'].attrs.href, clear: empty.els['sl-clear-form'].attrs.action }));
+  empty.els['ld-list'].style.display === 'none' &&
+  empty.els['ld-install'].style.display === '' &&
+  empty.els['ld-bookmarklet'].attrs.href &&
+  empty.els['ld-bookmarklet'].attrs.href.indexOf('http://127.0.0.1:4302/kody-os/apps/link-drop?action=send&entry=') !== -1 &&
+  empty.els['ld-clear-form'].attrs.action === 'http://127.0.0.1:4302/kody-os/apps/link-drop?action=clear' &&
+  html.indexOf('ld-code') === -1 && html.indexOf('Or copy this code') === -1,
+  JSON.stringify({ list: empty.els['ld-list'].style.display, href: empty.els['ld-bookmarklet'].attrs.href, clear: empty.els['ld-clear-form'].attrs.action }));
 
 var two = runWithLinks([
   JSON.stringify({ t: '2026-11-03T10:00:00.000Z', title: 'Oldest', url: 'https://example.com/old' }),
   JSON.stringify({ t: '2026-11-04T10:00:00.000Z', title: 'Newest', url: 'https://example.com/new' })
 ]);
-var twoHtml = two.els['sl-list'].innerHTML;
+var twoHtml = two.els['ld-list'].innerHTML;
 check('two entries render most-recent-first, one line name - date, no url/time divs',
-  two.els['sl-list'].style.display === '' && twoHtml.indexOf('Newest') !== -1 &&
+  two.els['ld-list'].style.display === '' && twoHtml.indexOf('Newest') !== -1 &&
   twoHtml.indexOf('Newest') < twoHtml.indexOf('Oldest') &&
   twoHtml.indexOf('<a href="https://example.com/new">Newest</a> - ') !== -1 &&
-  twoHtml.indexOf('sl-url') === -1 && twoHtml.indexOf('sl-time') === -1,
+  twoHtml.indexOf('ld-url') === -1 && twoHtml.indexOf('ld-time') === -1,
   twoHtml);
 
 var bad = runWithLinks([
   JSON.stringify({ t: '2026-11-04T10:00:00.000Z', title: 'Evil', url: 'javascript:alert(1)' }),
   'plain text entry, not json'
 ]);
-var badHtml = bad.els['sl-list'].innerHTML;
+var badHtml = bad.els['ld-list'].innerHTML;
 check('javascript: entry has no anchor, plain entry renders as text',
   badHtml.indexOf('<a href="javascript:') === -1 &&
   badHtml.indexOf('Evil') !== -1 &&
   badHtml.indexOf('plain text entry, not json') !== -1,
   badHtml);
 check('non-empty list moves install block below list',
-  bad.parent.moved.indexOf(bad.els['sl-install']) !== -1,
+  bad.parent.moved.indexOf(bad.els['ld-install']) !== -1,
   JSON.stringify(bad.parent.moved.length));
 
 if (failures.length > 0) { console.log('FAILURES: ' + failures.length); process.exit(1); }
-console.log('ALL SEND-LINK DOM CHECKS PASSED');
+console.log('ALL LINK-DROP DOM CHECKS PASSED');

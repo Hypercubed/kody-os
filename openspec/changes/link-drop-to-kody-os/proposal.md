@@ -25,7 +25,7 @@ reports.
 
 ## What Changes
 
-- One new app, id `send-link`, label "Send
+- One new app, id `link-drop`, label "Send
   Link", category `utilities`, delivered in v1
   as a registry write via `add_app`, exactly
   like Daily Brief, Daily Feed, and the other
@@ -63,7 +63,7 @@ reports.
   hosted install, the mock preview, and a dev
   install. The bookmarklet opens kody-os in a
   new tab at
-  `/apps/send-link?action=send&entry=<encoded>`,
+  `/apps/link-drop?action=send&entry=<encoded>`,
   so the original page stays open and the
   landing on the app page, showing the new
   entry on top, is the confirmation that the
@@ -85,7 +85,7 @@ reports.
 
 ### New Capabilities
 
-- `send-link-app`: a bookmarklet-fed link list,
+- `link-drop-app`: a bookmarklet-fed link list,
   appended one entry at a time over the
   shell's GET-action path, rendered
   most-recent-first.
@@ -109,7 +109,7 @@ reports.
   No file in `pkg/` changes, so no version
   decision is triggered by v1 at all.
 - Phase 2 (only on user direction):
-  `pkg/catalog/send-link.bundle.json` (new,
+  `pkg/catalog/link-drop.bundle.json` (new,
   `catalogVersion` 1), one import line in
   `pkg/src/apps/catalog.ts` (alphabetical by
   id), one entry in `pkg/catalog/README.md`.
