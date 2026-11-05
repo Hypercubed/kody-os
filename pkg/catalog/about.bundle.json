@@ -3,10 +3,10 @@
   "name": "About",
   "label": "About",
   "schemaVersion": 5,
-  "catalogVersion": 3,
+  "catalogVersion": 4,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><line x1=\"12\" y1=\"11\" x2=\"12\" y2=\"17\" /><circle cx=\"12\" cy=\"7.5\" r=\"0.5\" /></svg>",
   "category": "utilities",
-  "description": "About kody-os and how to support its author, with links and QR codes for GitHub Sponsors, Ko-fi, and Buy Me a Coffee.",
+  "description": "About kody-os, with links to support it.",
   "bundle": {
     "entry": "index.html",
     "files": {

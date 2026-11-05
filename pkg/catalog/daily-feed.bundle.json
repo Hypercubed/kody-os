@@ -6,7 +6,7 @@
   "catalogVersion": 4,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"12\" y2=\"15\" /><circle cx=\"16.5\" cy=\"15\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\" /></svg>",
   "category": "reading",
-  "description": "A generic daily feed, pushed by an agent. Shows one entry at a time; when empty, it shows a prompt to give to your agent to start the push.",
+  "description": "A daily feed, updated by your agent, showing one entry at a time.",
   "bundle": {
     "entry": "index.html",
     "files": {

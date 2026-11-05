@@ -18,7 +18,7 @@ var bundlePath = path.join(__dirname, '..', 'daily-feed.bundle.json');
 var def = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
 check('definition id is daily-feed', def.id === 'daily-feed', def.id);
 check('schemaVersion is 5', def.schemaVersion === 5, def.schemaVersion);
-check('catalogVersion is 3', def.catalogVersion === 3, def.catalogVersion);
+check('catalogVersion is 4', def.catalogVersion === 4, def.catalogVersion);
 check('state is feed only, maxLength 250000',
   def.stateSchema && def.stateSchema.initial && def.stateSchema.initial.feed === '' &&
   def.stateSchema.fields && def.stateSchema.fields.feed &&

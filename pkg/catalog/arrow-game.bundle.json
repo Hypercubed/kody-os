@@ -3,10 +3,10 @@
   "name": "Arrow Game",
   "label": "Arrow Game",
   "schemaVersion": 5,
-  "catalogVersion": 4,
+  "catalogVersion": 5,
   "icon": "→",
   "category": "Games",
-  "description": "A puzzle about clearing the blue arrows; a red arrow costs a life, and a new life arrives every five levels.",
+  "description": "A puzzle about clearing the blue arrows; a red arrow costs a life, and a new life arrives every five levels. A kody-os rewrite of Hypercubed/arrow-game on GitHub.",
   "bundle": {
     "entry": "index.html",
     "files": {

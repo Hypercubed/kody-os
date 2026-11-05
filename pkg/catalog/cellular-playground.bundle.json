@@ -3,10 +3,10 @@
   "name": "Cellular Playground",
   "label": "Cellular Playground",
   "schemaVersion": 5,
-  "catalogVersion": 4,
+  "catalogVersion": 5,
   "icon": "▦",
   "category": "Games",
-  "description": "A cellular automaton playground with Life, Brian’s Brain, and Seeds on a 20 by 14 board.",
+  "description": "A playground for Life, Brian’s Brain, and Seeds on a 20 by 14 board. A kody-os rewrite of Hypercubed/CellularPlayground on GitHub.",
   "bundle": {
     "entry": "index.html",
     "files": {
