@@ -2,7 +2,7 @@
 
 A minimal OS shell shared by humans and agents, built with a Kindle Scribe in mind but working in most browsers. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly.
 
-Current package version: **v2.4.1** (build 30). See `pkg/package.json` for the authoritative version.
+Current package version: **v2.6.0** (build 31). See `pkg/package.json` for the authoritative version.
 
 ![Home dashboard](pkg/public/screenshots/home.png)
 ![All apps](pkg/public/screenshots/apps.png)
