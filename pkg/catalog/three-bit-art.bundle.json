@@ -3,10 +3,10 @@
   "name": "3-Bit Art",
   "label": "3-Bit Art",
   "schemaVersion": 5,
-  "catalogVersion": 18,
+  "catalogVersion": 19,
   "icon": "◼",
   "category": "Art",
-  "description": "A 16 by 16 pixel drawing app with three cycling modes — solid Color, Motif + Color, and Bayer + Color — and a gallery of saved drawings.",
+  "description": "A 16 by 16 pixel drawing app with three cycling modes — solid Color, Motif + Color, and Bayer + Color — and a gallery of saved drawings. A kody-os rewrite of Hypercubed/3-bit-art on GitHub.",
   "bundle": {
     "entry": "index.html",
     "files": {
