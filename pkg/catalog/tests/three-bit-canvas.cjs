@@ -347,10 +347,10 @@ async function main() {
   check(thumb && thumb.tagName === "CANVAS", "gallery thumbnail is a canvas");
   doc.getElementById("tb-clear").click();
   check(window.tbState.data.charAt(0) === "7", "clear after save empties the board");
-  const buttons = doc.querySelectorAll(".tb-item .tb-btn");
+  const buttons = doc.querySelectorAll(".tb-item button");
   buttons[0].click();
   check(window.tbState.data.charAt(0) === "2", "gallery Load restores the drawing");
-  doc.querySelectorAll(".tb-item .tb-btn")[1].click();
+  doc.querySelectorAll(".tb-item button")[1].click();
   check(window.tbState.gallery === "", "gallery Delete removes the item");
 
   window.close();

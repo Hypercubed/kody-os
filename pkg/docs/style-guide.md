@@ -4,9 +4,13 @@ Style guide v1.0 — 27 October 2026, for `@hypercubed/kody-os`.
 Package location: `docs/style-guide.md`, linked from
 `.agents/skills/adding-an-app/SKILL.md`.
 
-Status: in the package. The shared `os-*` classes are provided
-by the shell theme (see section 5). A bundle uses the class
-names; it never copies or redefines them. This guide is
+Status: in the package. The shell theme (see section 5) styles
+standard bundle controls with no class needed: a bare `<button>`,
+`<input>`, `<select>`, or `<textarea>` inside a bundle gets the shared
+look. The `os-*` class names remain only for variants
+(`.os-btn--dark`, `.os-display`, `.os-keypad` / `.os-key`) and for
+genuinely unique controls; a bundle never copies or redefines
+their definitions. This guide is
 written so that a human or an agent building a new app can
 follow it without having to re-derive the look from
 screenshots, and so that existing apps stay consistent with
@@ -87,13 +91,13 @@ recreate.
    content.** Do not add a second menu bar, title bar,
    window frame, footer, or back control inside a bundle.
    Use the shell's navigation.
-6. **Use the shared classes; do not invent, copy, or
-   redefine them.** Buttons, displays, panels, section
-   headers, lists, and keypads use the classes in
-   section 5, which the shell theme provides. A bundle
-   must not copy their definitions into its own
-   `<style>`, must not restyle them, and must not add a
-   second button, display, or panel style. Bundle-only
+6. **Use the bare defaults; classes only for variants.** Standard
+buttons and fields, displays, panels, section headers, lists, and
+keypads get their look from the shell theme (section 5) with no
+class on the element; a variant (an inverted button, a readout, a
+keypad) uses its `os-*` class. A bundle must not copy those
+definitions into its own `<style>`, must not restyle them, and must
+not add a second button, display, or panel style. Bundle-only
    CSS is reserved for what is genuinely unique to that
    app — a Puzzle grid, an Eight Ball circle, SVG digits
    traced from a source screenshot — and it is named
@@ -125,7 +129,7 @@ redefine any `--os-*` variable.
 | `--os-grey` | `#888` | Disabled borders and text only, never as a background wash |
 | `--os-border` | `1px solid #000` | Every panel, button, tile, and display edge |
 | `--os-shadow` | `2px 2px 0 #000` | Hard offset shadow, no blur, on windows, tiles, and buttons |
-| `--os-radius` | `4px` | Buttons and small controls; panels and windows use `0` |
+| `--os-radius` | `4px` | Fields and small controls; bundle buttons, panels, and windows use `0` |
 | `--os-font` | `"Chicago", "Geneva", Helvetica, Arial, sans-serif` | All text, unless a source screenshot dictates otherwise |
 | `--os-font-mono` | `"Courier New", Courier, monospace` | Code, prompts, and diagnostic text only |
 | `--os-text-sm` | `14px` | Captions, counts, footers |
@@ -148,10 +152,12 @@ this guide is trying to end.
 
 ## 5. Classes
 
-The classes below are defined once, in the shell theme.
-Use the class names in bundle markup. Do not copy the
-definitions into a bundle, and do not restyle them per
-app. The definitions are shown here as reference, so an
+The shared look below is defined once, in the shell theme. A
+standard bundle control needs no class: a bare `<button>` inside a
+bundle is square and otherwise looks like `.os-btn`, and a bare field looks like
+the field rule in the theme. The class names below are for
+variants and unique controls only. Do not copy the definitions
+into a bundle, and do not restyle them per app. The definitions are shown here as reference, so an
 author knows exactly what a class does without opening
 the theme file.
 
@@ -266,12 +272,13 @@ the theme file.
 
 Notes on the classes:
 
-- **Buttons.** One button style. A primary action is
-  `.os-btn--dark` (inverted), not a larger, bolder, or
-  pill-shaped button. Eight Ball's Shake, Puzzle's
-  New Game, Daily Brief's Previous/Next, and Probe's
-  action buttons are all `.os-btn`; their differences
-  are labels and placement, not shape.
+- **Buttons.** One button style, and it needs no class. A bare
+  `<button>` inside a bundle is square and otherwise looks like `.os-btn`; a primary
+action adds `.os-btn--dark` (inverted). Eight Ball's Shake keeps
+its pill shape as a variant (border-radius and padding only, on
+top of the default). Puzzle's New Game, Daily Feed's
+Previous/Next, and Probe's action buttons are bare; their
+differences are labels and placement, not shape.
 - **Pressed state.** `:active` inverts the button and
   removes the shadow, with no shift (`transform: none`).
   No transition, no animation — both are out of scope
@@ -317,7 +324,7 @@ invented:
 ```html
 <div class="os-panel">
   <p class="os-display">0</p>
-  <button class="os-btn" type="button">New Game</button>
+  <button type="button">New Game</button>
 </div>
 ```
 

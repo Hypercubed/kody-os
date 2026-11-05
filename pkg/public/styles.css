@@ -796,6 +796,18 @@ button.tile:active .tile-icon {
 	box-shadow: none;
 }
 
+/* Modal overlays render inside .os-window main (Apps page:
+   renderOverlaySection in apps/client.ts, sections go into main
+   in app.ts), so the rule above would strip their panel border
+   too. A modal panel is its own frame, unlike an app page panel,
+   so restore its border and shadow here. This rule outranks the
+   stripping rule (three classes to two). The logout modal sits
+   outside .os-window and was never stripped. */
+.os-window main .overlay .app {
+	border: var(--rule);
+	box-shadow: var(--lift);
+}
+
 .app-titlebar.has-close {
 	position: relative;
 	padding-left: 3.5rem;
@@ -1509,12 +1521,12 @@ button:active {
 
 /* ---- Shared app classes (os-*) ---- */
 
-/* Provided by the shell for every bundle: use the class names, do not
-   copy or redefine them. See docs/style-guide.md. Bundles render in the
-   same document as this stylesheet, so these rules cascade into the
-   .bundle container. The :hover and transform rules pin off the shell's
-   generic button behaviour (bold, shift on press, shade on hover) so a
-   shared button behaves the same in every bundle. */
+/* Provided by the shell for every bundle. Standard bundle controls need
+   no class: the bare defaults scoped to .bundle below style them, and
+   they match .os-btn exactly. The class names remain for variants
+   (.os-btn--dark, .os-key, .os-display) and for genuinely unique controls.
+   See docs/style-guide.md. Bundles render in the same document as this
+   stylesheet, so these rules cascade into the .bundle container. */
 
 .os-panel {
 	background: var(--os-paper);
@@ -1651,6 +1663,81 @@ button:active {
 	background-color: var(--os-paper);
 	background-image: var(--os-dots);
 	background-size: 4px 4px;
+}
+
+/* ---- Bare defaults inside bundles ---- */
+/* A bundle button, field, or paragraph needs no class: the shell styles
+   it here, scoped to .bundle so shell chrome is untouched. Classes remain
+   only for variants (.os-btn--dark, .os-key, .os-display) and for controls
+   that are genuinely unique to an app (game tiles, colour swatches).
+   These rules pin off the shell's generic button behaviour (bold, 2px
+   border, shade on hover, shift on press) so a bare bundle button matches
+   .os-btn exactly. */
+.bundle {
+	font-family: var(--os-font);
+	color: var(--os-ink);
+}
+
+.bundle button {
+	min-height: var(--os-tap);
+	min-width: var(--os-tap);
+	font-family: var(--os-font);
+	font-size: var(--os-text-lg);
+	font-weight: normal;
+	background: var(--os-paper);
+	color: var(--os-ink);
+	border: var(--os-border);
+	border-radius: 0;
+	box-shadow: var(--os-shadow);
+	padding: 0 16px;
+}
+
+.bundle button:hover {
+	background: var(--os-paper);
+}
+
+.bundle button:active {
+	background: var(--os-ink);
+	color: var(--os-paper);
+	box-shadow: none;
+	transform: none;
+}
+
+.bundle button:disabled {
+	color: var(--os-grey);
+	border-color: var(--os-grey);
+	box-shadow: none;
+}
+
+.bundle input,
+.bundle select,
+.bundle textarea {
+	min-height: var(--os-tap);
+	font-family: var(--os-font);
+	font-size: var(--os-text);
+	background: var(--os-paper);
+	color: var(--os-ink);
+	border: var(--os-border);
+	border-radius: var(--os-radius);
+	padding: 10px 12px;
+}
+
+.bundle input:disabled,
+.bundle select:disabled,
+.bundle textarea:disabled {
+	color: var(--os-grey);
+	border-color: var(--os-grey);
+}
+
+/* The shared dark variant on a bare button: .bundle button:hover would
+   otherwise outrank .os-btn--dark:hover and wash it back to paper. */
+.bundle button.os-btn--dark {
+	background: var(--os-ink);
+	color: var(--os-paper);
+}
+
+.bundle button.os-btn--dark:hover {
+	background: var(--os-ink);
 }
 
 @media (prefers-contrast: more) {

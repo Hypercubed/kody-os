@@ -436,7 +436,7 @@ async function test(name, fn) {
       results: [{ name: "Portland", admin1: "Oregon", country: "United States", latitude: 45.5152, longitude: -122.6784 }],
     });
     await sleep(20);
-    const result = ctx.doc.querySelector(".hw-result");
+    const result = ctx.doc.querySelector("#hw-results button");
     assert(result && result.textContent.indexOf("Portland") !== -1, "search result rendered");
     result.dispatchEvent(new ctx.dom.window.Event("click", { bubbles: true }));
     const saveCall = await waitForPending(ctx, function (p) { return p.url.indexOf("action=set_location") !== -1; });
