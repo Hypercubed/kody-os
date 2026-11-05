@@ -1,0 +1,66 @@
+{
+ "id": "send-link",
+ "name": "Send Link",
+ "label": "Send Link",
+ "schemaVersion": 5,
+ "catalogVersion": 1,
+ "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 14a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7\" /><path d=\"M14 10a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7\" /></svg>",
+ "category": "utilities",
+ "description": "Save links from any browser with a bookmarklet, and open them later \u2014 including on the Scribe. Most-recent-first; clear-all only, no per-item delete in v1.",
+ "ui": {
+  "title": "Send Link",
+  "hideState": true,
+  "placements": [
+   "page"
+  ]
+ },
+ "stateSchema": {
+  "type": "object",
+  "initial": {
+   "links": []
+  },
+  "fields": {
+   "links": {
+    "type": "array",
+    "items": "string",
+    "maxItems": 500
+   }
+  }
+ },
+ "actions": {
+  "send": {
+   "description": "Append one link entry (JSON string with t, title, url) to links. Oldest entries drop past 500; entries cap at 2048 bytes.",
+   "args": {
+    "entry": {
+     "type": "string",
+     "required": true
+    }
+   },
+   "effects": [
+    {
+     "op": "append",
+     "field": "links",
+     "fromArg": "entry",
+     "cap": 500,
+     "maxEntryBytes": 2048
+    }
+   ]
+  },
+  "clear": {
+   "description": "Clear all stored links.",
+   "effects": [
+    {
+     "op": "set",
+     "field": "links",
+     "value": []
+    }
+   ]
+  }
+ },
+ "bundle": {
+  "entry": "index.html",
+  "files": {
+   "index.html": "<div class=\"sl\">\n<form id=\"sl-clear-form\" method=\"get\"><button id=\"sl-clear-btn\" type=\"submit\">Clear All</button></form>\n<div id=\"sl-list\" style=\"display:none\"></div>\n<div id=\"sl-install\">\n<p>Send a link to kody-os from any browser, and open it here later.</p>\n<h3>Install the bookmarklet</h3>\n<p>Drag this link to your bookmarks bar:</p>\n<p><a id=\"sl-bookmarklet\" href=\"#\">Send link to kody-os</a></p>\n<p>Or ask your agent. Tell your agent:</p>\n<p><code>Add the link [link] to my kody-os \"send-link\" app</code></p>\n</div>\n<p id=\"sl-note\" style=\"display:none\">Stored links could not be read.</p>\n</div>\n<style>\n.sl { font-family: system-ui, sans-serif; color: #000; background: #fff; }\n.sl-item { font-size: 18px; min-height: 48px; padding: 12px 0; margin: 0 0 4px 0; overflow-wrap: break-word; word-break: break-all; }\n.sl-item a { color: #000; }\n.sl-item .sl-text { font-size: 18px; }\n.sl code { overflow-wrap: break-word; word-break: break-all; }\n#sl-clear-form button { min-height: 48px; font-size: 18px; padding: 12px 16px; background: #fff; color: #000; border: 2px solid #000; box-shadow: 2px 2px 0 #000; margin: 0 0 16px 0; }\n#sl-bookmarklet { display: inline-block; min-height: 48px; font-size: 18px; padding: 12px 16px; background: #fff; color: #000; border: 2px solid #000; box-shadow: 2px 2px 0 #000; }\n.sl-compact { margin-top: 24px; }\n</style>\n<script>\n/* Send Link viewer. Pure functions are defined first so Node\n * tests can load this script without a DOM and call them\n * directly; DOM wiring is guarded by typeof document. No act()\n * calls from the bundle itself: sends arrive over the shell\n * GET-action URL from the bookmarklet, and clear is a shell\n * ui.actions button. No copy control, no localStorage. */\nfunction slEscape(text) {\n  return String(text).replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\");\n}\nfunction slByteLength(text) {\n  var s = String(text);\n  try {\n    if (typeof TextEncoder !== \"undefined\") { return new TextEncoder().encode(s).length; }\n  } catch (err) { }\n  return s.length;\n}\nfunction slIsHttpUrl(url) {\n  if (typeof url !== \"string\" || url === \"\") { return false; }\n  if (/\\s/.test(url) || url.indexOf(\"<\") !== -1 || url.indexOf('\"') !== -1) { return false; }\n  var lower = url.toLowerCase();\n  return lower.indexOf(\"http://\") === 0 || lower.indexOf(\"https://\") === 0;\n}\nfunction slParseEntry(raw) {\n  if (typeof raw !== \"string\") { return { ok: false, text: String(raw || \"\") }; }\n  var parsed = null;\n  try { parsed = JSON.parse(raw); } catch (err) { parsed = null; }\n  if (!parsed || typeof parsed !== \"object\" || typeof parsed.url !== \"string\" || parsed.url === \"\") {\n    return { ok: false, text: raw };\n  }\n  return { ok: true, t: (typeof parsed.t === \"string\") ? parsed.t : \"\", title: (typeof parsed.title === \"string\") ? parsed.title : \"\", url: parsed.url };\n}\nfunction slFormatTime(raw) {\n  if (!raw) { return \"\"; }\n  var d = new Date(raw);\n  if (isNaN(d.getTime())) { return raw; }\n  return d.toLocaleString(undefined, { month: \"short\", day: \"numeric\", hour: \"numeric\", minute: \"2-digit\" });\n}\nfunction slBuildEntry(title, url, iso) {\n  var t = String(title || \"\");\n  var entry = JSON.stringify({ t: iso, title: t, url: url });\n  var guard = 0;\n  while (slByteLength(entry) > 2048 && t.length > 0 && guard < 12) {\n    guard = guard + 1;\n    var excess = slByteLength(entry) - 2048;\n    t = t.slice(0, Math.max(0, t.length - excess - 10));\n    entry = JSON.stringify({ t: iso, title: t, url: url });\n  }\n  return entry;\n}\nfunction slAppBase(pathname) {\n  var p = String(pathname || \"\");\n  var i = p.indexOf(\"/apps/\");\n  if (i === -1) { return \"/apps/send-link\"; }\n  return p.slice(0, i) + \"/apps/send-link\";\n}\nfunction slAbsoluteUrl(base, loc) {\n  var b = String(base || \"\");\n  if (b === \"\") { return \"\"; }\n  if (b.indexOf(\"http://\") === 0 || b.indexOf(\"https://\") === 0) { return b; }\n  var origin = \"\";\n  if (loc) {\n    if (loc.origin) { origin = loc.origin; }\n    else if (loc.protocol && loc.host) { origin = loc.protocol + \"//\" + loc.host; }\n  }\n  if (origin !== \"\" && origin.charAt(origin.length - 1) === \"/\") { origin = origin.slice(0, -1); }\n  return origin + b;\n}\nfunction slAppUrl(origin, pathname) {\n  var o = String(origin || \"\");\n  if (o !== \"\" && o.charAt(o.length - 1) === \"/\") { o = o.slice(0, -1); }\n  return o + slAppBase(pathname);\n}\nfunction slBookmarklet(base) {\n  var code = \"javascript:(function(){var u=location.href,t=document.title,i=new Date().toISOString();\";\n  code += \"function bl(s){try{return new TextEncoder().encode(s).length;}catch(e){return s.length;}}\";\n  code += \"var e=JSON.stringify({t:i,title:t,url:u});\";\n  code += \"var g=0;while(bl(e)>2048&&t.length>0&&g<12){g=g+1;t=t.slice(0,Math.max(0,t.length-(bl(e)-2048)-10));e=JSON.stringify({t:i,title:t,url:u});}\";\n  code += \"window.open('\" + base + \"?action=send&entry='+encodeURIComponent(e),'_blank');})();\";\n  return code;\n}\nif (typeof document !== \"undefined\" && document.getElementById) {\n  (function () {\n    var installEl = document.getElementById(\"sl-install\");\n    var listEl = document.getElementById(\"sl-list\");\n    var noteEl = document.getElementById(\"sl-note\");\n    var markEl = document.getElementById(\"sl-bookmarklet\");\n    var clearForm = document.getElementById(\"sl-clear-form\");\n    function readLinks() {\n      var links = null;\n      try {\n        if (typeof window !== \"undefined\" && window.KodyBridge) {\n          var scriptEl = null;\n          try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }\n          var section = null;\n          var el = scriptEl;\n          while (el) {\n            if (el.getAttribute && el.getAttribute(\"data-app-id\")) { section = el; break; }\n            el = el.parentNode;\n          }\n          if (!section) {\n            var sections = document.querySelectorAll(\"section[data-app-id]\");\n            if (sections.length > 0) { section = sections[0]; }\n          }\n          if (section) {\n            var store = window.KodyBridge.create(section, { fieldTypes: { links: \"array\" } });\n            var val = store.get(\"links\");\n            if (val && typeof val.length === \"number\") { links = val; }\n          }\n        }\n      } catch (err) { links = null; }\n      if (!links) {\n        var seeds = document.querySelectorAll('script[data-kody-state-seed=\"1\"]');\n        var s, parsed;\n        for (s = 0; s < seeds.length; s++) {\n          try {\n            parsed = JSON.parse(seeds[s].textContent);\n            if (parsed && parsed.links && typeof parsed.links.length === \"number\") { links = parsed.links; break; }\n          } catch (err) { }\n        }\n      }\n      if (!links) {\n        var p = document.querySelector('[data-field=\"links\"]');\n        if (p) {\n          try {\n            var fromSpan = JSON.parse(p.textContent || \"\");\n            if (fromSpan && typeof fromSpan.length === \"number\") { links = fromSpan; }\n          } catch (err) { links = null; }\n        }\n      }\n      return links || [];\n    }\n    function renderItem(raw) {\n      var parsed = slParseEntry(raw);\n      if (!parsed.ok) {\n        return '<div class=\"sl-item\"><div class=\"sl-text\">' + slEscape(parsed.text) + \"</div></div>\";\n      }\n      var time = slFormatTime(parsed.t);\n      var suffix = time ? \" - \" + slEscape(time) : \"\";\n      if (slIsHttpUrl(parsed.url)) {\n        return '<div class=\"sl-item\"><a href=\"' + slEscape(parsed.url) + '\">' + slEscape(parsed.title || parsed.url) + \"</a>\" + suffix + \"</div>\";\n      }\n      return '<div class=\"sl-item\"><div class=\"sl-text\">' + slEscape(parsed.title || parsed.url) + suffix + \"</div></div>\";\n    }\n    function findActionBase() {\n      var base = \"\";\n      try {\n        var scriptEl = null;\n        try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }\n        var el = scriptEl;\n        while (el) {\n          if (el.getAttribute && el.getAttribute(\"data-action-base\")) { base = el.getAttribute(\"data-action-base\"); break; }\n          el = el.parentNode;\n        }\n        if (!base) {\n          var holders = document.querySelectorAll(\"[data-action-base]\");\n          if (holders.length > 0 && holders[0].getAttribute) { base = holders[0].getAttribute(\"data-action-base\") || \"\"; }\n        }\n      } catch (err) { base = \"\"; }\n      return base;\n    }\n    function init() {\n      var base = \"/apps/send-link\";\n      var loc = null;\n      try {\n        if (typeof window !== \"undefined\" && window.location) { loc = window.location; }\n      } catch (err) { loc = null; }\n      try {\n        var stamped = findActionBase();\n        if (stamped) { base = stamped; }\n        else if (loc && loc.pathname) { base = slAppBase(loc.pathname); }\n        base = slAbsoluteUrl(base, loc);\n        if (!base) { base = \"/apps/send-link\"; }\n      } catch (err) { base = \"/apps/send-link\"; }\n      var mark = slBookmarklet(base);\n      if (markEl && markEl.setAttribute) { markEl.setAttribute(\"href\", mark); }\n      if (clearForm && clearForm.setAttribute) { clearForm.setAttribute(\"action\", base + \"?action=clear\"); }\n      var links = readLinks();\n      if (!links || links.length === 0) {\n        listEl.style.display = \"none\";\n        installEl.style.display = \"\";\n        noteEl.style.display = \"none\";\n        return;\n      }\n      var html = \"\";\n      var i;\n      for (i = links.length - 1; i >= 0; i--) {\n        html += renderItem(links[i]);\n      }\n      listEl.innerHTML = html;\n      listEl.style.display = \"\";\n      noteEl.style.display = \"none\";\n      installEl.style.display = \"\";\n      try {\n        if (installEl.parentNode && installEl.parentNode.appendChild) {\n          installEl.parentNode.appendChild(installEl);\n        }\n      } catch (err) { }\n      try { installEl.className = \"sl-compact\"; } catch (err) { }\n    }\n    if (document.readyState === \"complete\" || document.readyState === \"interactive\") {\n      init();\n    } else {\n      document.addEventListener(\"DOMContentLoaded\", init);\n    }\n  })();\n}\n</script>\n"
+  }
+ }
+}

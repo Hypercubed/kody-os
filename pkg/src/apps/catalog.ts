@@ -23,6 +23,7 @@ import calendarBundle from '../../catalog/calendar.bundle.json' with { type: 'js
 import cellularPlaygroundBundle from '../../catalog/cellular-playground.bundle.json' with { type: 'json' }
 import clockBundle from '../../catalog/clock.bundle.json' with { type: 'json' }
 import counterBundle from '../../catalog/counter.bundle.json' with { type: 'json' }
+import dailyFeedBundle from '../../catalog/daily-feed.bundle.json' with { type: 'json' }
 import eightBallBundle from '../../catalog/eight-ball.bundle.json' with { type: 'json' }
 import helpBundle from '../../catalog/help.bundle.json' with { type: 'json' }
 import hoodieWeatherBundle from '../../catalog/hoodie-weather.bundle.json' with { type: 'json' }
@@ -43,6 +44,7 @@ var CATALOG: AppDefinition[] = [
 	cellularPlaygroundBundle as AppDefinition,
 	clockBundle as AppDefinition,
 	counterBundle as AppDefinition,
+	dailyFeedBundle as AppDefinition,
 	eightBallBundle as AppDefinition,
 	helpBundle as AppDefinition,
 	hoodieWeatherBundle as AppDefinition,
