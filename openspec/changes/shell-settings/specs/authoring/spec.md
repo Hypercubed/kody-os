@@ -4,7 +4,7 @@
 
 ### Requirement: Theme capability declaration for apps
 
-App definitions SHALL support `capabilities.theme: { view: boolean, set: boolean }`, next to `capabilities.feeds` and `capabilities.email`. `view` SHALL allow the theme read route; `set` SHALL allow the theme set and reset routes. A route SHALL check exactly the flag it needs. A definition with neither flag true SHALL be treated as not declaring theme. Any other shape SHALL fail definition validation, and install-time sanitizing SHALL normalize missing flags to `false`. Existing `feeds` and `email` declarations and validation SHALL be unchanged.
+App definitions SHALL support `capabilities.theme: { view: boolean, set: boolean }`, next to `capabilities.feeds`, `capabilities.proxy`, and `capabilities.manageApps`. `view` SHALL allow the theme read route; `set` SHALL allow the theme set and reset routes. A route SHALL check exactly the flag it needs. A definition with neither flag true SHALL be treated as not declaring theme. Any other shape SHALL fail definition validation, and install-time sanitizing SHALL normalize missing flags to `false`. Existing `feeds`, `proxy`, and `manageApps` declarations and validation SHALL be unchanged.
 
 `act()` SHALL be unchanged by this change: no shell-theme effect operator is added, and an app's actions SHALL continue to write only that app's own state. Apps reach the theme override through the theme routes, not through `act()`.
 

@@ -33,6 +33,8 @@ publishes anything (see §7).
   every page. With no override stored, rendering
   is byte-identical to today.
   DONE 2026-10-31: merge wired into pkg/src/app.ts fetch() (override read fresh every request, file theme cache unchanged, no-override effective equals file values); shell-fetch rendering leg owed (kody dev/hosted out of scope).
+  NOTE 2026-11-05: Phase 1 is implemented and committed
+  in `ba9193c` (ancestor of local HEAD and origin/main).
 - [ ] 1.3 Verify Phase 1 in a blank store: set
   one field and confirm only that field changes;
   set with one invalid field and confirm nothing
@@ -53,17 +55,22 @@ publishes anything (see §7).
 
 - [ ] 2.1 Add `get_shell_theme`,
   `set_shell_theme`, and `reset_shell_theme` to
-  `pkg/src/index.ts`, as thin wrappers over the
-  Phase 1 module — no validation reimplemented
-  here — and list all three in `main()`'s
-  exports, next to the pin / home exports, with
-  a `useWhen` line each.
+  `pkg/src/index.ts` as thin wrappers over
+  `pkg/src/shell-theme.ts` (functions already exist
+  there; only the exposure is missing). The wrappers
+  must first resolve file defaults — export `getTheme`
+  from `pkg/src/app.ts` and pass
+  `fileThemeToValues(await getTheme())` — and list all
+  three in `main()`'s exports next to the pin / home
+  exports, with a `useWhen` line each. No validation
+  reimplemented here.
 - [ ] 2.2 Confirm the return shapes from design
   Decision 6: get returns `{ defaults, override,
   effective }`; set returns `{ ok: true,
   override, effective }` or `{ ok: false, error }`
   with no write; reset takes an optional `field`
-  and returns `{ ok: true, effective }`. An
+  and returns `{ ok: true, effective }`, or
+  `{ ok: false, error }` for an unknown field. An
   unknown field in a set payload is an error,
   not a silent ignore.
 - [ ] 2.3 Verify Phase 2 with MCP-style calls
@@ -79,16 +86,25 @@ publishes anything (see §7).
 - [ ] 3.1 Add `capabilities.theme: { view:
   boolean, set: boolean }` to
   `pkg/src/apps/types.ts` (`AppCapabilities`,
-  next to `feeds` and `email`) and validate it
+  next to `feeds`, `proxy`, and `manageApps`) and
+  validate it
   in `pkg/src/apps/registry.ts`: any other shape
   fails validation, a definition with neither
   flag true is treated as not declaring theme,
   and install-time sanitizing normalizes missing
-  flags to `false`. Existing `feeds` and `email`
-  declarations and validation are unchanged.
+  flags to `false`. Existing `feeds`, `proxy`, and
+  `manageApps` declarations and validation are
+  unchanged. `theme` must be added to the
+  `validateCapabilities` allowlist in
+  `pkg/src/apps/registry.ts` (it rejects unknown
+  capability keys) with the `{ view, set }` shape
+  validated, and `sanitizeCapabilities` must gain a
+  `theme` branch normalizing missing flags to `false`.
 - [ ] 3.2 Wire the routes in `pkg/src/app.ts`
-  dispatch, after the `/apps/` branches and
-  alongside the `/feed/` route, so they inherit
+  dispatch, after the `/feed/` route (dispatch order
+  is `/apps/` branches, then `/manage/`, then
+  `/proxy/`, then `/feed/`, then the 404 fallthrough),
+  so they inherit
   the device gate in `fetch()`: `GET
   /theme/:app` (read, JSON `{ ok: true,
   defaults, override, effective }`,
@@ -127,6 +143,15 @@ publishes anything (see §7).
   JSON 400 and writes nothing. Record the
   results in the task notes; a unit-level pass
   alone does not close this task.
+- [ ] 3.5 Extend `summarizeCapabilities` and
+  `capabilityAdditions` in `pkg/src/apps/registry.ts`
+  (they currently enumerate only manageApps,
+  feedHosts, and proxyHosts) so a `theme`
+  declaration appears in the Store's installer
+  disclosure and in the capability-expansion
+  confirmation gate.
+  NOTE 2026-11-05: added by the Nov 5 audit;
+  renumbers nothing else.
 
 ## 4. Control panel app
 
@@ -162,6 +187,9 @@ publishes anything (see §7).
   system fonts, high-contrast black-on-white,
   48px minimum tap targets, icon per the
   existing icon rules, within the 256 KiB cap.
+  Bundle CSS uses the shell's scoped bare-element
+  defaults inside `.bundle` and does not redefine
+  buttons or fields.
 - [ ] 4.2 Register the bundle in the catalog:
   one import line in `pkg/src/apps/catalog.ts`
   (alphabetical by id) plus one entry in
@@ -174,12 +202,13 @@ publishes anything (see §7).
   removing it leaves `kody-os.shell.theme`
   untouched and a later reinstall shows the
   same overrides.
-- [ ] 4.3 Add one line to the Help page in
-  `pkg/src/app.ts` naming the Settings app as
-  the browser path for changing the shell
-  theme, alongside the existing App Store and
-  agent / `add_app` guidance. No other Help
-  text changes in this change.
+- [ ] 4.3 Add one line to `pkg/catalog/help.bundle.json`
+  (the Help page is a catalog bundle, not an `app.ts`
+  page) alongside 'Adding apps', naming the Settings
+  app as the browser path for changing the shell
+  theme; bump the Help bundle's `catalogVersion` +1
+  per the catalog rule. No other Help text changes
+  in this change.
 
 ## 5. Docs
 
@@ -192,18 +221,20 @@ publishes anything (see §7).
   scope (including grid / SVG not editable in
   the panel), and the out-of-scope list.
 - [ ] 5.2 Add a `capabilities.theme` row to
-  `pkg/.agents/skills/adding-an-app/SKILL.md`, next to the
-  `capabilities.feeds` and `capabilities.email`
-  rows, and update the "Adding an app"
-  capability paragraph in `pkg/AGENTS.md` to
+  `pkg/.agents/skills/adding-an-app/SKILL.md`, next to
+  the `capabilities.feeds` / `proxy` / `manageApps`
+  rows, and update the `capabilities.feeds` /
+  `proxy` / `manageApps` rows in `pkg/AGENTS.md` to
   name theme as a generic capability (this rides
   with the MINOR bump, not as a separate docs
   commit).
 
 ## 6. Verification
 
-- [ ] 6.1 Prove the panel bundle in jsdom
-  (harness outside `pkg/`): controls render
+- [ ] 6.1 Prove the panel bundle with a Node-stub DOM
+  test at `pkg/catalog/tests/settings-dom-tests.cjs`
+  (the daily-feed / generic-feed pattern, not jsdom
+  outside `pkg/`): controls render
   from a fixture read response with correct
   source labels; desk / paper, name, title,
   glyph, stock-mark, per-field reset, and
@@ -211,11 +242,16 @@ publishes anything (see §7).
   (never to `act()`); no navigation, no POST,
   and no theme stored in app state occurs in
   any flow.
-- [ ] 6.2 Run the ES2019 ceiling scan on the
-  bundle script and the new module (zero hits
-  for `?.` / `??` / `replaceAll` / `.at(` /
-  template literals), the catalog harness, and
-  the Counter harness green.
+- [ ] 6.2 Run the ES2019 ceiling grep on the bundle
+  script and the new module (zero hits for `?.` /
+  `??` / `replaceAll` / `.at(` — template literals
+  are not part of the ceiling; avoiding them is
+  Counter's conservative style, not a binding rule),
+  the catalog harness, and the new bundle tests.
+  NOTE 2026-11-05: `counter-tests` has 1 pre-existing
+  failure, identical on clean HEAD, so it is not a
+  gate — gate on the catalog harness + the new
+  bundle tests instead.
 - [ ] 6.3 Smoke-test the full loop with a live
   shell request: file defaults render; set via
   MCP, and the next page render shows the
@@ -223,16 +259,21 @@ publishes anything (see §7).
   no JavaScript, and the 303 lands back on the
   panel showing the new source labels; reset
   all, and the next render is file defaults
-  again. Confirm `?k=` stamping is preserved
-  on the panel's forms for query-authenticated
-  sessions (via `finishResponse`, as with other
-  shell forms).
-- [ ] 6.4 Verify `openspec validate --changes`
-  passes if the binary is available (otherwise
-  check the change shape manually, as with
-  other changes in this environment: proposal,
-  design, tasks, and spec deltas present and
-  internally consistent).
+  again. Verify cookie-authenticated fetch and
+  no-JS GET submit round-trips instead of any
+  `?k=` check: `finishResponse` only sets
+  `Cache-Control: no-store` + security headers
+  and does no `?k=` stamping, and there is no
+  persistent query-authenticated session — `?k=`
+  is a single-use OTP submission transport and
+  sessions ride the session cookie. Confirm no
+  `?k=` is rendered in any link, form, or redirect.
+- [ ] 6.4 Run `openspec validate --changes` on the
+  PC (binary at
+  `/home/jmh/.nvm/versions/node/v24.16.0/bin/openspec`;
+  add that directory to PATH for the run; `bun` is
+  at `/home/jmh/.bun/bin/bun`, not on the daemon
+  shell's PATH) and confirm it passes.
 
 ## 7. Version and publish
 
@@ -243,7 +284,17 @@ publishes anything (see §7).
   version in that commit). If the phases land
   in separate publishes, each publish bumps per
   `pkg/AGENTS.md` at that time instead of
-  folding several MINORs into one. Do not
+  folding several MINORs into one.
+  NOTE 2026-11-05: Phase 1 was committed in `ba9193c`
+  with NO version bump (deliberate at the time), so
+  'apply the MINOR bump in the same commit as the code'
+  is already violated for Phase 1; the package has
+  since moved 2.4.1 -> 2.6.0 -> 2.7.0 and is now
+  2.7.0 / build 32. Remaining phases ride the next
+  MINOR (2.8.0, build 33). Publish scope is open:
+  the app-store commit `08b81cd` and the generic-feed
+  commit are also unpushed, and which of those ride
+  the same 2.8.0 publish is the user's call. Do not
   commit, push, or publish this change without
   the user's explicit direction for that step,
   and do not approve any Kody capability
