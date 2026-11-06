@@ -15,7 +15,7 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 
 #### Scenario: Empty Apps page shows two prompts
 - **WHEN** the Apps page is fetched with no apps installed
-- **THEN** it shows Help-style help text with a prompt for installing the App Store and a prompt for adding your own apps, each as selectable text in a gate-hint code block, with no copy button and no Clipboard API use, and with no Edit button. The App Store prompt is agent-only (`install_from_catalog('app-store')`, verified with `list_apps`); it SHALL NOT name a browser install path.
+- **THEN** it shows Help-style help text with a prompt for adding your own apps first and a prompt for installing the App Store second, each as selectable text in a gate-hint code block, with no copy button and no Clipboard API use, and with no Edit button. The App Store prompt is agent-only (`install_from_catalog('app-store')`, verified with `list_apps`); it SHALL NOT name a browser install path.
 
 #### Scenario: Empty Home page shows the same help
 - **WHEN** `/` is fetched with no apps installed

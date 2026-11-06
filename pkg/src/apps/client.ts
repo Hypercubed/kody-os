@@ -581,10 +581,10 @@ export function renderEmptyHelp(appBasePath: string): string {
 	void appBasePath
 	return (
 		'<p>No apps installed yet. This shell starts empty \u2014 nothing is installed until you add it. Pick a path below. Copy a prompt into a Kody-connected agent.</p>\n' +
-		'<h3>Install the App Store</h3>\n' +
-		'<p class="gate-hint"><code>Add the App Store to my empty kody-os shell. Install the `app-store` catalog app with `install_from_catalog`, verify with `list_apps` that `app-store` is installed, and confirm the App Store page lists catalog apps. Do not install any other app, and do not publish or change the package source.</code></p>\n' +
 		'<h3>Add your own apps</h3>\n' +
 		'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Name: [display name]<br>\u2013 What it does: [one sentence]</code></p>\n' +
+		'<h3>Install the App Store</h3>\n' +
+		'<p class="gate-hint"><code>Add the App Store to my empty kody-os shell. Install the `app-store` catalog app with `install_from_catalog`, verify with `list_apps` that `app-store` is installed, and confirm the App Store page lists catalog apps. Do not install any other app, and do not publish or change the package source.</code></p>\n' +
 		'<p>Once something is installed, this help goes away and the Apps page lists it instead.</p>'
 	)
 }
