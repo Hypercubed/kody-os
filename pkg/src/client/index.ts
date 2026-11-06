@@ -168,7 +168,7 @@ if (canFastPath) {
 }
 
 /**
- * Mini-App Store controls (enhancement layer).
+ * App Store controls (enhancement layer).
  *
  * Store rows stay plain GET forms, so every control works with no JavaScript
  * (submit navigates and the server 303s back to the store). Where fetch and

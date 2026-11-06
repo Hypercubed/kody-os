@@ -451,23 +451,26 @@ A shell request against an empty registry SHALL NOT install any app. Removing th
 - **WHEN** every app including the App Store has been removed and a shell request arrives
 - **THEN** the registry is still empty and no catalog app is installed.
 
-### Requirement: Display name maps to internal app
+### Requirement: Display name is app
 
-The display name of an installed unit SHALL be "mini-app"
-("mini-apps" plural); its internal name SHALL stay "app". The
-mapping is display-only: it SHALL NOT change the definition
-schema, the MCP interface, storage layout, catalog behaviour, or
-the export format. Only the Help and App Store catalog definitions
-change for this requirement, each with catalogVersion +1. The
-adding-an-app skill name and path SHALL stay unchanged.
+The display name of an installed unit SHALL be "app"
+("apps" plural), the same as its internal name. The name SHALL
+NOT change the definition schema, the MCP interface, storage
+layout, catalog behaviour, or the export format. Only the Help
+and App Store catalog definitions change for this requirement,
+each with catalogVersion +1. The adding-an-app skill name and
+path SHALL stay unchanged.
 
-#### Scenario: Display name is mini-app, internal name is app
+(Reversed 2026-11-06: the display name was briefly the hyphenated
+diminutive form; the user chose plain "Apps" instead.)
+
+#### Scenario: Display name is app, internal name is app
 - **WHEN** a user reads the browser and an agent reads the MCP interface for the same installed unit
-- **THEN** the browser calls it a mini-app and the agent interface calls it an app, and both refer to the same definition, state, and id.
+- **THEN** the browser calls it an app and the agent interface calls it an app, and both refer to the same definition, state, and id.
 
 #### Scenario: Store display name changes, id does not
 - **WHEN** the Store is listed in its own catalog list and fetched at its route
-- **THEN** its row and page read "Mini-App Store", its id is still `app-store`, its route is still `/apps/app-store`, and `install_from_catalog('app-store')` still installs it.
+- **THEN** its row and page read "App Store", its id is still `app-store`, its route is still `/apps/app-store`, and `install_from_catalog('app-store')` still installs it.
 
 #### Scenario: No other catalog definition is bumped
 - **WHEN** the catalog is listed after this change

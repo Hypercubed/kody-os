@@ -1,24 +1,24 @@
 # Kody OS
 
-Minimal OS shell shared by humans and agents. Mini-apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
+Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v2.8.0** — Mini-apps Edit mode, a data-only Mini-App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Mini-apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed), and a Daily Feed catalog app (generic agent-pushed feed viewer, page only), a Link Drop catalog app (bookmarklet + agent-prompt link saver), and an updated Probe catalog app (clipboard test plus Phase 2, BigInt, and Wasm items), and a catalog-only Mini-App Store that offers a confirmed Overwrite for modified or snapshot-less installs, and an empty fresh install (no mini-apps seeded, including no Mini-App Store) with Mini-apps/Home empty-state help.
+Current: **v2.8.0** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed), and a Daily Feed catalog app (generic agent-pushed feed viewer, page only), a Link Drop catalog app (bookmarklet + agent-prompt link saver), and an updated Probe catalog app (clipboard test plus Phase 2, BigInt, and Wasm items), and a catalog-only App Store that offers a confirmed Overwrite for modified or snapshot-less installs, and an empty fresh install (no apps seeded, including no App Store) with Apps/Home empty-state help.
 
 ## Screenshots
 
 Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
 
 ![Home dashboard](public/screenshots/home.png)
-![All mini-apps](public/screenshots/apps.png)
+![All apps](public/screenshots/apps.png)
 ![Counter app](public/screenshots/counter.png)
 ![Puzzle app](public/screenshots/puzzle.png)
 
 ## What it does
 
 - **Home** — pinned widgets with live content, reorderable with corner arrows; honest empty state when nothing is pinned yet.
-- **Mini-apps** — every installed mini-app as a tile; Edit mode pins, hides, and adds mini-apps to the home dashboard.
-- **Mini-app pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs.
-- **Feeds** — mini-apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, and generic allowlisted upstreams (`capabilities.proxy`) read through `GET /proxy/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
+- **Apps** — every installed app as a tile; Edit mode pins, hides, and adds apps to the home dashboard.
+- **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs.
+- **Feeds** — apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, and generic allowlisted upstreams (`capabilities.proxy`) read through `GET /proxy/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
 - **Access** — the browser shell is locked by one-time codes so e-ink devices open it without Kody login. Each code is 4 digits, single use, valid 10 minutes; entering it burns the code and mints a 30-day session cookie with clean, code-free URLs. There is no other way in besides owner Kody login, and no secret to configure. Agents use MCP exports, which are never gated. Full steps: [Device key](docs/device-key.md).
 
 ## Setup
@@ -27,14 +27,14 @@ Setting up a fork of kody-os (fork, publish, unlock, first app) is covered start
 
 ## How to know it is working
 
-- Home shows live widgets for pinned mini-apps, or the honest **no widgets yet** empty state pointing at Mini-apps Edit's **Add to home** control.
-- Mini-apps lists installed mini-apps as tiles, or the honest **no mini-apps yet** empty state.
-- A mini-app page shows its description, live state fields, and one form button per declared action.
+- Home shows live widgets for pinned apps, or the honest **no widgets yet** empty state pointing at Apps Edit's **Add to home** control.
+- Apps lists installed apps as tiles, or the honest **no apps yet** empty state.
+- An app page shows its description, live state fields, and one form button per declared action.
 - Submitting an action works without JavaScript and returns to the app page showing the new state.
 
 ## Adding an app
 
-A mini-app is a JSON definition in package storage, not code. An agent calls MCP `add_app` and the mini-app appears on the Mini-apps page with no republish. The same definition works in the hosted OS and the local `kody dev` preview; the two stores are separate, so add it to each target.
+An app is a JSON definition in package storage, not code. An agent calls MCP `add_app` and the app appears on the Apps page with no republish. The same definition works in the hosted OS and the local `kody dev` preview; the two stores are separate, so add it to each target.
 
 See [Adding an app](.agents/skills/adding-an-app/SKILL.md) for the definition contract, both paths, verification, homepage placement, export, and removal. See [Scribe limitations](docs/scribe-limitations.md) for the binding Kindle Scribe constraints.
 
@@ -42,9 +42,8 @@ See [Adding an app](.agents/skills/adding-an-app/SKILL.md) for the definition co
 
 Copy this to your Kody-connected agent and fill in the bracketed parts:
 
-> Add a new mini-app to my hosted kody-os app on Kody. First open the published guide with Kody search entity `package:kody-os#.agents/skills/adding-an-app/SKILL.md` and the Scribe constraints at `package:kody-os#docs/scribe-limitations.md`, then follow that definition contract. Use the package's `add_app` through the Kody MCP `execute` wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous. When the need is a small toy with JS behavior (random shake, live clock), write a bundle (entry `index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap, vanilla ES2019, inlined, zero emojis); otherwise stay on the shared validated-state operators.
+> Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity `package:kody-os#.agents/skills/adding-an-app/SKILL.md` and the Scribe constraints at `package:kody-os#docs/scribe-limitations.md`, then follow that definition contract. Use the package's `add_app` through the Kody MCP `execute` wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous. When the need is a small toy with JS behavior (random shake, live clock), write a bundle (entry `index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap, vanilla ES2019, inlined, zero emojis); otherwise stay on the shared validated-state operators.
 >
-> - Mini-app id: [slug]
 > - Name: [display name]
 > - What it does: [one sentence]
 
@@ -59,7 +58,7 @@ export NO_PROXY='*' no_proxy='*'
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
 ```
 
-Mint a local-dev OTP and install the `app-store` catalog mini-app (one-time per fresh mock store). Install it explicitly: a fresh shell starts empty and seeds nothing, so the Mini-App Store only appears once installed. No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. Mint while the server is stopped, then start it promptly: the code is single use, valid 10 minutes, and burns into a 30-day session cookie.
+Mint a local-dev OTP and install the `app-store` catalog app (one-time per fresh mock store). Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. Mint while the server is stopped, then start it promptly: the code is single use, valid 10 minutes, and burns into a 30-day session cookie.
 
 ```sh
 kody execute --target mock --file scripts/mint-dev-otp.ts
@@ -80,7 +79,7 @@ kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely) and enter the minted code in the unlock form. The footer reads `via cookie` with a clean URL; the Mini-apps page lists the **Mini-App Store**. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does. A minted OTP is single use, so there is no repeatable authenticated fetch check: verify actions in the unlocked browser instead.
+Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely) and enter the minted code in the unlock form. The footer reads `via cookie` with a clean URL; the Apps page lists the **App Store**. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does. A minted OTP is single use, so there is no repeatable authenticated fetch check: verify actions in the unlocked browser instead.
 
 Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`. To clear local sessions and OTPs: `kody execute --target mock --file scripts/clear-auth.ts` (returns counts only).
 

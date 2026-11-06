@@ -275,7 +275,7 @@ function tileItem(app: AppSummary, appBasePath: string, wide?: boolean): string 
 	var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
 	var description = typeof app.description === 'string' ? app.description : ''
 	var titleAttr = ' title="' + escapeHtml(description) + '"'
-	// Tiles live on the Mini-apps page, so the mini-app's close box returns there.
+	// Tiles live on the Apps page, so the app's close box returns there.
 	var fromApps = encodeURIComponent(appBasePath + '/apps')
 	var iconHtml = '<span class="tile-icon" aria-hidden="true">' + icon + '</span>'
 	var textHtml =
@@ -343,9 +343,9 @@ export function editAppsLink(appBasePath: string, formBase?: string): string {
 	)
 }
 
-/** Render the All-mini-apps section in browse mode. The Mini-apps page is a launcher:
- * the All mini-apps header carries the Edit link (to Edit mode) when at least one
- * mini-app is installed. */
+/** Render the All-apps section in browse mode. The Apps page is a launcher:
+ * the All apps header carries the Edit link (to Edit mode) when at least one
+ * app is installed. */
 export function renderAllSection(
 	apps: AppSummary[],
 	appBasePath: string,
@@ -356,7 +356,7 @@ export function renderAllSection(
 	var list = tilesList(apps, appBasePath)
 	var editLink = editAvailable === true ? ' ' + editAppsLink(appBasePath, formBase) : ''
 	return (
-		'<section class="category" id="apps" aria-label="Mini-apps">\n' +'<div class="section-head"><h2>All mini-apps</h2>' + editLink + '</div>\n' +
+		'<section class="category" id="apps" aria-label="Apps">\n' +'<div class="section-head"><h2>All apps</h2>' + editLink + '</div>\n' +
 		(typeof hint === 'string' && hint !== '' ? '<p class="empty-hint">' + escapeHtml(hint) + '</p>\n' : '') +
 		list +
 		'\n</section>'
@@ -416,8 +416,8 @@ function editToggleForm(formBase: string, param: string, id: string, label: stri
 	)
 }
 
-/** Render the Mini-apps Edit section: one row per installed mini-app, every
- * installed mini-app including hidden ones, alphabetical by label with id
+/** Render the Apps Edit section: one row per installed app, every
+ * installed app including hidden ones, alphabetical by label with id
  * as tie-break, each row with Pin/Unpin, Hide/Unhide, and Add to
  * home/Remove from home as plain GET forms through the /apps
  * mutation route, 303-ing back to ?edit=1. Pinned/Recent stay tiles;
@@ -469,8 +469,8 @@ export function renderEditSection(
 		)
 	}
 	return (
-		'<section class="category" id="apps-edit" aria-label="Edit mini-apps">\n' +
-		'<div class="section-head"><h2>Edit mini-apps</h2><form method="GET" action="' + escapeHtml(base) + '" class="section-done"><button type="submit">Done</button></form></div>\n' +
+		'<section class="category" id="apps-edit" aria-label="Edit apps">\n' +
+		'<div class="section-head"><h2>Edit apps</h2><form method="GET" action="' + escapeHtml(base) + '" class="section-done"><button type="submit">Done</button></form></div>\n' +
 		'<ul class="edit-list">\n' +
 		items.join('\n') +
 		'\n</ul>\n</section>'
@@ -482,7 +482,7 @@ export function renderEditSection(
  * The shell's preferred home rendering is its own themed tile grid.
  */
 export function renderHomeTiles(apps: AppSummary[], appBasePath: string): string {
-	if (apps.length === 0) return '<p>No mini-apps yet.</p>'
+	if (apps.length === 0) return '<p>No apps yet.</p>'
 	return (
 		'<ul>\n' +
 		apps
@@ -568,33 +568,31 @@ export function renderWidgetSection(
 
 /**
  * Shared empty-state help block (empty-install + mini-apps-user-facing).
- * Rendered by the Mini-apps page when no mini-apps are installed and by
- * Home when the homepage is empty and no mini-apps are installed at all.
+ * Rendered by the Apps page when no apps are installed and by
+ * Home when the homepage is empty and no apps are installed at all.
  * One block, not two copies, so the two pages cannot silently diverge.
  * Prompts are plain selectable text in gate-hint code blocks — no copy
  * button, no Clipboard API (on-device Scribe test: navigator.clipboard
- * writeText/readText are denied with NotAllowedError). The glossary line
- * is here because Help itself may not be installed on an empty shell.
+ * writeText/readText are denied with NotAllowedError).
  * appBasePath is accepted so call sites pass the same context as the
  * other renderers; the help text currently contains no links.
  */
 export function renderEmptyHelp(appBasePath: string): string {
 	void appBasePath
 	return (
-		'<p>No mini-apps installed yet. This shell starts empty \u2014 nothing is installed until you add it. Pick a path below. Copy a prompt into a Kody-connected agent.</p>\n' +
-		'<p>A mini-app is an installed app: in the browser it is called a mini-app, and agents call it an app (<code>add_app</code>, <code>list_apps</code>).</p>\n' +
-		'<h3>Install the Mini-App Store</h3>\n' +
-		'<p class="gate-hint"><code>Add the Mini-App Store to my empty kody-os shell. Install the `app-store` catalog mini-app with `install_from_catalog`, verify with `list_apps` that `app-store` is installed, and confirm the Mini-App Store page lists catalog mini-apps. Do not install any other mini-app, and do not publish or change the package source.</code></p>\n' +
-		'<h3>Add your own mini-apps</h3>\n' +
-		'<p class="gate-hint"><code>Add a new mini-app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Mini-app id: [slug]<br>\u2013 Name: [display name]<br>\u2013 What it does: [one sentence]</code></p>\n' +
-		'<p>Once something is installed, this help goes away and the Mini-apps page lists it instead.</p>'
+		'<p>No apps installed yet. This shell starts empty \u2014 nothing is installed until you add it. Pick a path below. Copy a prompt into a Kody-connected agent.</p>\n' +
+		'<h3>Install the App Store</h3>\n' +
+		'<p class="gate-hint"><code>Add the App Store to my empty kody-os shell. Install the `app-store` catalog app with `install_from_catalog`, verify with `list_apps` that `app-store` is installed, and confirm the App Store page lists catalog apps. Do not install any other app, and do not publish or change the package source.</code></p>\n' +
+		'<h3>Add your own apps</h3>\n' +
+		'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Name: [display name]<br>\u2013 What it does: [one sentence]</code></p>\n' +
+		'<p>Once something is installed, this help goes away and the Apps page lists it instead.</p>'
 	)
 }
 
 /**
  * Render the widget dashboard grid. An empty homepage list renders one of
- * two honest empty states: the shared empty help block when no mini-apps
- * are installed at all, or a short Add-to-home message when mini-apps are
+ * two honest empty states: the shared empty help block when no apps
+ * are installed at all, or a short Add-to-home message when apps are
  * installed but none are on Home.
  */
 export function renderDashboard(widgets: string[], appBasePath: string, hasApps: boolean): string {
@@ -603,7 +601,7 @@ export function renderDashboard(widgets: string[], appBasePath: string, hasApps:
 			return (
 				'<section class="dashboard dashboard-empty" aria-label="Home">\n' +
 				'<h2>No widgets yet</h2>\n' +
-				'<p class="empty-hint">You have mini-apps installed \u2014 add some to Home from the Mini-apps page. Open Mini-apps, tap Edit, and use Add to home on a row. They appear here live with no republish.</p>\n' +
+				'<p class="empty-hint">You have apps installed \u2014 add some to Home from the Apps page. Open Apps, tap Edit, and use Add to home on a row. They appear here live with no republish.</p>\n' +
 				'</section>'
 			)
 		}

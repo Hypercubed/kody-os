@@ -15,7 +15,7 @@ Before writing a bundle that displays state, read the [Bundle/shell interaction 
 
 | Field | Required | Value |
 | --- | --- | --- |
-| `id` | yes | Slug matching `^[a-z0-9][a-z0-9-]{0,63}$`. Routes and storage keys use it. |
+| `id` | yes | Slug matching `^[a-z0-9][a-z0-9-]{0,63}$`. Routes and storage keys use it. When the user did not supply an id, derive it from the display name (lowercase, non-alphanumerics to single dashes, trim leading/trailing dashes); check `list_apps` first — if that id is already installed, ask the user before reusing it. |
 | `name` | yes | Non-empty display name. |
 | `label` | no | Tile label. Defaults to `name`. |
 | `icon` | no | Plain-text glyph or short mark (never an emoji), OR a sanitized inline SVG starting with `<svg`. See [Tile icons](#tile-icons). |

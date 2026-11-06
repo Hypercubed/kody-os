@@ -1,5 +1,7 @@
 # Proposal
 
+> CLOSED AS OBE 2026-11-06 (user direction): the 'mini-app' wording this change proposed was implemented, then reversed the same day — the settled user-facing term is plain 'Apps'. This change is closed; the replacement wording is the Apps rename on the same branch. See the reversal note in tasks.md. Retained as a record.
+
 ## Why
 
 kody-os is a package that, installed on Kody, becomes a Kody app. Inside

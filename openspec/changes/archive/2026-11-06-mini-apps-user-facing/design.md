@@ -1,5 +1,7 @@
 # Design: mini-apps-user-facing
 
+> CLOSED AS OBE 2026-11-06: see the notice in proposal.md — the 'mini-app' wording is reversed; the settled term is plain 'Apps'.
+
 ## Context
 
 See proposal.md (Why). The three words in play already have distinct
