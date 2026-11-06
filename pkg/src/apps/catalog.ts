@@ -25,6 +25,7 @@ import clockBundle from '../../catalog/clock.bundle.json' with { type: 'json' }
 import counterBundle from '../../catalog/counter.bundle.json' with { type: 'json' }
 import dailyFeedBundle from '../../catalog/daily-feed.bundle.json' with { type: 'json' }
 import eightBallBundle from '../../catalog/eight-ball.bundle.json' with { type: 'json' }
+import genericFeedBundle from '../../catalog/generic-feed.bundle.json' with { type: 'json' }
 import helpBundle from '../../catalog/help.bundle.json' with { type: 'json' }
 import hoodieWeatherBundle from '../../catalog/hoodie-weather.bundle.json' with { type: 'json' }
 import linkDropBundle from '../../catalog/link-drop.bundle.json' with { type: 'json' }
@@ -47,6 +48,7 @@ var CATALOG: AppDefinition[] = [
 	counterBundle as AppDefinition,
 	dailyFeedBundle as AppDefinition,
 	eightBallBundle as AppDefinition,
+	genericFeedBundle as AppDefinition,
 	helpBundle as AppDefinition,
 	hoodieWeatherBundle as AppDefinition,
 	linkDropBundle as AppDefinition,
