@@ -49,7 +49,6 @@ export {
 	delete_backup,
 	deleteInstallSnapshot,
 	deriveOpenAs,
-	ensure_app_store_seeded,
 	export_app,
 	export_install,
 	fingerprintDefinition,
@@ -98,4 +97,4 @@ export type { AppStoreStatus, AppStoreStatusInfo, BackupEntry, BackupSummary, Ca
 export { actFromForm } from './forms.ts'
 export { get_catalog_definition, list_catalog } from './catalog.ts'
 export type { CatalogSummary } from './catalog.ts'
-export { editAppsLink, escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'
+export { editAppsLink, escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'

@@ -6,8 +6,12 @@
  * Proves, against fresh in-memory stores, the parts of the data-only
  * App Store change that do not need a live shell fetch (kody dev /
  * hosted):
- *   Seeding: blank store seeds only app-store, idempotently; a
- *     non-empty store is untouched; remove-all re-seeds.
+ *   Empty registry (empty-install): a blank store installs nothing
+ *     on its own; removing the last app leaves it empty, no re-seed.
+ *     The Store appears only through an explicit install.
+ *   Empty states (empty-install + mini-apps-user-facing): the shared
+ *     empty-help block and the two Home empty states render the
+ *     mini-app prompts, and the empty-page prompt agrees with Help's.
  *   Store install: unknown id fails with no write; a store install
  *     writes a snapshot, reports up-to-date, and adds no pin,
  *     homepage, hidden, or recency entry.
@@ -45,7 +49,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { act, add_app, capabilityAdditions, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_remove, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
+import { act, add_app, capabilityAdditions, createMemoryStore, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_remove, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
 
 var failures: string[] = []
 
@@ -58,33 +62,43 @@ function clone<T>(v: T): T {
 	return JSON.parse(JSON.stringify(v)) as T
 }
 
-// Seeding: blank, idempotent, non-empty untouched, remove-all re-seeds.
+// Empty registry stays empty (empty-install): a blank store installs
+// nothing on its own; the Store appears only through an explicit
+// install; removing the last app leaves the registry empty, no re-seed.
 {
 	var store = createMemoryStore()
-	var first = await ensure_app_store_seeded(store)
-	check('seeding blank store seeds', first.ok && first.seeded === true, JSON.stringify(first))
-	var apps = await list_apps(store)
-	check('seeding installs only app-store', apps.length === 1 && apps[0].id === 'app-store', apps.map(function (a) { return a.id }).join(','))
-	var snap = await readInstallSnapshot(store, 'app-store')
+	var blankApps = await list_apps(store)
+	check('blank store starts empty', blankApps.length === 0, blankApps.map(function (a) { return a.id }).join(','))
+	var blankSnap = await readInstallSnapshot(store, 'app-store')
+	check('blank store has no app-store snapshot', blankSnap === null, JSON.stringify(blankSnap))
 	var storeCatalogVersion = (get_catalog_definition('app-store') as { catalogVersion?: number }).catalogVersion
-	check('seeding writes app-store snapshot', snap !== null && snap.catalogVersion === storeCatalogVersion, JSON.stringify(snap))
-	var second = await ensure_app_store_seeded(store)
-	check('seeding is idempotent', second.ok && second.seeded === false, JSON.stringify(second))
+	var installed = await store_install_from_catalog('app-store', store)
+	check('explicit store install succeeds', installed.ok === true, JSON.stringify(installed))
+	var apps = await list_apps(store)
+	check('explicit install installs only app-store', apps.length === 1 && apps[0].id === 'app-store', apps.map(function (a) { return a.id }).join(','))
+	var snap = await readInstallSnapshot(store, 'app-store')
+	check('explicit store install writes app-store snapshot', snap !== null && snap.catalogVersion === storeCatalogVersion, JSON.stringify(snap))
 	var nonEmpty = createMemoryStore()
 	await add_app(clone(get_catalog_definition('counter')) as never, nonEmpty)
-	var untouched = await ensure_app_store_seeded(nonEmpty)
 	var nonEmptyApps = await list_apps(nonEmpty)
-	check('seeding leaves non-empty store untouched', untouched.ok && untouched.seeded === false && nonEmptyApps.length === 1 && nonEmptyApps[0].id === 'counter', JSON.stringify(untouched) + ' ' + nonEmptyApps.map(function (a) { return a.id }).join(','))
-	await remove_app('counter', nonEmpty)
-	var reseeded = await ensure_app_store_seeded(nonEmpty)
-	var reseededApps = await list_apps(nonEmpty)
-	check('remove-all re-seeds app-store', reseeded.ok && reseeded.seeded === true && reseededApps.length === 1 && reseededApps[0].id === 'app-store', JSON.stringify(reseeded))
+	check('a non-empty store is untouched without an install call', nonEmptyApps.length === 1 && nonEmptyApps[0].id === 'counter', nonEmptyApps.map(function (a) { return a.id }).join(','))
+	await remove_app('app-store', store)
+	var afterRemove = await list_apps(store)
+	check('removing the last app leaves the registry empty', afterRemove.length === 0, afterRemove.map(function (a) { return a.id }).join(','))
+	var snapAfterRemove = await readInstallSnapshot(store, 'app-store')
+	check('removing the last app deletes its snapshot', snapAfterRemove === null, JSON.stringify(snapAfterRemove))
+	// Same, via the Store management API with confirmation (tasks 3.1).
+	await store_install_from_catalog('app-store', store)
+	var mgmtRemoved = await manage_remove('app-store', 'app-store', true, store)
+	check('management remove of the last app applies on confirm', mgmtRemoved.ok === true, JSON.stringify(mgmtRemoved))
+	var afterMgmtRemove = await list_apps(store)
+	check('management remove of the last app leaves the registry empty', afterMgmtRemove.length === 0, afterMgmtRemove.map(function (a) { return a.id }).join(','))
 }
 
 // Store install: unknown fails clean, clean install snapshots, no launcher side effects.
 {
 	var store = createMemoryStore()
-	await ensure_app_store_seeded(store)
+	await store_install_from_catalog('app-store', store)
 	var unknown = await store_install_from_catalog('no-such-app', store)
 	var afterUnknown = await list_apps(store)
 	check('store install unknown id fails with no write', !unknown.ok && afterUnknown.length === 1, JSON.stringify(unknown))
@@ -102,7 +116,7 @@ function clone<T>(v: T): T {
 // Snapshot discipline + store update + render controls.
 {
 	var store = createMemoryStore()
-	await ensure_app_store_seeded(store)
+	await store_install_from_catalog('app-store', store)
 	await store_install_from_catalog('counter', store)
 	await act('counter', 'set_count', { value: 7 }, store)
 	await set_pin('counter', true, store)
@@ -134,7 +148,7 @@ function clone<T>(v: T): T {
 // Snapshot-less, storage-only, catalog-only list shape, render gates, hidden rows.
 {
 	var store = createMemoryStore()
-	await ensure_app_store_seeded(store)
+	await store_install_from_catalog('app-store', store)
 	await add_app(clone(get_catalog_definition('xkcd')) as never, store)
 	var xkcdStatus = await get_app_status('xkcd', store)
 	check('generic add_app catalog app is snapshot-less', xkcdStatus.status === 'snapshot-less', xkcdStatus.status)
@@ -196,7 +210,7 @@ function clone<T>(v: T): T {
 // Management remove: permission gate, confirmation gate, full uninstall.
 {
 	var store = createMemoryStore()
-	await ensure_app_store_seeded(store)
+	await store_install_from_catalog('app-store', store)
 	await store_install_from_catalog('counter', store)
 	await act('counter', 'set_count', { value: 7 }, store)
 	await set_pin('counter', true, store)
@@ -220,6 +234,27 @@ function clone<T>(v: T): T {
 	check('removed app loses its state', 'error' in (stateAfterRemove as object), JSON.stringify(stateAfterRemove))
 	var removeMissing = await manage_remove('app-store', 'counter', true, store)
 	check('management remove of a not-installed app fails', removeMissing.ok === false, JSON.stringify(removeMissing))
+}
+
+// Empty states + prompt sync (empty-install + mini-apps-user-facing).
+{
+	var help = renderEmptyHelp('')
+	check('empty help names the Mini-App Store prompt', help.indexOf('Add the Mini-App Store to my empty kody-os shell.') !== -1, '')
+	check('empty help carries the glossary line', help.indexOf('A mini-app is an installed app: in the browser it is called a mini-app, and agents call it an app') !== -1, '')
+	check('empty help has both prompts as gate-hint code', help.indexOf('<h3>Install the Mini-App Store</h3>') !== -1 && help.indexOf('<h3>Add your own mini-apps</h3>') !== -1 && help.indexOf('class="gate-hint"') !== -1, '')
+	check('empty help has no copy button or Clipboard API', help.indexOf('navigator.clipboard') === -1 && help.indexOf('<button') === -1, '')
+	var helpDef = get_catalog_definition('help') as unknown as { bundle: { files: Record<string, string> } }
+	var helpHtml = helpDef.bundle.files['index.html']
+	check('empty help prompt 2 matches Help prompt', help.indexOf('Add a new mini-app to my hosted kody-os app on Kody.') !== -1 && helpHtml.indexOf('Add a new mini-app to my hosted kody-os app on Kody.') !== -1 && help.indexOf('Mini-app id: [slug]') !== -1 && helpHtml.indexOf('Mini-app id: [slug]') !== -1, '')
+	var dashNoApps = renderDashboard([], '', false)
+	check('Home with no mini-apps shows the shared help', dashNoApps.indexOf('No mini-apps installed yet.') !== -1 && dashNoApps.indexOf('Add the Mini-App Store') !== -1, '')
+	check('Home and Mini-apps render the same help block', dashNoApps.indexOf(help) !== -1, '')
+	var dashHasApps = renderDashboard([], '', true)
+	check('Home with mini-apps but none on Home prompts Add to home', dashHasApps.indexOf('No widgets yet') !== -1 && dashHasApps.indexOf('You have mini-apps installed') !== -1 && dashHasApps.indexOf('Add the Mini-App Store') === -1, '')
+	var dashWidgets = renderDashboard(['<section class="widget">x</section>'], '', true)
+	check('Home with widgets renders the widgets', dashWidgets.indexOf('widget') !== -1 && dashWidgets.indexOf('No widgets yet') === -1, '')
+	var homeTiles = renderHomeTiles([], '')
+	check('home tiles say no mini-apps yet', homeTiles.indexOf('No mini-apps yet.') !== -1, '')
 }
 
 if (failures.length === 0) {

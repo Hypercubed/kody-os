@@ -7,54 +7,101 @@ Capture the shipped Phase 2 browser shell so future changes (theme, routing, Scr
 
 ### Requirement: Home launcher lists installed apps
 
-The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections, as a launcher, plus Edit mode — SHALL live behind the Apps menu link instead of at `/`. Launcher management (pin, hide, home) lives in Apps Edit (see below); catalog management (install, update, restore) lives in the App Store data app (see App Store page below). Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. A fresh install SHALL open with the App Store installed (see app-registry); with no apps installed at all (seeding has failed or not yet run), both `/` and the Apps page SHALL render honest empty states with guidance toward adding apps, including the App Store path.
+The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Mini-apps grid — Pinned, Recent, and All-mini-apps sections, as a launcher, plus Edit mode — SHALL live behind the Mini-apps menu link instead of at `/`. Launcher management (pin, hide, home) lives in Mini-apps Edit (see below); catalog management (install, update, restore) lives in the Mini-App Store data app (see Mini-App Store page below). Deep links at `/apps/:id` SHALL be unchanged. The Mini-apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All mini-apps (every installed mini-app except hidden ones; pinned mini-apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. Every tile SHALL show the mini-app's icon glyph or sanitized SVG mark and label. A fresh install SHALL open with an empty registry — no mini-apps are seeded, including no Mini-App Store; with no mini-apps installed, both `/` and the Mini-apps page SHALL render the same Help-style help text with two copy-paste prompts (install the Mini-App Store, agent-only via `install_from_catalog`; add your own mini-apps) instead of an empty tile list, rendered from the same shared shell block. The help text SHALL also carry the glossary line from `mini-apps-user-facing`: "A mini-app is an installed app: in the browser it is called a mini-app, and agents call it an app (`add_app`, `list_apps`)." With mini-apps installed but none on Home, `/` SHALL instead show a short message prompting the user to add mini-apps to Home from the Mini-apps page via Mini-apps Edit's Add to home control.
 
 #### Scenario: Empty registry is honest
-- **WHEN** no apps are installed
-- **THEN** both `/` and the Apps page respond 200 with honest empty states and guidance toward adding apps.
+- **WHEN** no mini-apps are installed
+- **THEN** both `/` and the Mini-apps page respond 200 with honest empty states and guidance toward adding mini-apps.
 
-#### Scenario: Fresh install opens with the App Store
-- **WHEN** a blank install receives its first shell request
-- **THEN** the Apps page shows the App Store tile, and `/` shows its honest no-widgets state (the store is not on the homepage by default).
+#### Scenario: Empty Mini-apps page shows two prompts
+- **WHEN** the Mini-apps page is fetched with no mini-apps installed
+- **THEN** it shows Help-style help text with a prompt for installing the Mini-App Store and a prompt for adding your own mini-apps, each as selectable text in a gate-hint code block, with no copy button and no Clipboard API use, and with no Edit button. The Mini-App Store prompt is agent-only (`install_from_catalog('app-store')`, verified with `list_apps`); it SHALL NOT name a browser install path. The help text also carries the glossary line "A mini-app is an installed app: in the browser it is called a mini-app, and agents call it an app (`add_app`, `list_apps`)."
 
-#### Scenario: Apps page offers Edit mode
-- **WHEN** the Apps page is fetched with at least one app installed
-- **THEN** the All apps header shows an Edit button (a GET form, matching the Clear control); with no apps installed it shows no Edit button.
+#### Scenario: Empty Home page shows the same help
+- **WHEN** `/` is fetched with no mini-apps installed
+- **THEN** it shows the same help text as the Mini-apps page — same intro, same two prompts — rendered from the same shared shell block, not a second copy.
+
+#### Scenario: Home with mini-apps but none on Home prompts Add to home
+- **WHEN** `/` is fetched with at least one mini-app installed and an empty homepage list
+- **THEN** it shows "No widgets yet" with a short message prompting the user to add mini-apps to Home from the Mini-apps page via Mini-apps Edit's Add to home control, and it does NOT show the two install prompts.
+
+#### Scenario: Mini-apps page offers Edit mode
+- **WHEN** the Mini-apps page is fetched with at least one mini-app installed
+- **THEN** the All mini-apps header shows an Edit button (a GET form, matching the Clear control); with no mini-apps installed it shows no Edit button.
 
 #### Scenario: Landing is the dashboard
-- **WHEN** apps are pinned to the homepage
-- **THEN** `/` shows their live widgets, and the Apps grid (with pins on top) is one menu tap away.
+- **WHEN** mini-apps are pinned to the homepage
+- **THEN** `/` shows their live widgets, and the Mini-apps grid (with pins on top) is one menu tap away.
 
 #### Scenario: Sections render in order with an app installed and pinned
-- **WHEN** one app is installed, pinned, and acted on
-- **THEN** the Apps page shows it in Pinned, in Recent, and in All apps, in that section order.
+- **WHEN** one mini-app is installed, pinned, and acted on
+- **THEN** the Mini-apps page shows it in Pinned, in Recent, and in All mini-apps, in that section order.
 
-#### Scenario: Modal tile opens overlay without leaving the Apps page
-- **WHEN** a modal-capable app's tile is followed
-- **THEN** the overlay section becomes visible on the Apps page (no navigation), showing current state with working forms, and the back link hides it again.
+#### Scenario: Modal tile opens overlay without leaving the Mini-apps page
+- **WHEN** a modal-capable mini-app's tile is followed
+- **THEN** the overlay section becomes visible on the Mini-apps page (no navigation), showing current state with working forms, and the back link hides it again.
 
 #### Scenario: Unified app renders UI plus state
-- **WHEN** a unified app page is fetched
+- **WHEN** a unified mini-app page is fetched
 - **THEN** bundle UI, live state, and action forms all render in the single panel with no template branch.
 
 #### Scenario: SVG tile renders mark
-- **WHEN** an app with a sanitized SVG icon is listed
+- **WHEN** a mini-app with a sanitized SVG icon is listed
 - **THEN** the tile shows the SVG mark at icon size with no color or animation.
+
+### Requirement: User-facing display name is mini-app
+
+User-facing text SHALL call an installed unit a mini-app, and
+the Store "Mini-App Store". "Widget" SHALL keep meaning the
+compact Home rendering of a mini-app, not the mini-app itself.
+Internal identifiers SHALL stay `app`: MCP exports, routes,
+storage keys, and type names SHALL NOT change. Covered surfaces
+are listed in the scenarios below.
+
+(Note: this delta's "Home empty hint says mini-apps" scenario is NOT carried here — it is
+superseded by the empty-install two-state Home rendering merged above: with mini-apps
+installed but none on Home, `/` shows "No widgets yet" with the Add-to-home prompt, not a
+Store install hint.)
+
+
+#### Scenario: Menu and Mini-apps page say mini-apps
+- **WHEN** any shell page is fetched
+- **THEN** the menu link reads "Mini-apps", the Mini-apps page title and section head read "Mini-apps", its sections read "All mini-apps" and "Edit mini-apps", and no user-facing bare "app" appears outside the allowlist in the scenarios below.
+
+#### Scenario: Store page says Mini-App Store
+- **WHEN** the Store page is fetched
+- **THEN** its title, label, and description read "Mini-App Store" / "Install and update mini-apps from the catalog…", its intro, no-JavaScript note, loading and failure status, capability line, and confirm-dialog wording say mini-app(s), and its route is still `/apps/app-store` with id `app-store`.
+
+#### Scenario: Help glossary states the mapping once
+- **WHEN** the Help page is fetched
+- **THEN** its intro states that a mini-app is an installed app, called a mini-app in the browser and an app by the agent tools, its heading reads "Adding mini-apps", and its add prompt prose says mini-app while its code keeps `add_app`, `list_apps`, and `get_app_state`.
+
+#### Scenario: Titles, headings, and prompts follow the same rule
+- **WHEN** a page title, a Store or Help display string, or an empty-state prompt is rendered
+- **THEN** document titles read "Mini-apps · {title}" or "Mini-App Store · {title}", the Store bundle's intro, no-JavaScript note, status, capability line, and confirm-dialog wording say mini-app(s), Help's add prompt prose says mini-app while its code keeps `add_app`, `list_apps`, and the adding-an-app skill path, the `empty-install` prompts use mini-app wording, and the Pinned and Recent headings are unchanged.
+
+#### Scenario: Widget still means the Home rendering
+- **WHEN** a mini-app is pinned to the homepage
+- **THEN** `/` shows its widget, and the word "widget" refers to that Home rendering, not to the mini-app itself.
+
+#### Scenario: Internal identifiers are unchanged
+- **WHEN** the shell's MCP exports, routes, storage keys, and type names are listed
+- **THEN** they still read `list_apps`, `add_app`, `remove_app`, `get_app_state`, `/apps`, `/apps/:id`, `kody-os.apps.*`, and `AppDefinition`, with no `mini-app` spelling in any of them.
 
 ### Requirement: Pinned section
 
-The shell SHALL render a Pinned section above Recent listing pinned apps in pin order. A pinned app that is also hidden SHALL still appear in Pinned. An empty pinned list SHALL omit the section entirely. Pinned tiles SHALL span two grid columns (three per row at full width) at the standard tile height, with the icon fixed left and the label plus description stacked right. Every tile link on the Apps screen (Pinned, Recent, All apps) SHALL carry the app description as a `title` tooltip.
+The shell SHALL render a Pinned section above Recent listing pinned apps in pin order. A pinned app that is also hidden SHALL still appear in Pinned. An empty pinned list SHALL omit the section entirely. Pinned tiles SHALL span two grid columns (three per row at full width) at the standard tile height, with the icon fixed left and the label plus description stacked right. Every tile link on the Apps screen (Pinned, Recent, All mini-apps) SHALL carry the app description as a `title` tooltip.
 
 #### Scenario: Hidden pinned app stays visible in Pinned only
-- **WHEN** a pinned app is hidden via Apps Edit
-- **THEN** it remains in the Pinned section and disappears from the All apps section.
+- **WHEN** a pinned app is hidden via Mini-apps Edit
+- **THEN** it remains in the Pinned section and disappears from the All mini-apps section.
 
 #### Scenario: Pinned tiles are double-wide with descriptions
-- **WHEN** the Apps page renders with pinned apps
+- **WHEN** the Mini-apps page renders with pinned apps
 - **THEN** each pinned tile is twice as wide as a standard tile at the same height, showing the icon left and label plus description right, three per row.
 
 #### Scenario: Tiles carry tooltips
-- **WHEN** any Apps-screen tile is inspected
+- **WHEN** any Mini-apps-screen tile is inspected
 - **THEN** its link carries a `title` attribute with the app description, with no visual change.
 
 ### Requirement: Recent section with Clear
@@ -86,7 +133,7 @@ The shell SHALL render one page per app at `GET /apps/:id` showing the app's tit
 
 The shell SHALL render an expand control in the titlebar of every app page
 (`GET /apps/:id`), at the far right opposite the close box, and SHALL NOT render
-it on the dashboard, Apps page, 404 page, modal overlay, or home widget.
+it on the dashboard, Mini-apps page, 404 page, modal overlay, or home widget.
 Activating the control SHALL switch to a full-window view with no
 JavaScript and without the browser Fullscreen API: the window SHALL span `100%`
 of the viewport width with no side margin or border, its top SHALL be flush with
@@ -104,7 +151,7 @@ behavior. The static Help page no longer exists, so the help app page at
 #### Scenario: Expand control appears only on app pages
 - **WHEN** an app page is fetched
 - **THEN** its titlebar shows the expand control at the far right, and when the
-  dashboard, Apps page, a modal overlay, or a home widget is fetched
+  dashboard, Mini-apps page, a modal overlay, or a home widget is fetched
   no page-mode expand control is present.
 
 #### Scenario: Expanding fills width and sits at the top
@@ -142,7 +189,7 @@ The shell SHALL route mount-tolerantly: it slices the request path from the firs
 
 ### Requirement: Single shared chrome
 
-Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home and Apps links, then the menu-app links specified in `Top menu bar links` (no Refresh link, no static Help link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, `via key`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, carried as a validated `from` param on the tile link); with no valid `from` it SHALL go Home. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
+Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home and Mini-apps links, then the menu-app links specified in `Top menu bar links` (no Refresh link, no static Help link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, `via key`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, carried as a validated `from` param on the tile link); with no valid `from` it SHALL go Home. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
 
 #### Scenario: Unknown routes keep the chrome
 - **WHEN** a request hits an unknown path
@@ -150,7 +197,7 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 
 #### Scenario: Header order and clock
 - **WHEN** any page is fetched
-- **THEN** the header reads brand, Home, Apps left to right with no Refresh link and no static Help link, then any installed menu-app links in label order, and shows a date + time on the far right.
+- **THEN** the header reads brand, Home, Mini-apps left to right with no Refresh link and no static Help link, then any installed menu-app links in label order, and shows a date + time on the far right.
 
 #### Scenario: Defaults preserve current rendering
 - **WHEN** no theme file is present
@@ -161,8 +208,8 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 - **THEN** the footer states which path authenticated the request (`via kody`, `via cookie`, `via key`, or `locked`).
 
 #### Scenario: Close returns to the opener
-- **WHEN** an app opened from the Apps page is closed via the titlebar box
-- **THEN** the browser lands on the Apps page, not Home.
+- **WHEN** an app opened from the Mini-apps page is closed via the titlebar box
+- **THEN** the browser lands on the Mini-apps page, not Home.
 
 #### Scenario: Close from Home returns Home
 - **WHEN** an app opened from a home widget is closed via the titlebar box
@@ -223,7 +270,7 @@ Unknown ids SHALL still 404. Bundle render failures SHALL degrade to the server-
 
 The shell SHALL derive menu-app links from installed definitions
 on each render. There SHALL be no menu storage key, no menu
-order list, and no menu toggle in Apps Edit or anywhere else in
+order list, and no menu toggle in Mini-apps Edit or anywhere else in
 the browser UI. Installing a flagged app SHALL add its link on
 the next render; no separate menu write SHALL exist.
 
@@ -234,9 +281,9 @@ the next render; no separate menu write SHALL exist.
 - **THEN** its link appears on the next Home, Apps, or app page
   render, and no menu-specific storage key is written.
 
-### Requirement: Apps Edit
+### Requirement: Mini-apps Edit
 
-The Apps page SHALL offer Edit mode at `GET /apps?edit=1`, shown only when at least one app is installed. Edit mode SHALL list every installed app, including hidden ones, alphabetical by label with id as tie-break, each row with Pin, Hide, and Home state toggles as plain GET forms through the `/apps` mutation route, each responding 303 back to `?edit=1`. Toggles are icon-only buttons: `aria-checked` carries the current state and the submitted `want` value is the opposite, so no JavaScript is required. Pinned and Recent SHALL stay tiles in both modes. The "All apps are hidden" hint SHALL point at Apps Edit, not at the App Store. A Store request carrying `?pin=`, `?hide=`, or `?home=` SHALL render an inline error naming that launcher management moved to Apps Edit, and SHALL change nothing.
+The Mini-apps page SHALL offer Edit mode at `GET /apps?edit=1`, shown only when at least one app is installed. Edit mode SHALL list every installed app, including hidden ones, alphabetical by label with id as tie-break, each row with Pin, Hide, and Home state toggles as plain GET forms through the `/apps` mutation route, each responding 303 back to `?edit=1`. Toggles are icon-only buttons: `aria-checked` carries the current state and the submitted `want` value is the opposite, so no JavaScript is required. Pinned and Recent SHALL stay tiles in both modes. The "All mini-apps are hidden" hint SHALL point at Mini-apps Edit, not at the Mini-App Store. A Store request carrying `?pin=`, `?hide=`, or `?home=` SHALL render an inline error naming that launcher management moved to Mini-apps Edit, and SHALL change nothing.
 
 #### Scenario: Edit lists a hidden app and unhiding returns it to browse
 - **WHEN** Edit mode is opened with a hidden app installed
@@ -247,12 +294,12 @@ The Apps page SHALL offer Edit mode at `GET /apps?edit=1`, shown only when at le
 - **THEN** the response is a 303 back to `/apps?edit=1`, not to browse mode.
 
 #### Scenario: Empty registry shows no Edit toggle
-- **WHEN** the Apps page is fetched with no apps installed
+- **WHEN** the Mini-apps page is fetched with no apps installed
 - **THEN** it shows the honest empty state with no Edit button.
 
-### Requirement: App Store page is a data app
+### Requirement: Mini-App Store page is a data app
 
-The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for the installed store bundle, not a shell special case. The bundle SHALL render a catalog-only list as defined in the app-registry spec: one row per catalog id, in alphabetical-by-id order, each row showing the app's icon, label, and description, with a status badge where its status is not plain not-installed (not-installed rows carry no badge). The App Store itself appears as a row like any other app; it is not excluded from its own list. The list is unfiltered, so hidden apps appear in it. Rows SHALL be fetched through the shell management API, and install/update/restore SHALL be management API calls (see app-registry), re-rendering the rows on success and showing an error on failure without changing storage for a failed id. A row for an app that is not installed SHALL offer an Install control and no Open link, no Pin, Hide, or Home control, and no Update or Restore control — no launching from the catalog. An installed catalog app with a snapshot SHALL additionally show its update status under the app-registry spec: behind-and-clean and catalog-differing rows offer an Update control; behind-and-modified rows offer a confirmed Overwrite control (see below), not a plain Update control; modified-at-current-version rows offer Restore catalog version; ahead rows offer Restore catalog version, never Update; up-to-date rows offer neither. A row for an installed catalog app without a snapshot SHALL show Installed and offer a confirmed Overwrite control under this scheme. Installed apps with no catalog entry do not appear in the list. The Store SHALL require JavaScript: without it, the page shows a note pointing at agent `add_app`, with no rows. When the store app is not installed, the page SHALL render a short fallback note plus the Store install path, with no rows and no other controls. The Help page SHALL present the App Store as the browser path for installing shipped apps, with the agent/`add_app` path retained for custom apps.
+The Mini-App Store app page (`GET /apps/app-store`) SHALL be the generic app page for the installed store bundle, not a shell special case. The bundle SHALL render a catalog-only list as defined in the app-registry spec: one row per catalog id, in alphabetical-by-id order, each row showing the app's icon, label, and description, with a status badge where its status is not plain not-installed (not-installed rows carry no badge). The Mini-App Store itself appears as a row like any other app; it is not excluded from its own list. The list is unfiltered, so hidden apps appear in it. Rows SHALL be fetched through the shell management API, and install/update/restore SHALL be management API calls (see app-registry), re-rendering the rows on success and showing an error on failure without changing storage for a failed id. A row for an app that is not installed SHALL offer an Install control and no Open link, no Pin, Hide, or Home control, and no Update or Restore control — no launching from the catalog. An installed catalog app with a snapshot SHALL additionally show its update status under the app-registry spec: behind-and-clean and catalog-differing rows offer an Update control; behind-and-modified rows offer a confirmed Overwrite control (see below), not a plain Update control; modified-at-current-version rows offer Restore catalog version; ahead rows offer Restore catalog version, never Update; up-to-date rows offer neither. A row for an installed catalog app without a snapshot SHALL show Installed and offer a confirmed Overwrite control under this scheme. Installed apps with no catalog entry do not appear in the list. The Store SHALL require JavaScript: without it, the page shows a note pointing at agent `add_app`, with no rows. When the store app is not installed, the page SHALL render a short fallback note plus the Store install path, with no rows and no other controls. The Help page SHALL present the Mini-App Store as the browser path for installing shipped mini-apps, with the agent/`add_app` path retained for custom apps.
 
 #### Scenario: Behind-and-clean row offers update
 - **WHEN** an installed catalog app matches its snapshot at a lower version than the catalog
@@ -263,7 +310,7 @@ The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for
 - **THEN** its row shows Installed and offers Overwrite, and confirming replaces its definition with the catalog copy and records a snapshot.
 
 #### Scenario: Store list shows catalog apps once each
-- **WHEN** the App Store page is fetched with catalog apps installed and uninstalled, plus an installed app with no catalog entry, plus the App Store itself
+- **WHEN** the Mini-App Store page is fetched with catalog apps installed and uninstalled, plus an installed app with no catalog entry, plus the Mini-App Store itself
 - **THEN** every catalog id appears exactly once, in alphabetical-by-id order, with its icon, label, and description, and a status badge where applicable — including `app-store` itself — and the installed app with no catalog entry does not appear.
 
 #### Scenario: Catalog-only row has no launch control
@@ -271,7 +318,7 @@ The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for
 - **THEN** its row offers Install and no link to its app page, since there is nothing installed to open.
 
 #### Scenario: Store requires JavaScript
-- **WHEN** the App Store page is fetched with JavaScript unavailable
+- **WHEN** the Mini-App Store page is fetched with JavaScript unavailable
 - **THEN** it shows a note pointing at agent `add_app`, with no rows, and changes nothing.
 
 #### Scenario: Installed rows offer no Install or launcher control
@@ -283,7 +330,7 @@ The App Store app page (`GET /apps/app-store`) SHALL be the generic app page for
 - **THEN** the Store shows an error, the rows still render, and storage is unchanged.
 
 #### Scenario: Store page keeps shell constraints
-- **WHEN** the App Store page is fetched
+- **WHEN** the Mini-App Store page is fetched
 - **THEN** it carries the normal chrome, exactly one `<style>` block, zero external stylesheets, and no mutating POST form.
 
 ### Requirement: Confirmed update for a modified app

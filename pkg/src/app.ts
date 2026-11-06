@@ -293,8 +293,8 @@ function shellChrome(opts: {
 	var fullId = opts.expandable === true ? ' id="os-full"' : ''
 	var expandBox =
 		opts.expandable === true
-			? '\t\t\t<a class="os-expand" href="#os-full" aria-label="Expand app to fill window" title="Expand app to fill window"></a>\n' +
-				'\t\t\t<a class="os-collapse" href="#" aria-label="Collapse app" title="Collapse app"></a>\n'
+			? '\t\t\t<a class="os-expand" href="#os-full" aria-label="Expand mini-app to fill window" title="Expand mini-app to fill window"></a>\n' +
+				'\t\t\t<a class="os-collapse" href="#" aria-label="Collapse mini-app" title="Collapse mini-app"></a>\n'
 			: ''
 
 	var clientScript = opts.clientModuleUrl
@@ -382,7 +382,7 @@ function shellChrome(opts: {
 			safeBase +
 			'/apps"' +
 			(opts.current === 'apps' ? ' aria-current="page"' : '') +
-			'>Apps</a>\n' +
+			'>Mini-apps</a>\n' +
 		menuLinks +
 		'\t\t</nav>\n' +
 		'\t\t<span class="os-clock" id="os-clock">' +
@@ -597,7 +597,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 	var appBasePath = chrome.appBasePath
 	return import('./apps/index.ts').then(function (m): Promise<Response> {			var actFromForm = m.actFromForm
 			var clear_recent = m.clear_recent
-			var ensure_app_store_seeded = m.ensure_app_store_seeded
 			var get_app = m.get_app
 			var get_hidden = m.get_hidden
 			var get_homepage = m.get_homepage
@@ -615,24 +614,10 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			var set_home = m.set_home
 			var set_pin = m.set_pin
 			var store_install_from_catalog = m.store_install_from_catalog
-		// App-store seeding: first authenticated shell request against an
-		// empty registry installs only the App Store, before routing.
-		// Seeding never runs from MCP reads (this is dispatch only), and
-		// a seeding failure degrades to the honest empty state below
-		// instead of breaking the shell.
-		var seedDone: Promise<unknown> = Promise.resolve()
-		try {
-			seedDone = ensure_app_store_seeded().then(
-				function (): unknown { return null },
-				function (): unknown { return null },
-			)
-		} catch (err) {
-			seedDone = Promise.resolve()
-		}
-		return seedDone.then(function (): Promise<Response> {
 		return import('./apps/client.ts').then(function (c): Promise<Response> {				var isModalApp = c.isModalApp
 				var renderAppPanel = c.renderAppPanel
 				var renderDashboard = c.renderDashboard
+				var renderEmptyHelp = c.renderEmptyHelp
 				var renderEditSection = c.renderEditSection
 				var renderOverlaySection = c.renderOverlaySection
 				var renderAllSection = c.renderAllSection
@@ -697,7 +682,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							})(ordered[wi], wi)
 						}
 						return wchain.then(function (): Response {
-							var dashboard = renderDashboard(widgets, appBasePath)
+							var dashboard = renderDashboard(widgets, appBasePath, apps.length > 0)
 							var lines = dashboard.split('\n')
 							var indented = ''
 							for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
@@ -714,7 +699,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					var homePath = joinPath(appBasePath, '/')
 					var appsPath = joinPath(appBasePath, '/apps')
 					var closeHref = safeNextPath(fromParam, appBasePath)
-					var closeLabel = closeHref === appsPath ? 'Apps' : closeHref === homePath ? 'Home' : 'Back'
+					var closeLabel = closeHref === appsPath ? 'Mini-apps' : closeHref === homePath ? 'Home' : 'Back'
 					try {
 						var panel = renderAppPanel(definition, state, appBasePath, '', '', withError, false, fromParam !== '' ? closeHref : '')
 						var lines = panel.split('\n')
@@ -729,8 +714,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						var fallback =
 							'\t\t\t<section class="app" aria-label="' + escapeAttribute(defName) + '">\n' +
 							'\t\t\t\t<div class="app-body">\n' +
-							'\t\t\t\t\t<p>This app could not be displayed. The stored definition may be damaged; reinstall it with add_app.</p>\n' +
-							'\t\t\t\t\t<p class="app-back"><a href="' + escapeAttribute(appBasePath + '/apps') + '">Back to Apps</a></p>\n' +
+							'\t\t\t\t\t<p>This mini-app could not be displayed. The stored definition may be damaged; reinstall it with add_app.</p>\n' +
+							'\t\t\t\t\t<p class="app-back"><a href="' + escapeAttribute(appBasePath + '/apps') + '">Back to Mini-apps</a></p>\n' +
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
@@ -779,11 +764,11 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var gid = firstPathSegment(path, '/apps/')
 				if (!gid) return Promise.resolve(notFoundPage(chrome))
 					var query = new URL(request.url).searchParams
-					// App Store is a data app now: /apps/app-store is its
+					// Mini-App Store is a data app now: /apps/app-store is its
 					// generic app page, not a shell special case. Three
 					// shell-owned exceptions remain, all without rows:
 					// (1) old Store launcher URLs (?pin/?hide/?home=)
-					// render an inline error pointing at Apps Edit and
+					// render an inline error pointing at Mini-apps Edit and
 					// change nothing; (2) a removed Store renders a
 					// short fallback with its own install path; (3)
 					// ?install-store=1 installs only the Store itself
@@ -794,15 +779,15 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
 							var menu = menuAppsFor(parts[0], parts[1])
 							var body =
-								'\t\t\t<section class="app" aria-label="App Store">\n' +
+								'\t\t\t<section class="app" aria-label="Mini-App Store">\n' +
 								'\t\t\t\t<div class="app-body">\n' +
-								'\t\t\t\t\t<p role="alert">Launcher management moved to Apps Edit. This link changed nothing.</p>\n' +
-								'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/apps?edit=1') + '">Open Apps Edit</a></p>\n' +
-								'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/apps/app-store') + '">Back to App Store</a></p>\n' +
+								'\t\t\t\t\t<p role="alert">Launcher management moved to Mini-apps Edit. This link changed nothing.</p>\n' +
+								'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/apps?edit=1') + '">Open Mini-apps Edit</a></p>\n' +
+								'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/apps/app-store') + '">Back to Mini-App Store</a></p>\n' +
 								'\t\t\t\t</div>\n' +
 								'\t\t\t</section>'
 							return new Response(
-								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Mini-App Store', authPath: authPath, menuApps: menu, body: body }),
 								{ status: 400, headers: pageHeaders() },
 							)
 						})
@@ -819,25 +804,25 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
 								var menu = menuAppsFor(parts[0], parts[1])
 								var body =
-									'\t\t\t<section class="app" aria-label="App Store">\n' +
+									'\t\t\t<section class="app" aria-label="Mini-App Store">\n' +
 									'\t\t\t\t<div class="app-body">\n' +
-									'\t\t\t\t\t<p>The App Store app is not installed.</p>\n' +
+									'\t\t\t\t\t<p>The Mini-App Store mini-app is not installed.</p>\n' +
 									'\t\t\t\t\t<form method="GET" action="' + escapeAttribute(appBasePath + '/apps/app-store') + '">\n' +
 									'\t\t\t\t\t\t<input type="hidden" name="install-store" value="1" />\n' +
-									'\t\t\t\t\t\t<button type="submit">Install App Store</button>\n' +
+									'\t\t\t\t\t\t<button type="submit">Install Mini-App Store</button>\n' +
 									'\t\t\t\t\t</form>\n' +
 									'\t\t\t\t\t<p>Or ask an agent to install it with install_from_catalog.</p>\n' +
 									'\t\t\t\t</div>\n' +
 									'\t\t\t</section>'
 								return new Response(
-									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Mini-App Store', authPath: authPath, menuApps: menu, body: body }),
 									{ status: 200, headers: pageHeaders() },
 								)
 							})
 						})
 					}
 					// Modal tiles link here with ?touch=1: record the open in recent, then send
-					// the browser back to the Apps page with the overlay fragment. Fragment links
+					// the browser back to the Mini-apps page with the overlay fragment. Fragment links
 					// alone never reach the server, so without this an opened modal never counts
 					// as used. Scribe-safe: plain 303, no script needed.
 					if (query.get('touch') === '1' && !query.get('action')) {
@@ -990,7 +975,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 
 			// GET /apps — Pinned / Recent / All-apps as a launcher, plus
 			// Edit mode (?edit=1): one row per installed app, including
-			// hidden ones, with Pin/Hide/Home controls. The App Store
+			// hidden ones, with Pin/Hide/Home controls. The Mini-App Store
 			// no longer offers launcher controls; install/update/
 			// restore live there, pin/hide/home live here. Empty
 			// registry is honest, with no Edit toggle.
@@ -1025,17 +1010,14 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var byId: Record<string, number> = {}
 					for (var bi = 0; bi < apps.length; bi++) byId[apps[bi].id] = bi
 					if (apps.length === 0) {
+						var helpLines = renderEmptyHelp(appBasePath).split('\n')
+						var helpIndented = ''
+						for (var hli = 0; hli < helpLines.length; hli++) helpIndented += '\t\t\t\t' + helpLines[hli] + '\n'
 						return Promise.resolve(new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body:
-							'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
-							'\t\t\t\t<div class="section-head"><h2>Apps</h2></div>\n' +
-							'\t\t\t\t<ul class="tiles">\n' +
-							'\t\t\t\t\t<li class="tile tile-empty" aria-label="No apps yet">\n' +
-							'\t\t\t\t\t\t<span class="tile-icon" aria-hidden="true"></span>\n' +
-							'\t\t\t\t\t\t<span class="tile-label">no apps yet</span>\n' +
-							'\t\t\t\t\t</li>\n' +
-							'\t\t\t\t</ul>\n' +
-							'\t\t\t\t<p class="empty-hint">Open the App Store to install a shipped app, or ask an agent to add an app via MCP add_app — it appears here with no republish.</p>\n' +
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Mini-apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body:
+							'\t\t\t<section class="category" id="apps" aria-label="Mini-apps">\n' +
+							'\t\t\t\t<div class="section-head"><h2>Mini-apps</h2></div>\n' +
+							helpIndented +
 							'\t\t\t</section>' }),
 							{ status: 200, headers: pageHeaders() },
 						))
@@ -1074,7 +1056,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							tiled = tiled.concat(visible)
 							if (visible.length === 0) {
 								sections.push(
-									renderAllSection([], appBasePath, appsBase, 'All apps are hidden. Use Edit to unhide.', true),
+									renderAllSection([], appBasePath, appsBase, 'All mini-apps are hidden. Use Edit to unhide.', true),
 								)
 							} else {
 								sections.push(renderAllSection(visible, appBasePath, appsBase, undefined, true))
@@ -1106,7 +1088,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								var olines = overlays[oii].split('\n')
 								for (var lj = 0; lj < olines.length; lj++) indentedSections += '\t\t\t' + olines[lj] + '\n'
 							}							return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body: indentedSections }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Mini-apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body: indentedSections }),
 								{ status: 200, headers: pageHeaders() },
 							)
 						})
@@ -1115,7 +1097,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			}
 
 			// GET /manage/<action> — bundle management API for the
-			// data-only App Store (see registry.ts manage_*). GET only,
+			// data-only Mini-App Store (see registry.ts manage_*). GET only,
 			// no POST; the acting app is named by ?app= and must have a
 			// stored manageApps declaration, or the response is the
 			// feed-style plain 404 with no detail. Other failures are
@@ -1285,7 +1267,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			}
 
 			return Promise.resolve(notFoundPage(chrome))
-		})
 		})
 	})
 }

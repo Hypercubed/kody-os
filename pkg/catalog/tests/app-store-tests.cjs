@@ -110,7 +110,7 @@ async function main() {
   check(mainKids[0].className === "store-icon" && mainKids[1].className === "store-label", "icon and title are stacked in the tile block");
   check(!items[0].querySelector(".store-badge"), "no Installed or Not installed label");
   check(items[2].querySelector(".store-badge").textContent.indexOf("update available") !== -1, "other status labels stay");
-  check(doc.body.textContent.indexOf("Can manage other apps") !== -1, "manageApps is disclosed in plain words");
+  check(doc.body.textContent.indexOf("Can manage other mini-apps") !== -1, "manageApps is disclosed in plain words");
   check(items[3].textContent.indexOf("Can view the shell theme.") !== -1, "theme view-only is disclosed in plain words");
   check(items[4].textContent.indexOf("Can view and change the shell theme.") !== -1, "theme view+set is disclosed in plain words");
   check(doc.querySelector(".store-nojs").style.display === "none", "no-JavaScript note is hidden once the script runs");
@@ -141,7 +141,7 @@ async function main() {
   check(batchCalls.filter(function (c) { return c.indexOf("/manage/update") !== -1 && c.indexOf("id=app-store") !== -1; }).length === 0, "Update All never calls update for the behind-modified app");
   check(batchCalls.filter(function (c) { return c.indexOf("/manage/update") !== -1 && c.indexOf("id=xkcd") !== -1; }).length === 0, "Update All never calls update for the snapshot-less app");
   check(batchCalls.filter(function (c) { return c.indexOf("confirmed=1") !== -1; }).length === 0, "Update All never sends a confirmed update");
-  check(doc.querySelector(".store-status").textContent === "Updated 1 app.", "Update All reports what it updated");
+  check(doc.querySelector(".store-status").textContent === "Updated 1 mini-app.", "Update All reports what it updated");
   const removeBtn = doc.querySelectorAll(".store-row")[4].querySelector("button");
   removeBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });

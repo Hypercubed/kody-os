@@ -109,7 +109,7 @@ App definitions SHALL contain data only. The shell and registry SHALL never stor
 
 ### Requirement: remove_app uninstalls cleanly
 
-`remove_app` SHALL delete the app's definition and state and scrub all of its references (pinned, hidden, recency, homepage order) atomically: either everything is gone or nothing changed. Removing an unknown id SHALL return `{ ok: false }` with a naming error and write nothing. Removing a seeded/prebuilt app SHALL be allowed exactly like any other app. `remove_app` SHALL be exposed only through the MCP surface; the browser shell SHALL NOT call it or render a removal control.
+`remove_app` SHALL delete the app's definition and state and scrub all of its references (pinned, hidden, recency, homepage order) atomically: either everything is gone or nothing changed. Removing an unknown id SHALL return `{ ok: false }` with a naming error and write nothing. Removing any installed app, including the App Store, SHALL be allowed exactly like any other app. `remove_app` SHALL be exposed only through the MCP surface; the browser shell SHALL NOT call it or render a removal control.
 
 #### Scenario: Full uninstall leaves no references
 - **WHEN** `remove_app` runs on an installed app that is pinned, hidden, and recently used
@@ -439,35 +439,36 @@ capability or changing only TTL/size parameters SHALL NOT.
 - **WHEN** a Store update would add a new proxy host
 - **THEN** the API returns needs-confirmation naming that host, and declining changes nothing.
 
-### Requirement: First use seeds only the App Store
+### Requirement: Empty registry stays empty
 
-On the first authenticated shell request against an empty registry, the
-shell SHALL install exactly one app — the App Store (`app-store`), whose
-definition ships in `pkg/catalog/` — through the validated `add_app` path,
-before serving the request. "First use" means after the package has been
-forked and published as a live saved package; a fork's storage starts
-empty (source-only copy), so the first shell request is the first moment
-seeding can run. Kody's "adopt" step (owner-only secret-access grant) is
-a separate action and is NOT the seeding trigger. Seeding SHALL never run when the registry is
-non-empty, SHALL never install any other catalog app, and SHALL be
-idempotent (re-running it against a store that already holds the App Store
-changes nothing). Seeding SHALL NOT run from MCP registry reads or from
-`import_install` into a blank store. Removing the App Store via
-`remove_app` SHALL be allowed exactly like any other app; if the registry
-later becomes empty, the next shell request SHALL seed the App Store again.
+A shell request against an empty registry SHALL NOT install any app. Removing the last installed app SHALL leave the registry empty on the next shell request; no seeding, flag, or explicit-removal state SHALL re-install anything.
 
-#### Scenario: Blank install opens with only the App Store
+#### Scenario: Fresh install stays empty
 - **WHEN** a blank store receives its first authenticated shell request
-- **THEN** exactly one app is installed (`app-store`), and subsequent shell requests show it without re-seeding.
+- **THEN** `list_apps` still returns an empty list and no app is installed.
 
-#### Scenario: Seeding never overwrites user state
-- **WHEN** the registry already contains any app
-- **THEN** seeding does not run and the user's registry is untouched.
-
-#### Scenario: Empty registry restores the store
+#### Scenario: Removing the last app stays empty
 - **WHEN** every app including the App Store has been removed and a shell request arrives
-- **THEN** the App Store is installed again and no other catalog app is installed.
+- **THEN** the registry is still empty and no catalog app is installed.
 
-#### Scenario: MCP reads do not seed
-- **WHEN** `list_apps` is called against a blank store with no shell request having run
-- **THEN** it returns an empty list and the store is byte-identical before and after the call.
+### Requirement: Display name maps to internal app
+
+The display name of an installed unit SHALL be "mini-app"
+("mini-apps" plural); its internal name SHALL stay "app". The
+mapping is display-only: it SHALL NOT change the definition
+schema, the MCP interface, storage layout, catalog behaviour, or
+the export format. Only the Help and App Store catalog definitions
+change for this requirement, each with catalogVersion +1. The
+adding-an-app skill name and path SHALL stay unchanged.
+
+#### Scenario: Display name is mini-app, internal name is app
+- **WHEN** a user reads the browser and an agent reads the MCP interface for the same installed unit
+- **THEN** the browser calls it a mini-app and the agent interface calls it an app, and both refer to the same definition, state, and id.
+
+#### Scenario: Store display name changes, id does not
+- **WHEN** the Store is listed in its own catalog list and fetched at its route
+- **THEN** its row and page read "Mini-App Store", its id is still `app-store`, its route is still `/apps/app-store`, and `install_from_catalog('app-store')` still installs it.
+
+#### Scenario: No other catalog definition is bumped
+- **WHEN** the catalog is listed after this change
+- **THEN** only the Help and App Store definitions have a higher catalogVersion than before, each by exactly 1, and every other catalog definition is byte-identical to before.

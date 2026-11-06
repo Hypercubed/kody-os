@@ -1,9 +1,9 @@
 # Setting up kody-os
 
 kody-os is a minimal private OS shell shared by humans and agents:
-one package, one shell, apps as JSON definitions in package storage.
+one package, one shell, mini-apps as JSON definitions in package storage.
 This guide is for the fork owner and their agent. It takes you, in
-order, from a copy of the package to a working OS with a first app
+order, from a copy of the package to a working OS with a first mini-app
 installed. Each step has a check; do not skip the checks, because
 several failure modes look like a working setup until the check.
 
@@ -25,7 +25,7 @@ Use these words the way Kody uses them; they collide easily.
 
 - **Fork.** A copy of the package source into the adopter's own
   account, under the adopter's scope. A fork copies source only:
-  no installed apps, no app state, no saved package settings
+  no installed mini-apps, no mini-app state, no saved package settings
   travel with it. The new fork starts with empty storage. Updates
   from the original do not flow into a fork automatically.
 - **Install (one-click).** The human path in the Kody UI. Install
@@ -70,14 +70,23 @@ published yet.
 
 ### 2. Confirm the registry is empty
 
-A fresh fork starts with empty storage. Ask your agent to run
+A fresh fork starts with empty storage: nothing is seeded,
+including no Mini-App Store. Ask your agent to run
 the package's `list_apps` export against the fork. Expect no
-installed apps.
+installed mini-apps.
 
-Check: `list_apps` returns no apps. If apps are already listed,
+Check: `list_apps` returns no mini-apps. If mini-apps are already listed,
 you are looking at the wrong package (for example the original
 instead of your fork), or the fork is not fresh. Stop and sort
 out which package you are in before continuing.
+
+In the browser, the Mini-apps page shows help instead of a list:
+two copy-paste prompts — one to install the Mini-App Store
+(ask your agent to run `install_from_catalog` for `app-store`),
+one to add your own mini-apps — and Home shows the same help
+until something is installed. Once mini-apps exist but none are
+on Home, Home prompts you to add some from Mini-apps Edit's
+Add to home control instead.
 
 ### 3. Unlock with a one-time code
 
@@ -122,38 +131,40 @@ Check: after entering a code, the shell loads with a clean URL
 and the footer reads `via cookie`. After opening the app signed
 in to Kody, the footer reads `via kody` and no code is needed.
 
-### 4. Install the first app
+### 4. Install the first mini-app
 
 Add your first app through your agent with the package's
 `add_app` export, using one of the bundled example definitions
 in `pkg/catalog/` (for example `counter`). The agent validates
-the definition before writing, and the app appears on the Apps
+the definition before writing, and the mini-app appears on the Mini-apps
 page with no republish. See [Adding an app](../.agents/skills/adding-an-app/SKILL.md)
 for the definition contract, verification, homepage placement,
 export, and removal.
 
-Check: `list_apps` shows the app, `get_app_state` shows its
-initial state, the Apps page shows its tile, and acting on it
-from its app page changes its state. That round trip — add,
+Check: `list_apps` shows the mini-app, `get_app_state` shows its
+initial state, the Mini-apps page shows its tile, and acting on it
+from its mini-app page changes its state. That round trip — add,
 open, act, state changes — is the proof the setup worked.
 
-A built-in App Store (install catalog apps from the browser,
-without an agent) is specified but not yet implemented. Until
-it lands, adding apps goes through your agent exactly as above;
-do not wait for a store page that is not there yet.
+A built-in Mini-App Store (install catalog mini-apps from the browser,
+without an agent) is available once it is installed: install it with
+the Mini-App Store prompt on the empty Mini-apps page, or ask your
+agent to install it with `install_from_catalog('app-store')`. Until
+it is installed, adding mini-apps goes through your agent exactly as
+above.
 
-### 5. Add further apps the same way
+### 5. Add further mini-apps the same way
 
-Further apps are added the same way: your agent calls `add_app`
-with a validated definition, or (once it exists) the App Store.
-Adding an app never needs a republish, and the two stores —
+Further mini-apps are added the same way: your agent calls `add_app`
+with a validated definition, or the Mini-App Store, once it is installed.
+Adding a mini-app never needs a republish, and the two stores —
 hosted and local preview — are separate, so add an app to each
 target where you want it.
 
 ## Catalog and trust
 
 The bundled example definitions in `pkg/catalog/` are the
-catalog today. Installing an app means trusting its code: bundle
+catalog today. Installing a mini-app means trusting its code: bundle
 scripts run same-origin with full session authority, so review
 third-party definitions before importing them. The trust rule and
 the full contract live in [Adding an app](../.agents/skills/adding-an-app/SKILL.md).
@@ -186,7 +197,7 @@ python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.
 kody execute --target mock --file scripts/registry.ts --params "$(cat /tmp/add.json)"
 ```
 
-Check: the Apps page lists `counter`, `GET /apps/counter`
+Check: the Mini-apps page lists `counter`, `GET /apps/counter`
 returns 200, and acting on it changes its state. Useful checks:
 `kody dev check --target mock --offline` and
 `curl http://127.0.0.1:4302/__kody/dev/status`.
@@ -198,8 +209,10 @@ returns 200, and acting on it changes its state. Useful checks:
 - **The fork does nothing / the app does not load.** The fork is
   inert (source only). Publish it through a repo session, then
   re-check step 1.
-- **Apps are already installed in a "fresh" fork.** You are in
-  the wrong package, or the fork is not fresh. Check the
+- **Mini-apps are already installed in a "fresh" fork.** A fresh
+  fork starts empty — nothing is seeded, including no Mini-App
+  Store — so anything listed was added after the fork, or you
+  are in the wrong package. Check the
   package scope and the `list_apps` result before adding
   anything.
 - **Locked page after entering a code.** The code was used,
@@ -223,8 +236,8 @@ Before calling the setup done, confirm all of these:
 - [ ] An OTP unlock loads the shell with a clean URL and the
       footer reads `via cookie`; Kody login loads it with the
       footer reading `via kody`.
-- [ ] The first app was added via `add_app`, appears on the
-      Apps page, and an action changes its state.
+- [ ] The first mini-app was added via `add_app`, appears on the
+      Mini-apps page, and an action changes its state.
 - [ ] Logout on a device session revokes only that device.
 - [ ] No credential, code, or live value appears anywhere in
       your notes from setup: the OTP digits were used once and

@@ -1752,19 +1752,6 @@ export function store_update_from_catalog(
 	})
 }
 
-/** Ensure the App Store is seeded: empty registry only, via the store install path. */
-export function ensure_app_store_seeded(store?: KeyStore): Promise<{ ok: true; seeded: boolean } | { ok: false; error: string }> {
-	return resolveStore(store).then(function (active: KeyStore) {
-		return readRegistry(active).then(function (ids: string[]) {
-			if (ids.length !== 0) return { ok: true as const, seeded: false }
-			return store_install_from_catalog('app-store', active).then(function (result) {
-				if (!result.ok) return result
-				return { ok: true as const, seeded: true }
-			})
-		})
-	})
-}
-
 /**
  * Bundle management API (data-only App Store). These functions are
  * the browser-facing management path: they reuse the store
