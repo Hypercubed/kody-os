@@ -32,6 +32,7 @@ import linkDropBundle from '../../catalog/link-drop.bundle.json' with { type: 'j
 import macPuzzleBundle from '../../catalog/mac-puzzle.bundle.json' with { type: 'json' }
 import newsBundle from '../../catalog/news.bundle.json' with { type: 'json' }
 import probeBundle from '../../catalog/probe.bundle.json' with { type: 'json' }
+import settingsBundle from '../../catalog/settings.bundle.json' with { type: 'json' }
 import threeBitArtBundle from '../../catalog/three-bit-art.bundle.json' with { type: 'json' }
 import xkcdBundle from '../../catalog/xkcd.bundle.json' with { type: 'json' }
 import type { AppDefinition } from './types.ts'
@@ -55,6 +56,7 @@ var CATALOG: AppDefinition[] = [
 	macPuzzleBundle as AppDefinition,
 	newsBundle as AppDefinition,
 	probeBundle as AppDefinition,
+	settingsBundle as AppDefinition,
 	threeBitArtBundle as AppDefinition,
 	xkcdBundle as AppDefinition,
 ]

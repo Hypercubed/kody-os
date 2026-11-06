@@ -35,7 +35,7 @@ publishes anything (see §7).
   DONE 2026-10-31: merge wired into pkg/src/app.ts fetch() (override read fresh every request, file theme cache unchanged, no-override effective equals file values); shell-fetch rendering leg owed (kody dev/hosted out of scope).
   NOTE 2026-11-05: Phase 1 is implemented and committed
   in `ba9193c` (ancestor of local HEAD and origin/main).
-- [ ] 1.3 Verify Phase 1 in a blank store: set
+- [x] 1.3 Verify Phase 1 in a blank store: set
   one field and confirm only that field changes;
   set with one invalid field and confirm nothing
   is written; corrupt the stored JSON and confirm
@@ -50,10 +50,19 @@ publishes anything (see §7).
   a cache to fix a slowness that was not
   measured.
   PARTIAL 2026-10-31: blank-store cases verified via memory-store tests (set one field, invalid set writes nothing, corrupt JSON, reset one field, reset all, survives simulated republish); per-request override read timing (design Open Question 3) NOT measured or recorded — left open.
+  NOTE 2026-11-05: per-request override-read timing measured
+  on the PC (bun 1.3.13, in-memory store, the get_shell_theme
+  code path as fetch() calls it): no override stored, n=2000,
+  mean 0.8us, median 0.4us, p95 1.9us; override stored, n=2000,
+  mean 0.9us, median 0.5us, p95 1.9us. End-to-end dev-server
+  GET / (locked page, merge in path), 20 requests, median 5.7ms,
+  min 5.3ms, max 7.2ms. The read is sub-microsecond in-process
+  and the page stays at ~6ms: no measurable slowdown, so no
+  cache is added (design Open Question 3 answered: no).
 
 ## 2. Agent access
 
-- [ ] 2.1 Add `get_shell_theme`,
+- [x] 2.1 Add `get_shell_theme`,
   `set_shell_theme`, and `reset_shell_theme` to
   `pkg/src/index.ts` as thin wrappers over
   `pkg/src/shell-theme.ts` (functions already exist
@@ -64,7 +73,7 @@ publishes anything (see §7).
   three in `main()`'s exports next to the pin / home
   exports, with a `useWhen` line each. No validation
   reimplemented here.
-- [ ] 2.2 Confirm the return shapes from design
+- [x] 2.2 Confirm the return shapes from design
   Decision 6: get returns `{ defaults, override,
   effective }`; set returns `{ ok: true,
   override, effective }` or `{ ok: false, error }`
@@ -73,7 +82,7 @@ publishes anything (see §7).
   `{ ok: false, error }` for an unknown field. An
   unknown field in a set payload is an error,
   not a silent ignore.
-- [ ] 2.3 Verify Phase 2 with MCP-style calls
+- [x] 2.3 Verify Phase 2 with MCP-style calls
   against a blank store (no browser needed):
   get on a fresh install returns file defaults
   with an empty override; set, then get, then
@@ -83,7 +92,7 @@ publishes anything (see §7).
 
 ## 3. App access
 
-- [ ] 3.1 Add `capabilities.theme: { view:
+- [x] 3.1 Add `capabilities.theme: { view:
   boolean, set: boolean }` to
   `pkg/src/apps/types.ts` (`AppCapabilities`,
   next to `feeds`, `proxy`, and `manageApps`) and
@@ -100,7 +109,7 @@ publishes anything (see §7).
   capability keys) with the `{ view, set }` shape
   validated, and `sanitizeCapabilities` must gain a
   `theme` branch normalizing missing flags to `false`.
-- [ ] 3.2 Wire the routes in `pkg/src/app.ts`
+- [x] 3.2 Wire the routes in `pkg/src/app.ts`
   dispatch, after the `/feed/` route (dispatch order
   is `/apps/` branches, then `/manage/`, then
   `/proxy/`, then `/feed/`, then the 404 fallthrough),
@@ -121,7 +130,7 @@ publishes anything (see §7).
   No POST route is added. Unknown theme paths
   fall through to the existing 404 and cannot
   shadow an app page.
-- [ ] 3.3 Enforce the gate in the route handler:
+- [x] 3.3 Enforce the gate in the route handler:
   resolve the `:app` slug, load that app's
   stored definition, and require
   `capabilities.theme.view` for reads and
@@ -133,7 +142,7 @@ publishes anything (see §7).
   capability detail. A gated app with an invalid
   value gets JSON `{ ok: false, error }` (400)
   and no write.
-- [ ] 3.4 Verify Phase 3 end to end: an
+- [x] 3.4 Verify Phase 3 end to end: an
   unauthenticated request to any theme route
   gets the locked page (never theme); a declared
   view + set app can read, set, and reset; an
@@ -143,7 +152,7 @@ publishes anything (see §7).
   JSON 400 and writes nothing. Record the
   results in the task notes; a unit-level pass
   alone does not close this task.
-- [ ] 3.5 Extend `summarizeCapabilities` and
+- [x] 3.5 Extend `summarizeCapabilities` and
   `capabilityAdditions` in `pkg/src/apps/registry.ts`
   (they currently enumerate only manageApps,
   feedHosts, and proxyHosts) so a `theme`
@@ -155,7 +164,7 @@ publishes anything (see §7).
 
 ## 4. Control panel app
 
-- [ ] 4.1 Author `pkg/catalog/settings.bundle.json`
+- [x] 4.1 Author `pkg/catalog/settings.bundle.json`
   (id `settings`, schemaVersion 5, `stateSchema`
   `{ type: "object", initial: {}, fields: {} }`,
   `actions: {}`, `capabilities.theme: { view:
@@ -190,7 +199,7 @@ publishes anything (see §7).
   Bundle CSS uses the shell's scoped bare-element
   defaults inside `.bundle` and does not redefine
   buttons or fields.
-- [ ] 4.2 Register the bundle in the catalog:
+- [x] 4.2 Register the bundle in the catalog:
   one import line in `pkg/src/apps/catalog.ts`
   (alphabetical by id) plus one entry in
   `pkg/catalog/README.md`; verify the catalog
@@ -202,7 +211,7 @@ publishes anything (see §7).
   removing it leaves `kody-os.shell.theme`
   untouched and a later reinstall shows the
   same overrides.
-- [ ] 4.3 Add one line to `pkg/catalog/help.bundle.json`
+- [x] 4.3 Add one line to `pkg/catalog/help.bundle.json`
   (the Help page is a catalog bundle, not an `app.ts`
   page) alongside 'Adding apps', naming the Settings
   app as the browser path for changing the shell
@@ -212,7 +221,7 @@ publishes anything (see §7).
 
 ## 5. Docs
 
-- [ ] 5.1 Write `pkg/docs/shell-settings.md`:
+- [x] 5.1 Write `pkg/docs/shell-settings.md`:
   the two-layer model (file default, storage
   override), the storage key, the per-field
   precedence and set semantics, the MCP export
@@ -220,7 +229,7 @@ publishes anything (see §7).
   `capabilities.theme` declaration, the panel's
   scope (including grid / SVG not editable in
   the panel), and the out-of-scope list.
-- [ ] 5.2 Add a `capabilities.theme` row to
+- [x] 5.2 Add a `capabilities.theme` row to
   `pkg/.agents/skills/adding-an-app/SKILL.md`, next to
   the `capabilities.feeds` / `proxy` / `manageApps`
   rows, and update the `capabilities.feeds` /

@@ -188,6 +188,10 @@ export interface AppCapabilities {
 	/** Allowlisted generic upstreams this app may read through
 	 * GET /proxy/<app>/<name>. */
 	proxy?: ProxyDecl[]
+	/** Shell theme access through GET /theme/<app>: `view` allows the
+	 * read route, `set` allows set and reset. A definition with neither
+	 * flag true is treated as not declaring theme. */
+	theme?: { view: boolean; set: boolean }
 }
 
 /** Legacy helper kept for import compatibility. Every unified app carries a bundle manifest, so this returns true when a bundle manifest is present. */

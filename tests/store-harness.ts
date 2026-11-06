@@ -24,7 +24,7 @@
  *     only status, no Install/Update/Restore through the management API,
  *     and no row in the Store list at all.
  *   Management API: rows are the catalog apps only, alphabetical,
- *     with capabilities disclosed; an undeclared caller is
+ *     with capabilities disclosed (including theme flags); an undeclared caller is
  *     permission-denied; a modified restore requires confirmation
  *     and applies on confirm.
  *   Management remove: an undeclared caller is permission-denied;
@@ -45,7 +45,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_remove, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
+import { act, add_app, capabilityAdditions, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_remove, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
 
 var failures: string[] = []
 
@@ -154,6 +154,12 @@ function clone<T>(v: T): T {
 	var storeRow = null
 	for (var si = 0; si < rows.length; si++) if (rows[si].id === 'app-store') storeRow = rows[si]
 	check('store row discloses manageApps', storeRow !== null && (storeRow as { capabilities: { manageApps: boolean } }).capabilities.manageApps === true, JSON.stringify(storeRow))
+	var settingsRow = null
+	for (var si = 0; si < rows.length; si++) if (rows[si].id === 'settings') settingsRow = rows[si]
+	check('store row discloses theme flags', settingsRow !== null && (settingsRow as { capabilities: { themeView: boolean, themeSet: boolean } }).capabilities.themeView === true && (settingsRow as { capabilities: { themeView: boolean, themeSet: boolean } }).capabilities.themeSet === true, JSON.stringify(settingsRow))
+	var themeAdditions = capabilityAdditions(clone(get_catalog_definition('counter')), clone(get_catalog_definition('settings')))
+	check('capability additions list theme view and change', themeAdditions.indexOf('view the shell theme') !== -1 && themeAdditions.indexOf('change the shell theme') !== -1, JSON.stringify(themeAdditions))
+	check('capability additions are empty without a theme change', capabilityAdditions(clone(get_catalog_definition('settings')), clone(get_catalog_definition('settings'))).length === 0, '')
 	var snapshotLessUpdate = await manage_update('app-store', 'xkcd', false, store)
 	check('snapshot-less Overwrite requires confirmation', snapshotLessUpdate.ok === false && (snapshotLessUpdate as { needsConfirmation?: boolean }).needsConfirmation === true, JSON.stringify(snapshotLessUpdate))
 	var snapshotLessConfirmed = await manage_update('app-store', 'xkcd', true, store)

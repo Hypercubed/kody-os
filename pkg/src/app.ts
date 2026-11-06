@@ -2,7 +2,7 @@ import { SHELL_CSS } from './shell-css.ts'
 import { SESSION_COOKIE_BARE, authenticate, authPathFor, checkCode, isKodyOwnerVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
-import { fileThemeToValues, get_shell_theme } from './shell-theme.ts'
+import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
 import type { AuthPath } from './auth.ts'
 
 interface PackageContext {
@@ -167,7 +167,7 @@ function getPackageMeta(): Promise<{ version: string; build: string }> {
 	return packageMetaPromise
 }
 
-function getTheme(): Promise<ThemeFile> {
+export function getTheme(): Promise<ThemeFile> {
 	if (!themePromise) {
 		try {
 			// @ts-ignore optional theme file; the bundler inlines it when present, rejection means absent.
@@ -413,6 +413,37 @@ function notFoundPage(ctx: Chrome): Response {
 		status: 404,
 		headers: pageHeaders(),
 	})
+}
+
+/** Plain 404 for theme-route gate failures: no theme detail, no-store. */
+function themeNotFound(): Response {
+	return new Response('theme not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
+}
+
+var themeJsonHeaders: Record<string, string> = {
+	'Content-Type': 'application/json; charset=utf-8',
+	'Cache-Control': 'no-store',
+	'Referrer-Policy': 'no-referrer',
+	'X-Content-Type-Options': 'nosniff',
+}
+
+/**
+ * Parse a `background_grid` query value (eight comma-separated integers)
+ * into a `{ grid: [...] }` background. A malformed value passes through
+ * as the raw string, so validateThemeSet rejects it with the standard
+ * message instead of the route inventing its own error.
+ */
+function themeGridValue(raw: string): unknown {
+	var parts = raw.split(',')
+	if (parts.length !== 8) return raw
+	var grid: number[] = []
+	for (var i = 0; i < parts.length; i++) {
+		if (parts[i] === '') return raw
+		var n = Number(parts[i])
+		if (isNaN(n) || Math.floor(n) !== n) return raw
+		grid.push(n)
+	}
+	return { grid: grid }
 }
 
 /**
@@ -1176,6 +1207,80 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						}
 					}
 					return Promise.resolve(new Response('feed not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }))
+				}
+			}
+
+			// GET /theme/:app — shell theme capability (see shell-theme.ts):
+			// read/set/reset through the app's declared capabilities.theme
+			// flags. Inside dispatch, so the device gate in fetch() has
+			// already run. Placed after /feed/, before the 404 fallthrough.
+			// Unknown apps, undeclared callers, and view-only callers of
+			// set/reset are plain 404s with no theme detail; a gated app
+			// with an invalid value gets JSON { ok: false, error } (400)
+			// and writes nothing. No POST.
+			if (method === 'GET') {
+				var themeAt = path.indexOf('/theme/')
+				if (themeAt !== -1) {
+					var themeRoute = path.slice(themeAt)
+					var themeParts = themeRoute.split('/')
+					if (themeParts.length === 3) {
+						var themeApp = ''
+						try { themeApp = decodeURIComponent(themeParts[2]) } catch (err) { themeApp = '' }
+						if (themeApp !== '' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(themeApp)) {
+							var themeQuery = new URL(request.url).searchParams
+							var themeAction = themeQuery.get('action') || ''
+							if (themeAction === '' || themeAction === 'set' || themeAction === 'reset') {
+								return get_app(themeApp).then(function (themeEntry) {
+									if ('error' in themeEntry) return Promise.resolve(themeNotFound())
+									var themeCaps = themeEntry.definition.capabilities
+									var themeView = themeCaps !== undefined && themeCaps.theme !== undefined && themeCaps.theme.view === true
+									var themeSet = themeCaps !== undefined && themeCaps.theme !== undefined && themeCaps.theme.set === true
+									if (themeAction === '' && !themeView) return Promise.resolve(themeNotFound())
+									if (themeAction !== '' && !themeSet) return Promise.resolve(themeNotFound())
+									return getTheme().then(function (themeFile) {
+										var themeDefaults = fileThemeToValues(themeFile)
+										var themeWantJson = themeQuery.get('format') === 'json'
+										var themeFrom = themeQuery.get('from') || ''
+										var themeDest = themeFrom !== '' ? safeNextPath(themeFrom, appBasePath) : appBasePath + '/apps/' + themeApp
+										if (themeAction === '') {
+											return get_shell_theme(themeDefaults).then(function (themeRead) {
+												return new Response(JSON.stringify({ ok: true, defaults: themeRead.defaults, override: themeRead.override, effective: themeRead.effective }), { status: 200, headers: themeJsonHeaders })
+											})
+										}
+										if (themeAction === 'set') {
+											var themePayload: Record<string, unknown> = {}
+											var themeName = themeQuery.get('name')
+											var themeTitle = themeQuery.get('title')
+											var themeIcon = themeQuery.get('icon')
+											var themeBackground = themeQuery.get('background')
+											var themeGrid = themeQuery.get('background_grid')
+											if (themeName !== null) themePayload.name = themeName
+											if (themeTitle !== null) themePayload.title = themeTitle
+											if (themeIcon !== null) themePayload.icon = themeIcon
+											if (themeGrid !== null) themePayload.background = themeGridValue(themeGrid)
+											else if (themeBackground !== null) themePayload.background = themeBackground
+											return set_shell_theme(themeDefaults, themePayload).then(function (themeSetResult) {
+												if (!themeSetResult.ok) return new Response(JSON.stringify(themeSetResult), { status: 400, headers: themeJsonHeaders })
+												if (themeWantJson) return new Response(JSON.stringify(themeSetResult), { status: 200, headers: themeJsonHeaders })
+												return new Response(null, { status: 303, headers: { Location: themeDest } })
+											})
+										}
+										var themeField = themeQuery.get('field') || ''
+										return reset_shell_theme(themeDefaults, themeField === '' ? undefined : themeField).then(function (themeResetResult) {
+											if (!themeResetResult.ok) return new Response(JSON.stringify(themeResetResult), { status: 400, headers: themeJsonHeaders })
+											if (themeWantJson) {
+												return get_shell_theme(themeDefaults).then(function (themeReadAfter) {
+													return new Response(JSON.stringify({ ok: true, override: themeReadAfter.override, effective: themeReadAfter.effective }), { status: 200, headers: themeJsonHeaders })
+												})
+											}
+											return new Response(null, { status: 303, headers: { Location: themeDest } })
+										})
+									})
+								})
+							}
+						}
+					}
+					return Promise.resolve(themeNotFound())
 				}
 			}
 

@@ -8,7 +8,8 @@
  * (+ get_app, import_app), catalog tools (list_catalog,
  * get_catalog_definition, install_from_catalog,
  * update_from_catalog), and pin tools (get_pinned, set_pin,
- * set_pinned).
+ * set_pinned), and theme tools (get_shell_theme, set_shell_theme,
+ * reset_shell_theme) for the shell theme override.
  *
  * @returns Package name, shell export guidance, and the Phase 2 status note
  *
@@ -19,6 +20,10 @@
  * console.log(info.package) // @hypercubed/kody-os
  * // counter comes from pkg/catalog/counter.bundle.json via add_app
  */
+import { getTheme } from './app.ts'
+import { fileThemeToValues, get_shell_theme as themeGet, reset_shell_theme as themeReset, set_shell_theme as themeSet } from './shell-theme.ts'
+import type { ShellThemeOverride, ShellThemeValues } from './shell-theme.ts'
+
 export default async function main(): Promise<{
 	package: string
 	exports: { name: string; useWhen: string }[]
@@ -100,6 +105,18 @@ export default async function main(): Promise<{
 				useWhen: 'Move one home-screen app up (-1) or down (+1).',
 			},
 			{
+				name: 'get_shell_theme',
+				useWhen: 'Read the shell theme: file defaults, stored override, and effective values.',
+			},
+			{
+				name: 'set_shell_theme',
+				useWhen: 'Set shell theme fields (name, title, icon, background); an invalid field fails with no write.',
+			},
+			{
+				name: 'reset_shell_theme',
+				useWhen: 'Reset the shell theme override, one field or all, back to the file defaults.',
+			},
+			{
 				name: 'get_hidden',
 				useWhen: 'Read the hidden app ids.',
 			},
@@ -142,6 +159,25 @@ export default async function main(): Promise<{
 		],
 		note: 'Phase 2 app layer — data-driven apps via packageStorage.',
 	}
+}
+
+/**
+ * Shell theme (shell-settings Phase 2): thin MCP wrappers over
+ * pkg/src/shell-theme.ts. Each resolves the file defaults first via
+ * getTheme(), so callers never pass defaults themselves. No validation
+ * is reimplemented here; the module owns it. Like every other MCP
+ * export, these are not routed through fetch()'s device gate.
+ */
+export async function get_shell_theme(): Promise<{ defaults: ShellThemeValues; override: ShellThemeOverride; effective: ShellThemeValues }> {
+	return themeGet(fileThemeToValues(await getTheme()))
+}
+
+export async function set_shell_theme(payload: unknown): Promise<{ ok: true; override: ShellThemeOverride; effective: ShellThemeValues } | { ok: false; error: string }> {
+	return themeSet(fileThemeToValues(await getTheme()), payload)
+}
+
+export async function reset_shell_theme(field?: string): Promise<{ ok: true; effective: ShellThemeValues } | { ok: false; error: string }> {
+	return themeReset(fileThemeToValues(await getTheme()), field)
 }
 
 export {

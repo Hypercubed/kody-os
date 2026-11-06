@@ -382,9 +382,19 @@ function validateCapabilities(def: Record<string, unknown>): string | null {
 	if (!isRecord(caps)) return 'definition.capabilities must be an object'
 	var capsRec = caps as Record<string, unknown>
 	for (var key of Object.keys(capsRec)) {
-		if (key !== 'feeds' && key !== 'manageApps' && key !== 'proxy') return 'definition.capabilities.' + key + ' is unknown'
+		if (key !== 'feeds' && key !== 'manageApps' && key !== 'proxy' && key !== 'theme') return 'definition.capabilities.' + key + ' is unknown'
 	}
 	if (capsRec['manageApps'] !== undefined && typeof capsRec['manageApps'] !== 'boolean') return 'definition.capabilities.manageApps must be a boolean'
+	if (capsRec['theme'] !== undefined) {
+		var themeCaps = capsRec['theme']
+		if (!isRecord(themeCaps)) return 'definition.capabilities.theme must be an object'
+		var themeRec = themeCaps as Record<string, unknown>
+		for (var themeKey of Object.keys(themeRec)) {
+			if (themeKey !== 'view' && themeKey !== 'set') return 'definition.capabilities.theme.' + themeKey + ' is unknown'
+		}
+		if (themeRec['view'] !== undefined && typeof themeRec['view'] !== 'boolean') return 'definition.capabilities.theme.view must be a boolean'
+		if (themeRec['set'] !== undefined && typeof themeRec['set'] !== 'boolean') return 'definition.capabilities.theme.set must be a boolean'
+	}
 	if (capsRec['feeds'] !== undefined) {
 		var feedsErr = validateUpstreamEntries('feeds', capsRec['feeds'])
 		if (feedsErr) return feedsErr
@@ -426,6 +436,11 @@ function sanitizeCapabilities(caps: unknown): import('./types.ts').AppCapabiliti
 		out.manageApps = capsRec['manageApps'] as boolean
 		hasAny = true
 	}
+	if (capsRec['theme'] !== undefined) {
+		var themeRaw = capsRec['theme'] as Record<string, unknown>
+		out.theme = { view: themeRaw['view'] === true, set: themeRaw['set'] === true }
+		hasAny = true
+	}
 	if (capsRec['proxy'] !== undefined) {
 		out.proxy = sanitizeUpstreamEntries(capsRec['proxy']) as ProxyDecl[]
 		hasAny = true
@@ -454,14 +469,18 @@ export interface CapabilitySummary {
 	manageApps: boolean
 	feedHosts: string[]
 	proxyHosts: string[]
+	themeView: boolean
+	themeSet: boolean
 }
 
 export function summarizeCapabilities(def: AppDefinition | null | undefined): CapabilitySummary {
-	if (!def || !def.capabilities) return { manageApps: false, feedHosts: [], proxyHosts: [] }
+	if (!def || !def.capabilities) return { manageApps: false, feedHosts: [], proxyHosts: [], themeView: false, themeSet: false }
 	return {
 		manageApps: def.capabilities.manageApps === true,
 		feedHosts: upstreamHosts(def.capabilities.feeds),
 		proxyHosts: upstreamHosts(def.capabilities.proxy),
+		themeView: def.capabilities.theme !== undefined && def.capabilities.theme.view === true,
+		themeSet: def.capabilities.theme !== undefined && def.capabilities.theme.set === true,
 	}
 }
 
@@ -474,6 +493,8 @@ export function capabilityAdditions(oldDef: AppDefinition | null | undefined, ne
 	var oldSummary = summarizeCapabilities(oldDef)
 	var newSummary = summarizeCapabilities(newDef)
 	if (newSummary.manageApps && !oldSummary.manageApps) additions.push('manage other apps')
+	if (newSummary.themeView && !oldSummary.themeView) additions.push('view the shell theme')
+	if (newSummary.themeSet && !oldSummary.themeSet) additions.push('change the shell theme')
 	for (var i = 0; i < newSummary.feedHosts.length; i++) {
 		if (oldSummary.feedHosts.indexOf(newSummary.feedHosts[i]) === -1) additions.push('feed host ' + newSummary.feedHosts[i])
 	}

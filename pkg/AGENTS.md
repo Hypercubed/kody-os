@@ -49,6 +49,7 @@ Registry write, not a package change: no commit, no republish. Shipped catalog a
 - `capabilities.feeds`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }` — HTTPS only, served via `GET /feed/:app/:name` with storage caching. Data-only declarations; the route takes the feed name, never a URL.
 - `capabilities.proxy`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }`, same limits as feeds — HTTPS only, served via `GET /proxy/:app/:name` with storage caching. The route takes the proxy name, never a URL.
 - `capabilities.manageApps`: boolean. Only a bundle declaring this may use the shell management API (`GET /manage/rows|install|update|restore`); undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority.
+- `capabilities.theme`: `{ view: boolean, set: boolean }` — `view` allows the read route, `set` allows set and reset through `GET /theme/:app`; a definition with neither flag true is treated as not declaring theme. Undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority.
 - Bundle scripts run same-origin with full session authority: installing an app = trusting its code. Review third-party bundles before `import_app`.
 
 ## Smoke tests

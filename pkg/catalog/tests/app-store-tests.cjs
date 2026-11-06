@@ -58,8 +58,8 @@ async function main() {
     { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
     { id: "calculator", label: "Calculator", name: "Calculator", icon: "#", description: "Calculator.", installed: true, inCatalog: true, status: "behind-clean", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
     { id: "app-store", label: "App Store", name: "App Store", icon: "⊞", description: "Store.", installed: true, inCatalog: true, status: "behind-modified", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: true, feedHosts: [], proxyHosts: [] } },
-    { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
-    { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
+    { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: false } },
+    { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: true } },
   ];
   const calls = [];
   const dom = new JSDOM(
@@ -111,6 +111,8 @@ async function main() {
   check(!items[0].querySelector(".store-badge"), "no Installed or Not installed label");
   check(items[2].querySelector(".store-badge").textContent.indexOf("update available") !== -1, "other status labels stay");
   check(doc.body.textContent.indexOf("Can manage other apps") !== -1, "manageApps is disclosed in plain words");
+  check(items[3].textContent.indexOf("Can view the shell theme.") !== -1, "theme view-only is disclosed in plain words");
+  check(items[4].textContent.indexOf("Can view and change the shell theme.") !== -1, "theme view+set is disclosed in plain words");
   check(doc.querySelector(".store-nojs").style.display === "none", "no-JavaScript note is hidden once the script runs");
   check(calls[0] === "/manage/rows?app=app-store", "first fetch is the management rows API");
   const updateBtn = items[2].querySelector("button");
