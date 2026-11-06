@@ -27,6 +27,9 @@
  *     with capabilities disclosed; an undeclared caller is
  *     permission-denied; a modified restore requires confirmation
  *     and applies on confirm.
+ *   Management remove: an undeclared caller is permission-denied;
+ *     removal requires confirmation and then deletes the definition,
+ *     state, and snapshot and scrubs pins.
  *   Edit render: Apps Edit lists every installed app including
  *     hidden ones, with Pin/Hide/Home as plain GET forms only —
  *     no Open link to an app page, no app-action class, no POST form.
@@ -42,7 +45,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
+import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_remove, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
 
 var failures: string[] = []
 
@@ -182,6 +185,35 @@ function clone<T>(v: T): T {
 	// Layout commit f89133f: Edit is a GET form matching the Clear
 	// control, not a link, so the check is for the form + hidden field.
 	check('all section offers Edit when apps exist', allHtml.indexOf('name="edit" value="1"') !== -1 && allHtml.indexOf('>Edit<') !== -1, '')
+}
+
+// Management remove: permission gate, confirmation gate, full uninstall.
+{
+	var store = createMemoryStore()
+	await ensure_app_store_seeded(store)
+	await store_install_from_catalog('counter', store)
+	await act('counter', 'set_count', { value: 7 }, store)
+	await set_pin('counter', true, store)
+	var deniedRemove = await manage_remove('counter', 'counter', true, store)
+	check('management remove denies an undeclared caller', deniedRemove.ok === false && (deniedRemove as { permissionDenied?: boolean }).permissionDenied === true, JSON.stringify(deniedRemove))
+	var removeNo = await manage_remove('app-store', 'counter', false, store)
+	check('management remove requires confirmation', removeNo.ok === false && (removeNo as { needsConfirmation?: boolean }).needsConfirmation === true, JSON.stringify(removeNo))
+	var stillThere = await list_apps(store)
+	check('unconfirmed remove writes nothing', stillThere.length === 2, stillThere.map(function (a) { return a.id }).join(','))
+	var removed = await manage_remove('app-store', 'counter', true, store)
+	check('management remove applies on confirm', removed.ok === true, JSON.stringify(removed))
+	var afterRemove = await list_apps(store)
+	check('removed app leaves the registry', afterRemove.length === 1 && afterRemove[0].id === 'app-store', afterRemove.map(function (a) { return a.id }).join(','))
+	var removedStatus = await get_app_status('counter', store)
+	check('removed app is not-installed', removedStatus.status === 'not-installed', removedStatus.status)
+	var removedSnap = await readInstallSnapshot(store, 'counter')
+	check('removed app loses its snapshot', removedSnap === null, JSON.stringify(removedSnap))
+	var pinsAfterRemove = await get_pinned(store)
+	check('removed app loses its pin', pinsAfterRemove.length === 0, pinsAfterRemove.join(','))
+	var stateAfterRemove = await import('../pkg/src/apps/index.ts').then(function (m) { return m.get_app_state('counter', store) })
+	check('removed app loses its state', 'error' in (stateAfterRemove as object), JSON.stringify(stateAfterRemove))
+	var removeMissing = await manage_remove('app-store', 'counter', true, store)
+	check('management remove of a not-installed app fails', removeMissing.ok === false, JSON.stringify(removeMissing))
 }
 
 if (failures.length === 0) {

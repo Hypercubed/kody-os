@@ -1846,6 +1846,41 @@ function manage_update_with_status(
 	})
 }
 
+/**
+ * Management remove: permission-checked remove_app for the browser
+ * Store. Only the Store's own Remove button offers it, for up-to-date
+ * rows, but the API itself removes any installed app: it deletes the
+ * definition, state, and snapshot and scrubs every reference list,
+ * exactly like the agent remove_app it wraps. Removal always requires
+ * confirmation: without confirmed, nothing is written and the caller
+ * gets needsConfirmation, which the bundle answers with its own
+ * confirmation dialog.
+ */
+export function manage_remove(actingId: string, targetId: string, confirmed: boolean, store?: KeyStore): Promise<ManageResult> {
+	return resolveStore(store).then(function (active: KeyStore) {
+		return checkManagePermission(active, actingId).then(function (allowed) {
+			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
+			return get_app_status(targetId, active).then(function (info) {
+				if (!info.installed) {
+					return { ok: false as const, error: 'App "' + targetId + '" is not installed.' }
+				}
+				if (!confirmed) {
+					return {
+						ok: false as const,
+						error: 'Confirmation required before removing "' + targetId + '".',
+						needsConfirmation: true,
+						additions: [],
+					}
+				}
+				return remove_app(targetId, active).then(function (result) {
+					if (!result.ok) return result
+					return { ok: true as const, id: targetId }
+				})
+			})
+		})
+	})
+}
+
 export function manage_update(actingId: string, targetId: string, confirmed: boolean, store?: KeyStore): Promise<ManageResult> {
 	return manage_update_with_status(actingId, targetId, confirmed, store, 'update')
 }

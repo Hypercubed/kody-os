@@ -574,6 +574,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			var get_recent = m.get_recent
 			var list_apps = m.list_apps
 			var manage_install = m.manage_install
+			var manage_remove = m.manage_remove
 			var manage_restore = m.manage_restore
 			var manage_rows = m.manage_rows
 			var manage_update = m.manage_update
@@ -1119,6 +1120,12 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				}
 				if (manageAction === 'restore' && targetId !== '') {
 					return manage_restore(actingId, targetId, manageQuery.get('confirmed') === '1').then(function (result) {
+						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
+						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
+					})
+				}
+				if (manageAction === 'remove' && targetId !== '') {
+					return manage_remove(actingId, targetId, manageQuery.get('confirmed') === '1').then(function (result) {
 						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
 						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
 					})

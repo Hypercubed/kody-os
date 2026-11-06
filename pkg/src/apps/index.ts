@@ -68,6 +68,7 @@ export {
 	list_apps,
 	list_backups,
 	manage_install,
+	manage_remove,
 	manage_restore,
 	manage_rows,
 	manage_update,
