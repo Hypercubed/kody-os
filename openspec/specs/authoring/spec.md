@@ -29,8 +29,8 @@ app-registry); the README SHALL state the file + import + harness checklist
 (including the `catalogVersion` bump rule and the install-snapshot rule),
 and the trust rule that installing a catalog app trusts its bundle code.
 An installed app that is not a catalog definition carries no
-`catalogVersion` requirement and appears in the combined list as Storage
-only (see app-registry); `catalogVersion` is required only for catalog
+`catalogVersion` requirement and does not appear in the Store
+list (see app-registry); `catalogVersion` is required only for catalog
 definitions.
 
 #### Scenario: Catalog apps install and render

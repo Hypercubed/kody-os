@@ -1809,9 +1809,9 @@ function manage_update_with_status(
 				}
 				if (kind === 'update') {
 					if (info.status === 'modified-current' || info.status === 'modified-ahead') {
-						return { ok: false as const, error: 'App "' + targetId + '" is modified: use Restore, not Update.' }
+						return { ok: false as const, error: 'App "' + targetId + '" is modified: use Restore, not Overwrite.' }
 					}
-					if (info.status !== 'behind-clean' && info.status !== 'catalog-differing' && info.status !== 'behind-modified') {
+					if (info.status !== 'behind-clean' && info.status !== 'catalog-differing' && info.status !== 'behind-modified' && info.status !== 'snapshot-less') {
 						return { ok: false as const, error: 'App "' + targetId + '" has no update available.' }
 					}
 				} else {
@@ -1826,7 +1826,7 @@ function manage_update_with_status(
 					var installedDef = pair[0]
 					var catalogDef = pair[1]
 					var additions = capabilityAdditions(installedDef, catalogDef)
-					var needsConfirm = info.status === 'behind-modified' || additions.length > 0
+					var needsConfirm = info.status === 'behind-modified' || info.status === 'snapshot-less' || additions.length > 0
 					if (kind === 'restore') needsConfirm = true
 					if (needsConfirm && !confirmed) {
 						return {
@@ -1981,23 +1981,23 @@ export interface StoreRow {
 }
 
 /**
- * Combined list rows (app-store Decisions 12-13): the union of catalog
- * ids and installed ids, deduplicated, alphabetical by id, with each
- * row's status and launcher flags. Hidden apps are included (the list
- * is unfiltered); Hide affects launcher tiles only.
+ * Catalog-only list rows: one row per catalog id, in
+ * alphabetical-by-id order, with each row's status and launcher flags.
+ * Installed apps with no catalog entry do not appear here; they are
+ * managed from Apps Edit and by agents, not from the Store. Hidden
+ * apps are included (the list is unfiltered); Hide affects launcher
+ * tiles only.
  */
 export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 	return resolveStore(store).then(function (active: KeyStore) {
 		return Promise.all([
-			readRegistry(active),
 			readPinned(active),
 			readHidden(active),
 			readHomepage(active),
 		]).then(function (parts) {
-			var registryIds = parts[0]
-			var pinned = parts[1]
-			var hidden = parts[2]
-			var homepage = parts[3]
+			var pinned = parts[0]
+			var hidden = parts[1]
+			var homepage = parts[2]
 			var catalog = list_catalog()
 			var idSet: Record<string, boolean> = {}
 			var ids: string[] = []
@@ -2005,12 +2005,6 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 				if (!idSet[catalog[ci].id]) {
 					idSet[catalog[ci].id] = true
 					ids.push(catalog[ci].id)
-				}
-			}
-			for (var ri = 0; ri < registryIds.length; ri++) {
-				if (!idSet[registryIds[ri]]) {
-					idSet[registryIds[ri]] = true
-					ids.push(registryIds[ri])
 				}
 			}
 			ids.sort()

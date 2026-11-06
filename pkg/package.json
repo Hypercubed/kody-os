@@ -1,8 +1,8 @@
 {
   "name": "@hypercubed/kody-os",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "private": true,
-  "build": 31,
+  "build": 32,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

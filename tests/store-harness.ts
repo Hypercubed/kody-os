@@ -17,13 +17,16 @@
  *     for surviving fields, replaces the snapshot, and leaves pins
  *     untouched.
  *   Snapshot-less: a catalog app installed via generic add_app claims
- *     no status and gets no update control.
+ *     no status, but the Store offers a confirmed Overwrite for it
+ *     (the management API requires confirmation first, then records
+ *     a snapshot, so the app becomes managed).
  *   Storage-only: a custom app (no catalog entry) gets a Storage
- *     only status, no Install/Update/Restore through the management API.
- *   Management API: rows are the union of catalog + installed ids,
- *     deduplicated, alphabetical, with capabilities disclosed; an
- *     undeclared caller is permission-denied; a modified restore
- *     requires confirmation and applies on confirm.
+ *     only status, no Install/Update/Restore through the management API,
+ *     and no row in the Store list at all.
+ *   Management API: rows are the catalog apps only, alphabetical,
+ *     with capabilities disclosed; an undeclared caller is
+ *     permission-denied; a modified restore requires confirmation
+ *     and applies on confirm.
  *   Edit render: Apps Edit lists every installed app including
  *     hidden ones, with Pin/Hide/Home as plain GET forms only —
  *     no Open link to an app page, no app-action class, no POST form.
@@ -39,7 +42,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
+import { act, add_app, createMemoryStore, ensure_app_store_seeded, get_app_status, get_catalog_definition, get_hidden, get_homepage, get_launcher_state, get_pinned, get_store_rows, list_apps, list_catalog, manage_restore, manage_rows, manage_update, readInstallSnapshot, remove_app, renderAllSection, renderEditSection, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog } from '../pkg/src/apps/index.ts'
 
 var failures: string[] = []
 
@@ -125,7 +128,7 @@ function clone<T>(v: T): T {
 	check('store update leaves pins untouched', pinsAfter.length === 1 && pinsAfter[0] === 'counter', pinsAfter.join(','))
 }
 
-// Snapshot-less, storage-only, combined-list shape, render gates, hidden rows.
+// Snapshot-less, storage-only, catalog-only list shape, render gates, hidden rows.
 {
 	var store = createMemoryStore()
 	await ensure_app_store_seeded(store)
@@ -141,13 +144,21 @@ function clone<T>(v: T): T {
 	check('custom app is storage-only', customStatus.status === 'storage-only', customStatus.status)
 	var rows = await get_store_rows(store)
 	var ids = rows.map(function (r) { return r.id })
-	check('combined rows are catalog + installed, deduplicated', rows.length === 17, rows.length + ' rows')
-	check('combined rows are alphabetical', JSON.stringify(ids) === JSON.stringify(ids.slice().sort()), ids.join(','))
+	var catalogIds = list_catalog().map(function (c) { return c.id })
+	check('store rows are catalog apps only', rows.length === catalogIds.length && JSON.stringify(ids) === JSON.stringify(catalogIds.slice().sort()), rows.length + ' rows')
+	check('store rows are alphabetical', JSON.stringify(ids) === JSON.stringify(ids.slice().sort()), ids.join(','))
+	check('storage-only app has no store row', ids.indexOf('my-note') === -1, ids.join(','))
 	var storeRow = null
 	for (var si = 0; si < rows.length; si++) if (rows[si].id === 'app-store') storeRow = rows[si]
 	check('store row discloses manageApps', storeRow !== null && (storeRow as { capabilities: { manageApps: boolean } }).capabilities.manageApps === true, JSON.stringify(storeRow))
 	var snapshotLessUpdate = await manage_update('app-store', 'xkcd', false, store)
-	check('snapshot-less app has no update via management API', snapshotLessUpdate.ok === false, JSON.stringify(snapshotLessUpdate))
+	check('snapshot-less Overwrite requires confirmation', snapshotLessUpdate.ok === false && (snapshotLessUpdate as { needsConfirmation?: boolean }).needsConfirmation === true, JSON.stringify(snapshotLessUpdate))
+	var snapshotLessConfirmed = await manage_update('app-store', 'xkcd', true, store)
+	check('snapshot-less Overwrite applies on confirm', snapshotLessConfirmed.ok === true, JSON.stringify(snapshotLessConfirmed))
+	var xkcdAfterOverwrite = await get_app_status('xkcd', store)
+	check('overwritten snapshot-less app is up-to-date', xkcdAfterOverwrite.status === 'up-to-date', xkcdAfterOverwrite.status)
+	var xkcdSnap = await readInstallSnapshot(store, 'xkcd')
+	check('overwrite records a snapshot', xkcdSnap !== null, JSON.stringify(xkcdSnap))
 	var storageOnlyUpdate = await manage_update('app-store', 'my-note', false, store)
 	check('storage-only app has no update via management API', storageOnlyUpdate.ok === false, JSON.stringify(storageOnlyUpdate))
 	var storageOnlyRestore = await manage_restore('app-store', 'my-note', false, store)

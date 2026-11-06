@@ -54,6 +54,7 @@ async function main() {
   const rows = [
     { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
     { id: "app-store", label: "App Store", name: "App Store", icon: "⊞", description: "Store.", installed: true, inCatalog: true, status: "behind-modified", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: true, feedHosts: [], proxyHosts: [] } },
+    { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
   ];
   const calls = [];
   const dom = new JSDOM(
@@ -78,9 +79,10 @@ async function main() {
   await new Promise(function (r) { setTimeout(r, 50); });
   const doc = win.document;
   const items = doc.querySelectorAll(".store-row");
-  check(items.length === 2, "two rows render from mocked management API");
+  check(items.length === 3, "three rows render from mocked management API");
   check(items[0] && items[0].textContent.indexOf("Install") !== -1, "not-installed row offers Install");
-  check(items[1] && items[1].textContent.indexOf("Update…") !== -1, "behind-modified row offers Update…");
+  check(items[1] && items[1].textContent.indexOf("Overwrite") !== -1, "behind-modified row offers Overwrite");
+  check(items[2] && items[2].textContent.indexOf("Overwrite") !== -1, "snapshot-less row offers Overwrite");
   const firstChildren = Array.prototype.slice.call(items[0].children);
   const mainIndex = firstChildren.indexOf(items[0].querySelector(".store-main"));
   const bodyIndex = firstChildren.indexOf(items[0].querySelector(".store-body"));
@@ -97,12 +99,17 @@ async function main() {
   const updateBtn = items[1].querySelector("button");
   updateBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
-  check(doc.querySelector(".store-confirm").textContent.indexOf("Confirm update") !== -1, "modified update shows bundle confirmation, not an immediate apply");
-  check(doc.querySelector(".store-confirm").textContent.indexOf("manage other apps") !== -1, "confirmation lists capability additions");
-  const confirmBtn = doc.querySelectorAll(".store-confirm button")[0];
+  check(doc.querySelector(".store-dialog").textContent.indexOf("Confirm update") !== -1, "modified update shows bundle confirmation, not an immediate apply");
+  check(doc.querySelector(".store-dialog").textContent.indexOf("manage other apps") !== -1, "confirmation lists capability additions");
+  const confirmBtn = doc.querySelectorAll(".store-dialog button")[0];
   confirmBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
   check(calls.indexOf("/manage/update?app=app-store&id=app-store&confirmed=1") !== -1, "confirm submits the confirmed update");
+  const reloaded = doc.querySelectorAll(".store-row");
+  const snapshotLessBtn = reloaded[2] && reloaded[2].querySelector("button");
+  snapshotLessBtn.click();
+  await new Promise(function (r) { setTimeout(r, 50); });
+  check(doc.querySelector(".store-dialog").textContent.indexOf("Confirm update") !== -1, "snapshot-less Overwrite shows the same confirmation");
   if (failures > 0) {
     console.error("\n" + failures + " check(s) FAILED");
     process.exit(1);
