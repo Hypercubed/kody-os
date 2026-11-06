@@ -357,32 +357,17 @@ if (canFastPath && typeof DOMParser !== 'undefined') {
 /**
  * Header clock tick (enhancement layer).
  * The bar carries server-rendered UTC text so the output is complete on its
- * own. Where JavaScript runs, replace it immediately with the browser's local
- * time zone and keep it ticking every second.
+ * own. Where JavaScript runs, replace it immediately with the browser's
+ * local time zone in the browser's localized date/time format, and keep it
+ * ticking every second.
  */
 var clock = document.getElementById('os-clock')
 if (clock && typeof setInterval !== 'undefined') {
 	;(function (el: HTMLElement): void {
-		var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-		var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-		function two(n: number): string {
-			return n < 10 ? '0' + n : '' + n
-		}
 		function render(): void {
 			try {
 				var d = new Date()
-				el.textContent =
-					days[d.getDay()] +
-					' ' +
-					two(d.getDate()) +
-					' ' +
-					months[d.getMonth()] +
-					' ' +
-					d.getFullYear() +
-					' ' +
-					two(d.getHours()) +
-					':' +
-					two(d.getMinutes())
+				el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
 			} catch (err) {
 				// Never break the page for a clock refresh.
 			}

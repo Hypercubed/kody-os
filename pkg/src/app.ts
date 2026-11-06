@@ -241,17 +241,13 @@ function pageHeaders(): Record<string, string> {
 	}
 }
 
-var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-function twoDigits(n: number): string {
-	return n < 10 ? '0' + n : '' + n
-}
-
-/** Server-rendered UTC clock for the header bar. Plain text, updates each navigation. */
+/** Server-rendered UTC clock for the header bar. Plain text, updates each
+ * navigation. The server has no user locale, so this renders UTC through
+ * the same localized APIs the client tick uses; the client replaces it
+ * immediately with the browser's local time zone and locale. */
 function headerClock(now?: Date): string {
 	var d = now ? now : new Date()
-	return WEEKDAYS[d.getUTCDay()] + ' ' + twoDigits(d.getUTCDate()) + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() + ' ' + twoDigits(d.getUTCHours()) + ':' + twoDigits(d.getUTCMinutes())
+	return d.toLocaleDateString(undefined, { timeZone: 'UTC' }) + ' ' + d.toLocaleTimeString(undefined, { timeZone: 'UTC' })
 }
 
 function shellChrome(opts: {

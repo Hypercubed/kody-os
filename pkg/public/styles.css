@@ -538,9 +538,10 @@ main {
 	font-size: 0.75rem;
 	font-weight: normal;
 	line-height: 1.2;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .tiles a.tile {
@@ -592,6 +593,17 @@ main {
 	font-size: 0.8125rem;
 	font-weight: bold;
 	line-height: 1.15;
+}
+
+/* App names in the (non-pinned) apps list clamp to two lines. The label
+   always reserves two lines of height, so a one-line name and a two-line
+   name leave the icon in exactly the same place. */
+.tiles > li:not(.tile-wide) .tile-label {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	min-height: 2.3em;
+	overflow: hidden;
 }
 
 .tile-empty {
