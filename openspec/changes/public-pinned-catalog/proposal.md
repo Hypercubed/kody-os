@@ -25,9 +25,9 @@ catalog.
 ## What Changes
 
 - The Store's catalog source becomes the public
-  catalog manifest and bundles fetched from a
-  pinned release of the public repo. The data
-  Store (see `data-only-app-store`) fetches the
+  catalog manifest and definitions fetched from
+  a pinned release of the public repo. The App
+  Store (catalog app `app-store`) fetches the
   manifest through the shell's management API
   path (server-side fetch, as the feed proxy
   does today), not by having the Scribe browser
@@ -71,8 +71,9 @@ catalog.
 
 - `pkg/src/apps/catalog.ts`: replaced as the
   runtime catalog source by a remote-catalog
-  module (manifest fetch, bundle fetch by
-  manifest path, pin constant). The module is
+  module (manifest fetch, definition fetch by
+  manifest `definitionPath` — recipe fetch by
+  `recipePath` — pin constant). The module is
   server-side only; bundle code never fetches
   GitHub directly.
 - `pkg/src/apps/registry.ts`: `list_catalog`,

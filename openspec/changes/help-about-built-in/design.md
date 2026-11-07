@@ -246,7 +246,7 @@ links for GitHub Sponsors, Ko-fi, and Buy Me a Coffee, and the QR code),
 as a shell page. No content change; the move is from bundle HTML into
 shell code.
 
-### Decision 10: version — MAJOR (3.0.0) recommended — DECIDED as a recommendation, confirmed at the commit
+### Decision 10: version — MAJOR (3.0.0) recommended — DECIDED as a recommendation, confirmed at publish
 
 Per the version policy in `pkg/AGENTS.md` ("when in doubt, take the higher
 one"): `install_from_catalog('help')` and `install_from_catalog('about')`
@@ -254,39 +254,15 @@ stop working (a valid catalog id no longer installs), and a fork's
 `os-theme.json` would be silently ignored after the rename (the file is
 read at render time; a missing `settings.json` falls back to stock values
 with no warning). Either alone is a breaking change for a fork or an
-agent prompt that names those ids. Build +1 on publish either way. The
-decision is taken at the implementation commit, together with the
-catalog-restructure change's outstanding version decision (task 8.3 there)
-— the two changes will almost certainly publish together, and the highest
-bump wins.
+agent prompt that names those ids. Build +1 on publish either way. The decision was deferred to publish by the user (Nov 6, 2026), together with the catalog-restructure change's outstanding version decision (task 8.3 there) — the two changes will almost certainly publish together, and the highest bump wins.
 
 ## Open Questions
 
-1. **Archive order (hard constraint).** Archive in this order:
-   `catalog-restructure`, then `shell-settings`, then this change.
-   - This change's app-registry MODIFIED deltas are written on top of the
-     catalog-restructure texts (already hand-synced into the canonical
-     specs); the known archive INFO stands — catalog-restructure's ADDED
-     "Catalog index" delta collides with the hand-synced canonical
-     requirement at its archive time, and must be reconciled there, not
-     here.
-   - This change's os-theme MODIFIED "Single theme file with defaults" is
-     written on top of shell-settings' MODIFIED text (it includes
-     shell-settings' DEFAULT-layer paragraph, with `settings.json`
-     substituted). If shell-settings archived AFTER this change, its delta
-     would overwrite the requirement with the `os-theme.json` text and
-     silently drop the rename and the flags. Shell-settings MUST archive
-     first.
-   - When shell-settings archives, drop the sentence "The Help page SHALL
-     name the Settings app as the browser path for changing the shell
-     theme." from its ADDED "Settings catalog app" requirement (superseded
-     by Decision 6), and note that its ADDED "Agent access to the theme
-     override" field list (`name`, `title`, `icon`, `background`) gains
-     `showHelp` / `showAbout` per this change's ADDED "Settings file
-     carries page-visibility flags" requirement.
-2. **Migration seam.** Decision 8 recommends pruning at the registry read /
-   dispatch path; the implementation picks the seam. Open until the
-   implementation names it.
+1. **Archive order (hard constraint).** Archive in this order: `catalog-restructure` (done, 2026-11-06), then `shell-settings`, then this change.
+   - This change's app-registry MODIFIED deltas were written on top of the catalog-restructure texts (already hand-synced into the canonical specs). Catalog-restructure has since archived (2026-11-06), so its ADDED "Catalog index" collision was reconciled there; nothing remains for this change on that point.
+   - This change's os-theme MODIFIED "Single theme file with defaults" is written on top of shell-settings' MODIFIED text (it includes shell-settings' DEFAULT-layer paragraph, with `settings.json` substituted). The Nov 6 scrub re-based shell-settings' MODIFIED text onto `settings.json`, so the two deltas are now identical (including the flags paragraph) and archiving shell-settings after this change would no longer clobber the rename or the flags. The order is retained as prescribed — shell-settings first — but it is no longer load-bearing for the os-theme requirement.
+   - The two shell-settings reconciliation edits are done: the Nov 6 scrub dropped the superseded "The Help page SHALL name the Settings app as the browser path for changing the shell theme." sentence from shell-settings' ADDED "Settings catalog app" requirement (superseded by Decision 6) and added `showHelp` / `showAbout` to its ADDED "Agent access to the theme override" field list. No archive-time edit remains for these.
+2. **Migration seam — RESOLVED.** The implementation prunes at the registry read path, as Decision 8 recommended: `RETIRED_APP_IDS` in `pkg/src/apps/registry.ts` lists `help` and `about`; registry reads filter them from lists and definition lookup rejects them as unknown.
 3. **Closing line on the Help page — RESOLVED.** The Help page omits "Once an
    app is installed your apps show up on the Apps page." (user direction, Nov 6, 2026: that line is about the empty
    state, so it stays only on empty Home and empty Apps). Exact-equality

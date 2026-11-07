@@ -286,8 +286,7 @@ publishes anything (see §7).
 
 ## 7. Version and publish
 
-- [ ] 7.1 Apply the MINOR version bump in the
-  same commit as the code per `pkg/AGENTS.md`
+- [ ] 7.1 Apply the MINOR version bump at publish per `pkg/AGENTS.md` (deferred to publish by the user, Nov 6, 2026 — the code is already committed)
   (BUILD +1 on publish; `pkg/AGENTS.md` +
   `pkg/README.md` headers updated to the new
   version in that commit). If the phases land

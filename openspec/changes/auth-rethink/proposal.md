@@ -82,7 +82,7 @@ the secret invalidates all cookies at once.
   two-path, secret-bound-cookie model above; every requirement in
   the base spec is restated or retired in the delta.
 - `shell`: footer auth-path vocabulary loses `via key`; shell chrome,
-  enhancement, and form conventions lose all `?k=`/key handling;
+  enhancement, and form conventions lose all `?k=` stamping and derived-key handling (`?k=` remains only as the single-use OTP submission param);
   Help/empty-state copy loses the legacy path.
 
 ## Impact
@@ -92,7 +92,7 @@ the secret invalidates all cookies at once.
   cookie), `pkg/src/app.ts` (unlock, stamping, footer, Help copy),
   `pkg/src/apps/client.ts` (enhancement key handling removed),
   `pkg/src/index.ts` (export list: `get_access_code` removed),
-  `pkg/scripts/seed-dev-hash.ts` (retired with the stored hash),
+  `pkg/scripts/seed-dev-hash.ts` (already retired 2026-10-31, v2.0.0 — no longer in the tree),
   `pkg/docs/device-key.md` (rewritten to the new model),
   `pkg/AGENTS.md` + `pkg/README.md` (gate, version, and local-dev
   copy), `pkg/docs/setup.md` (auth section updated if the
@@ -100,9 +100,7 @@ the secret invalidates all cookies at once.
 - No storage-key changes for apps; session storage is versioned so
   old-format cookies cannot authenticate after the cutover. MCP
   exports other than `get_access_code` keep their signatures;
-  `mint_otp` gains the secret-bound failure case, and
-  `get_access_status` gains the new meaning (secret bound = cookie
-  path enabled).
+  `mint_otp` gains the secret-bound failure case. (`get_access_status` no longer exists as an export — removed 2026-10-31; the bound-secret state is surfaced by `mint_otp` failing closed.)
 - This change depends on the probe (Gate 0) and interacts with the
   app-store change (install forms and "authenticated shell request"
   follow the new transport; if the store lands first, its `k`-field

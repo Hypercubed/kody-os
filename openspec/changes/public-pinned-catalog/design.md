@@ -2,24 +2,31 @@
 
 ## Context
 
-See proposal.md (Why). Today the catalog is an
-import list in `pkg/src/apps/catalog.ts` over
-`pkg/catalog/*.bundle.json`, and `list_catalog()`
-returns summaries in import-list order while
+See proposal.md (Why). Today the catalog is a
+set of per-app directories
+(`pkg/catalog/<id>/definition.json` plus
+`RECIPE.md`) listed through the generated index
+`pkg/catalog/catalog.json`, and `list_catalog()`
+returns summaries in index order while
 `get_catalog_definition(id)` returns the full
-definition or null. Install snapshots record the
-install-time `catalogVersion` plus a content-only
-fingerprint of the canonical stored definition,
-and Store status (up to date, behind-clean,
+definition or null. (`pkg/src/apps/catalog.ts`
+still statically imports each definition,
+because install needs the full definition.)
+Install snapshots record the install-time
+`catalogVersion` plus a content-only fingerprint
+of the canonical stored definition, and Store
+status (up to date, behind-clean,
 behind-modified, modified-current, and so on) is
 computed by comparing the installed definition
 and snapshot against the catalog definition.
 After `catalog-out-of-pkg`, the manifest at
-`catalog/index.json` carries the same per-app
-fields plus bundle path and fingerprint. The
-feed proxy in `pkg/src/feeds.ts` is the existing
-server-side fetch pattern: HTTPS only, timeout,
-size cap, storage caching, stale-on-error.
+`catalog/catalog.json` carries per-app id,
+label, `catalogVersion`, fingerprint,
+`installMode`, `definitionPath`, and
+`recipePath`. The feed proxy in
+`pkg/src/feeds.ts` is the existing server-side
+fetch pattern: HTTPS only, timeout, size cap,
+storage caching, stale-on-error.
 
 ## Goals / Non-Goals
 
@@ -52,16 +59,18 @@ size cap, storage caching, stale-on-error.
 2. **Fetch is server-side, through the management
    API path.** The Store bundle never fetches
    GitHub directly: it calls the management API,
-   and the shell fetches the manifest and bundles
-   from the pinned release. This keeps the
-   Scribe browser out of GitHub's CORS and
-   redirect behavior, reuses the feed proxy's
-   timeout/size discipline, and keeps the
-   device gate in front of the catalog fetch.
-   Bundle fetches use the manifest's bundle
-   path joined to the pinned release base — the
-   bundle path is never taken from a bundle or
-   from a request parameter.
+   and the shell fetches the manifest and
+   definitions (and recipes on demand) from the
+   pinned release. This keeps the Scribe browser
+   out of GitHub's CORS and redirect behavior,
+   reuses the feed proxy's timeout/size
+   discipline, and keeps the device gate in
+   front of the catalog fetch. Definition fetches
+   use the manifest's `definitionPath` joined to
+   the pinned release base, and recipe fetches
+   use its `recipePath` — neither path is ever
+   taken from a definition or from a request
+   parameter.
 3. **The pin's strength is tag, with SHA as an
    option.** A release tag is the human-facing
    pin and is what the Store displays. Tags are
@@ -99,12 +108,13 @@ size cap, storage caching, stale-on-error.
    at all, and its TTL, is an implementation
    detail within that labeling rule; the
    16 MiB durable budget argues against caching
-   every bundle, so bundles are fetched on
-   demand for install/update, not prefetched.
+   every definition, so definitions are fetched
+   on demand for install/update, not prefetched.
 6. **Release cutting is a named procedure, not
    automation in this change.** Cutting a
    catalog release means: regenerate the
-   manifest, run the catalog harness, commit,
+   manifest (`bun scripts/build-catalog-index.ts`),
+   run the catalog harness, commit,
    tag the release, and publish it. The spec
    requires that procedure to be documented
    (in the catalog README and in

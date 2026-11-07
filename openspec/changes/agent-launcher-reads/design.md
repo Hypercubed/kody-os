@@ -35,5 +35,5 @@ None — additive exports, no stored-data change. Old clients keep working; new 
 
 ## Open Questions
 
-1. Should the deferred setters follow-up also cover `move_home`/`clear_recent`, or only pin/hide/homepage membership? (Decision for the follow-up change, recorded here so it is not lost.)
+1. Should the deferred setters follow-up also cover `move_home`/`clear_recent`, or only pin/hide/homepage membership? (Decision for the follow-up change, recorded here so it is not lost.) Partially overtaken 2026-11-06: the pin/home/hide setters — including `move_home` — were exported from the package root outside this change (verified in `pkg/src/index.ts`); `clear_recent` remains internal (in `pkg/src/apps/index.ts` only, not the root). The remaining question is only whether `clear_recent` needs an agent surface.
 2. Should `main()`'s `exports` list gain one entry per reader, or a single `launcher state` entry covering the aggregate? Recommendation: one entry per export, matching the existing one-entry-per-function pattern; confirm at apply time against the `main()` shape.

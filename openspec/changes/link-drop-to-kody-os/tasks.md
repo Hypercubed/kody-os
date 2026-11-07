@@ -209,10 +209,12 @@
 ## 6. Catalog shipping (Phase 2, optional)
 
 - [x] 6.1 Only on user direction: add
-  `pkg/catalog/link-drop.bundle.json`
-  (`catalogVersion` 1), one import line
-  in `pkg/src/apps/catalog.ts`
-  (alphabetical by id), and one entry in
+  `pkg/catalog/link-drop/definition.json`
+  (shipped at `catalogVersion` 1, now 3)
+  plus `pkg/catalog/link-drop/RECIPE.md`,
+  one import line in `pkg/src/apps/catalog.ts`
+  (alphabetical by id), the generated index
+  regenerated, and one entry in
   `pkg/catalog/README.md`, in the pattern
   of the existing catalog apps.
 - [x] 6.2 Run the catalog harness and
@@ -233,8 +235,7 @@
   shape manually, as with other changes
   in this environment: proposal, design,
   tasks, and spec deltas present and
-  internally consistent, all tasks
-  unchecked).
+  internally consistent).
 - [ ] 7.2 Confirm no file outside
   `openspec/changes/link-drop-to-kody-os/`
   was changed by writing this change

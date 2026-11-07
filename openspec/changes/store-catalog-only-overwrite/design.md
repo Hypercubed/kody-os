@@ -75,5 +75,4 @@ definition with the catalog copy.
 
 MINOR 2.6.0 → 2.7.0: a behavior change to the Store list and
 controls, nothing existing breaks. App-store bundle
-`catalogVersion` 8 → 9 (its `store.js` changed). Build stays 31
-until publish, per the version policy.
+`catalogVersion` 8 → 9 (its `store.js` changed). Build went 31 → 32 at publish, per the version policy.

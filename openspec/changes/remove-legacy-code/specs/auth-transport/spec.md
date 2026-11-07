@@ -152,7 +152,7 @@ outstanding codes and no secret gate of any kind. Failed unlock
 attempts SHALL be capped at 10 per 10-minute window device-wide,
 denying further attempts until the window passes. A correct OTP
 SHALL burn itself and mint a session cookie (random 25-character
-bearer, SHA-256 hash lookup in `kody-os.auth.sessions`, HttpOnly,
+bearer, SHA-256 hash lookup in `kody-os.auth.sessions.v2`, HttpOnly,
 30-day expiry, no credential in any URL). Requests SHALL
 authenticate by session verification, failing closed on unknown
 or expired tokens. The OTP plaintext SHALL be returned exactly

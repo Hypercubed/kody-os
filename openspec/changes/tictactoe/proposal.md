@@ -6,8 +6,8 @@ Tic-tac-toe was scoped as human-vs-agent plus a roster and session layer, but th
 
 ## What Changes
 
-- Single-player tic-tac-toe ships as a **bundle app** (see `app-bundles`): board rendering, random computer moves, and win/draw detection all in vanilla bundle JS. No server state, no MCP play loop, no roster.
-- Requires the `app-bundles` change landed first; this change builds directly on bundle hosting.
+- Single-player tic-tac-toe ships as a **bundle app** (see archived `2026-10-26-app-bundles` change): board rendering, random computer moves, and win/draw detection all in vanilla bundle JS. No server state, no MCP play loop, no roster.
+- Bundle hosting from the archived `2026-10-26-app-bundles` change has landed, so this dependency is satisfied; this change builds directly on bundle hosting.
 - BREAKING: none. New app only; operator registry untouched.
 - Explicit non-goal: agent opponents, roster, sessions, polling cadences — all of that moves to the `agent-sessions` change, which is parked until this game proves out.
 

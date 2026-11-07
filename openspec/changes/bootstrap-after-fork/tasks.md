@@ -13,28 +13,30 @@ this change's implementation scope.
 - [ ] 1.1 Rewrite `pkg/docs/setup.md` around
   the new sequence: fork, publish, confirm
   empty registry, unlock with an OTP, then
-  choose install-nothing (supported, with its
-  honest empty states stated) or bootstrap.
-  Remove the bundled-examples first-app path
-  and the stale "App Store specified but not
-  yet implemented" passage. Keep the fork /
+  choose install-nothing (supported, with the
+  shared help text and its two prompts stated)
+  or bootstrap.
+  Remove the bundled-examples first-app path.
+  (The stale "App Store specified but not yet
+  implemented" passage is already gone from
+  setup.md — verify it stays gone; do not
+  re-add it.) Keep the fork /
   publish / adopt / Use-access definitions
   unchanged.
 - [ ] 1.2 Write the bootstrap procedure per
-  design.md: a copy-paste agent prompt that
-  fetches About, Help, and Store bundles from
-  the pinned release, validates each before
-  writing, installs via `add_app`, and verifies
-  with `list_apps` and by opening each app
-  page, stopping and asking on any failed
-  check. State that bootstrap apps are
-  ordinary installs, removable via agent
-  `remove_app`.
-- [ ] 1.3 Write the Store-alone recovery
-  procedure separately: fetch only the Store
-  bundle from the pinned release, install via
-  `add_app`, open the Store. No About or Help
-  bootstrap required.
+  design.md: a copy-paste agent prompt that fetches the
+  Store bundle from the pinned release, validates
+  it before writing, installs via `add_app`, and
+  verifies with `list_apps` and by opening the
+  Store page, stopping and asking on any failed
+  check. State that the bootstrapped Store is an
+  ordinary install, removable via agent
+  `remove_app`, and that About and Help are
+  built-in pages needing no install.
+- [ ] 1.3 Confirm there is no separate Store-alone
+  procedure to write: installing the Store IS
+  the bootstrap procedure (1.2); About and Help
+  need no install step.
 
 ## 2. Update the surrounding docs
 
@@ -62,11 +64,11 @@ this change's implementation scope.
 - [ ] 3.1 Walk the documented procedure
   against a fresh fork (or a fresh mock store
   standing in for one, where a hosted fork is
-  unavailable): empty choice renders honest
-  empty states; bootstrap installs all three
-  apps and all checks pass; removing the Store
-  and following the Store-alone procedure
-  restores it without About or Help.
+  unavailable): empty choice renders the shared help text
+  with its two prompts; bootstrap installs the
+  Store and all checks pass; removing the Store
+  and following the bootstrap procedure restores
+  it.
 - [ ] 3.2 Sync the canonical specs: update
   `openspec/specs/setup-guide` for the new
   sequence. Record the version decision in

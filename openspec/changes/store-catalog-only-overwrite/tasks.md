@@ -1,7 +1,7 @@
 # Tasks
 
 Implementation exists in the working tree (VM clone, main at
-5bbefe40, uncommitted, 2026-11-05). Tasks are marked done where
+5bbefe40, committed as `7582828` and published to Kody as v2.7.0 build 32, 2026-11-05). Tasks are marked done where
 they are done; they are recorded here so the change is
 reviewable, not so they can be redone. No task in this file
 commits, pushes, or publishes anything, and no task after this
@@ -23,7 +23,7 @@ recorded at commit time.
 
 ## 2. Store bundle: Overwrite label
 
-- [x] 2.1 In `pkg/catalog/app-store.bundle.json`, the
+- [x] 2.1 In `pkg/catalog/app-store/definition.json`, the
   behind-modified button changes from "Update…" to "Overwrite",
   and snapshot-less rows get the same Overwrite button. The
   modal, its title, and its wording are untouched; the button
@@ -37,8 +37,7 @@ recorded at commit time.
 
 - [x] 3.1 Package MINOR 2.6.0 → 2.7.0 in `pkg/package.json`,
   with `pkg/AGENTS.md`, `pkg/README.md`, and root `README.md`
-  headers updated in the same change. Build stays 31 until
-  publish. The `pkg/README.md` Current line also names the
+  headers updated in the same change. Build 32 at publish (v2.7.0 build 32, live). The `pkg/README.md` Current line also names the
   catalog-only Store with confirmed Overwrite.
 
 ## 4. Tests

@@ -5,9 +5,12 @@
 Kody already stores the owner's platform mail: inbound and
 outbound messages for the current org, reachable through the
 built-in email capabilities (`emailInboxList`,
-`emailMessageList`, `emailMessageSearch`, `emailMessageGet`,
+`emailMessageList`, `emailMessageGet`,
 `emailAttachmentGet`, `emailMessageClassify`,
-`emailMessageDelete`, `emailReply`). The kody-os shell cannot
+`emailMessageDelete`, `emailReply`). Search additionally
+assumes `emailMessageSearch`, which is NOT yet verified
+as a callable capability (see design.md, Open Question
+5). The kody-os shell cannot
 show that mail today, because a data app's bundle is browser
 JavaScript only: it cannot call `kody.*`, and no shell route
 exists that will call those capabilities on its behalf. The
@@ -41,7 +44,8 @@ with no agent sync step and no mail stored in app state.
   therefore inside the device gate that `fetch()` already
   runs: `GET /email/:app/messages`,
   `GET /email/:app/search`, `GET /email/:app/messages/:id`,
-  `GET /email/:app/attachments/:id`, and GET-action
+  `GET /email/:app/attachments/:id`,
+  `GET /email/:app/inboxes`, and GET-action
   routes for classify, delete, and reply (see design.md).
 - `pkg/src/apps/types.ts` + `pkg/src/apps/registry.ts`:
   a data-only declaration, `capabilities.email`, that an
@@ -80,9 +84,11 @@ with no agent sync step and no mail stored in app state.
   `pkg/src/email.ts` (new), `pkg/src/app.ts` (route
   dispatch only), `pkg/src/apps/types.ts`,
   `pkg/src/apps/registry.ts` (declaration + validation),
-  `pkg/catalog/email.bundle.json` (new),
+  `pkg/catalog/email/definition.json` (new) plus
+  `pkg/catalog/email/RECIPE.md`,
   `pkg/src/apps/catalog.ts` (one import line,
-  alphabetical), `pkg/catalog/README.md` (one entry),
+  alphabetical), the generated index regenerated,
+  `pkg/catalog/README.md` (one entry),
   `pkg/docs/email.md` (new),
   `pkg/.agents/skills/adding-an-app/SKILL.md` (one row).
 - No registry effect-op change, no `act()` change, no

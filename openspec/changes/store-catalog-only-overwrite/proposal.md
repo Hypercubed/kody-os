@@ -3,10 +3,11 @@
 ## Status note
 
 This change is a record of work directed by the owner on 2026-11-05,
-implemented in the VM working tree (main at 5bbefe40, uncommitted).
-The tasks in tasks.md are marked done where they are done; the only
-open tasks are review and ship decisions, which belong to the owner.
+implemented in the VM working tree (main at 5bbefe40), committed as `7582828`, and published to Kody as v2.7.0 build 32 (live).
+The tasks in tasks.md are marked done where they are done. The ship tasks in section 6 (commit, publish) have since happened - committed as `7582828`, published to Kody as v2.7.0 build 32 - and are recorded there; the remaining open item is the human-browser / Scribe check (6.3).
 Nothing in this change commits, pushes, or publishes anything.
+
+Later Store work (commit `08b81cd`, Nov 5, 2026) changed not-installed rows from Install to Add and gave up-to-date rows a Remove control, so the Install wording and 'up-to-date rows offer neither' in this change's spec deltas are superseded; that later work's spec update is still owed and is not folded in here.
 
 ## Why
 
@@ -44,7 +45,7 @@ the Store telling the truth about what it manages:
   always requires confirmation for it, like behind-modified.
   A successful store update records a snapshot.
 - App-store bundle `catalogVersion` 8 → 9. Package MINOR
-  2.6.0 → 2.7.0, build stays 31 until publish.
+  2.6.0 → 2.7.0, build 31 → 32 at publish (v2.7.0 build 32, live).
 
 ## What does not change
 

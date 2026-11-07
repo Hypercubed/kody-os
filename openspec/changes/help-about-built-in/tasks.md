@@ -64,6 +64,6 @@
 
 ## 8. Specs, version, archive
 
-- [ ] Version decision at the implementation commit: MAJOR (3.0.0) recommended (Decision 10), taken together with catalog-restructure task 8.3; build +1 on publish
-- [ ] Archive in order: `catalog-restructure`, then `shell-settings` (dropping the superseded "Help page SHALL name the Settings app" sentence and adding `showHelp` / `showAbout` to the "Agent access to the theme override" field list), then this change
+- [ ] Version decision at publish: MAJOR (3.0.0) recommended (Decision 10), taken together with catalog-restructure task 8.3; build +1 on publish. (Deferred to publish by the user, Nov 6, 2026 — the implementation is already committed.)
+- [ ] Archive in order: `catalog-restructure` (done, 2026-11-06), then `shell-settings`, then this change. (The two `shell-settings` reconciliation edits — dropping the superseded "Help page SHALL name the Settings app" sentence and adding `showHelp` / `showAbout` to the "Agent access to the theme override" field list — were applied to the `shell-settings` deltas in the Nov 6 scrub; no archive-time edit remains for them.)
 - [x] No commit, push, or publish in this change — spec only; the implementation commit is a separate stop on the user's direction. (Overtaken: the implementation was committed as c5d10d4, with follow-up c786c46.)

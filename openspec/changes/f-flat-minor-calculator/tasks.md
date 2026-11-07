@@ -217,12 +217,14 @@ Only on the user's explicit direction, and
 only after Phase 1 (tasks 1-5) passes.
 
 - [ ] 6.1 Write
-  `pkg/catalog/f-flat-minor.bundle.json`
-  from the verified v1 definition, with
-  `catalogVersion` 1, and register it:
+  `pkg/catalog/f-flat-minor/definition.json`
+  from the verified v1 definition, plus
+  `pkg/catalog/f-flat-minor/RECIPE.md`,
+  with `catalogVersion` 1, and register it:
   one import line in
   `pkg/src/apps/catalog.ts`
-  (alphabetical by id) plus one entry in
+  (alphabetical by id), the generated index
+  regenerated, plus one entry in
   `pkg/catalog/README.md`. Verify the
   catalog harness passes (validate +
   install in a blank store + empty initial

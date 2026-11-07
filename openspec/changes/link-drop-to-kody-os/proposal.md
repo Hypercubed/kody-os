@@ -25,13 +25,13 @@ reports.
 
 ## What Changes
 
-- One new app, id `link-drop`, label "Send
-  Link", category `utilities`, delivered in v1
+- One new app, id `link-drop`, label "Link
+  Drop", category `utilities`, delivered in v1
   as a registry write via `add_app`, exactly
-  like Daily Brief, Daily Feed, and the other
-  data apps. Per `pkg/AGENTS.md` ("Adding an
-  app"), that is no package change, no commit,
-  and no republish: the definition is data in
+  like Daily Feed and the other data apps. Per
+  `pkg/AGENTS.md` ("Adding an app"), that is
+  no package change, no commit, and no
+  republish: the definition is data in
   `packageStorage()`, and it appears in
   `list_apps()` and on the Apps page as soon as
   `add_app` returns `{ ok: true }`.
@@ -96,9 +96,10 @@ reports.
   MCP export, or shell behavior changes.
 - Catalog shipping (Phase 2, optional, tasks
   section 6) modifies `app-registry` only by
-  adding one catalog bundle, one `catalog.ts`
-  import line, and one README entry, in the
-  same pattern as the existing catalog apps.
+  adding one catalog definition (definition.json
+  plus RECIPE.md), one `catalog.ts` import line,
+  a regenerated index, and one README entry, in
+  the same pattern as the existing catalog apps.
 
 ## Impact
 
@@ -109,14 +110,19 @@ reports.
   No file in `pkg/` changes, so no version
   decision is triggered by v1 at all.
 - Phase 2 (only on user direction):
-  `pkg/catalog/link-drop.bundle.json` (new,
-  `catalogVersion` 1), one import line in
-  `pkg/src/apps/catalog.ts` (alphabetical by
-  id), one entry in `pkg/catalog/README.md`.
-  That is a new feature with nothing existing
-  breaking, so it is a MINOR bump per
-  `pkg/AGENTS.md`, with BUILD +1 on publish,
-  in the same commit as the catalog files.
+  `pkg/catalog/link-drop/definition.json` (new,
+  `catalogVersion` 1) plus
+  `pkg/catalog/link-drop/RECIPE.md`, one import
+  line in `pkg/src/apps/catalog.ts`
+  (alphabetical by id), the generated index
+  regenerated, and one entry in
+  `pkg/catalog/README.md`. That is a new feature
+  with nothing existing breaking, so it is a
+  MINOR bump per `pkg/AGENTS.md`, with BUILD +1
+  on publish, in the same commit as the catalog
+  files. Note: Phase 2 is done — Link Drop is
+  in the catalog at `catalogVersion` 3,
+  `installMode` `json`.
 - Storage budget: the links field holds at most
   500 entries of at most 2048 bytes each, so
   at most about 1 MiB of entry text, inside

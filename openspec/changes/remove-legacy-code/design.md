@@ -195,8 +195,8 @@ path for a visitor who is not Kody-signed-in.
   bookmarks, code-hash cookies) is logged out at cutover and
   needs a fresh OTP or Kody login. Mitigation: intended; the
   cutover is announced in the setup guide and verified as
-  part of the tasks, not discovered by users. OTP-minted
-  sessions are unaffected.
+  part of the tasks, not discovered by users. SUPERSEDED 2026-10-31 (owner direction: invalidate all existing OTP access first): pre-cutover OTP-minted
+  sessions were likewise invalidated at cutover (v2 registry keys; see proposal) — each device needed a fresh OTP or Kody login.
 - [Risk] Removing `?k=` stamping breaks a workflow that
   depends on bookmarked access. Mitigation: none offered —
   bookmarked access *is* the removed surface. The replacement
@@ -273,9 +273,7 @@ draft does not bump anything.
 
 ## Open Questions
 
-1. Whether the app-store change lands before or after this
-   one (landing order fixes the version target and which
-   change owns removing any `k`-field store forms).
+1. RESOLVED 2026-11-06: this change landed first (2026-10-31, v2.0.0 build 20); the app-store change landed later (2026-11-05, v2.7.0) and added no `k`-field store forms (verified: none in the tree). Landing order no longer fixes anything.
 2. RESOLVED 2026-10-31: the `localStorage` session token
    does NOT re-authenticate enhancement fetches — the server
    accepts `?k=` only as an OTP submission, so attaching the

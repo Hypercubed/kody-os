@@ -104,7 +104,7 @@ this change:
    3→4, clock 2→3, counter 2→3, daily-feed 2→3, eight-ball
    2→3, hoodie-weather 5→6, link-drop 1→2, mac-puzzle 2→3,
    news 2→3, probe 4→5, three-bit-art 17→18, xkcd 2→3.
-   Help is untouched and unbumped.
+   Help is untouched and unbumped. (Versions are those at implementation time, Nov 4, 2026; later changes have bumped several since - app-store is now 13 - and About has since left the catalog entirely, see `help-about-built-in`.)
 9. **Docs are part of the change, not an afterthought.**
    The style guide and skill are where the next agent will
    look, and they are what stated the failed rule. Both now

@@ -4,9 +4,9 @@
 
 Tile icons are shared in name only today. Each
 catalog app's icon is an inline string pasted
-into its bundle JSON: 10 apps carry hand-drawn
-24×24 stroke SVGs, 6 carry a single glyph
-(⊞, →, ▦, ?, ◼, X). The SVGs are close to a
+into its definition JSON: 11 apps carry hand-drawn
+24×24 stroke SVGs, 7 carry a single glyph
+(⊞, →, ▦, ≡, ⚙, ◼, X). The SVGs are close to a
 style but not a style: stroke widths wander
 between 1.6, 1.7, and 1.8, some have round caps
 and joins and some do not, and there is no
@@ -44,15 +44,15 @@ later phases are not started until it is.
   inlined by the shell, exactly as today.
   The folder is where the string comes from,
   not a second place it is fetched from.
-- Phase 1 migrates the existing 10 SVG tile
-  icons into the folder as files (about,
-  calculator, calendar, clock, counter,
-  eight-ball, hoodie-weather, puzzle,
-  news, probe), then normalizes them to one
+- Phase 1 migrates the existing 11 SVG tile
+  icons into the folder as files (calculator,
+  calculator, calendar, clock, counter, daily-feed,
+  eight-ball, hoodie-weather, link-drop,
+  mac-puzzle, news, probe), then normalizes them to one
   spec (24×24 viewBox, `currentColor` stroke,
   one stroke width, round caps and joins,
   monochrome, no gradients, no animation,
-  a `<title>` for accessibility). The 6 glyph
+  a `<title>` for accessibility). The 7 glyph
   icons stay glyphs in Phase 1; converting
   them is a per-icon decision later, not a
   bulk rewrite.
@@ -90,14 +90,14 @@ later phases are not started until it is.
 
 ## Impact
 
-- New: `pkg/icons/` (10 SVG files in Phase 1)
+- New: `pkg/icons/` (11 SVG files in Phase 1)
   plus `pkg/icons/README.md` (the spec, in
   the folder where an author will look for
   it), plus a validation / sync check in the
   repo harnesses (location decided in Phase 1;
   the catalog harness is the natural home).
 - Changed, only in the normalization step:
-  the `icon` strings of the 10 migrated
+  the `icon` strings of the 11 migrated
   catalog bundles, each by exactly the stroke
   / cap / join normalization the spec sets —
   and each such bundle change increments its
@@ -113,9 +113,9 @@ later phases are not started until it is.
   install keeps its old icon until it is
   re-added or updated from the catalog —
   the same re-add path as any catalog change).
-- Out of scope: converting the 6 glyph icons
-  to SVG, in-bundle icons (About's QR codes,
-  Puzzle's generated digit glyphs — those are
+- Out of scope: converting the 7 glyph icons
+  to SVG, in-bundle icons (the About page's QR codes,
+  Mac Puzzle's generated digit glyphs — those are
   app content, not shared assets), external
   icon libraries, a runtime icon registry
   (Phase 4 decides whether one is wanted at

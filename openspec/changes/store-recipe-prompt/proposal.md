@@ -12,8 +12,9 @@ listing summaries carry it (`CatalogSummary.installMode`,
 `pkg/src/apps/catalog.ts`). This change IS that follow-up: it renders
 the prompt.
 
-No app is `recipe-only` today (`app-store`, `daily-feed`, and
-`generic-feed` are `recipe-or-json`; the other 17 are `json`), so there
+No app is `recipe-only` today (`daily-feed` and `generic-feed`
+are `recipe-or-json`; the other 16 are `json`, app-store included
+- its `installMode` reverted to `json` in `help-about-built-in`), so there
 is no live row to show it on yet. The rendering is therefore specified
 and tested with a fixture row, ready for the first `recipe-only` app.
 
@@ -46,8 +47,9 @@ and tested with a fixture row, ready for the first `recipe-only` app.
   one field on the manage rows, and the app-store tests. No change to
   `installMode` semantics, the index, the generator, or the agent
   install path.
-- Builds on `catalog-restructure` (staged, uncommitted on `main`). It
-  is independent of the concurrent Help/About built-in change: that
-  change removes `help` and `about` from the catalog, which only means
-  fewer rows in the Store listing; it does not touch row rendering.
+- Builds on `catalog-restructure` (committed in `b548aca`). It
+  is independent of the Help/About built-in change, committed in
+  `c5d10d4`, which removed `help` and `about` from the catalog, which
+  only means fewer rows in the Store listing; it does not touch row
+  rendering.
 - No Kody publish in this change.

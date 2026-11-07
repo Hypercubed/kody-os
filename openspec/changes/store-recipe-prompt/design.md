@@ -6,7 +6,7 @@
 carry `installMode` (`json` | `recipe-only` | `recipe-or-json`, absent
 means `json`, fingerprint-excluded like `catalogVersion`), the index
 carries it per entry, and the listing summaries carry it
-(`pkg/src/apps/catalog.ts:57,101,124`). The canonical
+(`pkg/src/apps/catalog.ts:55,97,120`). The canonical
 `app-registry` requirement "Recipe install mode" already states the
 Store behavior: a `recipe-only` app "still appears in the App Store
 list, but the Store shows the recipe prompt (selectable text for the

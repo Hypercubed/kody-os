@@ -4,19 +4,29 @@
 
 ### Requirement: Single theme file with defaults
 
-The package SHALL read `pkg/os-theme.json` at render time for display name, icon reference, page title, header brand, and body background. Every field SHALL be optional; a missing file or missing field SHALL fall back to today's values (name `kody-os`, current icon, current background), so existing installs render byte-identically. All fields SHALL be strings when present except `background`, which accepts a string or grid object: `name` is the header brand and default title suffix, `title` overrides the document-title prefix when non-empty, `icon` is short glyph text or sanitized inline SVG (empty means the current checkerboard mark), and `background` SHALL be one of the closed tokens `desk` (default) or `paper`, or a grid object `{ "grid": [r0..r7] }` of eight integers 0–255 (MSB left) rendered as a repeating black-on-paper tile; invalid grids fall back to `desk`.
+The package SHALL read `pkg/settings.json` at render time for display name, icon reference, page title, header brand, and body background. Every field SHALL be optional; a missing file or missing field SHALL fall back to today's values (name `kody-os`, current icon, current background), so existing installs render byte-identically. All fields SHALL be strings when present except `background`, which accepts a string or grid object: `name` is the header brand and default title suffix, `title` overrides the document-title prefix when non-empty, `icon` is short glyph text or sanitized inline SVG (empty means the current checkerboard mark), and `background` SHALL be one of the closed tokens `desk` (default) or `paper`, or a grid object `{ "grid": [r0..r7] }` of eight integers 0–255 (MSB left) rendered as a repeating black-on-paper tile; invalid grids fall back to `desk`.
 
 The file is the DEFAULT layer only: the effective theme on any request is the file-resolved theme merged with the durable storage override defined below, and the file's values are what a reset restores. A change to the file that is shadowed by a stored override for the same field SHALL NOT change that field's rendered value until the override is cleared.
 
+The file also carries the page-visibility flags `showHelp` and `showAbout` (see Settings file carries page-visibility flags); they ride the same default / override layers as the theme fields.
+
 #### Scenario: Absent file changes nothing
 
-- **WHEN** `os-theme.json` is absent and no override is stored
+- **WHEN** `settings.json` is absent and no override is stored
 - **THEN** every page renders exactly as before, with name `kody-os` and the current icon and background.
 
 #### Scenario: Fork rebrands via one file
 
-- **WHEN** a fork sets name, icon, and background in `os-theme.json` and republishes, and no override is stored for those fields
+- **WHEN** a fork sets name, icon, and background in `settings.json` and republishes, and no override is stored for those fields
 - **THEN** the title tag, header brand, and page background show the fork's values on every page with no other file touched.
+
+#### Scenario: Grid background renders tiled
+- **WHEN** `background` is a valid 8-row grid object
+- **THEN** the page background shows the repeating monochrome tile with no external assets.
+
+#### Scenario: SVG icon renders as the brand mark
+- **WHEN** `icon` is sanitized inline SVG
+- **THEN** the upper-left header mark shows the SVG in monochrome, with no color or animation.
 
 ## ADDED Requirements
 
@@ -37,7 +47,7 @@ Reset SHALL mean delete, not set-to-initial: resetting with no argument SHALL de
 
 #### Scenario: Override survives a republish
 
-- **WHEN** an override is stored and the package is republished with a different `os-theme.json`
+- **WHEN** an override is stored and the package is republished with a different `settings.json`
 - **THEN** every overridden field still renders the stored value, and every non-overridden field renders the new file value.
 
 #### Scenario: Invalid stored field falls back per field

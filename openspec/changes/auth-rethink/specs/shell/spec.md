@@ -4,15 +4,31 @@
 
 ### Requirement: Home launcher lists installed apps
 
-The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections with edit mode — SHALL live behind the Apps menu link instead of at `/`. Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. A fresh install SHALL open with the App Store installed (see app-registry); with no apps installed at all (seeding has failed or not yet run), both `/` and the Apps page SHALL render honest empty states with guidance toward adding apps, including the App Store path. No tile link, form, or redirect SHALL carry a credential (`?k=` or any successor); authenticated sessions are carried by the cookie (see auth-transport).
+The shell SHALL render a home page at `GET /` showing the widget dashboard (see widget-home), and the Apps grid — Pinned, Recent, and All-apps sections with edit mode — SHALL live behind the Apps menu link instead of at `/`. Deep links at `/apps/:id` SHALL be unchanged. The Apps page SHALL render the three sections in order: Pinned (user-chosen tiles, omitted when empty), Recent (behavior-driven tiles with a Clear control, omitted when empty), and All apps (every installed app except hidden ones; pinned apps included). Each tile links to `/apps/:id` — except modal-capable apps, whose tiles link to an inline overlay section on the same page opened by fragment (`#app-<id>`) via CSS `:target` and closed by a back link. The overlay SHALL contain the same section HTML as the app page (bundle UI, live state, action forms), fully present in the server-rendered HTML; JS may enhance it. Every tile SHALL show the app's icon glyph or sanitized SVG mark and label. A fresh install SHALL open with an empty registry — no apps are seeded, including no App Store; with no apps installed, both `/` and the Apps page SHALL render the same Help-style help text with two copy-paste prompts ("Add your own apps" first, "Install the App Store" second — the App Store prompt is agent-only and installs `app-store` only, via `install_from_catalog`, verified with `list_apps`), rendered from the same shared shell block, instead of an empty tile list. No tile link, form, or redirect SHALL carry a credential (`?k=` or any successor); authenticated sessions are carried by the cookie (see auth-transport).
 
-#### Scenario: Fresh install opens with the App Store
+#### Scenario: Fresh install opens empty
 - **WHEN** a blank install receives its first shell request
-- **THEN** the Apps page shows the App Store tile, and `/` shows its honest no-widgets state (the store is not on the homepage by default).
+- **THEN** both `/` and the Apps page show the shared Help-style help text with the two prompts, and no App Store tile is installed.
 
 #### Scenario: Empty registry is honest
 - **WHEN** no apps are installed
 - **THEN** both `/` and the Apps page respond 200 with honest empty states and guidance toward adding apps.
+
+#### Scenario: Empty Apps page shows two prompts
+- **WHEN** the Apps page is fetched with no apps installed
+- **THEN** it shows Help-style help text with a prompt for adding your own apps first and a prompt for installing the App Store second, each as selectable text in a gate-hint code block, with no copy button and no Clipboard API use, and with no Edit button. The App Store prompt is agent-only: it installs `app-store` only (`install_from_catalog('app-store')`, verified with `list_apps`), per the app-store recipe; it SHALL NOT name a browser install path.
+
+#### Scenario: Empty Home page shows the same help
+- **WHEN** `/` is fetched with no apps installed
+- **THEN** it shows the same help text as the Apps page — same intro, same two prompts — rendered from the same shared shell block, not a second copy.
+
+#### Scenario: Home with apps but none on Home prompts Add to home
+- **WHEN** `/` is fetched with at least one app installed and an empty homepage list
+- **THEN** it shows a short message prompting the user to add apps to Home from the Apps page via Apps Edit's Add to home control, and it does NOT show the two install prompts.
+
+#### Scenario: Apps page offers Edit mode
+- **WHEN** the Apps page is fetched with at least one app installed
+- **THEN** the All apps header shows an Edit button (a GET form, matching the Clear control); with no apps installed it shows no Edit button.
 
 #### Scenario: Landing is the dashboard
 - **WHEN** apps are pinned to the homepage
@@ -36,7 +52,7 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 
 ### Requirement: Single shared chrome
 
-Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `os-theme.json` (default `kody-os`) followed immediately by Home, Apps, and Help links (no Refresh link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, carried as a validated `from` param on the tile link); with no valid `from` it SHALL go Home. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
+Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `pkg/settings.json` (default `kody-os`) followed immediately by Home and Apps links, then menu-app links, with built-in Help and About appended when enabled (no Refresh link); main content; footer with status text, the active auth path (`via kody`, `via cookie`, or `locked`), and no home navigation; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, carried as a validated `from` param on the tile link); with no valid `from` it SHALL go Home. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the theme file with current values as defaults.
 
 #### Scenario: Footer names the auth path
 - **WHEN** any page is fetched
@@ -48,7 +64,7 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 
 #### Scenario: Header order and clock
 - **WHEN** any page is fetched
-- **THEN** the header reads brand, Home, Apps, Help left to right with no Refresh link, and shows a date + time on the far right.
+- **THEN** the header reads brand, Home, Apps, menu-app links, Help, About left to right (Help/About omitted when disabled) with no Refresh link, and shows a date + time on the far right.
 
 #### Scenario: Defaults preserve current rendering
 - **WHEN** no theme file is present

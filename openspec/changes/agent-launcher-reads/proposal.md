@@ -9,7 +9,7 @@ On 2026-10-28, after `remove_app("hello-counter")` ran, there was no way for the
 - Re-export the four existing launcher-list readers from the package root (`pkg/src/index.ts`): `get_pinned`, `get_hidden`, `get_recent`, `get_homepage`, with the same signatures and store-override behavior they already have in `pkg/src/apps/registry.ts`.
 - Add one aggregate reader, `get_launcher_state()`, returning `{ pinned, hidden, recent, homepage }` (each an ordered id list) in a single call, for agents that need the whole launcher picture at once. It reads the same storage keys the shell's own `GET /apps` handler reads together today.
 - List the new exports in `main()`'s `exports` array so agents discover them the same way they discover `list_apps` and `act`.
-- Document the readers in `pkg/docs/adding-an-app.md` (storage-map / verify section): what each list means, that reads are ungated like all MCP exports, and that an empty list is a valid answer (not an error).
+- Document the readers in `pkg/.agents/skills/adding-an-app/SKILL.md` (storage-map / verify section): what each list means, that reads are ungated like all MCP exports, and that an empty list is a valid answer (not an error).
 - Explicit non-goal: no launcher *writes* in this change. The setters (`set_pinned`, `set_hidden`, `set_homepage`, `set_home`, `move_home`, `clear_recent`) stay internal to the shell UI until a follow-up change decides the agent-write surface. `remove_app`'s existing scrub behavior is unchanged.
 
 ## Capabilities
@@ -25,6 +25,6 @@ On 2026-10-28, after `remove_app("hello-counter")` ran, there was no way for the
 ## Impact
 
 - `pkg/src/index.ts` (re-exports + `main()` export list). No storage-key, registry, renderer, or schema changes. No `DEFINITION_SCHEMA_VERSION` bump: launcher lists are not definitions.
-- `pkg/docs/adding-an-app.md` (reader docs). `pkg/AGENTS.md` import example gains the new names.
+- `pkg/.agents/skills/adding-an-app/SKILL.md` (reader docs). `pkg/AGENTS.md` import example gains the new names.
 - BREAKING: none. Purely additive exports; existing imports and stored data are unaffected.
 - Rollback is a republish of the prior commit; no data migration in either direction.

@@ -58,7 +58,7 @@ A catalog definition MAY carry `installMode`: `"json"`, `"recipe-only"`, or `"re
 #### Scenario: No app is recipe-only today
 
 - **WHEN** the catalog is listed
-- **THEN** no entry reports install mode `recipe-only`; `app-store`, `daily-feed`, `generic-feed`, and `generic-rss-feed` report `recipe-or-json` and the other 17 report `json`.
+- **THEN** no entry reports install mode `recipe-only`; `daily-feed`, `generic-feed`, and `generic-rss-feed` report `recipe-or-json` and the other 16 report `json`.
 
 #### Scenario: Invalid install mode fails validation
 

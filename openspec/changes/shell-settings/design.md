@@ -9,12 +9,11 @@ package implements once, declared data-only by an
 app, served same-origin from the shell's fetch
 handler. Feeds do it for upstream URLs
 (`capabilities.feeds` + `GET /feed/:app/:name`);
-email does it for platform mail
-(`capabilities.email` + `GET /email/:app/...`).
+proxy does it for upstream entries (`capabilities.proxy` + `GET /proxy/<app>/<name>`).
 Theme overrides do it for shell settings
 (`capabilities.theme` + `GET /theme/:app`).
 
-The one part that is not a copy of feeds/email is
+The one part that is not a copy of feeds/proxy is
 the storage layer itself, because the theme has
 two layers and the others do not: a published
 file that must keep working as the default, and a
@@ -155,19 +154,17 @@ per-field fallback, and a reset that really means
    invariant (theme schema, shell key) and would
    need special-casing in the middle of the act
    engine. The routes keep `act()` untouched and
-   follow feeds/email instead. The panel app is
+   follow feeds/proxy instead. The panel app is
    therefore stateless for theme purposes: its
    bundle calls the routes, it does not store
    theme in its own state, and there is nothing
    for `act()` to mirror or sync.
-8. **Two flags, like email.** `capabilities.theme`
+8. **Two flags.** `capabilities.theme`
    is `{ view: boolean, set: boolean }`. `view`
    allows the read route; `set` allows set and
    reset. A route checks exactly the flag it
    needs, and a definition with neither flag true
-   is treated as not declaring theme. Validation
-   in `registry.ts`, next to `feeds` and `email`,
-   rejects any other shape, and install-time
+   is treated as not declaring theme. Validation in `registry.ts`, next to `feeds`, `proxy`, and `manageApps`, rejects any other shape, and install-time
    sanitizing normalizes missing flags to `false`.
    The catalog Settings app declares both.
 9. **Routes sit behind both gates, in that order.**
@@ -281,8 +278,7 @@ per-field fallback, and a reset that really means
   unrelated legitimate apps and agents from
   reaching theme by accident or by `act()`; it
   does not, and cannot, sandbox a bundle the
-  owner chose to install. This is the same
-  limitation as the feeds and email gates.
+  owner chose to install. This is the same limitation as the feeds and proxy gates.
 
 ## Alternatives considered
 
@@ -317,9 +313,7 @@ per-field fallback, and a reset that really means
   Rejected in favor of view / set: a viewer-only
   app (for example, a future app that shows the
   current theme) should not be able to reset it
-  just by declaring theme, and the two-flag
-  shape costs one validation branch, as with
-  email.
+  just by declaring theme, and the two-flag shape costs one validation branch.
 
 ## Open Questions
 
@@ -329,13 +323,16 @@ per-field fallback, and a reset that really means
    ships with the existing gates; this question
    does not block any phase.
 2. Should Settings be auto-installed on fresh
-   installs in a later change, like the App Store
-   is? v1 does not auto-install it.
+   installs in a later change? v1 does not
+   auto-install it — nothing is auto-installed:
+   the shell starts empty.
 3. Does the per-request override read measurably
-   slow the dashboard? Phase 1 verification
-   measures it; if it does, a write-through
-   cache with invalidation on set / reset is a
-   follow-on, not a silent cache added here.
+   slow the dashboard? — ANSWERED (Nov 5, 2026,
+   PC measurement): no. In-process read mean
+   0.8–0.9µs, page render ~6ms; no cache was
+   added. A write-through cache with invalidation
+   on set / reset remains a follow-on only if a
+   future measurement shows a slowdown.
 4. Should the panel gain a grid editor and an SVG
    editor in a later change? v1 deliberately
    does not offer them (Decision 11).

@@ -1,9 +1,9 @@
 # Tasks
 
 Implementation already exists in the working tree (PC repo, main
-at 30b0c24, uncommitted, 2026-11-04). Phases 1–4 are done and are
+at 30b0c24, committed as `ef654da` and published to Kody as v2.6.0 build 31 (2026-11-04). Phases 1–4 are done and are
 marked as such; they are recorded here so the change is reviewable,
-not so they can be redone. Phase 5 is the only open phase, and
+not so they can be redone. Phase 5 is the only open phase (its ship decisions, 5.4-5.5, have since happened; see the notes there), and
 every task in it is an owner decision. No task in this file commits,
 pushes, or publishes anything, and no task bumps the package
 version; the version decision is recorded at commit time.
@@ -91,9 +91,9 @@ version; the version decision is recorded at commit time.
   reverse either call.
 - [ ] 5.4 Commit scope: spec and implementation together or
   separately, and the version decision for that commit
-  (package still 2.6.0, build 30 in the working tree).
+  (at the time, the package was 2.6.0, build 30 in the working tree; the commit later landed as `ef654da`).
 - [ ] 5.5 Push destination and publish: GitHub only, Kody
-  publish, both, or neither — each needs its own direction.
+  publish, both, or neither — each needs its own direction. (Outcome: pushed to GitHub as `ef654da` and published to Kody as v2.6.0 build 31; live has since moved to v2.7.0 build 32.)
 - [ ] 5.6 Future consideration, not part of this change: a
   harness check that fails a bundle button look rule
   duplicating a default, so the drift this change removed

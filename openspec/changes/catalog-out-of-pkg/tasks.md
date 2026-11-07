@@ -13,21 +13,27 @@ requires.
   is public on GitHub and its bundles are
   fetchable unauthenticated. If the gate is not
   met, stop; do not move the catalog.
-- [ ] 1.2 Move `pkg/catalog/*.bundle.json` to
-  `catalog/*.bundle.json` byte-identical (no
+- [ ] 1.2 Move `pkg/catalog/<id>/definition.json`
+  and `pkg/catalog/<id>/RECIPE.md` to
+  `catalog/<id>/definition.json` and
+  `catalog/<id>/RECIPE.md` byte-identical (no
   content change, no `catalogVersion` bump), move
   the catalog README to `catalog/README.md`, and
   move `pkg/catalog/tests/` to `catalog/tests/`
-  with bundle paths updated. Delete the now-empty
+  with definition paths updated. Delete the now-empty
   `pkg/catalog/` directory.
-- [ ] 1.3 Write the manifest-generation script
+- [ ] 1.3 Relocate the existing manifest-generation
+  script `scripts/build-catalog-index.ts`
   (runnable from a clean checkout, no Kody
-  tooling): it reads the bundle directory and
-  writes `catalog/index.json` in id order with
-  the fields from design.md Decision 2, computing
-  fingerprints the same way the install snapshot
-  does. Run it once and commit the generated
-  manifest with the move.
+  tooling): it reads the per-app definition
+  directories and writes `catalog/catalog.json`
+  in id order with the fields from design.md
+  Decision 2, computing fingerprints the same
+  way the install snapshot does. Run it once
+  and commit the generated manifest with the
+  move. Do not write a new generator: the
+  generator and the `catalog.json` shape already
+  exist; the move relocates them.
 
 ## 2. Update references and the harness
 
@@ -42,18 +48,26 @@ requires.
 - [ ] 2.2 Update the catalog harness in
   `tests/catalog-harness.ts` to check manifest
   agreement instead of import agreement: every
-  bundle has a manifest entry, every manifest
-  entry has a bundle, `catalogVersion` and
-  fingerprint match the bundle, entries are in
-  id order. The harness must pass on the moved
+  definition directory has a manifest entry,
+  every manifest entry has a definition
+  directory (plus its `RECIPE.md`),
+  `catalogVersion`, fingerprint, `installMode`,
+  and paths match the definition, entries are
+  in id order. The harness must pass on the moved
   catalog with no other changes.
-- [ ] 2.3 Retire the shipped-catalog import list
+- [ ] 2.3 Retire the static definition imports
   in `pkg/src/apps/catalog.ts` as the runtime
-  catalog source, in coordination with
+  install source, in coordination with
   `public-pinned-catalog` (which supplies the
-  replacement source). This task MUST NOT be
-  marked done while the Store still depends on
-  the import list with no replacement source.
+  replacement source: fetching definitions on
+  demand from the public catalog). The import
+  list as the *listing* source is already
+  retired: listing is driven by the generated
+  index, and the imports remain only because
+  install needs the full definition. This task
+  MUST NOT be marked done while install still
+  depends on the static imports with no
+  replacement source.
 
 ## 3. Verify and sync specs
 

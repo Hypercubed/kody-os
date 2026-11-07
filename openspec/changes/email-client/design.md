@@ -91,7 +91,9 @@ ship a fallback that silently switches authority.
    `text_body`, attachment metadata, and the
    sanitized rendering of the body (Decision 4).
    Search returns `emailMessageSearch` results in
-   list shape. Inboxes (`emailInboxList`) are
+   list shape — conditional on Open Question 5:
+   `emailMessageSearch` is not yet verified as a
+   callable capability. Inboxes (`emailInboxList`) are
    exposed as `GET /email/:app/inboxes` for the
    app header only; the list routes take an
    optional `inbox_id` and otherwise use the
@@ -281,3 +283,17 @@ ship a fallback that silently switches authority.
    smoke test against real (or seeded) platform
    mail; the app's "newest N" wording is
    adjusted to match what the test proves.
+5. Does `emailMessageSearch` exist as a callable
+   capability in the fetch handler? It is named
+   in this change's proposal and spec deltas but
+   was not in the verified capability list
+   (Oct 30: `emailInboxList`,
+   `emailMessageList`, `emailMessageGet`,
+   `emailAttachmentGet`, `emailReply`,
+   `emailMessageClassify` / `emailMessageDelete`
+   only). Answered by the smoke test (task 6.3)
+   before search ships as specified; if it does
+   not exist, search is cut from v1 or re-scoped
+   to client-side filtering of list results,
+   decided at implementation — not silently
+   assumed.

@@ -12,14 +12,18 @@ as the coordinated landing with
 - [ ] 1.1 Add a server-side remote-catalog module
   (replacing `pkg/src/apps/catalog.ts` as the
   runtime source): fetch the pinned release's
-  `catalog/index.json`, validate its shape
-  (entries, ids, `catalogVersion`, bundle paths,
-  fingerprints), and fetch a bundle by manifest
-  path only, on demand for install/update.
-  Fetching is HTTPS only, with timeout and size
-  caps following the feed proxy's discipline,
-  and bundle paths are never taken from a
-  request parameter.
+  `catalog/catalog.json`, validate its shape
+  (entries, ids, `catalogVersion`, fingerprints,
+  `installMode`, `definitionPath`, `recipePath`),
+  and fetch a definition by manifest
+  `definitionPath` only (a recipe by manifest
+  `recipePath` only), on demand for install/update.
+  The manifest's `installMode` drives the Store
+  row: a `recipe-only` row shows the agent prompt
+  instead of one-tap install. Fetching is HTTPS
+  only, with timeout and size caps following the
+  feed proxy's discipline, and definition/recipe
+  paths are never taken from a request parameter.
 - [ ] 1.2 Put the pin in one named constant in
   the shell source (default: upstream repo and
   release; tag display required, SHA pinning
@@ -56,14 +60,15 @@ as the coordinated landing with
 
 - [ ] 3.1 Verify end to end against a real
   public release (not just the local override):
-  manifest and bundles fetch from the pinned
+  manifest and definitions fetch from the pinned
   release, install/update/restore round-trip
-  through the data Store, and snapshots still
+  through the App Store, and snapshots still
   classify behind/modified correctly against
   the remote definitions.
 - [ ] 3.2 Document the release-cutting procedure
   in `catalog/README.md`: regenerate the
-  manifest, run the catalog harness, commit,
+  manifest (`bun scripts/build-catalog-index.ts`),
+  run the catalog harness, commit,
   tag, publish. Fill in the canonical upstream
   repo URL and release naming from the actual
   public repo; do not invent them in the spec.

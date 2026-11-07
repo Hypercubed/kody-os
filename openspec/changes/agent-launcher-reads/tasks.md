@@ -7,8 +7,8 @@
   PARTIAL 2026-10-31: get_launcher_state added to main() exports with a useWhen line (source-verified in pkg/src/index.ts); hosted main() output verification owed (kody:runtime unavailable under bun for root-index import).
 ## 2. Docs
 
-- [x] 2.1 Document the four readers plus the aggregate in `pkg/docs/adding-an-app.md` (what each list means, empty-list-is-valid, ungated like other MCP exports, and the rendered-page correspondence: `/` homepage order, `/apps` Pinned/Recent sections)
-  DONE 2026-10-31: documented in pkg/docs/adding-an-app.md (launcher state bullet, incl. stored order, empty-list-is-valid, rendered correspondence, removal scrub).
+- [x] 2.1 Document the four readers plus the aggregate in `pkg/.agents/skills/adding-an-app/SKILL.md` (what each list means, empty-list-is-valid, ungated like other MCP exports, and the rendered-page correspondence: `/` homepage order, `/apps` Pinned/Recent sections)
+  DONE 2026-10-31: documented in pkg/.agents/skills/adding-an-app/SKILL.md (launcher state bullet, incl. stored order, empty-list-is-valid, rendered correspondence, removal scrub). (Path corrected 2026-11-06: the guide moved from pkg/docs/adding-an-app.md to the skill; the old file no longer exists.)
 - [x] 2.2 Add the new names to the `pkg/AGENTS.md` import example
 
   DONE 2026-10-31: pkg/AGENTS.md import example now includes get_launcher_state (with backup/restore).

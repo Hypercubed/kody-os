@@ -2,7 +2,7 @@
 
 ## Context
 
-See proposal.md (Why). The registry resolves stores via `resolveStore()` with validate-then-single-write atomicity in `act()`. Single-player tic-tac-toe exists as a bundle game; this layer adds opponents and turn signals without touching how the game plays.
+See proposal.md (Why). The registry resolves stores via `resolveStore()` with validate-then-single-write atomicity in `act()`. Single-player tic-tac-toe is specified but not built (openspec/changes/tictactoe, no tic-tac-toe app exists in the catalog yet — verified 2026-11-06); this layer is parked until that game proves out, and adds opponents and turn signals without touching how the game plays.
 
 ## Goals / Non-Goals
 

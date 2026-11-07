@@ -67,7 +67,7 @@
   `bun tests/owner-check-harness.ts` — all pass.
 - [ ] 5.4 Run `bun tests/agent-tools-harness.ts` — expect exactly
   the one pre-existing FAIL (`list_catalog returns 16 apps — got
-  20`); any other FAIL is a finding, not background.
+  18`); any other FAIL is a finding, not background.
 - [ ] 5.5 Run `bun build pkg/src/app.ts --target=browser --external
   'kody:*' --outfile /tmp/store-recipe-prompt-build-check.js` —
   succeeds (never print the bundle to stdout).

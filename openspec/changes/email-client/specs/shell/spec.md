@@ -65,11 +65,15 @@ The package SHALL declare, in
 `pkg/package.json` under `kody.app.capabilities`,
 exactly the email capabilities its fetch handler
 calls: `emailInboxList`, `emailMessageList`,
-`emailMessageSearch`, `emailMessageGet`,
-`emailAttachmentGet`, `emailMessageClassify`,
-`emailMessageDelete`, `emailReply`. It SHALL NOT
-declare `emailSend`, `emailDestination*`, or
-`emailSenderRule*` in this change.
+`emailMessageGet`, `emailAttachmentGet`,
+`emailMessageClassify`, `emailMessageDelete`,
+`emailReply` — plus `emailMessageSearch` only if
+design.md Open Question 5 verifies it exists as
+a callable capability; if it does not, search is
+cut or re-scoped and the name is not declared.
+It SHALL NOT declare `emailSend`,
+`emailDestination*`, or `emailSenderRule*` in
+this change.
 
 #### Scenario: Undeclared capability is not called
 - **WHEN** the publish check warns that a

@@ -2,12 +2,12 @@
 
 ## Context
 
-See proposal.md (Why). Bundle hosting comes from the `app-bundles` change: the shell inlines the bundle entry HTML into the app panel, bundle JS runs vanilla ES2019, no server state required. The operator model is deliberately not used — it cannot express random moves or win detection.
+See proposal.md (Why). Bundle hosting comes from the archived `2026-10-26-app-bundles` change (landed): the shell inlines the bundle entry HTML into the app panel, bundle JS runs vanilla ES2019, no server state required. The operator model is deliberately not used — it cannot express random moves or win detection.
 
 ## Goals / Non-Goals
 
 - Goals: a playable human-vs-random-computer game in one bundle; new-game reset; win/draw announcement.
-- Non-goals: difficulty levels, score persistence (no storage bridge yet), agent opponents, roster/sessions (all `agent-sessions`).
+- Non-goals: difficulty levels, score persistence (a feature decision, not a bridge dependency - bundle state persistence via actions already exists), agent opponents, roster/sessions (all `agent-sessions`).
 
 ## Decisions
 
@@ -18,7 +18,7 @@ See proposal.md (Why). Bundle hosting comes from the `app-bundles` change: the s
 ## Risks / Trade-offs
 
 - [Risk] Bundle JS quirks on Scribe → Mitigation: ES2019 only, no frameworks, no timers; all rendering is synchronous DOM updates on tap.
-- [Risk] No persistence across reloads → Mitigation: accepted and documented; storage bridge (Phase 2 of `app-bundles`) can add scores later.
+- [Risk] No persistence across reloads → Mitigation: accepted and documented; bundle state persistence (actions) can add scores later.
 
 ## Migration Plan
 

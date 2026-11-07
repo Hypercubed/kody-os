@@ -357,7 +357,14 @@ means (compact rendering, widget controls,
 homepage order) without changing the send
 model, so it is an open question, not v1
 scope. The spec delta therefore requires
-page rendering only.
+page rendering only. Note (2026-11-04):
+the bundle already carries widget-hiding CSS
+(`section.widget #ld-clear-form` and
+`section.widget #ld-install` are hidden), so
+when the app renders as a widget it shows
+only the link list; a latest-link widget
+placement is still the open question, not
+v1 scope.
 
 ### Decision 10: Trust note — a GET append is session-gated, not secret-gated
 
@@ -382,16 +389,12 @@ safely.
 
 ## Open Questions
 
-1. App id: is `link-drop` the right id, or
-   should it be `links` or `reading-list`
-   to name the list rather than the act?
-   The spec uses `link-drop` throughout; a
-   rename before implementation is a
-   search-and-replace in this change and in
-   the bookmarklet, not a redesign, but it
-   must happen before the first `add_app`,
-   because an id change after install is a
-   new app, not a rename.
+1. Answered — app id is `link-drop`: the
+   app is installed under that id (renamed
+   from Send Link before any live install;
+   see tasks.md implementation notes).
+   The `links` / `reading-list` alternatives
+   were not taken.
 2. Entry byte cap: keep `maxEntryBytes`
    2048 (the Probe default), or raise it
    (for example to 4096) if the validator

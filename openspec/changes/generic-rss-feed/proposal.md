@@ -31,7 +31,7 @@ Out of scope: changing `generic-feed` or `daily-feed`; changing the `feeds`/`pro
 - App id: `generic-rss-feed` (proposed) — alternatives `rss-feed`, `live-rss-feed`? Flagged for review.
 - Route name: `GET /user-feed/<app>` (proposed) — alternative `GET /feed/<app>/rss`. Flagged for review at implementation.
 - `generic-feed`'s RSS-URL setup prompt stays as-is (recommendation) or is simplified now that a live app exists — decision for the user.
-- Sequencing with the catalog-restructure commit (task 8.3, MINOR 2.8.0) and with `help-about-built-in` (validated, uncommitted; reverts `app-store` to `json` and removes Help/About from the catalog): both touch the same canonical scenarios this change modifies. Whoever archives second reconciles the app counts and the install-mode list. See design.md, Decision 7.
+- Sequencing with the catalog-restructure commit (`b548aca`, MINOR 2.8.0) and with `help-about-built-in` (committed in `c5d10d4`; reverted `app-store` to `json` and removed Help/About from the catalog): both touch the same canonical scenarios this change modifies. Both have landed, so the counts and install-mode list are settled: 19 apps with this change; `daily-feed`, `generic-feed`, `generic-rss-feed` report `recipe-or-json`, the other 16 report `json`. See design.md, Decision 7.
 
 ## Risks
 

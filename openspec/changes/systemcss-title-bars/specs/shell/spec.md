@@ -58,6 +58,34 @@ their current meanings and destinations.
   state field — a nicer panel bar does not
   become a second app title.
 
+#### Scenario: Unknown routes keep the chrome
+- **WHEN** a request hits an unknown path
+- **THEN** the shell responds 404 inside the full chrome with plain "Not found." text and no home link in the body; the titlebar close box is the way back.
+
+#### Scenario: Header order and clock
+- **WHEN** any page is fetched
+- **THEN** the header reads brand, Home, Apps left to right with no Refresh link and no static Help link, then any installed menu-app links in label order, and shows a date + time on the far right.
+
+#### Scenario: Defaults preserve current rendering
+- **WHEN** no theme file is present
+- **THEN** title, brand, and background are byte-identical to the pre-change shell.
+
+#### Scenario: Footer names the auth path
+- **WHEN** any page is fetched
+- **THEN** the footer states which path authenticated the request (`via kody`, `via cookie`, `via key`, or `locked`).
+
+#### Scenario: Close returns to the opener
+- **WHEN** an app opened from the Apps page is closed via the titlebar box
+- **THEN** the browser lands on the Apps page, not Home.
+
+#### Scenario: Close from Home returns Home
+- **WHEN** an app opened from a home widget is closed via the titlebar box
+- **THEN** the browser lands on Home.
+
+#### Scenario: Bad from falls back to Home
+- **WHEN** an app page is opened with a missing or off-site `from` value
+- **THEN** the close box links Home and no open redirect occurs.
+
 ### Requirement: Scribe-ready styles, inlined
 
 The title-bar styles in this change SHALL live
@@ -77,6 +105,10 @@ at full width and under 30rem.
 - **THEN** every box in it measures at least
   48px by 48px, whatever the visual height
   of the striped strip itself is.
+
+#### Scenario: No external stylesheets anywhere
+- **WHEN** any shell page is fetched
+- **THEN** its HTML contains exactly one `<style>` block, zero `<link rel="stylesheet">` tags, and the inlined CSS is byte-identical to `public/styles.css`.
 
 ## ADDED Requirements
 

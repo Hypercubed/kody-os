@@ -82,6 +82,12 @@ own `catalogVersion` by exactly 1, per the authoring rule
 (positive integer, +1 on any definition change), and no
 untouched bundle's version SHALL change.
 
+#### Scenario: Touched bundle bumps by one, untouched bundles do not
+
+- **WHEN** a bundle is touched by a styling cleanup
+- **THEN** its `catalogVersion` increments by exactly 1, and no
+  untouched bundle's version changes.
+
 ## MODIFIED Requirements
 
 ### Requirement: Authoring style guidance

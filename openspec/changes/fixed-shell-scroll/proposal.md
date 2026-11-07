@@ -23,5 +23,5 @@ Today the whole page scrolls as one document, so the menubar, window titlebar, a
 
 ## Impact
 
-- `pkg/public/styles.css` + `src/shell-css.ts` regen (body flex column, window flex sizing with `min-height: 0`, `main` overflow); `pkg/src/probe.ts` (inner-scroll beacon row).
+- `pkg/public/styles.css` + `src/shell-css.ts` regen (body flex column, window flex sizing with `min-height: 0`, `main` overflow); `pkg/catalog/probe/definition.json` (inner-scroll beacon row).
 - No markup changes, no storage change, no MCP surface change, no export format change. Per-URL browser scroll memory goes away (every navigation starts at top) — correct for a window metaphor, mitigated by search for long lists.

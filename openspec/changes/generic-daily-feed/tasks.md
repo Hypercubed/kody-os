@@ -14,6 +14,15 @@
   3 changes what "done" means and when the
   version decision lands. Record the answers
   in the task notes and do not assume them.
+Note: questions 1–4 are settled — see the
+implementation notes (spec defaults used: id
+`daily-feed`, cap 14 / 19000, page only;
+catalog added on user direction) and design.md,
+Decision 5 (Daily Brief feed moved verbatim
+2026-11-04, Daily Brief deleted live).
+Question 5 was settled for v1 as page-only; a
+widget remains a future step (design.md,
+Decision 6).
 - [x] 0.2 Re-check the numbers this spec
   depends on against the repo and the live
   app before building on them: Daily Brief's
@@ -202,9 +211,11 @@
   change does not do). Confirm `add_app`
   returns `{ ok: true }` and the app appears
   in `list_apps` and on the Apps page, with
-  no package republish. Daily Brief is
-  untouched; confirm it still lists and
-  still renders after this install.
+  no package republish. (The Daily Brief
+  check in the original text is overtaken:
+  Daily Brief was deleted live on 2026-11-04
+  after its feed moved to Daily Feed; there
+  is no Daily Brief left to confirm.)
 - [ ] 5.2 The user runs the app on the
   Scribe: open the empty app and read the
   prompt, push an entry from their agent
@@ -227,18 +238,20 @@ only after tasks 1-5 pass, unless task 0.1
 question 3 moved catalog into v1.
 
 - [x] 6.1 Write
-  `pkg/catalog/daily-feed.bundle.json`
+  `pkg/catalog/daily-feed/definition.json`
   (or the id from task 0.1) from the
-  verified v1 definition, with
-  `catalogVersion` 1, and register it:
-  one import line in
+  verified v1 definition, plus
+  `pkg/catalog/daily-feed/RECIPE.md`,
+  with `catalogVersion` 1 (now 5,
+  `installMode` `recipe-or-json`), and
+  register it: one import line in
   `pkg/src/apps/catalog.ts` (alphabetical
-  by id) plus one entry in
-  `pkg/catalog/README.md`. Verify the
-  catalog harness passes (validate +
-  install in a blank store + empty initial
-  state + directory / import match) with
-  no other catalog file changed.
+  by id), the generated index regenerated,
+  plus one entry in `pkg/catalog/README.md`.
+  Verify the catalog harness passes
+  (validate + install in a blank store +
+  empty initial state + directory / import
+  match) with no other catalog file changed.
 - [x] 6.2 Apply the MINOR version bump in
   the same commit as the catalog files
   per `pkg/AGENTS.md` (BUILD +1 on publish;
@@ -259,8 +272,7 @@ question 3 moved catalog into v1.
   shape manually, as with other changes
   in this environment: proposal, design,
   tasks, and spec deltas present and
-  internally consistent, all tasks
-  unchecked).
+  internally consistent).
 - [ ] 7.2 Confirm no file outside
   `openspec/changes/generic-daily-feed/`
   was changed by writing this change

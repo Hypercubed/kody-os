@@ -4,14 +4,18 @@
 
 ### Requirement: Release-pinned remote catalog source
 
-The Store's catalog SHALL be the manifest and
-bundles fetched server-side from a pinned release
-of the public repo, not from shipped definitions
-and not from `main` HEAD by default. The pin
-SHALL be one named constant in the shell source
-that a fork owner can change to point at a
-different repo/release, and the Store SHALL
-display the pinned release it is reading.
+The Store's catalog SHALL be the manifest
+(`catalog.json`) and definitions fetched
+server-side from a pinned release of the public
+repo, not from shipped definitions and not from
+`main` HEAD by default. The pin SHALL be one
+named constant in the shell source that a fork
+owner can change to point at a different
+repo/release, and the Store SHALL display the
+pinned release it is reading. The manifest's
+`installMode` SHALL drive the Store row: a
+`recipe-only` row shows the agent prompt
+instead of one-tap install.
 
 #### Scenario: A repo-added app appears without a Kody publish
 

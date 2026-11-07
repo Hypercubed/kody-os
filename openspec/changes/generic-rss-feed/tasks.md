@@ -5,7 +5,7 @@
 - [ ] 1.1 Write `pkg/catalog/generic-rss-feed/definition.json`, modelled on `xkcd` (reader UI) and `generic-feed` (setup prompt): id `generic-rss-feed` (proposed, for review), label `Generic RSS Feed`, category `reading`, `schemaVersion` 5, `catalogVersion` 1, `installMode: recipe-or-json`, no capabilities, one state field `feedUrl` (string, maxLength 2048, initial `""`), one action `set_feed_url`, bundle within the 256 KiB cap, icon a single glyph (proposed `≣`, for review).
 - [ ] 1.2 Write `pkg/catalog/generic-rss-feed/RECIPE.md` following the `generic-feed` recipe shape (install, verify, ask the user for the RSS URL, set it with `set_feed_url`, verify the feed loads, do-not-touch-anything-else footer).
 - [ ] 1.3 Add the import entry to `catalog.ts` (alphabetical by id, after `generic-feed`); regenerate the index with `scripts/build-catalog-index.ts` and confirm the entry carries `installMode: recipe-or-json`, `definitionPath`, and `recipePath`; run the generator twice and confirm byte-identical output.
-- [ ] 1.4 Verify: `bun tests/catalog-harness.ts` lists 21 apps and the new app validates and installs in a blank store with its initial state (`feedUrl` empty).
+- [ ] 1.4 Verify: `bun tests/catalog-harness.ts` lists 19 apps and the new app validates and installs in a blank store with its initial state (`feedUrl` empty).
 
 ## 2. Shell mechanism: user-feed route
 
@@ -23,7 +23,7 @@
 
 ## 4. Harness and tests
 
-- [ ] 4.1 Update the catalog harness's app count (20 → 21) and the agent-tools harness's known-FAIL text ("got 20" → "got 21"); run the full harness suite (`bun tests/store-harness.ts`, `bun tests/catalog-harness.ts`, `bun tests/open-mode-harness.ts`, `bun tests/owner-check-harness.ts`, `bun tests/agent-tools-harness.ts`) — all pass except the known agent-tools FAIL.
+- [ ] 4.1 Update the catalog harness's app count (18 → 19) and the agent-tools harness's known-FAIL text ("got 18" → "got 19"); run the full harness suite (`bun tests/store-harness.ts`, `bun tests/catalog-harness.ts`, `bun tests/open-mode-harness.ts`, `bun tests/owner-check-harness.ts`, `bun tests/agent-tools-harness.ts`) — all pass except the known agent-tools FAIL.
 - [ ] 4.2 Write `pkg/catalog/tests/generic-rss-feed-tests.cjs` (run under node with jsdom): `set_feed_url` accepts a bare HTTPS URL, rejects http/credentialed/malformed URLs, `""` clears; the empty state shows the setup prompt with no URL set and hides it once a URL is set; the viewer renders a fixture feed newest first with Previous/Next and shows the error state with a retry when the fetch fails.
 - [ ] 4.3 Write the route test: stub the global `fetch` to return a fixture RSS document (no live network dependency), install the app in a mock store, set `feedUrl`, call the route handler, and assert the response body is the fixture feed and the `X-Feed-Cache` header reports hit/miss/stale as appropriate; assert 404 with no URL set and 502 with no cache and a failing upstream.
 - [ ] 4.4 Follow the recipe in the mock against a known-good public feed (XKCD's RSS) and confirm the app shows the latest entry with Previous/Next.
@@ -38,4 +38,4 @@
 ## 6. Verification and version
 
 - [ ] 6.1 Run the full harness suite and the bundle tests once more from a clean checkout of the implementation branch; record the results.
-- [ ] 6.2 Record the version decision in the implementation commit (MINOR expected for a new catalog app; sequencing with the catalog-restructure 2.8.0 and `help-about-built-in` 3.0.0 per design.md, Decision 7). Do not publish to Kody; do not commit, push, or publish without the user's explicit direction at each stop.
+- [ ] 6.2 Record the version decision in the implementation commit (MINOR expected for a new catalog app; sequencing settled per design.md, Decision 7 - catalog-restructure is `b548aca` (2.8.0), `help-about-built-in` recommends MAJOR 3.0.0, decision deferred to publish). Do not publish to Kody; do not commit, push, or publish without the user's explicit direction at each stop.

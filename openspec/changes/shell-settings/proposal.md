@@ -3,7 +3,7 @@
 ## Why
 
 Shell UI settings today live only in a published file:
-`pkg/os-theme.json` is bundled at publish time, loaded once
+`pkg/settings.json` is bundled at publish time, loaded once
 per publish in `pkg/src/app.ts`, and supplies the shell's
 name, title, icon, and background. Changing any of them
 means editing the file and republishing. There is no way
@@ -56,8 +56,7 @@ app — gives the browser a control panel for it.
   `pkg/src/apps/registry.ts`: a data-only
   declaration, `capabilities.theme`, that an app
   must carry before the theme routes will serve
-  it — the same allowlist pattern as
-  `capabilities.feeds` and `capabilities.email`.
+  it — the same allowlist pattern as `capabilities.feeds`, `capabilities.proxy`, and `capabilities.manageApps`.
 - `pkg/src/app.ts` dispatch, after the `/apps/`
   branches and alongside the `/feed/` route, and
   therefore inside the device gate `fetch()` already
@@ -101,10 +100,8 @@ usable on its own:
   over the file theme on every request; no existing
   route, app, or action changes behavior.
 - `authoring`: `capabilities` gains the `theme`
-  declaration; existing `feeds` and `email`
-  declarations are unchanged.
-- `os-theme`: `pkg/os-theme.json` becomes the
-  documented default layer, not the only layer.
+  declaration; existing `feeds`, `proxy`, and `manageApps` declarations are unchanged.
+- `os-theme`: `pkg/settings.json` becomes the documented default layer, not the only layer.
 
 ## Impact
 

@@ -22,15 +22,15 @@ change does not redo:
   would override each shape's own fill
   attribute and turn line art into solid
   dots).
-- The current catalog, counted Nov 3, 2026:
-  10 SVG tile icons (about, calculator,
-  calendar, clock, counter, eight-ball,
-  hoodie-weather, mac-puzzle, news, probe)
-  and 6 glyph icons (app-store ⊞, arrow-game
-  →, cellular-playground ▦, help ?, 
+- The current catalog, counted Nov 6, 2026:
+  11 SVG tile icons (calculator,
+  calendar, clock, counter, daily-feed, eight-ball,
+  hoodie-weather, link-drop, mac-puzzle, news, probe)
+  and 7 glyph icons (app-store ⊞, arrow-game
+  →, cellular-playground ▦, generic-feed ≡, settings ⚙, 
   three-bit-art ◼, xkcd X). SVG stroke widths
   today: 1.6 on six icons, 1.8 on three,
-  1.7 on one (probe). Tile rendering is in
+  1.7 on two (link-drop, probe). Tile rendering is in
   `pkg/public/styles.css` (`.tile .tile-icon`,
   `.tile .tile-icon svg`) and is unchanged
   by this change.
@@ -103,7 +103,7 @@ change does not redo:
    art and default-black fills only where a
    solid part is meant, `stroke="currentColor"`,
    stroke width 1.6 (the majority today; the
-   three 1.8 and one 1.7 icons normalize
+   three 1.8 and two 1.7 icons normalize
    down to it in Phase 2, with a visual
    check that none of them goes faint),
    `stroke-linecap="round"` and
@@ -133,8 +133,7 @@ change does not redo:
    Generation is stronger but it makes the
    bundle files generated artifacts, which
    the catalog rules do not currently treat
-   them as (a bundle is one hand-authored
-   file plus import plus README entry), and
+   them as (a bundle is one hand-authored directory: `definition.json` plus `RECIPE.md`), and
    it hides the diff an author should see
    when an icon changes. Phase 3 therefore
    ships the check, not generation, and
@@ -145,15 +144,15 @@ change does not redo:
    generation; it is evidence it is not
    needed.
 5. **Glyph icons stay glyphs in this change.**
-   The 6 glyphs are a deliberate precedent
-   (help "?" and xkcd "X" set it in the
+   The 7 glyphs are a deliberate precedent
+   (xkcd "X" set it in the
    catalog), and a glyph renders in the
    Scribe's font where an SVG renders as
    line art — they are not the same look,
    and converting one is a per-icon design
    decision (does a ▦ or a ◼ gain anything
    as line art?), not a mechanical step.
-   Phase 2 migrates only the 10 SVGs. A
+   Phase 2 migrates only the 11 SVGs. A
    glyph that is later drawn as SVG gets a
    folder file and a catalog change in its
    own right, with its own `catalogVersion`
@@ -161,10 +160,10 @@ change does not redo:
 6. **In-app icons are a later phase, not a
    smuggled scope.** The folder's first job
    is tile icons, which are the proven
-   duplication (10 copies, one spec missing).
+   duplication (11 copies, one spec missing).
    In-bundle icons are mostly app content
-   (About's three QR codes are different
-   data sharing a renderer; Puzzle's digit
+   (the built-in About page's three QR codes are different
+   data sharing a renderer; Mac Puzzle's digit
    glyphs are generated in JS), and sharing
    them would mean a build step inside
    bundles, which the bundle contract does

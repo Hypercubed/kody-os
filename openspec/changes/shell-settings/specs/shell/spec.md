@@ -13,7 +13,7 @@ The shell's `fetch()` SHALL resolve the file theme exactly as today (including i
 
 ### Requirement: Agent access to the theme override
 
-The package SHALL export `get_shell_theme`, `set_shell_theme`, and `reset_shell_theme`, and SHALL list all three in `main()`'s exports. `get_shell_theme` SHALL return `{ defaults, override, effective }`: `defaults` are the file-resolved values, `override` is the stored partial (only fields actually set), and `effective` is the per-field merge, all in file terms (`name`, `title`, `icon`, `background`). `set_shell_theme` SHALL take the partial payload defined by the os-theme override requirement and return `{ ok: true, override, effective }` or `{ ok: false, error }` with no write. `reset_shell_theme` SHALL take an optional `field` and return `{ ok: true, effective }`. Like every other MCP export, these SHALL NOT be routed through `fetch()`'s device gate.
+The package SHALL export `get_shell_theme`, `set_shell_theme`, and `reset_shell_theme`, and SHALL list all three in `main()`'s exports. `get_shell_theme` SHALL return `{ defaults, override, effective }`: `defaults` are the file-resolved values, `override` is the stored partial (only fields actually set), and `effective` is the per-field merge, all in file terms (`name`, `title`, `icon`, `background`, `showHelp`, `showAbout`). `set_shell_theme` SHALL take the partial payload defined by the os-theme override requirement and return `{ ok: true, override, effective }` or `{ ok: false, error }` with no write. `reset_shell_theme` SHALL take an optional `field` and return `{ ok: true, effective }`. Like every other MCP export, these SHALL NOT be routed through `fetch()`'s device gate.
 
 #### Scenario: Agent reads what is overridden and what is not
 

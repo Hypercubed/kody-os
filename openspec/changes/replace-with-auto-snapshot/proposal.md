@@ -8,8 +8,8 @@ There is no way to capture the entire package state — every app, every app sta
 
 - Named install snapshots in `packageStorage()`: `backup(name)` captures the full install envelope (apps, definitions, states, pins, hidden, homepage order) under `kody-os.backups.<name>`; `list_backups()` lists them; `delete_backup(name)` removes one.
 - Restore is full replace with auto-snapshot: `restore(name)` first captures the current install as an automatic pre-restore snapshot, then wipes and writes the named snapshot. Every restore is itself undoable.
-- Auth is excluded: the access-code hash never enters a backup and restore never touches the lock. Recency is excluded (ephemeral, same as install export).
-- Bundle apps (see `app-bundles` change) are included by construction: the envelope carries definitions plus states per app, so any installed kind restores.
+- Auth is excluded: the OTP/session registries (`kody-os.auth.otp.v2`, `kody-os.auth.sessions.v2`) never enter a backup and restore never touches them. Recency is excluded (ephemeral, same as install export).
+- Bundle apps (see archived `2026-10-26-app-bundles` change) are included by construction: the envelope carries definitions plus states per app, so any installed kind restores.
 - Export the surface: `backup`, `restore`, `list_backups`, `delete_backup` (plus the existing `export_install` / `import_install`) become real package exports through the root index.
 - BREAKING: none. Additive keys and exports; existing envelopes import unchanged.
 - Explicit non-goal: shell UI for capture/restore. Capture and restore run through MCP (agent-driven) in this change; a browser control waits on a restore-confirmation UX decision.

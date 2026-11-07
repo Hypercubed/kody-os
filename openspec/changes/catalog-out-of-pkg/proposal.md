@@ -23,19 +23,23 @@ public repo (see `public-pinned-catalog`).
 
 ## What Changes
 
-- `pkg/catalog/*.bundle.json` moves to
-  `catalog/*.bundle.json` at the repo root. The
+- `pkg/catalog/<id>/definition.json` (plus its
+  sibling `RECIPE.md`) moves to
+  `catalog/<id>/definition.json` (plus
+  `catalog/<id>/RECIPE.md`) at the repo root. The
   catalog README moves with it, and `pkg/catalog/`
   no longer exists as a shipped directory.
-- A new `catalog/index.json` manifest lists every
-  catalog app: id, name, label, icon, category,
-  description, `catalogVersion`, bundle path, and
-  fingerprint (the content-only fingerprint of the
-  canonical stored definition, as the install
-  snapshot uses today). The manifest is the
-  catalog's source of truth for listing: the shell
-  cannot list a directory at runtime, and after
-  this change it cannot import the catalog either.
+- The generated `catalog/catalog.json` index moves
+  with the catalog and lists every catalog app:
+  id, label, `catalogVersion`, fingerprint (the
+  content-only fingerprint of the canonical stored
+  definition, as the install snapshot uses today),
+  `installMode`, `definitionPath`, and `recipePath`.
+  The index is the catalog's source of truth for
+  listing: the shell cannot list a directory at
+  runtime, and after this change it cannot import
+  the catalog either. There is no collections
+  section: a recipe installs only its own app.
 - A manifest-generation script regenerates
   `catalog/index.json` from the directory, and the
   catalog harness fails on drift: an orphan bundle
@@ -65,8 +69,9 @@ public repo (see `public-pinned-catalog`).
 
 ## Impact
 
-- Repo layout: `catalog/` (bundles, README, tests
-  where they belong — see design.md), `catalog/index.json`,
+- Repo layout: `catalog/` (per-app definition
+  directories, README, tests where they belong —
+  see design.md), `catalog/catalog.json`,
   manifest-generation script, `tests/catalog-harness.ts`
   updated to check manifest agreement instead of
   import agreement.

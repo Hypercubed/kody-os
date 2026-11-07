@@ -45,16 +45,16 @@ implementation commit, per the catalog rules.
   function names for genuinely shared icons,
   no renames on gaining a second use, a
   README note instead) and the glyph rule
-  (the 6 glyph icons are out of scope for
+  (the 7 glyph icons are out of scope for
   this change; see Phase 2).
 
-## 2. Migrate and normalize the 10 SVG tile icons
+## 2. Migrate and normalize the 11 SVG tile icons
 
 - [ ] 2.1 Copy, verbatim first, the icon
-  strings of the 10 SVG catalog apps into
-  `pkg/icons/<app-id>.svg`: about,
-  calculator, calendar, clock, counter,
-  eight-ball, hoodie-weather, mac-puzzle,
+  strings of the 11 SVG catalog apps into
+  `pkg/icons/<app-id>.svg`: calculator,
+  calculator, calendar, clock, counter, daily-feed,
+  eight-ball, hoodie-weather, link-drop, mac-puzzle,
   news, probe. Verify each copy renders
   identically to its catalog string before
   any normalization, so a later visual
@@ -62,7 +62,7 @@ implementation commit, per the catalog rules.
 - [ ] 2.2 Normalize each file to the spec:
   stroke width to 1.6 (from 1.8 on
   calculator, counter, mac-puzzle; from 1.7
-  on probe), round caps and joins where
+  on link-drop, probe), round caps and joins where
   missing, `<title>` where missing. Check
   each normalized icon visually at tile size
   (1.5rem) and at e-ink resolution; any icon
@@ -90,7 +90,7 @@ implementation commit, per the catalog rules.
   differs from its `pkg/icons/` file, after
   whitespace normalization for JSON escaping
   and file formatting. The check covers
-  exactly the 10 migrated icons; glyph icons
+  exactly the 11 migrated icons; glyph icons
   and unmigrated icons are not checked, so
   a future icon is checked only once it is
   migrated — the migration, not the check,

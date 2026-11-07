@@ -7,8 +7,7 @@
 The system SHALL authenticate a fetch request by exactly one of two
 paths: a platform-verified Kody visitor, or a cookie bound to the
 current `access-key` secret. There SHALL be no third path. In
-particular, the system SHALL NOT accept: a typed derived code, a
-`?k=` query code or bookmark, a code-hash cookie, a stored-hash
+particular, the system SHALL NOT accept: a typed derived code (including one presented via `?k=` query or bookmark — `?k=` remains only as the single-use OTP submission param), a code-hash cookie, a stored-hash
 fallback comparison, a `get_access_code` readout, or any credential
 carried in a URL, link, form, or redirect. A request presenting only
 a retired credential SHALL be denied exactly like an unauthenticated
@@ -150,7 +149,7 @@ A request carrying platform-verified visitor identity (`X-Kody-Visitor` header s
 - **THEN** the device-key gate applies exactly as without this change.
 
 ### Requirement: Key management is Kody-UI-only
-Key creation and replacement SHALL be possible ONLY through the Kody UI secret create/update flow (creation-link form); the in-app and MCP key-set paths SHALL be removed, and docs SHALL give the exact UI steps. Replacing the secret value SHALL change the derived code and invalidate every existing bookmark and cookie at once. With no key secret defined, the app SHALL serve Kody-logged-in users only. Defining the secret SHALL enable the cookie/device path. (This retires the base spec's "key is optional" wording as applied to the device path: the secret is optional only in the sense that login-only mode needs none.)
+Key creation and replacement SHALL be possible ONLY through the Kody UI secret create/update flow (creation-link form); the in-app and MCP key-set paths SHALL be removed, and docs SHALL give the exact UI steps. Replacing the secret value SHALL invalidate every existing cookie at once (there is no derived code and no bookmark to invalidate). With no key secret defined, the app SHALL serve Kody-logged-in users only. Defining the secret SHALL enable the cookie/device path. (This retires the base spec's "key is optional" wording as applied to the device path: the secret is optional only in the sense that login-only mode needs none.)
 
 #### Scenario: Key rotation invalidates everything
 - **WHEN** the owner replaces the secret value in the Kody UI
@@ -161,7 +160,7 @@ Key creation and replacement SHALL be possible ONLY through the Kody UI secret c
 - **THEN** signed-in users with app access are served, anonymous requests are denied, and `mint_otp` fails closed.
 
 ### Requirement: Key is optional; login-only mode stays private
-With no key secret defined, the app SHALL serve Kody-logged-in users only and stay private (no `internet_visible` required). Defining the secret SHALL enable the anonymous device-key path.
+With no key secret defined, the app SHALL serve Kody-logged-in users only and stay private (no `internet_visible` required). Defining the secret SHALL enable the anonymous OTP/cookie path.
 
 #### Scenario: No secret means login-only and private
 - **WHEN** no key secret is defined

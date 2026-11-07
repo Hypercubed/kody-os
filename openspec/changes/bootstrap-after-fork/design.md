@@ -8,26 +8,29 @@ a working OS: confirm the fork is published,
 confirm the registry is empty, unlock with an
 OTP, and install a first app via `add_app` from
 a bundled example in `pkg/catalog/` (for
-example `counter`). It also says, in a now-stale
-passage, that a built-in App Store "is specified
-but not yet implemented" and that adding apps
-goes through an agent "until it lands" — both
-superseded by the v2.1.0 App Store release and
-by the v2.2.0 Manage apps link. A fresh fork
+example `counter`).  A fresh fork
 starts with empty storage (fork copies source
 only; no installed apps, state, or settings
-travel with it), and today the shell auto-seeds
-the Store tile on first shell use against an
-empty registry — a seeding path that cannot
-work once the catalog is no longer shipped,
-because there is no shipped Store bundle to
-seed from.
+travel with it), and nothing is seeded — the shell never seeds
+the Store tile, and setup.md says so
+("nothing is seeded, including no App
+Store"). The App Store is implemented (the
+old "specified but not yet implemented"
+passage is gone from setup.md). About and
+Help are built-in shell pages, not catalog
+apps, so there is nothing to install for
+them. Once the catalog is out of `pkg/`, the
+Store bundle comes from the pinned public
+release instead of the shipped catalog;
+until then it installs from `pkg/catalog/`
+via `install_from_catalog('app-store')`.
 
 ## Goals / Non-Goals
 
 - Goals: one unambiguous bootstrap procedure
   for a fork owner; explicit support for
-  staying empty; a Store-alone recovery path;
+  staying empty; the Store install as the bootstrap
+  procedure;
   no stale setup copy.
 - Non-goals: any code change, including a new
   bootstrap script in `pkg/` (see Decision 3);
@@ -39,70 +42,70 @@ seed from.
 ## Decisions
 
 1. **Bootstrap is an agent/script path, not a
-   shell seed.** Once the catalog is out of
-   `pkg/`, the shell cannot seed the Store from
-   a shipped bundle, so the docs SHALL NOT
-   promise shell seeding. Bootstrap is: an
+   shell seed.** The shell never seeds anything, so the docs
+   SHALL NOT promise shell seeding. Bootstrap is: an
    agent (or a script run by the fork owner)
-   fetches the About, Help, and Store bundles
-   from the pinned release and installs each
-   via `add_app`. The docs give the exact
+   fetches the Store bundle from the pinned
+   release and installs it via `add_app`. About
+   and Help are built-in shell pages and are
+   never installed. The docs give the exact
    prompt and the exact checks; the shell's
    job after bootstrap is only to render what
    was installed.
 2. **Empty is a supported choice, stated first.**
    The setup sequence SHALL present "install
    nothing" before "bootstrap," and SHALL state
-   what empty means: Home shows the honest
-   no-widgets state, Apps shows the honest
-   no-apps state, and apps can still be added
-   later by an agent. Bootstrap is encouraged
-   (the docs say why About, Help, and Store
-   are useful first apps), never required, and
+   what empty means: Home and Apps show the shared help text with
+   the two prompts ("Add your own apps" first,
+   "Install the App Store" second), and apps can
+   still be added later by an agent. Bootstrap is encouraged
+   (the docs say why the Store is a useful first
+   app and that About and Help are already
+   present as built-in pages), never required, and
    never presented as a prerequisite for the
    shell to work.
 3. **Prompt first, script only if clearer.**
    The primary bootstrap artifact in the docs
    SHALL be a copy-paste agent prompt (in the
    style of the existing setup prompt and the
-   adding-an-app skill's recommended prompt): fetch
-   the three bundles from the pinned release,
+   adding-an-app skill's recommended prompt): fetch the Store bundle from the pinned release,
    validate each before writing, install via
    `add_app`, verify with `list_apps` and by
    opening each app page, and stop and ask if
    any check fails. A script SHALL be added
    only if the implementation finds the prompt
    ambiguous in practice (for example, if
-   fetching and installing three bundles by
-   hand proves error-prone); a script is not
+   fetching and installing the bundle by hand
+   proves error-prone); a script is not
    required by this spec, and adding one does
    not change the procedure.
-4. **Bootstrap apps are ordinary installs.**
-   The docs SHALL state that About, Help, and
-   Store installed by bootstrap are normal
-   registry installs: they appear in Apps, they
-   can be pinned, hidden, or added to home
-   from Apps Edit, and they can be removed by
-   an agent via `remove_app`. No bootstrap app
-   is protected, hidden from management, or
-   reinstalled automatically. If a bootstrap
-   app is removed, reinstalling it uses the
-   same fetch-and-`add_app` path as bootstrap.
-5. **Store-alone recovery is its own procedure.**
-   The docs SHALL give, separately from full
-   bootstrap, the Store-alone path: fetch only
-   the Store bundle from the pinned release
-   and install it via `add_app`, then open the
-   Store. A user who started empty, or who
-   removed the Store, SHALL NOT have to
-   bootstrap About and Help to get a Store.
+4. **The bootstrapped Store is an ordinary install.**
+   The docs SHALL state that the Store installed
+   by bootstrap is a normal registry install: it
+   appears in Apps, it can be pinned, hidden, or
+   added to home from Apps Edit, and it can be
+   removed by an agent via `remove_app`. It is
+   not protected, hidden from management, or
+   reinstalled automatically. If the Store is
+   removed, reinstalling it uses the same
+   fetch-and-`add_app` path as bootstrap. About
+   and Help are not installs at all — they are
+   built-in shell pages, always present unless
+   disabled in Settings, and cannot be removed.
+5. **Bootstrap installs the Store only.**
+   Installing the Store IS the bootstrap
+   procedure: fetch the Store bundle from the
+   pinned release and install it via `add_app`,
+   then open the Store. There is no About or
+   Help step — they are built-in pages, so a
+   user who started empty, or who removed the
+   Store, installs only the Store.
 6. **Checks are part of the procedure, not an
-   appendix.** After bootstrap, the docs SHALL
-   require: `list_apps` shows `about`, `help`,
-   and `app-store`; each app page opens and
-   renders; acting is not required for these
-   stateless apps, but the Store page lists
-   catalog apps from the pinned release. A
+   appendix.** After bootstrap, the docs SHALL require:
+   `list_apps` shows `app-store`; the Help and
+   About pages open and render as built-in
+   pages; the Store page opens and lists catalog
+   apps from the pinned release. A
    failed check SHALL stop the procedure and
    ask, not proceed to the next app.
 

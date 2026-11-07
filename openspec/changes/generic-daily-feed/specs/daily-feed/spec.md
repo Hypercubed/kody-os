@@ -11,10 +11,8 @@ the user how to get an agent to start pushing.
 
 ### Requirement: Daily Feed app definition
 
-The app SHALL have id `daily-feed` (or the id
-settled in tasks, section 0, question 1, used
-consistently everywhere including the prompt),
-label "Daily Feed", category `reading`,
+The app SHALL have id `daily-feed`, label
+"Daily Feed", category `reading`,
 `schemaVersion` 5, and placements `page` in
 v1. Its state SHALL be exactly one field:
 `feed`, a string, initial `""`, `maxLength`
@@ -34,13 +32,19 @@ other action in v1.
   `list_apps`, and its state is the empty
   initial state.
 
-#### Scenario: Daily Brief untouched
+#### Scenario: Daily Brief superseded (2026-11-04)
 
 - **WHEN** the Daily Feed app is installed
   and listed
-- **THEN** the `daily-brief` app still lists,
-  still renders, and still holds its own
-  state, unchanged by this app's install.
+- **THEN** the `daily-brief` app no longer
+  exists live: its feed moved verbatim to
+  Daily Feed on 2026-11-04, the 8am digest
+  cron now pushes to Daily Feed, and
+  Daily Brief was deleted live after a full
+  export. The original "Daily Brief
+  untouched" scenario is superseded by that
+  user-directed move; it is kept here as a
+  record, not as a requirement.
 
 ### Requirement: RSS viewer, newest first
 

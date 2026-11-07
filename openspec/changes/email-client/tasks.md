@@ -89,7 +89,8 @@
   neither flag true is treated as not declaring
   email. Existing `feeds` declarations and
   validation are unchanged.
-- [ ] 4.2 Author `pkg/catalog/email.bundle.json`
+- [ ] 4.2 Author `pkg/catalog/email/definition.json`
+  (plus `pkg/catalog/email/RECIPE.md`)
   (id `email`, schemaVersion 5, `stateSchema`
   `{ type: "object", initial: {}, fields: {} }`,
   `actions: {}`, no `act()` calls, no mail in
@@ -108,14 +109,15 @@
   fonts, high-contrast black-on-white, 48px
   minimum tap targets, icon per the existing
   icon rules.
-- [ ] 4.3 Register the bundle in the catalog:
+- [ ] 4.3 Register the definition in the catalog:
   one import line in `pkg/src/apps/catalog.ts`
-  (alphabetical by id) plus one entry in
-  `pkg/catalog/README.md`; verify the catalog
-  harness passes (validate + install in a blank
-  store + empty initial state + directory /
-  import match) with no other catalog file
-  changed.
+  (alphabetical by id), the generated index
+  regenerated (`bun scripts/build-catalog-index.ts`),
+  plus one entry in `pkg/catalog/README.md`;
+  verify the catalog harness passes (validate +
+  install in a blank store + empty initial
+  state + directory / import match) with no
+  other catalog file changed.
 
 ## 5. Docs
 
@@ -155,8 +157,10 @@
   mail, plus the 404 cases: unknown app, app
   without the declaration, app with `view`
   only calling an `act` route), and confirm
-  design Open Question 4 (list order and
-  `limit` behavior) from the observed results.
+  design Open Questions 4 (list order and
+  `limit` behavior) and 5 (`emailMessageSearch`
+  exists as a callable capability) from the
+  observed results.
 - [ ] 6.4 Verify `openspec validate --changes`
   passes if the binary is available (otherwise
   check the change shape manually, as with

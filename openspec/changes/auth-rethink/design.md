@@ -2,6 +2,8 @@
 
 ## Context
 
+> Correction 2026-11-06: the removal half of this change has already landed (2026-10-31, v2.0.0, OTP-only — see remove-legacy-code): the derived path, stored-hash fallback, code-hash cookie, `get_access_code` / `get_access_status`, `pkg/scripts/seed-dev-hash.ts`, and `via key` are all gone from the tree (verified). What remains unbuilt is the secret-bound-cookie design (Decision 1) and the Gate 0 re-test (tasks 0.4–0.5). The "Today `pkg/src/auth.ts` implements both systems" paragraph below describes the pre-cutover state.
+
 See proposal.md (Why). Today `pkg/src/auth.ts` implements both
 systems. The derived path recomputes an HMAC-SHA256 signature via
 `credential("access-key").sign()` over the fixed domain string
@@ -39,13 +41,11 @@ model the owner directed on 2026-10-29.
 0. **Gate 0 — probe before implementation (BLOCKING).** Before any
    implementation task starts, a live anonymous-fetch probe SHALL
    establish whether `credential().sign()` resolves inside an
-   anonymous fetch request. Method: with the secret bound (confirmed
-   via MCP `get_access_status`), present the currently derived code
-   through the anonymous path form (`/unlock/<code>`) from a
+   anonymous fetch request. Method: with a secret bound (confirmed by an MCP `mint_otp` call succeeding — it fails closed with a named error when no secret is bound), present an OTP through the anonymous path form (`/unlock/<otp>`) from a
    signed-out browser/session and observe whether the fetch handler
-   accepts it. The derived code is credential-adjacent: handle it
+   accepts it. The presented OTP is credential-adjacent: handle it
    transiently for the probe only, never record it in chat, logs, or
-   files. A negative result MUST be distinguished before any
+   files. (Method updated 2026-11-06: the derived code no longer exists and `get_access_status` was removed 2026-10-31; see also task 0.4. Note no secret is bound today — see Open Question 7.) A negative result MUST be distinguished before any
    conclusion is drawn: secret unbound vs. hosted hostname not on
    the secret's host allowlist vs. `sign()` unreachable in the
    anonymous fetch context. If `sign()` does not resolve
@@ -168,9 +168,10 @@ model the owner directed on 2026-10-29.
    legacy fallback is precisely what is being
    removed; a silent fallback would reintroduce it.
 5. **Removal is total, verified by grep and by fetch.** No
-   `?k=` handling, no stamping, no hidden `k` fields, no
+   `?k=` stamping or derived-code handling, no hidden `k` fields, no
    `get_access_code`, no stored hash, no `via key`, no enhancement
    key handling may remain in code, docs, Help copy, or the client.
+   (`?k=` remains only as the single-use OTP submission param.)
    Verification tasks include repo-wide greps and anonymous fetch
    checks for each removed surface.
 
@@ -219,9 +220,7 @@ tokens SHALL NOT authenticate under new code.
 MAJOR at implementation, in the same commit as the code, per
 `pkg/AGENTS.md` (MCP export removed; auth/session behavior changes
 so existing codes and sessions stop working; `0.x` does not soften
-the rule). Exact target depends on landing order: if the app-store
-change (MINOR) has landed, `0.2.0` → `1.0.0`; if this change lands
-first, `0.1.7` → `1.0.0`. PATCH resets to 0, BUILD +1 on publish,
+the rule). Exact target depends on landing order and is computed from the version at landing time (the `0.1.7` / `0.2.0` → `1.0.0` arithmetic in earlier drafts is stale — the package has moved on since). PATCH resets to 0, BUILD +1 on publish,
 `pkg/AGENTS.md` + `pkg/README.md` headers updated in the same commit.
 This spec draft does not bump anything.
 
@@ -242,3 +241,4 @@ This spec draft does not bump anything.
 6. Supplier declaration (`need` shape for fork safety): pending Kody
    confirmation per 2026-10-31 feedback — record answer in setup guide
    when received.
+7. Secret re-establishment for the Gate 0 re-test and the cutover: the legacy `access-key` secret was removed entirely 2026-10-31, so no secret is bound today and `mint_otp` works with no secret. The Gate 0 re-test (task 0.4) and the cutover both presuppose a bound secret — who creates the fresh secret, with what host allowlist, before the re-test? (Open question, not a decision: do not invent the step.)

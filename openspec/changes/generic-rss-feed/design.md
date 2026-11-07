@@ -2,7 +2,7 @@
 
 ## Context
 
-Three feed patterns exist today (verified against the code on `be-quite-900`, HEAD `dc062f6`):
+Three feed patterns exist today (verified against the code on `be-quite-900`, HEAD `b548aca`):
 
 1. **Push** — `generic-feed`, `daily-feed`. No capabilities; one `feed` string field (maxLength 250000) and one `set_feed` action; zero `fetch(` calls in the bundle. An agent fetches the user's RSS URL and pushes the parsed feed in via `set_feed` (newest first, max 14). The "RSS" is in the setup (the agent fetches), not in the app.
 2. **Declared live** — `xkcd`, `news`. A `feeds` capability declares fixed upstream URLs (XKCD: one entry, `https://xkcd.com/rss.xml`, ttlSeconds 3600, maxBytes 50000; News: six entries, TTL 900, maxBytes 65536). The shell fetches server-side (`pkg/src/feeds.ts`: `serveFeed`/`serveProxy`) and serves at `GET /feed/<app>/<name>` (routes in `pkg/src/app.ts`, GET only, inside the device gate). The bundle renders the stored feed first, then fetches live, with a Refresh button and a device-local cache fallback.
@@ -75,7 +75,7 @@ Two options were evaluated.
 
 ## Decision 6: Tests
 
-- The catalog harness covers the new app (it walks app directories: each definition validates and installs and holds its initial state). The harness's app count goes 20 → 21. The agent-tools harness's known pre-existing FAIL ("list_catalog returns 16 apps — got 20", verified identical on clean `c1da8cb`) changes to "got 21" — record the new expected text; fixing the underlying 16-vs-actual gap is out of scope.
+- The catalog harness covers the new app (it walks app directories: each definition validates and installs and holds its initial state). The harness's app count goes 18 → 19. The agent-tools harness's known pre-existing FAIL ("list_catalog returns 16 apps — got 18", verified at HEAD `b548aca`) changes to "got 19" — record the new expected text; fixing the underlying 16-vs-actual gap is out of scope.
 - The live fetch is tested without a live network dependency: the route test stubs the global `fetch` to return a fixture RSS document, installs the app in a mock store, sets `feedUrl`, calls the route handler, and asserts the response body is the fixture feed and the `X-Feed-Cache` header reports hit/miss/stale as appropriate. No test hits the network. (A fixture feed served over plain HTTP cannot be used as the app's URL, because the URL validation requires HTTPS — hence the stubbed-fetch approach rather than a local test server.)
 - Bundle tests (`pkg/catalog/tests/generic-rss-feed-tests.cjs`, run under node with jsdom, following the existing bundle-test pattern): `set_feed_url` accepts a bare HTTPS URL, rejects http/credentialed/malformed URLs, and `""` clears; the empty state shows the setup prompt with no URL set and hides it once a URL is set; the viewer renders a fixture feed newest first with Previous/Next and shows the error state with a retry when the fetch fails.
 - The recipe is verified by following it in the mock against a known-good public feed (XKCD's RSS) and confirming the app shows the latest entry — a manual agent step, not an automated test.
@@ -83,11 +83,9 @@ Two options were evaluated.
 ## Decision 7: Version and sequencing
 
 - New catalog app: the implementation commit is expected to be a MINOR version bump (new catalog app, backwards compatible), decided at commit time per the version policy in `pkg/AGENTS.md`; the build increments by one on publish. This change does not decide the bump.
-- Sequencing with the catalog-restructure: the restructure's task 8.3 (commit + MINOR version decision, 2.8.0) is outstanding. If the restructure commits first as 2.8.0, this change's implementation commit is the next MINOR; if both land in one publish, one MINOR covers both. Record the decision in the implementation commit.
-- Sequencing with `help-about-built-in` (validated, uncommitted at the time of writing): that change moves Help and About back into the shell as built-in pages (removing them from the catalog) and reverts `app-store`'s `installMode` to `json`. It touches the same canonical scenarios this change modifies (`Recipe install mode`). Both orderings are recorded so whoever archives second can reconcile:
-  - If this change lands first: 21 apps; `app-store`, `daily-feed`, `generic-feed`, `generic-rss-feed` report `recipe-or-json`; the other 17 report `json`.
-  - If `help-about-built-in` lands first: 19 apps; `daily-feed`, `generic-feed`, `generic-rss-feed` report `recipe-or-json`; the other 16 report `json`.
-  - That change also recommends a MAJOR version bump (3.0.0); if it lands first, this change's version decision is taken against 3.0.0.
+- Sequencing with the catalog-restructure: settled - the restructure's task 8.3 committed as `b548aca` (MINOR 2.8.0). This change's implementation commit lands after it.
+- Sequencing with `help-about-built-in`: settled - committed in `c5d10d4`, Help and About are built-in shell pages (removed from the catalog) and `app-store`'s `installMode` is `json`. It touches the same canonical scenarios this change modifies (`Recipe install mode`). The settled outcome: 19 apps with this change; `daily-feed`, `generic-feed`, `generic-rss-feed` report `recipe-or-json`; the other 16 report `json`.
+  - That change also recommends a MAJOR version bump (3.0.0); the version decision for this change is deferred to publish and is taken against that recommendation, not decided here.
 
 ## Open questions
 

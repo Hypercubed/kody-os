@@ -76,15 +76,21 @@ gets the push started.
 
 - None in v1. No existing app, route, action, MCP
   export, or shell behavior changes. Daily Brief
-  (`daily-brief`) is untouched, and the two apps
-  coexist; this change does not rename, replace,
-  migrate, or import Daily Brief state (design.md,
-  Decision 5).
+  (`daily-brief`) is untouched by v1, and the two
+  apps coexist; this change does not rename,
+  replace, migrate, or import Daily Brief state
+  (design.md, Decision 5). Note (2026-11-04):
+  Daily Brief was later deleted live, its feed
+  moved verbatim to Daily Feed, and the 8am
+  digest cron now pushes to Daily Feed, so the
+  two apps no longer coexist; see design.md,
+  Decision 5.
 - Catalog shipping (Phase 2, optional, tasks
   section 6) modifies `app-registry` only by
-  adding one catalog bundle, one `catalog.ts`
-  import line, and one README entry, in the same
-  pattern as the existing catalog apps.
+  adding one catalog definition (definition.json
+  plus RECIPE.md), one `catalog.ts` import line,
+  a regenerated index, and one README entry, in
+  the same pattern as the existing catalog apps.
 
 ## Impact
 
@@ -95,14 +101,19 @@ gets the push started.
   No file in `pkg/` changes, so no version
   decision is triggered by v1 at all.
 - Phase 2 (only on user direction):
-  `pkg/catalog/daily-feed.bundle.json` (new,
-  `catalogVersion` 1), one import line in
-  `pkg/src/apps/catalog.ts` (alphabetical by
-  id), one entry in `pkg/catalog/README.md`.
+  `pkg/catalog/daily-feed/definition.json` (new,
+  `catalogVersion` 1) plus
+  `pkg/catalog/daily-feed/RECIPE.md`, one import
+  line in `pkg/src/apps/catalog.ts` (alphabetical
+  by id), the generated index regenerated, and
+  one entry in `pkg/catalog/README.md`.
   That is a new feature with nothing existing
   breaking, so it is a MINOR bump per
   `pkg/AGENTS.md`, with BUILD +1 on publish,
-  in the same commit as the catalog files.
+  in the same commit as the catalog files. Note:
+  Phase 2 is done — Daily Feed is in the catalog
+  at `catalogVersion` 5, `installMode`
+  `recipe-or-json`.
 - Storage budget: the feed field is at most
   250,000 characters, the bundle is under the
   256 KiB bundle cap, and both sit inside the
@@ -113,11 +124,16 @@ gets the push started.
 
 ## Out of Scope
 
-- Replacing, renaming, or migrating Daily Brief.
-  Daily Brief keeps its id, its state, and its
-  8am digest push. A user who wants the same
+- Replacing, renaming, or migrating Daily Brief
+  in v1. Daily Brief keeps its id, its state, and
+  its 8am digest push; a user who wants the same
   content in both apps asks an agent to push it
-  to both; no automatic import is in v1.
+  to both; no automatic import is in v1. Note
+  (2026-11-04): the replacement happened after
+  v1 — Daily Brief's feed moved verbatim to
+  Daily Feed, the digest cron was retargeted,
+  and Daily Brief was deleted live after a full
+  export; see design.md, Decision 5.
 - A user-typed RSS URL at runtime. This app has
   no feed-URL input, and no declared
   `capabilities.feeds` entry. The shell's feed
@@ -126,6 +142,10 @@ gets the push started.
   runtime-typed URL cannot be fetched through
   it. A self-fetching feed app is a different
   app, in the News / xkcd pattern, not this one.
+  That separate app is now spec'd as
+  `generic-rss-feed` (per-install feedUrl plus a
+  `GET /user-feed/<app>` route); this app stays
+  push-only.
 - Self-fetching, live refresh, multi-section
   feeds, subscriptions, comments, or per-entry
   delete / edit from the app in v1. The only

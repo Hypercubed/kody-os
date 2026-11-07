@@ -28,6 +28,9 @@ no `act()` call.
 - **THEN** it returns `emailMessageSearch`
   results in list shape, so mail beyond the
   newest-N list is reachable without paging.
+  (Conditional on design.md Open Question 5:
+  `emailMessageSearch` must first be verified
+  as a callable capability.)
 
 #### Scenario: Closing leaves nothing behind
 - **WHEN** the email app is closed

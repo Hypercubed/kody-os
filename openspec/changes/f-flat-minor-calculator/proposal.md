@@ -61,13 +61,13 @@ replacement for it.
   3 and 4). There is no runtime `.import`,
   `.load`, macro, compiler, optimizer, or
   bytecode step in the app.
-- Docs: one row in `pkg/catalog/README.md`
-  and, if the app is later shipped in the
-  catalog, one entry in `pkg/.agents/skills/adding-an-app/SKILL.md`
-  is not needed (the app follows the existing
-  contract); instead the change documents the
-  generation step in `pkg/docs/` only when
-  catalog shipping lands (tasks, Phase 2).
+- Docs: no new doc in v1 (the app follows the
+  existing contract, so no entry in
+  `pkg/.agents/skills/adding-an-app/SKILL.md`
+  is needed). When catalog shipping lands
+  (tasks, Phase 2), the change adds one row in
+  `pkg/catalog/README.md` and documents the
+  generation step in `pkg/docs/`.
 
 ## Capabilities
 
@@ -85,10 +85,11 @@ replacement for it.
   Calculator app is untouched.
 - Catalog shipping (Phase 2, optional,
   tasks section 6) modifies `app-registry`
-  only by adding one catalog bundle, one
-  `catalog.ts` import line, and one README
-  entry, in the same pattern as the existing
-  catalog apps.
+  only by adding one catalog definition
+  (definition.json plus RECIPE.md), one
+  `catalog.ts` import line, a regenerated
+  index, and one README entry, in the same
+  pattern as the existing catalog apps.
 
 ## Impact
 
@@ -99,10 +100,12 @@ replacement for it.
   in `pkg/` changes, so no version decision
   is triggered by v1 at all.
 - Phase 2 (only on user direction):
-  `pkg/catalog/f-flat-minor.bundle.json`
-  (new), one import line in
+  `pkg/catalog/f-flat-minor/definition.json`
+  (new) plus `pkg/catalog/f-flat-minor/RECIPE.md`,
+  one import line in
   `pkg/src/apps/catalog.ts` (alphabetical),
-  one entry in `pkg/catalog/README.md`.
+  the generated index regenerated, and one
+  entry in `pkg/catalog/README.md`.
   That is a new feature with nothing existing
   breaking, so it is a MINOR bump per
   `pkg/AGENTS.md`, with BUILD +1 on publish,

@@ -4,12 +4,11 @@
 
 This change is a record, not a future plan. The implementation it
 describes was already made on 2026-11-04 in the local working tree
-(PC repo, main at 30b0c24) and is still uncommitted there: the scoped
+(PC repo, committed as `ef654da` and published to Kody as v2.6.0 build 31): the scoped
 defaults in `pkg/public/styles.css`, the regenerated
 `pkg/src/shell-css.ts`, 17 cleaned catalog bundles, and the updated
 style guide and adding-an-app skill. The tasks in tasks.md are marked
-done where they are done; the only open tasks are review and ship
-decisions, which belong to the owner. Nothing in this change commits,
+done where they are done; the open tasks are the Phase 5 review items (visual check, News bold, pill calls, harness backstop); the ship decisions in 5.4-5.5 have since happened (pushed as `ef654da`, published as v2.6.0 build 31) and are recorded there. Nothing in this change commits,
 pushes, or publishes anything.
 
 ## Why
@@ -60,7 +59,7 @@ from it: no webfonts, no gradients, no external assets.
   class is the variant (Calculator: `os-display`, `os-keypad`,
   `os-key`). Each touched bundle's `catalogVersion` increments
   by exactly 1; Help is untouched (it had no bundle CSS) and
-  gets no bump. No app behaviour, JavaScript logic, state,
+  gets no bump. (About and Help have since left the catalog - see `help-about-built-in` - so the 17-bundle list here, which includes `about`, is the Nov 4 catalog, not the current 18-app one.) No app behaviour, JavaScript logic, state,
   content, or tile icon changes.
 - The style guide (`pkg/docs/style-guide.md`) and the
   adding-an-app skill (`pkg/.agents/skills/adding-an-app/SKILL.md`)
@@ -114,9 +113,9 @@ from it: no webfonts, no gradients, no external assets.
   `shared-svg-icons` change); a runtime icon or style registry;
   and any commit, push, or publish decision, which is the
   owner's at ship time.
-- Version: the working tree package is still 2.6.0, build 30.
+- Version: at implementation time the working tree package was 2.6.0, build 30; the implementation commit recorded that version and it shipped as build 31. The package is now 2.8.0.
   This change does not decide the version; the implementation
-  commit records it, per `pkg/AGENTS.md`, as it does the
+  commit recorded it, per `pkg/AGENTS.md`, as it does the
   build +1 on a Kody publish. A visible style change across
   all apps is at least a MINOR, but that call is not made
   here.

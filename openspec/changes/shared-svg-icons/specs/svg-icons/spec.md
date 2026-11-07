@@ -5,7 +5,7 @@
 Give sanitized inline SVG tile icons a shared
 source folder, so a catalog icon is copied
 from a file under one spec instead of drawn
-fresh in each bundle's JSON.
+fresh in each definition's JSON.
 
 ## MODIFIED Requirements
 
@@ -19,13 +19,18 @@ g, title` and geometry plus monochrome
 fill / stroke attributes only, and SHALL
 reject `script, foreignObject, use, image,
 style`, `on*` handlers, external refs, and
-animations. In addition, for the 10 migrated
-catalog icons (about, calculator, calendar,
-clock, counter, eight-ball, hoodie-weather,
-mac-puzzle, news, probe), the icon string
+animations. In addition, for the 11 migrated
+catalog icons (calculator, calendar,
+clock, counter, daily-feed, eight-ball, hoodie-weather,
+link-drop, mac-puzzle, news, probe), the icon string
 SHALL match the corresponding file in
 `pkg/icons/` after whitespace normalization.
 Glyph icons are unchanged by this requirement.
+
+#### Scenario: Valid SVG installs
+
+- **WHEN** `add_app` receives an icon with allowlisted SVG markup
+- **THEN** it returns `{ ok: true, id }` and the tile renders the sanitized SVG.
 
 #### Scenario: Migrated icon matches its file
 
@@ -36,7 +41,7 @@ Glyph icons are unchanged by this requirement.
   normalized), and a mismatch fails the
   harness.
 
-#### Scenario: Hostile SVG is still rejected
+#### Scenario: Hostile SVG is rejected
 
 - **WHEN** `add_app` receives an icon with
   script, external ref, or event handler
@@ -84,8 +89,8 @@ definition string, inlined by the shell.
 
 ### Requirement: Glyph icons unchanged
 
-The 6 glyph tile icons (app-store, arrow-game,
-cellular-playground, help, three-bit-art,
+The 7 glyph tile icons (app-store, arrow-game,
+cellular-playground, generic-feed, settings, three-bit-art,
 xkcd) SHALL remain plain-text glyphs in this
 change. Converting a glyph to SVG is a
 separate per-icon change with its own

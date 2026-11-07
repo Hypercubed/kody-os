@@ -29,6 +29,13 @@ every number they depend on before shipping.
 
 ### 1. Daily Brief, the pattern being generalized
 
+Note (2026-11-04): `daily-brief` was deleted
+live after its feed moved verbatim to
+`daily-feed` and the 8am digest cron was
+retargeted to Daily Feed. The description below
+is the pre-move pattern it generalized; Daily
+Brief no longer exists as a live app.
+
 - Live app id `daily-brief`, created 2026-10-25
   via `add_app` only, no republish, no package
   change. Definition: `feed` only (string,
@@ -241,10 +248,10 @@ cron are both viable push triggers, and the
 choice is recorded in the task notes, not
 fixed by this spec.
 
-### Decision 5: Daily Brief coexistence, no migration
+### Decision 5: Daily Brief coexistence, no migration (superseded 2026-11-04)
 
-Daily Brief stays exactly as it is. This app
-gets its own id, its own state key, and its
+Daily Brief stays exactly as it is for v1. This
+app gets its own id, its own state key, and its
 own push procedure. Rationale: Daily Brief's
 state and push are live and working; touching
 them to "generalize in place" would risk the
@@ -255,6 +262,17 @@ same content in both apps, an agent pushes
 to both ids. A migration or import tool is
 an open question (tasks, section 0), not a
 v1 promise.
+
+Superseded (2026-11-04): after v1, Daily
+Brief's feed moved verbatim to Daily Feed, the
+8am digest cron was retargeted to Daily Feed,
+and Daily Brief was deleted live after a full
+export (`~/workspace/kody-ai-os/daily-brief-export-2026-11-04.json`).
+The first Daily Feed push then lost the 12 prior
+items (Oct 24–Nov 4); the user chose on Nov 5 to
+leave Daily Feed as-is, today only, with history
+in the export file. Daily Feed is now the digest
+target; Daily Brief no longer exists live.
 
 ### Decision 6: Page first, widget later
 
@@ -271,41 +289,28 @@ requires page rendering only.
 
 ## Open Questions
 
-1. App id: is `daily-feed` the right id, or
-   should it be `generic-daily-feed` to make
-   the generic intent explicit in the id
-   itself? The spec uses `daily-feed`
-   throughout; a rename before implementation
-   is a search-and-replace in this change
-   and in the prompt, not a redesign, but it
-   must happen before the first `add_app`,
-   because an id change after install is a
-   new app, not a rename.
-2. Entry cap and entry size: are 14 entries
-   and 19000 characters per entry (the Daily
-   Brief procedure defaults) right for a
-   generic feed, or should the procedure
-   default be higher for long-form entries?
-   The definition cap (250000) does not
-   change either way; only the procedure
-   defaults move.
-3. Catalog shipping or `add_app` only for v1?
-   The spec phases `add_app` first and
-   catalog second, but if the user wants
-   catalog from the start, tasks 1 and 6
-   merge and the version decision moves
-   earlier (MINOR + BUILD +1 in the same
-   commit as the catalog files).
-4. Migration: should v1 offer a one-off
-   agent step to copy Daily Brief's current
-   feed into `daily-feed`, or is "push to
-   both from now on" enough? The spec says
-   no automatic migration; a manual copy
-   step, if wanted, is a procedure note, not
-   a bundle feature.
-5. Widget placement: page only in v1, or
-   page plus widget from the start (see
-   Decision 6)?
+1. Answered — app id is `daily-feed`: the
+   implementation used the spec default, and
+   the app is installed live under that id.
+   (The `generic-daily-feed` alternative was
+   not taken.)
+2. Answered — procedure defaults stay 14
+   entries and 19000 characters per entry:
+   the implementation used the spec defaults.
+   The definition cap (250000) is unchanged.
+3. Answered — catalog from the start, on the
+   user's direction: Daily Feed is in the
+   catalog at `catalogVersion` 5,
+   `installMode` `recipe-or-json`.
+4. Answered — migration happened after v1,
+   not as a v1 step: Daily Brief's feed moved
+   verbatim to `daily-feed` on 2026-11-04
+   and Daily Brief was deleted live (see
+   Decision 5).
+5. Answered for v1 — page only: the
+   definition's placements are `page` only.
+   A widget is a future step (see
+   Decision 6), not v1 scope.
 
 ## Alternatives Considered
 
