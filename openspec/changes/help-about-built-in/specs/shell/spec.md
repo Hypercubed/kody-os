@@ -122,11 +122,15 @@ The shell SHALL render an expand control in the titlebar of every app page (`GET
 
 ### Requirement: About is a built-in shell page
 
-The shell SHALL serve a built-in About page at `GET /about` rendering the About content — the same content the about catalog app rendered (the "About kody-os" description, the donation links for GitHub Sponsors, Ko-fi, and Buy Me a Coffee, and the QR code) — as a shell page in the shared chrome, not a catalog app. `GET /apps/about` SHALL fall through to the existing unknown-app handling (plain 404). About SHALL NOT appear in the Apps list, Edit mode, pin/hide/home controls, home widgets, or the App Store list. When About is disabled via the settings file, `GET /about` SHALL respond 404 and the menu SHALL show no About link. The About page is a shell page, not an app page, so it SHALL NOT carry the page-mode expand control.
+The shell SHALL serve a built-in About page at `GET /about` rendering the About content — the same content the about catalog app rendered (the "About kody-os" description, the donation links for GitHub Sponsors, Ko-fi, and Buy Me a Coffee, the QR code, and a referral note at the bottom) — as a shell page in the shared chrome, not a catalog app. `GET /apps/about` SHALL fall through to the existing unknown-app handling (plain 404). About SHALL NOT appear in the Apps list, Edit mode, pin/hide/home controls, home widgets, or the App Store list. When About is disabled via the settings file, `GET /about` SHALL respond 404 and the menu SHALL show no About link. The About page is a shell page, not an app page, so it SHALL NOT carry the page-mode expand control.
 
 #### Scenario: About renders the About content
 - **WHEN** `/about` is opened with About enabled
-- **THEN** it responds 200 with the About description, donation links, and QR code, inside the shared chrome.
+- **THEN** it responds 200 with the About description, donation links, QR code, and referral note, inside the shared chrome.
+
+#### Scenario: About shows the Kody referral note
+- **WHEN** `/about` is opened
+- **THEN** the bottom of the page invites readers signing up for Kody to use the referral link `https://kody.codes/?ref=hypercubed`.
 
 #### Scenario: About app URL is unknown
 - **WHEN** `/apps/about` is opened

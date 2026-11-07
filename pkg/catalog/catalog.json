@@ -30,8 +30,8 @@
     {
       "id": "calendar",
       "label": "Calendar",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:1255583477-3128230553-4512",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:9853402-3766713770-4474",
       "installMode": "json",
       "definitionPath": "calendar/definition.json",
       "recipePath": "calendar/RECIPE.md"

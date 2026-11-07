@@ -23,7 +23,7 @@ The shell SHALL render a home page at `GET /` showing the widget dashboard (see 
 
 #### Scenario: Home with apps but none on Home prompts Add to home
 - **WHEN** `/` is fetched with at least one app installed and an empty homepage list
-- **THEN** it shows "No widgets yet" with a short message prompting the user to add apps to Home from the Apps page via Apps Edit's Add to home control, and it does NOT show the two install prompts.
+- **THEN** it shows a short message prompting the user to add apps to Home from the Apps page via Apps Edit's Add to home control, and it does NOT show the two install prompts.
 
 #### Scenario: Apps page offers Edit mode
 - **WHEN** the Apps page is fetched with at least one app installed
@@ -64,7 +64,6 @@ are listed in the scenarios below.
 superseded by the empty-install two-state Home rendering merged above: with apps
 installed but none on Home, `/` shows "No widgets yet" with the Add-to-home prompt, not a
 Store install hint.)
-
 
 #### Scenario: Menu and Apps page say apps
 - **WHEN** any shell page is fetched

@@ -67,7 +67,7 @@ function click(document, selector) {
 // February 2026: 28 days, starts Sunday (padding 0), today 15 highlighted.
 var feb = makeDom(2026, 1, 15);
 var info = gridInfo(feb.dom.window.document);
-check('Feb 2026 title', info.title === 'February 2026', info.title);
+check('Feb 2026 title', info.title === 'Feb 2026', info.title);
 check('Feb 2026 28 days, Sunday start', info.dayCount === 28 && info.blanks === 0,
   'days=' + info.dayCount + ' blanks=' + info.blanks);
 check('Feb 2026 today highlighted', info.today.length === 1 && info.today[0] === '15',
@@ -76,7 +76,7 @@ check('Feb 2026 today highlighted', info.today.length === 1 && info.today[0] ===
 // October 2026: 31 days, starts Thursday (padding 4), today 15 highlighted.
 var oct = makeDom(2026, 9, 15);
 info = gridInfo(oct.dom.window.document);
-check('Oct 2026 title', info.title === 'October 2026', info.title);
+check('Oct 2026 title', info.title === 'Oct 2026', info.title);
 check('Oct 2026 31 days, Thursday start', info.dayCount === 31 && info.blanks === 4,
   'days=' + info.dayCount + ' blanks=' + info.blanks);
 check('Oct 2026 today highlighted', info.today.length === 1 && info.today[0] === '15',
@@ -95,15 +95,15 @@ var doc = dec.dom.window.document;
 var hrefBefore = dec.dom.window.location.href;
 click(doc, '.cal-next');
 info = gridInfo(doc);
-check('Dec 2026 next lands Jan 2027', info.title === 'January 2027', info.title);
+check('Dec 2026 next lands Jan 2027', info.title === 'Jan 2027', info.title);
 check('Jan 2027 31 days, Friday start', info.dayCount === 31 && info.blanks === 5,
   'days=' + info.dayCount + ' blanks=' + info.blanks);
 click(doc, '.cal-prev');
 info = gridInfo(doc);
-check('Jan 2027 prev lands back Dec 2026', info.title === 'December 2026', info.title);
+check('Jan 2027 prev lands back Dec 2026', info.title === 'Dec 2026', info.title);
 click(doc, '.cal-prev');
 info = gridInfo(doc);
-check('Dec 2026 prev lands Nov 2026', info.title === 'November 2026', info.title);
+check('Dec 2026 prev lands Nov 2026', info.title === 'Nov 2026', info.title);
 check('Prev/next cause no navigation', dec.dom.window.location.href === hrefBefore,
   dec.dom.window.location.href);
 check('Prev/next cause no fetch calls', dec.fetchCalls.length === 0,

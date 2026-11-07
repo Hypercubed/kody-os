@@ -22,7 +22,7 @@
 ## 3. Built-in Help and About pages
 
 - [x] `GET /help` renders the shared help text (`renderEmptyHelp` output) with 200 in the shared chrome; delete the 303 redirect to `/apps/help`
-- [x] Add `GET /about` rendering the current About content (about-wrap markup, description, donation links, QR code) moved verbatim from the about catalog bundle into shell code
+- [x] Add `GET /about` rendering the current About content (about-wrap markup, description, donation links, QR code) moved from the about catalog bundle into shell code, plus a Kody referral note at the bottom
 - [x] `GET /apps/help` and `GET /apps/about` fall through to the existing unknown-app handling (plain 404 inside the chrome)
 - [x] Menu (`menuAppsFor` / `shellChrome`): render built-in Help and About links after the menu-app links (label order: Help, then About), each shown only when its page is enabled; the disable check reads the effective settings on each render
 - [x] Help and About pages carry no page-mode expand control (shell pages, like Home and the Apps page)
@@ -60,10 +60,10 @@
 - [x] `bun build pkg/src/app.ts --target=browser --external kody:* --outfile /tmp/kodyos-build-check.js` — succeeds
 - [x] `npx --yes @fission-ai/openspec@latest validate help-about-built-in --type change` — valid (re-run after any change-file edit)
 - [ ] Mock-dev check (`kody dev`, mock store): fresh install shows the shared help text; installing app-store only via the prompt works; Help page renders the same text; About page renders; disabling Help/About from Settings hides page + menu link and nothing else; an upgraded mock store with pre-installed help/about rows shows no stale rows
-- [ ] Human-browser / Scribe visual check (open — the user does these himself as they go)
+- [x] Human-browser / Scribe visual check (verified by the user Nov 6 evening in the browser: Home, Apps, Help, and About pages all render correctly)
 
 ## 8. Specs, version, archive
 
 - [ ] Version decision at the implementation commit: MAJOR (3.0.0) recommended (Decision 10), taken together with catalog-restructure task 8.3; build +1 on publish
 - [ ] Archive in order: `catalog-restructure`, then `shell-settings` (dropping the superseded "Help page SHALL name the Settings app" sentence and adding `showHelp` / `showAbout` to the "Agent access to the theme override" field list), then this change
-- [ ] No commit, push, or publish in this change — spec only; the implementation commit is a separate stop on the user's direction
+- [x] No commit, push, or publish in this change — spec only; the implementation commit is a separate stop on the user's direction. (Overtaken: the implementation was committed as c5d10d4, with follow-up c786c46.)
