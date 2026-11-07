@@ -112,3 +112,13 @@ version; the version decision is recorded at commit time.
   `var(--lift)` in `pkg/public/styles.css`, regenerated into
   `shell-css.ts`; app pages, narrow-screen framing, and the
   logout modal are unchanged.
+
+## 7. Archive (Nov 7, 2026)
+
+- [x] 7.1 Sync + archive: DONE Nov 7, 2026 — delta `specs/bundle-styles/spec.md` synced into new canonical spec `openspec/specs/bundle-styles/spec.md` (validates valid) at CURRENT state: pill scenario reframed (Counter/Eight Ball pills removed per task 5.3 / design Correction 2026-11-07 — classes kept as JS hooks only), News active-tab scenario states the Apps-page Edit treatment per task 5.2 (not inversion-only), reconciliation recorded in the canonical spec's sync note; folder moved via `git mv` to `openspec/changes/archive/2026-11-07-scoped-bare-defaults/`; close-out note appended.
+
+## Close-out note (Nov 7, 2026)
+
+Synced and archived per the handoff. Implementation was committed as `b1af854` and verified by Tessa (Nov 7, 2026): tasks 5.1/5.2/5.3 done with the Nov 7 owner decisions — 5.1 deleted the hoodie-weather full-width result-button rule (v8->v9); 5.2 added bundle-only `.bundle button.news-tab-on` matching `.edit-toggle-btn-on` exactly, no bold (v3->v4); 5.3 deleted the Counter and Eight Ball pill rules (v4->v5 each), both buttons now bare-default; catalog index regenerated (18 apps). Evidence: `bun tests/catalog-harness.ts` ALL PASSED (18 apps), `bun tests/store-harness.ts` ALL PASSED, `bun build pkg/src/app.ts --target=browser --external 'kody:*'` succeeds, plus in-memory `renderAppSection` checks per app. Ship decisions 5.4/5.5 recorded as done — pushed as `ef654da`, published as v2.6.0 build 31. Design corrections applied: Decision 6 (pills removed) and Decision 7 (Edit treatment) supersede the delta's earlier pill-variant and inversion-only text; the canonical sync reflects the corrected state.
+
+Leftover: task 5.6 stays unchecked by design — it is explicitly future consideration, not part of this change (a harness check failing duplicated button-look rules). It is the only unchecked box in this file.
