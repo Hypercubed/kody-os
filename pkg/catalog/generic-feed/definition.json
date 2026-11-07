@@ -4,7 +4,6 @@
   "label": "Generic Feed",
   "schemaVersion": 5,
   "catalogVersion": 1,
-  "installMode": "recipe-or-json",
   "icon": "≡",
   "category": "reading",
   "description": "A generic RSS feed, configured by your agent — paste the prompt, give it a feed URL, and it shows one entry at a time.",

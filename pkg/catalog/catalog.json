@@ -68,7 +68,7 @@
       "label": "Daily Feed",
       "catalogVersion": 5,
       "fingerprint": "fnv:2968920884-3654776355-13295",
-      "installMode": "recipe-or-json",
+      "installMode": "json",
       "definitionPath": "daily-feed/definition.json",
       "recipePath": "daily-feed/RECIPE.md"
     },
@@ -86,7 +86,7 @@
       "label": "Generic Feed",
       "catalogVersion": 1,
       "fingerprint": "fnv:3909410942-1916491356-12836",
-      "installMode": "recipe-or-json",
+      "installMode": "json",
       "definitionPath": "generic-feed/definition.json",
       "recipePath": "generic-feed/RECIPE.md"
     },

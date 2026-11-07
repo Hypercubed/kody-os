@@ -599,8 +599,8 @@ export function validateDefinition(def: unknown): string | null {
 	}
 	if (def['installMode'] !== undefined) {
 		var installMode = def['installMode']
-		if (installMode !== 'json' && installMode !== 'recipe-only' && installMode !== 'recipe-or-json') {
-			return 'definition.installMode must be "json", "recipe-only", or "recipe-or-json"'
+		if (installMode !== 'json' && installMode !== 'recipe-only') {
+			return 'definition.installMode must be "json" or "recipe-only"'
 		}
 	}
 	if (def['icon'] !== undefined) {

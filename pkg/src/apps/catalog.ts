@@ -45,7 +45,7 @@ import catalogIndex from '../../catalog/catalog.json' with { type: 'json' }
 import type { AppDefinition } from './types.ts'
 
 /** Install mode reported by the listing. Absent in a definition means `json`. */
-export type CatalogInstallMode = 'json' | 'recipe-only' | 'recipe-or-json'
+export type CatalogInstallMode = 'json' | 'recipe-only'
 
 interface CatalogIndexEntry {
 	id: string

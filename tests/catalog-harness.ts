@@ -138,7 +138,7 @@ for (var summary of listed) {
 }
 
 var recipeApps = listed.filter(function (summary): boolean { return summary.installMode !== 'json' }).map(function (summary): string { return summary.id })
-check('only daily-feed and generic-feed carry a recipe install mode', JSON.stringify(recipeApps) === JSON.stringify(['daily-feed', 'generic-feed']), recipeApps.join(','))
+check('no catalog app carries a recipe install mode', JSON.stringify(recipeApps) === JSON.stringify([]), recipeApps.join(','))
 check('no catalog app reports recipe-only', listed.every(function (summary): boolean { return summary.installMode !== 'recipe-only' }))
 
 var bogus = JSON.parse(JSON.stringify(readDefinition('settings'))) as AppDefinition & { installMode: string }

@@ -30,7 +30,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { AppDefinition } from '../pkg/src/apps/types.ts'
 
-type InstallMode = 'json' | 'recipe-only' | 'recipe-or-json'
+type InstallMode = 'json' | 'recipe-only'
 
 interface IndexEntry {
 	id: string

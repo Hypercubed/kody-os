@@ -1,6 +1,6 @@
 # Install `daily-feed`
 
-`installMode: recipe-or-json`. Unattended install lands with an empty feed and
+Unattended install lands with an empty feed and
 the app's built-in empty-state prompt guides setup; this recipe fully
 configures the app at install time.
 

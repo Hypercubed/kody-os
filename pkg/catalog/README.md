@@ -38,8 +38,7 @@ Catalog membership checklist: the directory `pkg/catalog/<id>/` with `definition
 
 ## Recipes and install modes
 
-- Default: unattended. A definition with no `installMode` installs from the JSON alone (`installMode: json`); its recipe is the trivial install-and-verify — `install_from_catalog('<id>')`, then verify with `list_apps()`.
-- `"installMode": "recipe-or-json"`: the app has a non-trivial recipe for full configuration AND can be installed unattended from JSON. An unattended install lands unconfigured and the app's built-in empty-state prompt guides setup; the recipe fully configures it at install time. Current members: `daily-feed`, `generic-feed`.
+- Default: unattended. A definition with no `installMode` installs from the JSON alone (`installMode: json`); its recipe is the trivial install-and-verify — `install_from_catalog('<id>')`, then verify with `list_apps()`. A definition MAY carry `installMode: "recipe-only"` when its recipe is the only install path.
 - `"installMode": "recipe-only"`: the app MUST be installed via its recipe; the Store shows the recipe prompt in place of one-tap install. No current catalog app uses it.
 - Only an app with a non-trivial recipe carries `installMode`. Adding the field does NOT bump `catalogVersion`: it is excluded from the definition fingerprint, exactly like `catalogVersion`, so no installed app changes status.
 - A recipe is a procedure of steps, each install step naming exactly one app. A recipe installs only its own app: there is no collection recipe, no `collections/` directory, and no `collections` section in the index. Help and About are built-in shell pages with no definition and no recipe.

@@ -240,16 +240,13 @@ export interface AppDefinition {
 	/**
 	 * Install mode for a catalog app. Absent means `'json'`: unattended
 	 * install from the definition alone. Only an app with a non-trivial
-	 * recipe carries this field. `'recipe-or-json'` means the app has a
-	 * non-trivial recipe for full configuration AND can be installed
-	 * unattended from JSON (it lands unconfigured, with its own
-	 * empty-state prompt guiding setup). `'recipe-only'` means the app
-	 * MUST be installed via its recipe — the Store shows the recipe
-	 * prompt in place of one-tap install; no current catalog app uses it.
-	 * Excluded from the definition fingerprint, like catalogVersion, so
-	 * adding it changes no installed app's status.
+	 * recipe that MUST be installed via its recipe carries this field
+	 * (`'recipe-only'` — the Store shows the recipe prompt in place of
+	 * one-tap install; no current catalog app uses it). Excluded from
+	 * the definition fingerprint, like catalogVersion, so adding it
+	 * changes no installed app's status.
 	 */
-	installMode?: 'json' | 'recipe-only' | 'recipe-or-json'
+	installMode?: 'json' | 'recipe-only'
 	/**
 	 * Tile icon: a plain-text glyph or short mark (system fonts only, never
 	 * emoji), OR an inline SVG starting with `<svg`. SVG is sanitized at

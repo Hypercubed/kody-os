@@ -1,6 +1,6 @@
 # Install `generic-feed`
 
-`installMode: recipe-or-json`. Unattended install lands unconfigured (blank
+Unattended install lands unconfigured (blank
 RSS URL prompt); this recipe fully configures the app at install time.
 
 ## Steps
