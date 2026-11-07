@@ -185,8 +185,8 @@
     {
       "id": "settings",
       "label": "Settings",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:1797112672-3764888493-14017",
+      "catalogVersion": 9,
+      "fingerprint": "fnv:1045509417-4227340790-18853",
       "installMode": "json",
       "definitionPath": "settings/definition.json",
       "recipePath": "settings/RECIPE.md",

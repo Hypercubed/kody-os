@@ -57,9 +57,10 @@ const IDS = ['st-status', 'st-panel', 'st-background-value', 'st-background-badg
 
 function makeEl() {
   return {
-    textContent: '', value: '', style: {}, handlers: {}, attrs: {},
+    nodeType: 1, textContent: '', value: '', style: {}, handlers: {}, attrs: {},
     getAttribute: function (name) { return this.attrs[name] || null; },
     setAttribute: function (name, value) { this.attrs[name] = String(value); },
+    removeAttribute: function (name) { delete this.attrs[name]; },
     parentNode: null,
     addEventListener: function (type, fn) { this.handlers[type] = fn; },
   };
@@ -82,6 +83,34 @@ function makeForm(action, elements) {
     set: function (value) { attrs.action = value; },
   });
   return form;
+}
+function makeBrand() {
+  var brand = makeEl();
+  var mark = makeEl();
+  mark.tagName = 'IMG';
+  mark.attrs.src = '/_assets/favicon.png';
+  mark.attrs['class'] = 'os-mark-img';
+  var text = { nodeType: 3, data: 'kody-os' };
+  brand.childNodes = [mark, text];
+  brand.firstChild = mark;
+  function sync() { brand.firstChild = brand.childNodes[0] || null; }
+  brand.removeChild = function (kid) { var i = brand.childNodes.indexOf(kid); if (i !== -1) brand.childNodes.splice(i, 1); sync(); return kid; };
+  brand.appendChild = function (kid) { brand.childNodes.push(kid); sync(); return kid; };
+  brand.replaceChild = function (kid, old) { var i = brand.childNodes.indexOf(old); if (i !== -1) brand.childNodes[i] = kid; sync(); return old; };
+  brand.insertBefore = function (kid, ref) { var i = brand.childNodes.indexOf(ref); if (i === -1) brand.childNodes.push(kid); else brand.childNodes.splice(i, 0, kid); sync(); return kid; };
+  return brand;
+}
+function brandText(brand) {
+  for (var i = 0; i < brand.childNodes.length; i++) {
+    if (brand.childNodes[i].nodeType === 3) return brand.childNodes[i].data;
+  }
+  return null;
+}
+function brandMark(brand) {
+  for (var i = 0; i < brand.childNodes.length; i++) {
+    if (brand.childNodes[i].nodeType === 1) return brand.childNodes[i];
+  }
+  return null;
 }
 function parseForms(markup, byId) {
   var out = [];
@@ -123,6 +152,10 @@ function runScenario(readFixture, useActionBase) {
   var root = makeEl();
   root.parentNode = wrapper;
   var forms = parseForms(html, byId);
+  var bodyStub = makeEl();
+  var brandStub = makeBrand();
+  var iconLink = makeEl();
+  iconLink.attrs.href = '/_assets/favicon.png';
   var menuLinks = [];
   var helpLink = makeEl(); helpLink.attrs.href = '/kody-os/help'; menuLinks.push(helpLink);
   var aboutLink = makeEl(); aboutLink.attrs.href = '/kody-os/about'; menuLinks.push(aboutLink);
@@ -135,15 +168,25 @@ function runScenario(readFixture, useActionBase) {
     if (next instanceof Error) return Promise.reject(next);
     return Promise.resolve({ json: function () { return Promise.resolve(next); } });
   }
-  global.document = {
-    querySelector: function (sel) { return sel === '.st' ? root : null; },
+  var docStub = {
+    title: 'Settings ' + '\u00b7' + ' kody-os',
+    body: bodyStub,
+    createTextNode: function (text) { return { nodeType: 3, data: String(text) }; },
+    createElement: function (tag) { var el = makeEl(); el.tagName = String(tag).toUpperCase(); return el; },
+    querySelector: function (sel) {
+      if (sel === '.st') return root;
+      if (sel === '.os-brand') return brandStub;
+      if (sel === 'link[rel="icon"]') return iconLink;
+      return null;
+    },
     querySelectorAll: function (sel) { if (sel === '.st form') return forms; if (sel === 'a') return menuLinks; return []; },
     getElementById: function (id) { return byId[id] || null; },
   };
+  global.document = docStub;
   global.window = { location: { pathname: '/kody-os/apps/settings' } };
   global.fetch = fetchStub;
   (0, eval)(script);
-  return { byId: byId, forms: forms, calls: calls, queue: queue, menuLinks: menuLinks };
+  return { byId: byId, forms: forms, calls: calls, queue: queue, menuLinks: menuLinks, doc: docStub, brand: brandStub };
 }
 function findForm(forms, name, value) {
   for (var i = 0; i < forms.length; i++) {
@@ -194,6 +237,10 @@ async function main() {
   check(s0.byId['st-showHelp-badge'].textContent === 'default', 'Help page state badge renders as default');
   check(s0.byId['st-showAbout-value'].textContent === 'shown', 'About page state renders as shown');
   check(s0.byId['st-name-input'].value === 'kody-os', 'name input is prefilled with the effective name');
+  check(s0.doc.title === 'Settings ' + '\u00b7' + ' kody-os', 'chrome title renders from the effective title');
+  check(brandText(s0.brand) === 'kody-os', 'menu brand shows the effective name');
+  check(brandMark(s0.brand).tagName === 'IMG', 'stock mark renders as an image');
+  check(s0.doc.body.attrs.style === 'background: #fff', 'paper background applies to the body inline');
   check(s0.byId['st-icon-input'].value === '', 'icon input is blank with no icon override');
   check(s0.byId['st-bg-paper'].className === 'os-btn--dark', 'paper segment is inverted when effective');
   check(s0.byId['st-bg-desk'].className === '', 'desk segment is plain when not effective');
@@ -203,7 +250,7 @@ async function main() {
   check(s0.byId['st-status'].textContent === '', 'status clears after a successful read');
   check(s0.byId['st-background-note'].style.display === 'none', 'grid notice hidden for desk/paper');
   check(s0.byId['st-icon-note'].style.display === 'none', 'mark notice hidden for stock/glyph');
-  check(s0.forms.length === 13, 'thirteen forms wired (got ' + s0.forms.length + ')');
+  check(s0.forms.length === 12, 'twelve forms wired (got ' + s0.forms.length + ')');
   check(s0.forms[0].getAttribute('action') === '/kody-os/theme/settings', 'form action attribute is the derived theme route');
   // Regression: hidden inputs named 'action' shadow form.action in a real DOM,
   // so the submit handler must read the action attribute, not the property.
@@ -215,6 +262,7 @@ async function main() {
   check(deskForm !== null, 'desk form found');
   var callsBefore = s0.calls.length;
   s0.queue.push({ ok: true, override: { background: 'desk' }, effective: { name: 'kody-os', title: 'kody-os', icon: '', background: 'desk' } });
+  s0.queue.push({ ok: true, defaults: DEFAULTS, override: { background: 'desk' }, effective: { name: 'kody-os', title: 'kody-os', icon: '', background: 'desk' } });
   deskForm.handlers.submit({ preventDefault: function () {} });
   await settle();
   var deskUrl = s0.calls[callsBefore];
@@ -224,6 +272,7 @@ async function main() {
   check(deskUrl.indexOf('from=%2Fkody-os%2Fapps%2Fsettings') !== -1, 'desk submit carries from=current page');
   check(s0.calls.length > callsBefore + 1, 'desk submit re-reads the theme after saving');
   check(deskForm.submitted === false, 'desk submit does not navigate');
+  check(s0.doc.body.attrs.style === undefined, 'desk removes the body inline style with no refresh');
 
   // Name submit: the typed input value flows through.
   var nameForm = findForm(s0.forms, 'name', 'kody-os');
@@ -231,10 +280,13 @@ async function main() {
   s0.byId['st-name-input'].value = 'verify-name';
   callsBefore = s0.calls.length;
   s0.queue.push({ ok: true, override: { background: 'paper', name: 'verify-name' }, effective: { name: 'verify-name', title: 'verify-name', icon: '', background: 'paper' } });
+  s0.queue.push({ ok: true, defaults: DEFAULTS, override: { background: 'paper', name: 'verify-name' }, effective: { name: 'verify-name', title: 'verify-name', icon: '', background: 'paper' } });
   nameForm.handlers.submit({ preventDefault: function () {} });
   await settle();
   check(s0.calls[callsBefore].indexOf('name=verify-name') !== -1, 'name submit carries the typed name');
   check(nameForm.submitted === false, 'name submit does not navigate');
+  check(s0.doc.title === 'Settings ' + '\u00b7' + ' verify-name', 'save repaints the chrome title with no refresh');
+  check(brandText(s0.brand) === 'verify-name', 'save repaints the menu brand with no refresh');
 
   // Pages submit: hiding About flows through action=set + showAbout=0.
   var hideAbout = findForm(s0.forms, 'showAbout', '0');
@@ -278,6 +330,20 @@ async function main() {
   await settle();
   check(deskForm.submitted === true, 'fetch failure falls back to native form submit');
 
+  // Glyph submit: the brand mark becomes the typed glyph with no refresh.
+  var glyphForm = findForm(s0.forms, 'icon');
+  check(glyphForm !== null, 'glyph form found');
+  s0.byId['st-icon-input'].value = '\u2605';
+  callsBefore = s0.calls.length;
+  s0.queue.push({ ok: true, override: { background: 'desk', name: 'verify-name', icon: '\u2605' }, effective: { name: 'verify-name', title: 'verify-name', icon: '\u2605', background: 'desk' } });
+  s0.queue.push({ ok: true, defaults: DEFAULTS, override: { background: 'desk', name: 'verify-name', icon: '\u2605' }, effective: { name: 'verify-name', title: 'verify-name', icon: '\u2605', background: 'desk' } });
+  glyphForm.handlers.submit({ preventDefault: function () {} });
+  await settle();
+  check(s0.calls[callsBefore].indexOf('icon=%E2%98%85') !== -1, 'glyph submit carries the typed icon');
+  var glyphMark = brandMark(s0.brand);
+  check(glyphMark && glyphMark.tagName === 'SPAN' && glyphMark.textContent === '\u2605', 'glyph submit repaints the brand mark with no refresh');
+  check(glyphForm.submitted === false, 'glyph submit does not navigate');
+
   // Grid + SVG fixture: notices show, inputs stay blank.
   var s1 = runScenario(GRID_FIXTURE, true);
   await settle();
@@ -286,6 +352,7 @@ async function main() {
   check(s1.byId['st-icon-value'].textContent === 'custom mark', 'svg icon displays as custom mark');
   check(s1.byId['st-icon-note'].style.display === '', 'mark notice shows for a custom mark');
   check(s1.byId['st-icon-input'].value === '', 'icon input stays blank for a custom mark');
+  check(s1.doc.body.attrs.style === undefined, 'grid background leaves the body inline style alone');
   check(s1.byId['st-background-badge'].textContent === 'changed', 'grid badge renders as changed');
 
   // Pathname fallback: no data-action-base on the page, id from the URL.

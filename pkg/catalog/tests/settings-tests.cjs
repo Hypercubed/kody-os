@@ -30,7 +30,7 @@ function check(cond, msg) {
 check(definition.id === 'settings', 'id is settings');
 check(definition.name === 'Settings' && definition.label === 'Settings', 'name and label are Settings');
 check(definition.schemaVersion === 5, 'schemaVersion is 5');
-check(definition.catalogVersion === 4, 'catalogVersion is 4');
+check(definition.catalogVersion === 9, 'catalogVersion is 9');
 check(definition.icon === '\u2699', 'icon is the single glyph U+2699');
 check(definition.category === 'utilities', 'category is utilities');
 check(typeof definition.description === 'string' && definition.description.length > 0, 'description is present');
@@ -64,7 +64,7 @@ check(script.indexOf('data-action-base') !== -1, 'script resolves the app id fro
 check(script.indexOf('form.action') === -1, 'script never reads the shadowed form.action property');check(script.indexOf("credentials: 'same-origin'") !== -1 || script.indexOf('credentials: "same-origin"') !== -1, 'fetch uses the cookie session (same-origin credentials)');
 
 const forms = html.match(/<form[\s\S]*?<\/form>/g) || [];
-check(forms.length === 13, 'thirteen GET forms (got ' + forms.length + ')');
+check(forms.length === 12, 'twelve GET forms (got ' + forms.length + ')');
 let formsOk = true;
 for (const form of forms) {
   if (form.indexOf('method="get"') === -1) formsOk = false;
@@ -74,9 +74,22 @@ check(formsOk, 'every form is a GET to the relative theme action ../theme/settin
 check(markup.indexOf('/apps/') === -1, 'static markup hardcodes no app id or app path');
 check(html.indexOf('st-background-note') !== -1, 'custom-grid notice element exists');
 check(html.indexOf('st-icon-note') !== -1, 'custom-mark notice element exists');
-check(html.indexOf('Reset all to file defaults') !== -1, 'reset-all control exists');
-check(html.indexOf('Stock mark') !== -1, 'stock-mark control exists');
-check(html.indexOf('os-section-title">Pages') !== -1, 'Pages section has the shared black-bar title');
+check(html.indexOf('>Reset all</button>') !== -1, 'reset-all control exists');
+check(html.indexOf('Stock mark') === -1, 'no separate stock-mark button; Reset covers it');
+check(html.indexOf('os-section-title">UI') !== -1, 'UI group has the shared black-bar title');
+check(html.indexOf('os-section-title">Pages') !== -1, 'Pages group is back');
+check(html.indexOf('os-section-title">Background') === -1 && html.indexOf('os-section-title">Name') === -1 && html.indexOf('os-section-title">Icon') === -1, 'per-field headers are gone');
+for (const rowName of ['Background', 'Name', 'Icon', 'Help', 'About']) {
+  check(html.indexOf('st-name">' + rowName + '<') !== -1, 'row starts with the option name ' + rowName);
+}
+check(html.indexOf('All settings') === -1, 'reset-all has no row label');
+check(html.indexOf('st-reset-all') !== -1, 'reset-all stands apart with air above it');
+check(html.indexOf('border: 2px solid #000') !== -1, 'option rows are bordered cards');
+check(html.indexOf('width: 720px') !== -1, 'sections have a fixed width');
+check(html.indexOf('margin-left: auto') !== -1, 'row Reset is pinned right');
+check(html.indexOf('width: 110px') !== -1 && html.indexOf('width: 200px') !== -1, 'name and value columns have fixed widths');
+check((html.match(/>Reset<\/button>/g) || []).length === 5, 'every option row ends in a plain Reset');
+check(html.indexOf('>Now:') === -1, 'rows lead with the option name, no Now: prefix');
 check(html.indexOf('name="showHelp"') !== -1 && html.indexOf('name="showAbout"') !== -1, 'Help / About toggle controls exist');
 check(html.indexOf('edit-toggle-btn') !== -1, 'toggles reuse the Apps Edit toggle button');
 check(html.indexOf('st-showHelp-want') !== -1 && html.indexOf('st-showAbout-want') !== -1, 'toggles carry a flippable want value');
@@ -87,6 +100,9 @@ check(html.indexOf('name="field" value="showHelp"') !== -1 && html.indexOf('name
 check(html.indexOf('os-section-title') !== -1 && html.indexOf('<h3>') === -1, 'sections use the shared black-bar title, no bare h3s');
 check(html.indexOf('st-showHelp-value') !== -1 && html.indexOf('st-showAbout-value') !== -1, 'page-state readouts exist');
 check(script.indexOf('stMenuLink') !== -1, 'script updates the menu-bar link after a toggle');
+check(script.indexOf('os-brand') !== -1, 'script repaints the menu brand with no refresh');
+check(script.indexOf('document.title') !== -1, 'script repaints the document title with no refresh');
+check(script.indexOf('background: #fff') !== -1, 'script applies the paper background to the body with no refresh');
 check(html.indexOf('st-segmented') !== -1, 'Background keeps its segmented control');
 
 if (failures > 0) {

@@ -2,9 +2,10 @@
 <p id="st-status">Loading the shell theme…</p>
 <div id="st-panel" style="display:none">
 <div class="st-field">
-<h2 class="os-section-title">Background</h2>
-<p>Now: <span id="st-background-value">…</span> <span class="st-badge" id="st-background-badge">…</span></p>
-<p id="st-background-note" class="st-note" style="display:none">Custom grid, set via file or agent. Choose desk or paper below to replace it.</p>
+<h2 class="os-section-title">UI</h2>
+<div class="st-row">
+<span class="st-name">Background</span>
+<p class="st-now"><span id="st-background-value">…</span> <span class="st-badge" id="st-background-badge">…</span></p>
 <div class="st-segmented">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
@@ -20,12 +21,13 @@
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="background">
-<button type="submit" class="st-quiet">Reset background</button>
+<button type="submit" class="st-quiet">Reset</button>
 </form>
 </div>
-<div class="st-field">
-<h2 class="os-section-title">Name</h2>
-<p>Now: <span id="st-name-value">…</span> <span class="st-badge" id="st-name-badge">…</span></p>
+<p id="st-background-note" class="st-note" style="display:none">Custom grid, set via file or agent. Choose desk or paper below to replace it.</p>
+<div class="st-row">
+<span class="st-name">Name</span>
+<p class="st-now"><span id="st-name-value">…</span> <span class="st-badge" id="st-name-badge">…</span></p>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <label>Name <input type="text" name="name" id="st-name-input" value="" maxlength="200"></label>
@@ -34,32 +36,30 @@
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="name">
-<button type="submit" class="st-quiet">Reset name</button>
+<button type="submit" class="st-quiet">Reset</button>
 </form>
 </div>
-<div class="st-field">
-<h2 class="os-section-title">Icon</h2>
-<p>Now: <span id="st-icon-value">…</span> <span class="st-badge" id="st-icon-badge">…</span></p>
-<p id="st-icon-note" class="st-note" style="display:none">Custom mark, set via file or agent. Type a glyph below, or use the stock mark, to replace it.</p>
+<div class="st-row">
+<span class="st-name">Icon</span>
+<p class="st-now"><span id="st-icon-value">…</span> <span class="st-badge" id="st-icon-badge">…</span></p>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <label>Glyph <input type="text" name="icon" id="st-icon-input" value=""></label>
 <button type="submit">Save</button>
 </form>
 <form method="get" action="../theme/settings">
-<input type="hidden" name="action" value="set">
-<input type="hidden" name="icon" value="">
-<button type="submit" class="st-quiet">Stock mark</button>
-</form>
-<form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="icon">
-<button type="submit" class="st-quiet">Reset icon</button>
+<button type="submit" class="st-quiet">Reset</button>
 </form>
+</div>
+<p id="st-icon-note" class="st-note" style="display:none">Custom mark, set via file or agent. Type a glyph below, or use the stock mark, to replace it.</p>
 </div>
 <div class="st-field">
 <h2 class="os-section-title">Pages</h2>
-<p>Help — Now: <span id="st-showHelp-value">…</span> <span class="st-badge" id="st-showHelp-badge">…</span></p>
+<div class="st-row">
+<span class="st-name">Help</span>
+<p class="st-now"><span id="st-showHelp-value">…</span> <span class="st-badge" id="st-showHelp-badge">…</span></p>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="showHelp" id="st-showHelp-want" value="0">
@@ -68,9 +68,12 @@
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="showHelp">
-<button type="submit" class="st-quiet">Reset Help</button>
+<button type="submit" class="st-quiet">Reset</button>
 </form>
-<p>About — Now: <span id="st-showAbout-value">…</span> <span class="st-badge" id="st-showAbout-badge">…</span></p>
+</div>
+<div class="st-row">
+<span class="st-name">About</span>
+<p class="st-now"><span id="st-showAbout-value">…</span> <span class="st-badge" id="st-showAbout-badge">…</span></p>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="showAbout" id="st-showAbout-want" value="0">
@@ -79,20 +82,19 @@
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="showAbout">
-<button type="submit" class="st-quiet">Reset About</button>
+<button type="submit" class="st-quiet">Reset</button>
 </form>
 </div>
-<div class="st-field">
-<h2 class="os-section-title">Reset all</h2>
+</div>
+<div class="st-reset-all">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
-<button type="submit">Reset all to file defaults</button>
+<button type="submit">Reset all</button>
 </form>
-</div>
 </div>
 </div>
 <style>
-.st-field { margin: 0 0 28px 0; }
+.st-field { margin: 0 0 28px 0; width: 720px; max-width: 100%; }
 .st-field p { margin: 0 0 12px 0; }
 .st-segmented { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 12px 0; }
 .st-segmented form { margin: 0; }
@@ -101,6 +103,28 @@
 button.st-quiet { border: 0; box-shadow: none; padding: 0; min-height: 48px; text-decoration: underline; font-weight: normal; font-size: 16px; }
 .st-note { font-size: 16px; }
 #st-status { font-size: 18px; }
+.st-field .os-section-title { margin-bottom: 12px; }
+.st-name { font-weight: bold; width: 110px; flex-shrink: 0; }
+.st-row .st-now { width: 200px; flex-shrink: 0; }
+.st-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 12px 0; border: 2px solid #000; padding: 12px; }
+.st-field > .st-row:last-child { margin-bottom: 0; }
+.st-row p { margin: 0; }
+.st-row > form { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; }
+.st-row > form:not(:last-child) { flex: 1 1 auto; }
+.st-row > form:last-child { margin-left: auto; }
+.st-row > .st-segmented { flex: 1 1 auto; margin: 0; }
+.st-row label { display: inline-flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.st-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+.st-reset-all { margin-top: 24px; }
+/* Edit-page toggles: .bundle button (0,1,1) outranks the shell's
+   .edit-toggle-btn (0,1,0), so the toggle look is re-asserted here
+   with higher specificity: off is an elevated white plate, on is
+   flat and inverted, exactly like Apps Edit. */
+.st button.edit-toggle-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 3rem; min-height: 3rem; padding: 0; border: var(--rule); background: var(--paper); color: #000; box-shadow: var(--lift); }
+.st button.edit-toggle-btn svg { width: 1.25rem; height: 1.25rem; stroke: currentColor; }
+.st button.edit-toggle-btn:hover { background: var(--shade); }
+.st button.edit-toggle-btn-on { background: #000; color: #fff; box-shadow: none; transform: translate(3px, 3px); }
+.st button.edit-toggle-btn-on:hover { background: #000; color: #fff; }
 </style>
 <script>
 /* Settings panel. Stateless: no theme in app state, no act() calls.
@@ -208,6 +232,68 @@ if (typeof document !== 'undefined') {
     var menuLink = stMenuLink(label.toLowerCase());
     if (menuLink) menuLink.style.display = hidden ? 'none' : '';
   }
+  function stBrand() {
+    if (typeof document.querySelector !== 'function') return null;
+    return document.querySelector('.os-brand');
+  }
+  /* Repaint the server-rendered shell chrome from the effective theme so a
+   * save is visible with no refresh: document title, menu-bar brand name and
+   * mark, and the body background. Mirrors resolveTheme in src/app.ts: desk
+   * is the bare CSS default (no inline style), paper is 'background: #fff'.
+   * A grid background has no panel control and is left for a refresh. */
+  function stApplyChrome(theme) {
+    var eff = (theme && theme.effective) || {};
+    var name = typeof eff.name === 'string' && eff.name !== '' ? eff.name : 'kody-os';
+    var title = typeof eff.title === 'string' && eff.title !== '' ? eff.title : name;
+    if (typeof document.title === 'string') {
+      var sep = ' \u00b7 ';
+      var parts = document.title.split(sep);
+      parts[parts.length - 1] = title;
+      document.title = parts.join(sep);
+    }
+    var brand = stBrand();
+    if (brand && brand.childNodes) {
+      var kids = brand.childNodes;
+      for (var i = kids.length - 1; i >= 0; i--) {
+        if (kids[i] && kids[i].nodeType === 3) brand.removeChild(kids[i]);
+      }
+      if (typeof document.createTextNode === 'function') brand.appendChild(document.createTextNode(name));
+      var old = null;
+      var els = brand.childNodes;
+      for (var j = 0; j < els.length; j++) {
+        if (els[j] && els[j].nodeType === 1) { old = els[j]; break; }
+      }
+      var icon = eff.icon;
+      if (typeof icon === 'string' && icon !== '' && typeof document.createElement === 'function') {
+        var span = document.createElement('span');
+        span.setAttribute('class', 'os-mark-glyph');
+        span.setAttribute('aria-hidden', 'true');
+        if (stIsSvg(icon)) span.innerHTML = icon;
+        else span.textContent = icon;
+        if (old && typeof brand.replaceChild === 'function') brand.replaceChild(span, old);
+        else if (typeof brand.insertBefore === 'function') brand.insertBefore(span, brand.firstChild || null);
+      } else if (icon === '') {
+        var src = '';
+        if (old && old.tagName === 'IMG' && typeof old.getAttribute === 'function') src = old.getAttribute('src') || '';
+        if (src === '' && typeof document.querySelector === 'function') {
+          var link = document.querySelector('link[rel="icon"]');
+          if (link && typeof link.getAttribute === 'function') src = link.getAttribute('href') || '';
+        }
+        if (src !== '' && typeof document.createElement === 'function') {
+          var img = document.createElement('img');
+          img.setAttribute('class', 'os-mark-img');
+          img.setAttribute('src', src);
+          img.setAttribute('alt', '');
+          img.setAttribute('aria-hidden', 'true');
+          if (old && typeof brand.replaceChild === 'function') brand.replaceChild(img, old);
+        }
+      }
+    }
+    if (document.body) {
+      if (eff.background === 'desk') document.body.removeAttribute('style');
+      else if (eff.background === 'paper') document.body.setAttribute('style', 'background: #fff');
+    }
+  }
   function stRender(theme) {
     var fields = ['background', 'name', 'icon', 'showHelp', 'showAbout'];
     for (var i = 0; i < fields.length; i++) {
@@ -230,6 +316,7 @@ if (typeof document !== 'undefined') {
     if (iconInput) iconInput.value = (theme.override.icon !== undefined && !stIsSvg(theme.override.icon)) ? theme.override.icon : '';
     stRenderPageRow(theme, 'showHelp', 'Help');
     stRenderPageRow(theme, 'showAbout', 'About');
+    stApplyChrome(theme);
     if (stPanel) stPanel.style.display = '';
   }
   function stLoad() {
