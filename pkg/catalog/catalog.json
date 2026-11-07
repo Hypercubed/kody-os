@@ -48,8 +48,8 @@
     {
       "id": "clock",
       "label": "Clock",
-      "catalogVersion": 3,
-      "fingerprint": "fnv:1750848548-3243061971-2139",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:406913688-85074250-2548",
       "installMode": "json",
       "definitionPath": "clock/definition.json",
       "recipePath": "clock/RECIPE.md"
@@ -57,8 +57,8 @@
     {
       "id": "counter",
       "label": "Counter",
-      "catalogVersion": 3,
-      "fingerprint": "fnv:729316599-3295542004-5829",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:3262203713-1700876522-6481",
       "installMode": "json",
       "definitionPath": "counter/definition.json",
       "recipePath": "counter/RECIPE.md"
@@ -75,8 +75,8 @@
     {
       "id": "eight-ball",
       "label": "Eight Ball",
-      "catalogVersion": 3,
-      "fingerprint": "fnv:3610319218-3201433356-2768",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:360762088-3608574309-3197",
       "installMode": "json",
       "definitionPath": "eight-ball/definition.json",
       "recipePath": "eight-ball/RECIPE.md"
@@ -93,8 +93,8 @@
     {
       "id": "hoodie-weather",
       "label": "Hoodie Weather",
-      "catalogVersion": 7,
-      "fingerprint": "fnv:1175956246-105186569-43503",
+      "catalogVersion": 8,
+      "fingerprint": "fnv:1796464568-3422042318-43948",
       "installMode": "json",
       "definitionPath": "hoodie-weather/definition.json",
       "recipePath": "hoodie-weather/RECIPE.md"
