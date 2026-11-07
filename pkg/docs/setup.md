@@ -88,46 +88,30 @@ until something is installed. Once apps exist but none are
 on Home, Home prompts you to add some from Apps Edit's
 Add to home control instead.
 
-### 3. Unlock with a one-time code
+### 3. Sign in to Kody
 
-Login works two ways: Kody login (a signed-in visitor with app
-access skips the device gate entirely), or a one-time code
-(OTP) that mints a session cookie. There is no other way in,
-and there is no setup step for login: no credential to create,
-no value to configure.
+Login works one way: Kody login. A signed-in visitor with app
+access skips the device gate entirely, and there is no setup
+step for login: no credential to create, no value to configure.
 
-To unlock a device with an OTP:
+On the device, open the app signed in to Kody. On a limited
+browser that cannot sign in directly (for example the Kindle
+Scribe stock browser), use Kody's package-app sign-in route
+(`/-/auth/login`), not a path under the app — the platform
+sign-in also offers a "sign in on another device" code flow
+for limited browsers. This is a platform path, not a kody-os
+path: there is no sign-in button inside kody-os itself.
 
-1. Ask the owner (or their agent) to mint a code: the package
-   MCP export `mint_otp` returns 4 digits, valid 10 minutes,
-   single use, at most 5 outstanding at a time. The digits are
-   returned exactly once and are never logged or stored; treat
-   them like a password and share them only with the person
-   holding the device, only for that unlock.
-2. On the device, open the app and type the 4 digits into the
-   unlock form. A correct code is burned on first use and mints
-   a session: a random token whose hash is stored with 30-day
-   expiry, carried in an HttpOnly session cookie. Later requests
-   authenticate by session lookup and the address bar stays
-   clean.
-3. A used or expired code reads exactly like a wrong code.
-   At most 10 failed unlock attempts are allowed per 10-minute
-   window; further attempts are denied until the window passes,
-   and any success clears the counter.
+The page footer names the path that served the request
+(`via kody`, or `locked` when denied), so you can confirm
+how you got in.
 
-The page footer names the path that authenticated the request
-(`via kody`, `via cookie`, or `locked`), so you can confirm
-which way in you used.
+There are no sessions to manage: Kody login is verified per
+request, so signing out of Kody itself ends access. No device
+holds a session, and no Logout link is needed.
 
-Sessions end two ways: the in-app Logout link (shown only on
-device sessions) deletes that device's session at once, or the
-30-day expiry. Logging out one device never affects another.
-
-On the Kindle Scribe, sign in with your Kody account like anywhere else — no code is needed. If the Scribe asks for a code, the Kody session has lapsed; sign in to Kody again.
-
-Check: after entering a code, the shell loads with a clean URL
-and the footer reads `via cookie`. After opening the app signed
-in to Kody, the footer reads `via kody` and no code is needed.
+Check: opening the app signed in to Kody loads the shell,
+and the footer reads `via kody`.
 
 ### 4. Install the first app
 
@@ -163,7 +147,7 @@ target where you want it.
 
 The bundled example definitions in `pkg/catalog/` are the
 catalog today. Installing an app means trusting its code: bundle
-scripts run same-origin with full session authority, so review
+scripts run same-origin with the visitor's full authority, so review
 third-party definitions before importing them. The trust rule and
 the full contract live in [Adding an app](../.agents/skills/adding-an-app/SKILL.md).
 
@@ -182,10 +166,9 @@ kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Unlock locally with the same OTP ceremony: ask your agent to
-mint an OTP against the mock target (the same `mint_otp`
-export, with the mock store standing in for package storage)
-and enter it in the unlock form. Add the `counter` fixture with
+The mock target is login-free: under `kody dev --target mock`
+the device gate is skipped entirely, so no unlock step is
+needed. Add the `counter` fixture with
 the registry script, following the `kody execute --target mock`
 pattern in `pkg/README.md`:
 
@@ -213,13 +196,10 @@ returns 200, and acting on it changes its state. Useful checks:
   are in the wrong package. Check the
   package scope and the `list_apps` result before adding
   anything.
-- **Locked page after entering a code.** The code was used,
-  expired (10 minutes), or mistyped; mint a fresh one. If you
-  see "Too many attempts", wait out the 10-minute window.
-- **Scribe asks for a code every time.** The Scribe signs in with your Kody account like any other browser — no code is needed. If it asks for a code, the Kody session has lapsed; sign in to Kody again.
-- **Logout link missing.** Logout appears only on device
-  (cookie) sessions. Kody-login sessions have no device session
-  to revoke; sign out of Kody instead.
+- **Locked page.** The request carried no verified Kody
+  visitor: sign in to Kody and reload. (Under the mock target
+  the gate is skipped, so a locked page there means the preview
+  is not serving the mock target.)
 - **An action fails after a fresh publish.** Confirm the fork
   is the published one and the app was added to the same target
   (hosted vs. local preview stores are separate).
@@ -230,15 +210,13 @@ Before calling the setup done, confirm all of these:
 
 - [ ] The fork is published and the hosted app loads.
 - [ ] `list_apps` was empty before the first app was added.
-- [ ] An OTP unlock loads the shell with a clean URL and the
-      footer reads `via cookie`; Kody login loads it with the
-      footer reading `via kody`.
+- [ ] Kody login loads the shell with the footer reading
+      `via kody`; a signed-out request reads `locked`.
 - [ ] The first app was added via `add_app`, appears on the
       Apps page, and an action changes its state.
-- [ ] Logout on a device session revokes only that device.
 - [ ] No credential, code, or live value appears anywhere in
-      your notes from setup: the OTP digits were used once and
-      discarded.
+      your notes from setup: signing in happened in Kody
+      itself, and nothing was typed into the shell.
 
 ## Setup prompt for your agent
 
@@ -250,7 +228,7 @@ and let it follow this guide:
 > `<scope>` with my account scope) and read it start to finish,
 > then follow its setup sequence in order, verifying each step
 > as the guide describes. If the fork is still inert, publish it
-> through a repo session. Unlock devices with `mint_otp` as the
+> through a repo session. Sign in to Kody as the
 > guide describes, add the first app with `add_app` from the
 > bundled examples, and verify the add/open/act round trip. Do
 > not publish or change the package source beyond the publish

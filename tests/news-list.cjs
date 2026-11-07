@@ -357,12 +357,12 @@ function hasAttributeAnywhere(rootEl, attrName) {
   check('E: arts list is its own feed', docE.querySelectorAll('.news-item').length === 2);
 
   // -------------------------------------------------------------------------
-  // F: session key travels on the proxy request
+  // F: retired credential in the page URL is ignored, never forwarded
   // -------------------------------------------------------------------------
   var f = createDom('https://example.test/apps/news?k=abc123', defaultResponder);
   await tick();
-  check('F: feed request carries the session key',
-    f.fetchLog[0] === '/feed/news/world?k=abc123', f.fetchLog.join(','));
+  check('F: feed request carries no credential',
+    f.fetchLog[0] === '/feed/news/world', f.fetchLog.join(','));
 
   // -------------------------------------------------------------------------
   // G: definition shape + ES2019 ceiling scan

@@ -2,7 +2,7 @@
 
 Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v3.0.0** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and an OTP-only device gate (legacy access key removed), and a Daily Feed catalog app (generic agent-pushed feed viewer, page only), a Link Drop catalog app (bookmarklet + agent-prompt link saver), and an updated Probe catalog app (clipboard test plus Phase 2, BigInt, and Wasm items), and a catalog-only App Store that offers a confirmed Overwrite for modified or snapshot-less installs, and an empty fresh install (no apps seeded, including no App Store) with Apps/Home empty-state help, and Help and About as built-in shell pages (not catalog apps) with Settings options to hide each, settings stored in settings.json (formerly os-theme.json), a restructured catalog (per-app directories with a RECIPE.md each and a generated index), a Settings app with theme controls, and an App Store with Update All, Remove on up-to-date rows, and Add instead of Install.
+Current: **v3.0.0** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and a Kody-login-only device gate (OTP removed; mock target login-free), and a Daily Feed catalog app (generic agent-pushed feed viewer, page only), a Link Drop catalog app (bookmarklet + agent-prompt link saver), and an updated Probe catalog app (clipboard test plus Phase 2, BigInt, and Wasm items), and a catalog-only App Store that offers a confirmed Overwrite for modified or snapshot-less installs, and an empty fresh install (no apps seeded, including no App Store) with Apps/Home empty-state help, and Help and About as built-in shell pages (not catalog apps) with Settings options to hide each, settings stored in settings.json (formerly os-theme.json), a restructured catalog (per-app directories with a RECIPE.md each and a generated index), a Settings app with theme controls, and an App Store with Update All, Remove on up-to-date rows, and Add instead of Install.
 
 ## Screenshots
 
@@ -19,11 +19,11 @@ Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
 - **Apps** — every installed app as a tile; Edit mode pins, hides, and adds apps to the home dashboard.
 - **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs.
 - **Feeds** — apps can declare allowlisted HTTPS upstream feeds (`capabilities.feeds`) read through `GET /feed/:app/:name`, and generic allowlisted upstreams (`capabilities.proxy`) read through `GET /proxy/:app/:name`, same-origin with storage caching. No auth is forwarded upstream; errors never echo the URL.
-- **Access** — the browser shell is locked by one-time codes so e-ink devices open it without Kody login. Each code is 4 digits, single use, valid 10 minutes; entering it burns the code and mints a 30-day session cookie with clean, code-free URLs. There is no other way in besides owner Kody login, and no secret to configure. Agents use MCP exports, which are never gated. Full steps: [Device key](docs/device-key.md).
+- **Access** — the browser shell serves only platform-verified Kody visitors, so any browser signed in to Kody opens it, including e-ink devices. There is no code, no session, and no secret to configure: Kody login is verified per request. Under the local mock target the gate is skipped entirely. Agents use MCP exports, which are never gated. Full steps: [Setup guide](docs/setup.md).
 
 ## Setup
 
-Setting up a fork of kody-os (fork, publish, unlock, first app) is covered start to finish in the [Setup guide](docs/setup.md). Start there; the sections below assume the OS is already set up.
+Setting up a fork of kody-os (fork, publish, sign-in, first app) is covered start to finish in the [Setup guide](docs/setup.md). Start there; the sections below assume the OS is already set up.
 
 ## How to know it is working
 
@@ -58,11 +58,9 @@ export NO_PROXY='*' no_proxy='*'
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
 ```
 
-Mint a local-dev OTP and install the `app-store` catalog app (one-time per fresh mock store). Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. Mint while the server is stopped, then start it promptly: the code is single use, valid 10 minutes, and burns into a 30-day session cookie.
+Install the `app-store` catalog app (one-time per fresh mock store). Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No Python step is needed any more: `scripts/catalog.ts` installs straight from the shipped catalog by id, and re-installing preserves state. The mock target is login-free, so no unlock step is needed.
 
 ```sh
-kody execute --target mock --file scripts/mint-dev-otp.ts
-# → { "ok": true, "code": "4821" } — example only; use the code you actually get
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}'
 ```
 
@@ -79,9 +77,9 @@ kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely) and enter the minted code in the unlock form. The footer reads `via cookie` with a clean URL; the Apps page lists the **App Store**. A later restart with the mock store intact does not need a fresh code — only a store reset or a lost cookie does. A minted OTP is single use, so there is no repeatable authenticated fetch check: verify actions in the unlocked browser instead.
+Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely). No unlock step: the mock target serves login-free. The Apps page lists the **App Store**. Verify actions in the browser instead of scripting authenticated fetches.
 
-Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`. To clear local sessions and OTPs: `kody execute --target mock --file scripts/clear-auth.ts` (returns counts only).
+Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`.
 
 ## Theme file
 

@@ -83,7 +83,7 @@ function valueOf(url) {
 }
 function makeDom(bundleHtml, initial) {
   const dom = new JSDOM(bundleHtml, {
-    url: "https://hypercubed.kody.run/kody-os/apps/counter?k=TESTCODE",
+    url: "https://hypercubed.kody.run/kody-os/apps/counter",
     runScripts: "outside-only",
     pretendToBeVisual: true,
   });
@@ -119,7 +119,7 @@ function fieldShown(ctx) {
  * form, inserted before the bundle script runs, as on a real app page. */
 function makeShellDom(bundleHtml, serverState) {
   const dom = new JSDOM(bundleHtml, {
-    url: "https://hypercubed.kody.run/kody-os/apps/counter?k=TESTCODE",
+    url: "https://hypercubed.kody.run/kody-os/apps/counter",
     runScripts: "outside-only",
     pretendToBeVisual: true,
   });
@@ -138,18 +138,13 @@ function makeShellDom(bundleHtml, serverState) {
   const form = doc.createElement("form");
   form.setAttribute("class", "app-action");
   form.setAttribute("method", "GET");
-  // As renderAppSection renders it: action URL plus hidden action/k inputs.
+  // As renderAppSection renders it: action URL plus hidden action input.
   form.setAttribute("action", "/apps/counter");
   const actionInput = doc.createElement("input");
   actionInput.setAttribute("type", "hidden");
   actionInput.setAttribute("name", "action");
   actionInput.setAttribute("value", "reset_count");
   form.appendChild(actionInput);
-  const keyInput = doc.createElement("input");
-  keyInput.setAttribute("type", "hidden");
-  keyInput.setAttribute("name", "k");
-  keyInput.setAttribute("value", "TESTCODE");
-  form.appendChild(keyInput);
   const btn = doc.createElement("button");
   btn.setAttribute("type", "submit");
   btn.textContent = "Reset count";
@@ -329,11 +324,11 @@ async function test(name, fn) {
     assert(valueOf(ctx.calls[1]) === 2, "fresh call counts the optimistic first click too (desired 1 + 1 = 2), got " + valueOf(ctx.calls[1]));
   });
 
-  await test("Starting from a non-zero count, and k= is preserved", async function () {
+  await test("Starting from a non-zero count, and no credential leaks into the dispatch", async function () {
     const ctx = makeDom(newHtml, 7);
     click(ctx, 1);
     assert(ctx.calls.length === 1 && valueOf(ctx.calls[0]) === 8, "value=8 from initial 7");
-    assert(ctx.calls[0].indexOf("k=TESTCODE") !== -1, "k param preserved: " + ctx.calls[0]);
+    assert(ctx.calls[0].indexOf("k=") === -1, "no credential in the dispatch URL: " + ctx.calls[0]);
     assert(ctx.calls[0].indexOf("format=json") !== -1, "format=json preserved");
     await resolveNext(ctx);
     assert(shown(ctx) === "8", "final paint 8");

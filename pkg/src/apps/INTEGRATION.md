@@ -29,10 +29,10 @@ Rules for every current and future app:
    rows carry `data-field` hooks with a plain `<span>` value node, and the app
    panel `section.app` carries `data-app-id` — styling unchanged, hooks only
    for the guarded in-place refresh.
-2. No form carries a credential: authentication rides the session cookie,
-   so action forms carry only `action` (and `from` where present). `?k=` is
-   only a single-use OTP submission transport for the unlock path, never a
-   session token, and never a hidden field.
+2. No form carries a credential: requests are authenticated by the
+   platform-verified Kody visitor (or served login-free on the mock
+   target), so action forms carry only `action` (and `from` where
+   present). No `?k=`, no hidden credential field, ever.
 3. Handle `GET /apps/:id?action=<name>` by removing `k`, `from`, and
    `format` from the query entries and passing the rest to
    `actFromForm(id, entries)`. Without `format=json`: on success, 303 back to
@@ -44,17 +44,13 @@ Rules for every current and future app:
 4. Do not add a mutating `<form method="POST">` or a `fetch(..., { method:
    'POST' })` to the app UI. POST is only for programmatic clients that can
    send a same-origin `Origin`; the server route remains for them.
-5. The locked-page unlock form follows the same rule, with one twist: Kody's
-   edge drops query strings before the fetch handler runs, so `?k=` never
-   arrives. The form is a GET form whose inline script rewrites the submit
-   to the path form `/unlock/<code>` (same-origin, no query string); the
-   server re-attaches it as `?k=` internally, burns the OTP, sets the
-   session cookie, and 303-redirects to the clean app home. Without
-   JavaScript the plain GET still works wherever the platform preserves
-   the query string.
+5. The locked page carries no form and no script: it is an honest 404
+   naming Kody sign-in, with no credential of any kind. Signing in
+   happens in Kody itself, never in the shell.
 6. Keep credentials out of rendered output, storage, and logs. No
-   renderer receives a credential; auth registries hold SHA-256 hashes
-   only (see Storage keys below), never a raw code or bearer.
+   renderer receives a credential; there are no auth registries at all
+   (Kody login is verified per request), only app data (see Storage
+   keys below).
 
 The browser client (`src/client/index.ts`) adds a guarded same-origin GET
 fast path: it intercepts only `form.app-action`, and only when `fetch`,
@@ -102,9 +98,6 @@ JS-only POST path, a timer/polling loop, or client routing.
 
 ## Storage keys (all under packageStorage(), 16 MiB budget — keep definitions small)
 
-- `kody-os.auth.otp.v2` — OTP hashes `{ h, exp }[]`, 10-minute TTL, max 5 outstanding (v1 key never read since the v2.0.0 cutover)
-- `kody-os.auth.sessions.v2` — session hashes `{ h, exp }[]`, 30-day TTL (v1 key never read since the v2.0.0 cutover)
-- `kody-os.auth.fail2` — unlock rate-limit counter `{ n, start }`, 10 fails per 10 minutes device-wide
 - `kody-os.apps.registry` — `string[]` of installed app ids
 - `kody-os.apps.def.<id>` — the `AppDefinition` JSON
 - `kody-os.apps.state.<id>` — the live `AppState` JSON

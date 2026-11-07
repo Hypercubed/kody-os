@@ -37,8 +37,8 @@ Before writing a bundle that displays state, read the [Bundle/shell interaction 
 | `actions.*.args` | no | `{ [name]: { type, required?, default?, min?, max?, maxLength? } }`. Values are coerced from form strings. |
 | `capabilities.feeds` | no | Array of `{ name, url, ttlSeconds?, maxBytes? }` (at most 8). Declares allowlisted upstream feeds the app may read through `GET /feed/<app>/<name>` — HTTPS only, served same-origin with storage caching. Never put a URL from user input here; the route takes only the declared feed name. |
 | `capabilities.proxy` | no | Array of `{ name, url, ttlSeconds?, maxBytes? }` (at most 8), same limits as feeds. Declares allowlisted generic upstreams the app may read through `GET /proxy/<app>/<name>` — HTTPS only, served same-origin with storage caching. The route takes only the declared proxy name. |
-| `capabilities.manageApps` | no | Boolean. When `true`, the app may use the shell management API (`GET /manage/rows|install|update|restore`). Undeclared callers get a plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority, so declaring a capability does not stop a malicious bundle from calling a shell route directly. |
-| `capabilities.theme` | no | `{ view: boolean, set: boolean }`. Declares shell theme access through `GET /theme/<app>`: `view` allows the read route, `set` allows set and reset. A definition with neither flag true is treated as not declaring theme. Undeclared callers get a plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority, so declaring a capability does not stop a malicious bundle from calling a shell route directly. |
+| `capabilities.manageApps` | no | Boolean. When `true`, the app may use the shell management API (`GET /manage/rows|install|update|restore`). Undeclared callers get a plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with the visitor's authority, so declaring a capability does not stop a malicious bundle from calling a shell route directly. |
+| `capabilities.theme` | no | `{ view: boolean, set: boolean }`. Declares shell theme access through `GET /theme/<app>`: `view` allows the read route, `set` allows set and reset. A definition with neither flag true is treated as not declaring theme. Undeclared callers get a plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with the visitor's authority, so declaring a capability does not stop a malicious bundle from calling a shell route directly. |
 
 Effects:
 
@@ -83,9 +83,9 @@ ReKindle is existence proof that guarded vanilla JS can run in a Kindle browser.
 
 ### Access transport (device latch)
 
-Unlock is a 4-digit one-time code, single use, valid 10 minutes (owner mints it over MCP with `mint_otp`). The unlock form's inline script rewrites the submit to the path form `/unlock/<code>` — Kody's edge drops query strings before the fetch handler runs, so `?k=` in the browser never arrives; the code lives in the path for one request and the success redirect lands on the clean app home. A correct code burns on first use and mints a session: a random token whose SHA-256 hash is stored (30-day expiry) and carried in a `kody_os_auth` HttpOnly cookie (prefixed with the platform's `cookiePrefix` so the edge forwards it). The unlock interstitial also writes the session token to `localStorage` under `kody_os_auth` as a carrier. After unlock, authentication rides the cookie alone: the client enhancement's `fetch` (`format=json`) fast path and bundle bridge actions send the cookie (`credentials: 'same-origin'`) and attach no credential to the URL, falling back to native submit on any failure. Without JavaScript the plain GET still submits (works wherever the platform preserves the query string). Failed unlocks are capped at 10 per 10-minute window device-wide. `?k=` is only a single-use OTP submission transport; it never carries a session token and never appears in a rendered link, form, or redirect.
+Access is Kody login only: a platform-verified Kody visitor is served, verified per request — no code, no session, no cookie, no credential of any kind. The client enhancement's `fetch` (`format=json`) fast path and bundle bridge actions send same-origin requests (`credentials: 'same-origin'`) and attach no credential to the URL, falling back to native submit on any failure. Without JavaScript the plain GET still submits. No `?k=`, no hidden credential field, ever: a request presenting a retired credential is denied exactly like an unauthenticated request.
 
-The device gate is a latch, not multi-user auth: one shared gate per OS install, valid from any browser that completes it. Treat anyone holding an unlocked browser as holding the device. There is no per-user separation. There is no fallback path: OTP sessions and Kody-owner login are the only ways in; see [Device key](../../../docs/device-key.md).
+The device gate is Kody login only: any browser signed in to Kody with app access is served. Under the local mock target the gate is skipped entirely, so local dev is login-free. See the [Setup guide](../../../docs/setup.md).
 
 ### Bundle contract
 
@@ -174,7 +174,7 @@ A bundle with no shared actions needs none of this; a bundle whose buttons are t
 
 **6. Paint/sync.** When a bundle paints, it writes the same value to its own display and to the shell `[data-field]` span, so the two never diverge. Initialize on `DOMContentLoaded`, guarded against double initialization, by reading the span (rule 2) and painting that value before wiring observers and listeners. Keep one source of truth after initialization (desired vs. confirmed counts in the Counter bundle): never re-read the painted DOM as the current value, because it only changes when a fetch returns or the shell patches it.
 
-**7. Action-URL resolution (`data-action-base`).** Bundle buttons that mutate state SHALL resolve their action URL from their own `.bundle` container's `data-action-base` attribute, never from `window.location.pathname` alone. The shell stamps `data-action-base="/apps/<id>"` on every bundle container it renders — app page, modal overlay, and home widget — so the same button acts on the owning app from the dashboard as well as from the app's own page. Walk up from the clicked element to the nearest ancestor carrying the attribute and fall back to `window.location.pathname` only when it is absent (an older shell). When the button uses `fetch` for the `?format=json` fast path, pass `credentials: 'same-origin'` so the session cookie authenticates the request, attach no credential to the URL, and keep the full-navigation fallback. The Counter bundle's `actionBase()` is the reference implementation. The checklist below rejects any bundle that builds action URLs from `window.location.pathname` alone.
+**7. Action-URL resolution (`data-action-base`).** Bundle buttons that mutate state SHALL resolve their action URL from their own `.bundle` container's `data-action-base` attribute, never from `window.location.pathname` alone. The shell stamps `data-action-base="/apps/<id>"` on every bundle container it renders — app page, modal overlay, and home widget — so the same button acts on the owning app from the dashboard as well as from the app's own page. Walk up from the clicked element to the nearest ancestor carrying the attribute and fall back to `window.location.pathname` only when it is absent (an older shell). When the button uses `fetch` for the `?format=json` fast path, pass `credentials: 'same-origin'` so the platform-verified Kody visitor authenticates the request, attach no credential to the URL, and keep the full-navigation fallback. The Counter bundle's `actionBase()` is the reference implementation. The checklist below rejects any bundle that builds action URLs from `window.location.pathname` alone.
 
 **Bridge adapter (recommended path, `window.KodyBridge` v1).** A stateful bundle SHOULD use the bridge. It is loaded once by the shell client module (so it exists by `DOMContentLoaded`, when bundles init), and it is instantiated per app section — one store per section, never shared across sections. The source of truth is `pkg/src/bridge/bridge.js` (plain ES2019, classic-script compatible); the Counter bundle is the reference consumer.
 
@@ -335,37 +335,30 @@ The package is `@hypercubed/kody-os`; this install is hosted at `https://hypercu
    })
    ```
 
-   Or open `https://hypercubed.kody.run/kody-os/apps` in a browser that already holds a session cookie (or unlock it first with a fresh OTP). The app appears in All apps immediately.
+   Or open `https://hypercubed.kody.run/kody-os/apps` in a browser signed in to Kody. The app appears in All apps immediately.
 
 4. Optional: add it to the home dashboard. Open Apps Edit, find the app's row, and choose **Add to home**. New apps do not appear on the home dashboard automatically. The home page shows homepage apps as live widgets; the widget up/down buttons reorder them. **Pin** is a separate Apps-page section and does not place an app on the home dashboard.
 
 ## Add to the local preview (`kody dev`)
 
-The local preview serves the working tree with `kody dev`. This is the one supported local verification path, together with the jsdom harness in `pkg/catalog/README.md` — see the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). Run every command in this section from `pkg/` (running from the repo root fails: the package entry is not found there). Its mock storage is separate from the hosted store. A fresh mock store is locked until you mint a local OTP.
+The local preview serves the working tree with `kody dev`. This is the one supported local verification path, together with the jsdom harness in `pkg/catalog/README.md` — see the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). Run every command in this section from `pkg/` (running from the repo root fails: the package entry is not found there). Its mock storage is separate from the hosted store. The mock target is login-free: no unlock step is ever needed.
 
-Local registry writes use the existing file helpers in `pkg/scripts/` — do not recreate them: `scripts/registry.ts` (add/list/remove through `add_app`/`list_apps`/`remove_app`), `scripts/catalog.ts` (install/update/list through `install_from_catalog`/`update_from_catalog`/`list_catalog` — use this for shipped catalog apps instead of hand-wrapping a bundle file), `scripts/add-app.ts` (install one definition file directly — params ARE the definition, no op wrapper, unlike `registry.ts`), `scripts/mint-dev-otp.ts` (mint a local-dev OTP; no params), and `scripts/clear-auth.ts` (clear local sessions and OTPs; returns counts only). The same commands, proxy bypass, and `kody dev` checks are in the "Local dev" sections of `pkg/README.md` and `pkg/AGENTS.md`; this section is the authoring copy of that path, not a second one.
+Local registry writes use the existing file helpers in `pkg/scripts/` — do not recreate them: `scripts/registry.ts` (add/list/remove through `add_app`/`list_apps`/`remove_app`), `scripts/catalog.ts` (install/update/list through `install_from_catalog`/`update_from_catalog`/`list_catalog` — use this for shipped catalog apps instead of hand-wrapping a bundle file), `scripts/add-app.ts` (install one definition file directly — params ARE the definition, no op wrapper, unlike `registry.ts`). The same commands, proxy bypass, and `kody dev` checks are in the "Local dev" sections of `pkg/README.md` and `pkg/AGENTS.md`; this section is the authoring copy of that path, not a second one.
 
 Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the package bucket `local:kody-os`, the same bucket `kody dev` reads. `--code` with `kody:@...` uses the `local-default` mock bucket and will not appear in the preview.
 
 1. Stop `kody dev` if it is running. A running preview keeps its mock state in memory; start it after the writes, or restart it afterward.
-2. Mint a local-dev OTP and add the app. Proxy bypass is required on this host for every `kody dev` / `curl` call:
+2. Add the app. Proxy bypass is required on this host for every `kody dev` / `curl` call:
 
    ```bash
    cd pkg
    export NO_PROXY='*' no_proxy='*'
    unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
 
-   kody execute --target mock --file scripts/mint-dev-otp.ts
-
    DEF="$(cat /tmp/preview-counter.json)"
    kody execute --target mock --file scripts/registry.ts \
      --params "{\"op\":\"add\",\"definition\":$DEF}"
    ```
-
-   The mint returns a 4-digit code exactly once: single use, valid 10
-   minutes. Enter it in the unlock form after starting the preview; it
-   burns into a 30-day session cookie, and the footer then reads
-   `via cookie` with a clean URL.
 
 3. Start the preview:
 
@@ -373,7 +366,7 @@ Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the pack
    kody dev --target mock
    ```
 
-   Open the printed URL and enter the minted code in the unlock form (or open `/unlock/<code>`). Start without an explicit `--port` (bare `kody dev`, no `--port` flag) so `kody dev fetch` can attach to it.
+   Open the printed URL — no unlock step. Start without an explicit `--port` (bare `kody dev`, no `--port` flag) so `kody dev fetch` can attach to it.
 
 4. Verify against real shell rendering:
 
@@ -381,7 +374,7 @@ Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the pack
    kody dev check --target mock --offline
    ```
 
-   A minted OTP is single use, so there is no repeatable `?k=` fetch check: verify the served HTML in the unlocked browser instead. Confirm it carries the contract markup: the bundle, then `<p data-field="…">` with a plain `<span>` holding the stored value, then the `form.app-action` forms. Or use the registry helper:
+   There is no credential ceremony, so there is no repeatable authenticated fetch check: verify the served HTML in the browser instead. Confirm it carries the contract markup: the bundle, then `<p data-field="…">` with a plain `<span>` holding the stored value, then the `form.app-action` forms. Or use the registry helper:
 
    ```bash
    kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}'
@@ -393,7 +386,7 @@ Use `--file`, not `--code`, for local writes. `--file` from `pkg/` uses the pack
    kody execute --target mock --reset-storage --file scripts/registry.ts --params '{"op":"list"}'
    ```
 
-   This wipes the local apps and the local sessions/OTPs without starting a server. Re-run the mint-OTP step and the add, then start `kody dev`.
+   This wipes the local apps without starting a server. Re-run the add, then start `kody dev`.
 
 The local mock session defaults to `default`; set `KODY_MOCK_SESSION_ID` to use a different scratch session. The store is in the CLI user cache (Linux: `~/.cache/kody/mock-sessions/<session>/state.json`).
 
@@ -401,7 +394,7 @@ The local mock session defaults to `default`; set `KODY_MOCK_SESSION_ID` to use 
 
 - **Read state:** `get_app_state(id)` returns the same state the app page renders.
 - **Run an action:** `act(id, action, args?)` returns `{ ok: true, state }` or `{ ok: false, error }`.
-- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); no form carries a credential — authentication rides the session cookie, so every page renders clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field` value spans update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. The renderer adds `form.app-action`, `section[data-app-id]`, `data-action-base` on the bundle container, and `data-field` hooks automatically — but that is not the whole job for a bundle that displays state: the bundle must read its initial value from the JSON seed (bridge) or the span (hand-rolled) and handle shell-form actions per the [Bundle/shell interaction contract](#bundleshell-interaction-contract), or its display goes stale the first time a shell form fires.
+- **App page:** `/apps/<id>` shows the description, every state field, and the declared action forms. Forms submit as GET (`/apps/<id>?action=<name>`); no form carries a credential — requests are authenticated by the platform-verified Kody visitor, so every page renders clean forms. In capable browsers the same GET is replayed with `?format=json`, and only the changed `data-field` value spans update in place; without working `fetch`/JSON parsing, the form submits natively and the server 303-redirects. The renderer adds `form.app-action`, `section[data-app-id]`, `data-action-base` on the bundle container, and `data-field` hooks automatically — but that is not the whole job for a bundle that displays state: the bundle must read its initial value from the JSON seed (bridge) or the span (hand-rolled) and handle shell-form actions per the [Bundle/shell interaction contract](#bundleshell-interaction-contract), or its display goes stale the first time a shell form fires.
 - **Homepage:** Apps Edit row → **Add to home** / **Remove from home**. The home dashboard shows live widgets in homepage order. Homepage placement is a UI action in the current shell; `set_home` / `set_homepage` are also exported for agents.
 - **Pin and hide:** Apps Edit row → **Pin** / **Hide**. Hide is reversible, and a hidden app still appears in Apps Edit so it can be unhidden there. The UI has no Remove control.
 - **Launcher state:** `get_launcher_state()` returns `{ pinned, hidden, recent, homepage }` in stored order, missing keys as `[]`, and reads never write. All four lists have individual readers too: `get_pinned`, `get_hidden`, `get_recent`, and `get_homepage` are all root exports. `clear_recent()` empties only the recency list — apps, pins, hidden flags, and the homepage list are untouched. Rendered correspondence: `/` homepage order, `/apps` Pinned/Recent sections. Use the aggregate to verify a removal scrubbed every list, recent included.
@@ -452,18 +445,15 @@ kody execute --target mock --file scripts/registry.ts \
 | `kody-os.shell.theme` | Shell theme override (Phase 1 storage layer): partial `{ name, title, icon, background }`, merged per field over the published file theme on every page render. |
 | `kody-os.backups.<name>` | Named install backup: `{ format: "kody-os-backup/1", name, capturedAt, install }` (the `export_install` envelope). |
 | `kody-os.backups.index` | Index of backup names (packageStorage has no key listing); maintained by `backup`/`delete_backup`, never wiped by `restore`, never exported. |
-| `kody-os.auth.otp.v2` | Live OTP hashes: `{ h, exp }[]`, 10-minute TTL, max 5 outstanding, pruned on write. Burned (removed) on first correct use. The v1 key is never read (cutover invalidation, v2.0.0). |
-| `kody-os.auth.sessions.v2` | Live session hashes: `{ h, exp }[]`, 30-day TTL, pruned on read. Deleted on logout. The v1 key is never read (cutover invalidation, v2.0.0). |
-| `kody-os.auth.fail2` | Unlock rate-limit counter: `{ n, start }` for the 10-fails-per-10-minutes device-wide window. |
 
-The hosted and local stores are independent. Adding to one does not add to the other. OTP codes and session bearers are never stored or logged raw — only their SHA-256 hashes rest in storage.
+The hosted and local stores are independent. Adding to one does not add to the other. There are no auth registries: Kody login is verified per request, so no code, session, or bearer ever rests in storage.
 
 ## Troubleshooting
 
 - **`{ ok: false, error }` from `add_app`:** validation failed and nothing was written. Fix the named field and retry.
 - **App is on Apps but not the home dashboard:** add it with Apps Edit's **Add to home** control. New apps are not automatically homepage widgets.
 - **App added to hosted but not local (or the reverse):** the stores are separate. Run the same add against the other target; use `list_apps()` in the target you are checking.
-- **Local preview shows the locked 404:** a fresh mock store has no session. Run `scripts/mint-dev-otp.ts` before starting `kody dev`, then enter the code in the unlock form (see [Device key](../../../docs/device-key.md)).
+- **Local preview shows the locked 404:** the preview is not serving the mock target (the mock target skips the gate entirely). Restart as bare `kody dev --target mock` from `pkg/`.
 - **Local add is missing in a running preview:** `kody dev` loaded the mock store at startup. Run the registry write before starting it, or stop and restart it. `kody dev fetch` attaches only to a server started without an explicit `--port`.
 - **`kody dev --target prod` throws `local:<kody.id>`:** it does not provide the hosted `packageStorage()`. Use the hosted MCP/execute path for the real app.
 - **`--invoke` with `add_app` fails:** this package exports only the root, so there is no `/add_app` subpath. Use the `--code`/`--file` wrappers shown here.
@@ -472,7 +462,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - **`format` appears in a request:** the UI/server fast path uses `?format=json` to ask for `ActResult` JSON. It is stripped before `actFromForm`, so it never becomes an action arg.
 - **Re-adding reset the state:** it does not, by default. `add_app` on an existing id overwrites the definition and preserves state (declared fields carried forward, dropped fields reset to `initial`). Pass `resetState: true` to restore the legacy wipe, or `migrate: { oldField: newField }` to rename fields. Export before replacing if you need the old state regardless.
 - **No remove button in the UI:** removal is MCP-only by design. Use `remove_app`; use Hide for a reversible action.
-- **Access code:** the hosted browser needs a fresh OTP (owner mints with `mint_otp`, valid 10 minutes, single use, 4 digits); MCP exports are not gated. Do not put a code in a definition, export, or log. `?k=` is only the OTP submission transport, on hosted and local alike — never a session token, never a bookmark.
+- **Locked page on the hosted app:** the browser is not signed in to Kody (or the sign-in lapsed). Sign in to Kody and reload; MCP exports are not gated. There is no code to mint and no `?k=` transport: a request presenting a retired credential is denied exactly like an unauthenticated request.
 
 ## See also
 

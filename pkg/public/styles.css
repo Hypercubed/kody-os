@@ -800,7 +800,7 @@ button.tile:active .tile-icon {
 
 /* On an app page the panel already sits inside .os-window, so the panel
    itself draws no second box: the window is the single frame. Panels
-   outside .os-window (modal overlays, logout confirm) are untouched and
+   outside .os-window (modal overlays) are untouched and
    keep their border, as do home widgets (.widget), which need their own
    borders to separate from each other in the grid. */
 .os-window main .app {
@@ -813,8 +813,7 @@ button.tile:active .tile-icon {
    in app.ts), so the rule above would strip their panel border
    too. A modal panel is its own frame, unlike an app page panel,
    so restore its border and shadow here. This rule outranks the
-   stripping rule (three classes to two). The logout modal sits
-   outside .os-window and was never stripped. */
+   stripping rule (three classes to two). */
 .os-window main .overlay .app {
 	border: var(--rule);
 	box-shadow: var(--lift);
@@ -1357,34 +1356,6 @@ button.tile:active .tile-icon {
 	font-family: serif;
 	font-size: 0.9375rem;
 	font-style: italic;
-}
-
-.app-body form.gate-form {
-	display: block;
-	margin: 0 0 0.9rem;
-}
-
-.gate-form label {
-	display: block;
-	margin-bottom: 0.4rem;
-	font-size: 0.75rem;
-	font-weight: bold;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-}
-
-.gate-form input[type="text"] {
-	display: block;
-	width: 100%;
-	margin-bottom: 0.8rem;
-	font-family: 'Courier New', Courier, monospace;
-	font-size: 1.125rem;
-	letter-spacing: 0.08em;
-}
-
-.gate-form button {
-	display: block;
-	width: 100%;
 }
 
 .gate-hint {

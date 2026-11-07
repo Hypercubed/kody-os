@@ -16,17 +16,17 @@ publish, source-only fork with empty storage, no automatic updates
 from the original, "adopt" as a separate owner-only step, git clone
 as source copy only); the setup sequence ending in a first app
 installed via agent `add_app` and verified by an add/open/act round
-trip; login via Kody login or the OTP-issued session cookie, with
-no credential setup of any kind; Scribe per-visit OTPs; the
-catalog/store and trust rule by pointer; adding further apps; local
-dev; and troubleshooting. The App Store (browser install of catalog
+trip; login via Kody login only, with no credential setup of any kind
+(the Scribe signs in to Kody like anywhere else; there is no OTP and
+no per-visit code); the catalog/store and trust rule by pointer;
+adding further apps; local dev (login-free under `kody dev --target mock`);
+and troubleshooting. The App Store (browser install of catalog
 apps) is implemented; the guide SHALL describe it as installed
 explicitly (a fresh shell starts empty and seeds nothing) and SHALL NOT
 describe store seeding as current behavior. The guide SHALL link to
 `pkg/.agents/skills/adding-an-app/SKILL.md` for app detail instead of duplicating
 it, SHALL NOT link to `pkg/docs/device-key.md` (that document
-describes the legacy fallback slated for removal under
-remove-legacy-code; the link is deferred until its rewrite),
+is deleted by this change),
 SHALL contain no secret value, derived code, or OTP, and SHALL NOT
 describe any retired legacy login path as a way in — and SHALL NOT
 name the `access-key` secret, rotation, or `get_access_status` at
@@ -45,7 +45,7 @@ like the adding-an-app skill.
 
 #### Scenario: Guide carries no live secrets and names no secret setup
 - **WHEN** the guide file is grepped for secret values, derived codes, OTP digits, `access-key`, rotation, and `get_access_status`
-- **THEN** none are present; only the export name `mint_otp` appears, as the way to mint an unlock code.
+- **THEN** none are present; the export name `mint_otp` does not appear (it is removed by this change).
 
 #### Scenario: Guide is discoverable from README
 - **WHEN** `pkg/README.md` is read

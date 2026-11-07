@@ -50,7 +50,7 @@ These come from the package and the Scribe ceiling, and they bind maintainer wor
 - A catalog app is one directory `pkg/catalog/<id>/` holding `definition.json` + `RECIPE.md`, plus one import line in `pkg/src/apps/catalog.ts` (alphabetical by id), plus one entry in `pkg/catalog/README.md`, plus a re-run of the catalog-index generator (`bun scripts/build-catalog-index.ts`), plus a harness pass (validate + install in a blank store + initial state + index/directory/import match).
 - `catalogVersion` starts at 1 on a definition's first versioned release and increments by exactly 1 on any change to that definition file — never for an unrelated app or a shell change, never reused, never decreased. It is distinct from `schemaVersion` and from the package version.
 - Install snapshots are written only by store install/update (including seeding), never by generic `add_app`/`import_app`, deleted by `remove_app`, and never included in exports. The Store never auto-updates.
-- Catalog bundles run with session authority. Shipping a definition in the catalog is trusting its bundle code, exactly as `add_app` trusts any definition. Review third-party bundles before adding one.
+- Catalog bundles run with the visitor's authority. Shipping a definition in the catalog is trusting its bundle code, exactly as `add_app` trusts any definition. Review third-party bundles before adding one.
 - Capabilities are installer disclosure plus a server-side allowlist for honest apps, not a sandbox: `capabilities.feeds` and `capabilities.proxy` (up to 8 each, HTTPS bare URLs, TTL/maxBytes limits, served by name, never by request URL) and `capabilities.manageApps` (boolean; only declared bundles may use `GET /manage/rows|install|update|restore`, undeclared callers get a plain 404). Unknown capability keys fail validation with no write.
 
 ## Local development
@@ -60,16 +60,14 @@ Run from `pkg/` only — the repository root fails (missing `kody.app.entry`). P
 ```sh
 cd pkg
 kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
-kody execute --target mock --file scripts/mint-dev-otp.ts # local-dev OTP, single use, 10 minutes
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}'
 kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)"
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}'
-kody execute --target mock --file scripts/clear-auth.ts # clears v2 + v1 session/OTP registries, returns counts only
 ```
 
 **Mock writes need a stopped server.** `kody dev` reads its mock store once at startup and serves that snapshot from memory. A `kody execute` write made while the preview runs returns `{ ok: true }` and lands on disk, but the preview never shows it, and the preview's next write rewrites the file from its snapshot and silently deletes the CLI change. Stop the server, run the writes, start it again. "Write now, restart later" loses the write as soon as the running preview acts.
 
-The shell's automatic App Store seed only fires on an empty registry, so install `app-store` explicitly if any other app was seeded first. Full local-dev detail, including the OTP/session model and the device gate, is in `pkg/AGENTS.md` — read it before debugging auth, and do not duplicate its auth description here.
+The shell's automatic App Store seed only fires on an empty registry, so install `app-store` explicitly if any other app was seeded first. Full local-dev detail, including the login-free mock target and the device gate, is in `pkg/AGENTS.md` — read it before debugging auth, and do not duplicate its auth description here.
 
 ## Tests
 
@@ -85,7 +83,7 @@ The shell's automatic App Store seed only fires on an empty registry, so install
 
 ## Security and secrets
 
-- The trust boundary is who can install or publish an app. Bundle scripts run same-origin with full session authority by design; capabilities do not isolate them. See `docs/security-review-2026-10-27.md`.
+- The trust boundary is who can install or publish an app. Bundle scripts run same-origin with the visitor's full authority by design; capabilities do not isolate them. See `docs/security-review-2026-10-27.md`.
 - Never commit secrets, tokens, API keys, or credentials to this repo, and never paste one into chat or a file to make something work. Use the secure entry flow for any credential that must be stored. If a credential is pasted into chat by mistake, the correct response is to rotate it, not to copy it anywhere else.
-- Session and OTP registries hold SHA-256 hashes only. Auth is OTP-only since v2.0.0; there is no legacy access key, no derived code, and no stored-hash fallback to restore.
+- No auth registries exist. Auth is Kody-login-only; there is no legacy access key, no derived code, no session, and no stored-hash fallback.
 - When a user asks a question, answer the question. Do not attach a build, spec, or publish pitch to a question turn unless the user asks for that work.

@@ -223,7 +223,6 @@ export {
 	validateDefinition,
 } from './apps/index.ts'
 export { actFromForm } from './apps/index.ts'
-export { mintOtp as mint_otp } from './auth.ts'
 export type {
 	ActionArgDef,
 	ActionDef,

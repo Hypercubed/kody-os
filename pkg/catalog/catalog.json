@@ -125,8 +125,8 @@
     {
       "id": "hoodie-weather",
       "label": "Hoodie Weather",
-      "catalogVersion": 9,
-      "fingerprint": "fnv:3917638344-1411347385-43877",
+      "catalogVersion": 10,
+      "fingerprint": "fnv:1863430420-1457542044-43490",
       "installMode": "json",
       "definitionPath": "hoodie-weather/definition.json",
       "recipePath": "hoodie-weather/RECIPE.md",
@@ -161,8 +161,8 @@
     {
       "id": "news",
       "label": "News",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:1418403558-3631841351-18097",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:3254392620-4180387642-17868",
       "installMode": "json",
       "definitionPath": "news/definition.json",
       "recipePath": "news/RECIPE.md",
@@ -173,8 +173,8 @@
     {
       "id": "probe",
       "label": "Probe",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:1404168398-4019052685-30711",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:3881983678-258110534-30282",
       "installMode": "json",
       "definitionPath": "probe/definition.json",
       "recipePath": "probe/RECIPE.md",
@@ -209,8 +209,8 @@
     {
       "id": "xkcd",
       "label": "xkcd",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:4033132722-3040306256-22176",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:3951821674-1475230663-21949",
       "installMode": "json",
       "definitionPath": "xkcd/definition.json",
       "recipePath": "xkcd/RECIPE.md",

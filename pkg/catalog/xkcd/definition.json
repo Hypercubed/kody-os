@@ -3,7 +3,7 @@
   "name": "xkcd",
   "label": "xkcd",
   "schemaVersion": 5,
-  "catalogVersion": 4,
+  "catalogVersion": 5,
   "icon": "X",
   "category": "reading",
   "description": "The latest xkcd comics, with each comic’s image and alt text.",

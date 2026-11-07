@@ -20,7 +20,7 @@ The package SHALL capture the entire install — every installed app id, definit
 - **THEN** it returns `{ ok: false, error }` naming the collision and the stored snapshot is unchanged.
 
 ### Requirement: Replace-with-auto-snapshot restore
-Restore SHALL fully replace the install: capture the current install as an automatic pre-restore snapshot, then wipe apps, states, and prefs and write the named snapshot's contents. Restoring an unknown name SHALL return `{ ok: false }` and change nothing. The OTP/session registries (`kody-os.auth.otp.v2`, `kody-os.auth.sessions.v2`) SHALL be untouched by capture and restore; the recency list SHALL NOT be captured and SHALL start empty after restore.
+Restore SHALL fully replace the install: capture the current install as an automatic pre-restore snapshot, then wipe apps, states, and prefs and write the named snapshot's contents. Restoring an unknown name SHALL return `{ ok: false }` and change nothing. (There are no auth registries to capture: Kody login is verified per-request.) The recency list SHALL NOT be captured and SHALL start empty after restore.
 
 #### Scenario: Restore is undoable
 - **WHEN** `restore('before-8ball')` runs

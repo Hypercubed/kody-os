@@ -114,11 +114,6 @@ function addRestoreForm(doc, section) {
   action.setAttribute("name", "action");
   action.setAttribute("value", "restore_default");
   form.appendChild(action);
-  const key = doc.createElement("input");
-  key.setAttribute("type", "hidden");
-  key.setAttribute("name", "k");
-  key.setAttribute("value", "TESTCODE");
-  form.appendChild(key);
   const button = doc.createElement("button");
   button.setAttribute("type", "submit");
   button.textContent = "Restore default place";
@@ -408,7 +403,7 @@ async function test(name, fn) {
     assert(cancelled === false, "capture-phase claim cancels the native submit");
     const actionCall = await waitForPending(ctx, function (p) { return p.url.indexOf("action=restore_default") !== -1; });
     assert(actionCall.url.indexOf("lat=") === -1, "restore_default carries no location args: " + actionCall.url);
-    assert(actionCall.url.indexOf("k=TESTCODE") !== -1, "k is preserved");
+    assert(actionCall.url.indexOf("k=") === -1, "no credential leaks into the action URL: " + actionCall.url);
     await resolveMatching(ctx, function (p) { return p.url.indexOf("action=restore_default") !== -1; }, {
       ok: true,
       state: { lat: DEFAULT_SEED.lat, lon: DEFAULT_SEED.lon, label: DEFAULT_SEED.label, nws: false },

@@ -12,7 +12,7 @@
 <body>
 <h1>Probe</h1>
 <noscript><p><strong>JavaScript is OFF in this browser.</strong></p></noscript>
-<script>try{var __pp=window.location.pathname;var __pi=__pp.indexOf("/apps/");var __pb=__pi!==-1?__pp.slice(0,__pi)+"/apps/probe":"/apps/probe";var __pu=__pb+"?action=append_report&tag=alive&d="+encodeURIComponent("alive=js-on")+"&format=json";var __pm=new RegExp("[?&]k=([^&]*)").exec(window.location.search||"");if(__pm){__pu+="&k="+__pm[1];}var __alive=new Image();__alive.src=__pu;}catch(__e){}</script>
+<script>try{var __pp=window.location.pathname;var __pi=__pp.indexOf("/apps/");var __pb=__pi!==-1?__pp.slice(0,__pi)+"/apps/probe":"/apps/probe";var __pu=__pb+"?action=append_report&tag=alive&d="+encodeURIComponent("alive=js-on")+"&format=json";var __alive=new Image();__alive.src=__pu;}catch(__e){}</script>
 <p>Step 1: wait 5 seconds (timer + network tests run automatically).</p>
 <p>Step 2: tap TAP ME once (event tests).</p>
 <p>Step 3: tap SEND RESULTS (fires every result home), or SEND (navigate) as a fallback.</p>
@@ -51,19 +51,10 @@ function actBase() {
   return "/apps/probe";
 }
 function codeSuffix() {
-  try {
-    var m = new RegExp("[?&]k=([^&]*)").exec(window.location.search || "");
-    if (m) { return "&k=" + m[1]; }
-  } catch (e2) {}
   return "";
 }
 function pingUrl() {
-  var base = actBase();
-  try {
-    var m = new RegExp("[?&]k=([^&]*)").exec(window.location.search || "");
-    if (m) { return base + "?k=" + m[1]; }
-  } catch (e3) {}
-  return base;
+  return actBase();
 }
 function actUrl(tag, d) {
   return actBase() + "?action=append_report&tag=" + encodeURIComponent(tag) + "&d=" + encodeURIComponent(String(d)).slice(0, 160) + "&format=json" + codeSuffix();

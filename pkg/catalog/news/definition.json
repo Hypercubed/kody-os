@@ -3,7 +3,7 @@
   "name": "News",
   "label": "News",
   "schemaVersion": 5,
-  "catalogVersion": 4,
+  "catalogVersion": 5,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"13\" y2=\"9\" /><line x1=\"15\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"17.5\" y2=\"15\" /></svg>",
   "category": "reading",
   "description": "Six news sections (World, Technology, Business, Science, Arts, and Finance) with headlines and summaries.",

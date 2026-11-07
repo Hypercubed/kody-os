@@ -1,5 +1,5 @@
 import { SHELL_CSS } from './shell-css.ts'
-import { SESSION_COOKIE_BARE, authenticate, authPathFor, checkCode, isKodyOwnerVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
+import { authPathFor, isKodyOwnerVisitor, isMockTarget } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
 import { renderAboutContent } from './shell-pages.ts'
@@ -10,6 +10,8 @@ interface PackageContext {
 	appBasePath?: string
 	assetBasePath?: string
 	clientModuleUrl?: string | null
+	packageId?: string
+	sourceId?: string
 }
 
 interface Chrome {
@@ -225,16 +227,7 @@ function joinPath(base: string, suffix: string): string {
 	return b + (suffix.charAt(0) === '/' ? suffix : '/' + suffix)
 }
 
-/** Strip the mount prefix when the runtime hands us a full path instead of a route. */
-function routePath(path: string, appBasePath: string): string {
-	if (appBasePath === '' || appBasePath === '/') return path
-	var prefix = appBasePath.charAt(appBasePath.length - 1) === '/' ? appBasePath : appBasePath + '/'
-	if (path === prefix || path === prefix.slice(0, -1)) return '/'
-	if (path.indexOf(prefix) === 0) return '/' + path.slice(prefix.length)
-	return path
-}
-
-/** Private shell pages: never cached, never leak the code through Referer. */
+/** Private shell pages: never cached, and send no referrer. */
 function pageHeaders(): Record<string, string> {
 	return {
 		'Content-Type': 'text/html; charset=utf-8',
@@ -321,26 +314,7 @@ function shellChrome(opts: {
 		}
 	}
 	var authLabel: AuthPath = opts.authPath ? opts.authPath : 'locked'
-	var footerLogout =
-		opts.authPath === 'via cookie'
-			? '\t\t\t<nav aria-label="Session"><a href="#logout-confirm">Logout</a></nav>\n'
-			: ''
-	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">' + escapeAttribute(authLabel) + ' \u00b7 v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + footerLogout + '\t\t</footer>\n'
-	var logoutModal =
-		opts.authPath === 'via cookie'
-			? '\t<div class="overlay" id="logout-confirm" aria-label="Confirm log out">\n' +
-				'\t\t<div class="overlay-panel">\n' +
-				'\t\t\t<section class="app" aria-label="Log out">\n' +
-				'\t\t\t\t<h2 class="app-titlebar"><a class="os-box" href="#" aria-label="Close"></a><span class="app-title-plate">Log out</span></h2>\n' +
-				'\t\t\t\t<div class="app-body">\n' +
-				'\t\t\t\t\t<p>Are you sure you want to log out of this device?</p>\n' +
-				'\t\t\t\t\t<p><a href="' + safeBase + '/logout?confirm=1">Yes, log out</a></p>\n' +
-				'\t\t\t\t\t<p><a href="#">Cancel</a></p>\n' +
-				'\t\t\t\t</div>\n' +
-				'\t\t\t</section>\n' +
-				'\t\t</div>\n' +
-				'\t</div>\n'
-			: ''
+	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">' + escapeAttribute(authLabel) + ' \u00b7 v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + '\t\t</footer>\n'
 	return (
 		'<!doctype html>\n' +
 		'<html lang="en"\n' +
@@ -403,11 +377,9 @@ function shellChrome(opts: {
 		'\t\t</div>\n' +
 		'\t\t<main>\n' +
 		opts.body +
-		'\n\t\t</main>\n' +
-		footerPath +
-		'\t</div>' +
-		logoutModal +
-		clientScript +
+		'\n\t\t</main>\n' +			footerPath +
+			'\t</div>' +
+			clientScript +
 		'\n</body>\n</html>'
 	)
 }
@@ -451,35 +423,18 @@ function themeGridValue(raw: string): unknown {
 }
 
 /**
- * The locked page is an honest 404: a stranger cannot tell a wrong code from a
- * missing page, and the plain GET form is the way in.
- *
- * The form posts nowhere: its inline script rewrites the action to
- * `/unlock/<code>`, the single-use OTP submission path, which avoids the
- * package-app edge's cross-origin POST guard.
+ * The locked page is an honest 404: a stranger cannot tell a locked
+ * shell from a missing page. No form, no script, no credential of any
+ * kind: signing in happens in Kody itself, never here, and the response
+ * carries no app content.
  */
-function lockedPage(ctx: Chrome, message: string, next: string): Response {
-	var action = escapeAttribute(safeNextPath(next, ctx.appBasePath))
-	var basePath = ctx.appBasePath && ctx.appBasePath.charAt(0) === '/' ? ctx.appBasePath : '/'
-	if (basePath.charAt(basePath.length - 1) !== '/') basePath += '/'
-	var safeBase = escapeAttribute(basePath)
-	var alert = message ? '\t\t\t\t\t<p role="alert">' + escapeAttribute(message) + '</p>\n' : ''
+function lockedPage(ctx: Chrome): Response {
 	var body =
 		'\t\t\t<section class="app gate" aria-label="Locked">\n' +
 		'\t\t\t\t<div class="app-body">\n' +
-		'\t\t\t\t\t<p class="gate-lead">This OS is private. Ask your agent for a one-time code and enter it below.</p>\n' +
-		alert +
-		'\t\t\t\t\t<form class="gate-form" method="get" action="' +
-		action +
-		'" data-base="' + safeBase + '">\n' +
-		'\t\t\t\t\t\t<label for="access-code">Access code</label>\n' +
-		'\t\t\t\t\t\t<input id="access-code" name="k" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required />\n' +
-		'\t\t\t\t\t\t<button type="submit">Unlock</button>\n' +
-		'\t\t\t\t\t\t<script>(function(){try{var f=document.querySelector("form.gate-form");if(!f||!f.addEventListener)return;f.addEventListener("submit",function(){try{var i=f.querySelector("input[name=k]");if(i&&i.value){try{var b=f.getAttribute("data-base")||"/";f.action=b+"unlock/"+encodeURIComponent(i.value)}catch(a){}}}catch(e){}})}catch(e){}})();</script>\n' +
-		'\t\t\t\t\t</form>\n' +
-		'\t\t\t\t\t<p class="gate-hint">Codes are 4 digits, single use, and expire after 10 minutes.</p>\n' +
-		'\t\t\t\t</div>\n' +
-		'\t\t\t</section>'
+		'\t\t\t\t\t<p class="gate-lead">This OS is private.</p>\n' +			'\t\t\t\t\t<p class="gate-hint">Sign in to Kody to visit.</p>\n' +
+			'\t\t\t\t</div>\n' +
+			'\t\t\t</section>'
 	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Locked', authPath: 'locked', body: body }), {
 		status: 404,
 		headers: pageHeaders(),
@@ -487,7 +442,7 @@ function lockedPage(ctx: Chrome, message: string, next: string): Response {
 }
 
 /**
- * Only same-OS paths may be used as a post-unlock destination.
+ * Only same-OS paths may be used as a safe `from` destination.
  * Rejects protocol-relative and absolute URLs, so this cannot become an open redirect.
  */
 function safeNextPath(value: string, appBasePath: string): string {
@@ -502,10 +457,10 @@ function safeNextPath(value: string, appBasePath: string): string {
 	return value
 }
 
-/** Security headers for every authenticated response. No credential is ever
- * stamped into a link, form, redirect, or cookie here: authentication rides
- * the HttpOnly session cookie, and a fresh OTP session's cookie is appended
- * by the caller (see fetch()). */
+/** Security headers for every served response. No credential is ever
+ * stamped into a link, form, redirect, or header here: the request is
+ * served only for a platform-verified Kody visitor (or the login-free
+ * mock target), and nothing is set on the response. */
 function finishResponse(response: Response, request: Request): Promise<Response> {
 	var headers = new Headers(response.headers)
 	headers.set('Cache-Control', 'no-store')
@@ -513,76 +468,6 @@ function finishResponse(response: Response, request: Request): Promise<Response>
 	headers.set('X-Content-Type-Options', 'nosniff')
 	headers.set('Content-Security-Policy', "frame-ancestors 'none'")
 	return Promise.resolve(new Response(response.body, { status: response.status, statusText: response.statusText, headers: headers }))
-}
-
-/** Clear the session cookie (logout): prefixed and legacy bare names, so one logout clears either. */
-function clearSessionCookies(appBasePath: string, secure: boolean): string[] {
-	var path = appBasePath && appBasePath.charAt(0) === '/' ? appBasePath : '/'
-	if (path.charAt(path.length - 1) !== '/') path += '/'
-	var names = [sessionCookieName()]
-	if (names[0] !== SESSION_COOKIE_BARE) names.push(SESSION_COOKIE_BARE)
-	var out: string[] = []
-	for (var i = 0; i < names.length; i++) {
-		var parts = [names[i] + '=deleted', 'Path=' + path, 'Max-Age=0', 'HttpOnly', 'SameSite=Lax']
-		if (secure) parts.push('Secure')
-		out.push(parts.join('; '))
-	}
-	return out
-}
-
-/** Plain HTML unlock form POST: verify the OTP, set the session cookie, land on a `next` interstitial that stores the session token in localStorage where available. */
-function unlock(request: Request, chrome: Chrome): Promise<Response> {
-	return request
-		.text()
-		.then(
-			function (text: string): string {
-				return text
-			},
-			function (): string {
-				return ''
-			},
-		)
-		.then(function (text: string): Promise<Response> {
-			var params = new URLSearchParams(text)
-			var next = safeNextPath(params.get('next') || '', chrome.appBasePath)
-			return unlockAllowed().then(function (allowed): Promise<Response> {
-				if (!allowed) return Promise.resolve(lockedPage(chrome, 'Too many attempts. Try again in a few minutes.', next))
-				return checkCode(params.get('code') || '', undefined, request).then(function (check): Response {
-					if (!check.ok || check.sessionToken === '') return lockedPage(chrome, 'Code not recognized.', next)
-					// Success lands on an interstitial, not a bare 303, so a guarded
-					// inline script can store the session token in localStorage
-					// where available. The cookie and the continue URL are the
-					// Scribe-safe path: absent or disabled storage never blocks
-					// the meta refresh or the plain Continue link below. The
-					// continue URL stays clean, since the OTP is already burned.
-					var dest = next
-					var stored = check.sessionToken
-					var codeJs = JSON.stringify(stored)
-					var destJs = JSON.stringify(dest)
-					var unlockedBody =
-						'\t\t\t<section class="app gate" aria-label="Unlocked">\n' +
-						'\t\t\t\t<div class="app-body">\n' +
-						'\t\t\t\t\t<meta http-equiv="refresh" content="0;url=' + escapeAttribute(dest) + '" />\n' +
-						'\t\t\t\t\t<p class="gate-lead">Unlocked. Continuing...</p>\n' +
-						'\t\t\t\t\t<p class="gate-hint"><a href="' + escapeAttribute(dest) + '">Continue</a></p>\n' +
-						'\t\t\t\t</div>\n' +
-						'\t\t\t</section>' +
-						'<script>(function(){try{localStorage.setItem("kody_os_auth",' + codeJs + ')}catch(e){}try{location.replace(' + destJs + ')}catch(f){try{location.href=' + destJs + '}catch(g){}}})();</script>'
-					var cookie = sessionCookie(check.sessionToken, chrome.appBasePath, isSecureRequest(request))
-					return new Response(shellChrome({ appBasePath: chrome.appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Unlocked', authPath: 'via cookie', body: unlockedBody }), {
-						status: 200,
-						headers: {
-							'Content-Type': 'text/html; charset=utf-8',
-							'Set-Cookie': cookie,
-							'Cache-Control': 'no-store',
-							'Referrer-Policy': 'no-referrer',
-							'X-Content-Type-Options': 'nosniff',
-							'Content-Security-Policy': "frame-ancestors 'none'",
-						},
-					})
-				})
-			})
-		})
 }
 
 function firstPathSegment(path: string, prefix: string): string {
@@ -944,34 +829,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'About', authPath: authPath, menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'about', body: aboutBody }),
 						{ status: 200, headers: pageHeaders() },
 					)
-				})
-			}
-
-			// GET /logout — confirm first, revoke only on ?confirm=1, then land home.
-			if (method === 'GET' && path === '/logout') {
-				var logoutQuery = new URL(request.url).searchParams
-				if (logoutQuery.get('confirm') !== '1') {
-					var logoutBody =
-						'\t\t\t<section class="app" aria-label="Log out">\n' +
-						'\t\t\t\t<div class="app-body">\n' +
-						'\t\t\t\t\t<p>Are you sure you want to log out of this device?</p>\n' +
-						'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/logout?confirm=1') + '">Yes, log out</a></p>\n' +
-						'\t\t\t\t\t<p><a href="' + escapeAttribute(appBasePath + '/') + '">Cancel</a></p>\n' +
-						'\t\t\t\t</div>\n' +
-						'\t\t\t</section>'
-					return Promise.resolve(
-						new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Log out', authPath: authPath, body: logoutBody }),
-							{ status: 200, headers: pageHeaders() },
-						),
-					)
-				}
-				return revokeSession(request).then(function (): Response {
-					var headers = new Headers(pageHeaders())
-					var doomed = clearSessionCookies(appBasePath, isSecureRequest(request))
-					for (var ci = 0; ci < doomed.length; ci++) headers.append('Set-Cookie', doomed[ci])
-					headers.set('Location', appBasePath + '/')
-					return new Response(null, { status: 303, headers: headers })
 				})
 			}
 
@@ -1353,93 +1210,21 @@ var app = {
 		var appsAt = rawPath.indexOf('/apps/')
 		var path = appsAt === -1 ? rawPath : rawPath.slice(appsAt)
 		var method = String(request.method || '').toUpperCase()
-		// Path-carried OTP: the edge drops query strings before the fetch
-		// handler runs, so /unlock/<code> carries the code in the path.
-		// Re-attach it as ?k= on a cloned request; everything downstream
-		// (auth, redirect, cookie, messages) then works unchanged.
-		var unlockAt = path.indexOf('/unlock/')
-		if (method === 'GET' && unlockAt !== -1) {
-			var seg = path.slice(unlockAt + 8)
-			var cutAt = seg.indexOf('/')
-			var rawCode = cutAt === -1 ? seg : seg.slice(0, cutAt)
-			var pathCode = ''
-			try {
-				pathCode = decodeURIComponent(rawCode)
-			} catch (err) {
-				pathCode = ''
-			}
-			if (pathCode !== '') {
-				try {
-					var sep = request.url.indexOf('?') === -1 ? '?' : '&'
-					request = new Request(request.url + sep + 'k=' + encodeURIComponent(pathCode), request)
-				} catch (err) {
-				}
-			}
+		// Kody login is the only auth path: a platform-verified visitor with
+		// role `owner` in the owning org is served. Under the local
+		// mock/dev target the device gate is skipped entirely (login-free
+		// local dev). Anything else is denied (locked), exactly like an
+		// unauthenticated request. The gate never fails open.
+		if (await isKodyOwnerVisitor(request)) {
+			chrome.authPath = authPathFor({ ok: true, viaKody: true })
+			return finishResponse(await dispatch(request, chrome, path, method, chrome.authPath), request)
 		}
-
-		// Unlock form: plain HTML POST, works with zero JavaScript.
-		if (method === 'POST' && (path === '/' || path === '')) {
-			return unlock(request, chrome)
+		if (isMockTarget(context)) {
+			chrome.authPath = authPathFor({ ok: true, viaKody: true })
+			return finishResponse(await dispatch(request, chrome, path, method, chrome.authPath), request)
 		}
-
-		// Kody-login bypass, owner-only: a platform-verified visitor with
-		// role `owner` in the owning org skips the device gate. Any other
-		// verified visitor, and anonymous (no header, or metaGetCurrentUser
-		// throws), falls through to the device gate; the Scribe never sends
-		// the header so its `?k=` flow is byte-identical to today. Never
-		// fails open.
-		var kodyVisitor = await isKodyOwnerVisitor(request)
-		var access = await authenticate(request)
-		if (kodyVisitor) {
-			var kodyAccess = { ok: true, viaCookie: false, viaKody: true, sessionToken: '' }
-			chrome.authPath = authPathFor(kodyAccess)
-			var kodyResponse = await dispatch(request, chrome, path, method, chrome.authPath)
-			return finishResponse(kodyResponse, request)
-		}
-		if (!access.ok) {
-			chrome.authPath = 'locked'
-			var triedCode = ''
-			try {
-				triedCode = new URL(request.url).searchParams.get('k') || ''
-			} catch (err) {
-				triedCode = ''
-			}
-			var lockedMsg = ''
-		if (triedCode !== '') {
-			var allowedNow = true
-			try {
-				allowedNow = await unlockAllowed()
-			} catch (err) {
-				allowedNow = true
-			}
-			lockedMsg = allowedNow ? 'Code not recognized. Ask your agent for a fresh code and try again.' : 'Too many attempts. Try again in a few minutes.'
-		}
-			return lockedPage(chrome, lockedMsg, safeNextPath(joinPath(appBasePath, routePath(path, appBasePath)), appBasePath))
-		}
-
-		chrome.authPath = authPathFor(access)
-		if (access.sessionToken !== '' && method === 'GET') {
-			var cleanHeaders = new Headers(pageHeaders())
-			cleanHeaders.append('Set-Cookie', sessionCookie(access.sessionToken, appBasePath, isSecureRequest(request)))
-			// Land on the app home with a clean URL: the /unlock/<code> path
-			// must not linger (the code is single-use anyway), and deep-link
-			// resume is out of scope while query strings are stripped.
-			// Re-prefix the mount or the redirect escapes to the host root.
-			cleanHeaders.set('Location', joinPath(appBasePath, '/'))
-			return Promise.resolve(new Response(null, { status: 303, headers: cleanHeaders }))
-		}
-		var response = await dispatch(request, chrome, path, method, chrome.authPath)
-		return finishResponse(response, request).then(function (finished): Promise<Response> {
-			// A fresh OTP session mints its bearer here (the GET-form path):
-			// finishResponse sets security headers only, so append the
-			// HttpOnly session cookie carrying the raw token.
-			if (access.sessionToken === '') return Promise.resolve(finished)
-			var outHeaders = new Headers(finished.headers)
-			outHeaders.append('Set-Cookie', sessionCookie(access.sessionToken, appBasePath, isSecureRequest(request)))
-			return finished.text().then(function (body): Response {
-				return new Response(body, { status: finished.status, statusText: finished.statusText, headers: outHeaders })
-			})
-		})
+		chrome.authPath = 'locked'
+		return lockedPage(chrome)
 	},
 }
 

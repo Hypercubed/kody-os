@@ -10,7 +10,7 @@ import '../bridge/bridge.js'
  *
  * App actions stay plain GET forms, so the page works with no JavaScript: a
  * submit navigates and the server redirects or re-renders with an inline
- * error. Same-origin fetches authenticate with the HttpOnly session cookie;
+ * error. Same-origin fetches ride the platform-verified Kody visitor;
  * no credential is attached to any fetch URL. Where fetch, querySelector,
  * and JSON parsing all exist, forms with
  * class "app-action" are submitted in place as the same GET URL plus

@@ -407,10 +407,6 @@ var xkcdSectionEl = null;
         else { base = ""; }
       }
       var url = base + "/feed/xkcd/xkcd";
-      if (typeof window.location !== "undefined" && window.location.search) {
-        var m = /(?:^|[?&])k=([^&]+)/.exec(window.location.search);
-        if (m) { url = url + "?k=" + encodeURIComponent(m[1]); }
-      }
       return url;
     }
     function fetchText(url, withCreds, onOk, onErr) {

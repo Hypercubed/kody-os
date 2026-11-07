@@ -162,16 +162,7 @@ function hwOriginPrefix() {
   return at === -1 ? '' : base.slice(0, at);
 }
 function hwQuerySuffix() {
-  var key = '';
-  try {
-    var match = /[?&]k=([^&]+)/.exec(window.location.search || '');
-    if (match) { key = match[1]; }
-  } catch (err) { key = ''; }
-  if (!key && hwSectionEl && hwSectionEl.querySelector) {
-    var input = hwSectionEl.querySelector('input[name="k"]');
-    if (input && input.value) { key = input.value; }
-  }
-  return key ? ('?k=' + encodeURIComponent(key)) : '';
+  return '';
 }
 function hwFeedUrl() {
   return hwOriginPrefix() + '/feed/hoodie-weather/' + HW_FEED_NAME + hwQuerySuffix();

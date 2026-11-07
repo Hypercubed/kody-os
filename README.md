@@ -13,7 +13,7 @@ You need a free [Kody](https://kody.codes/?ref=hypercubed) account, a fork of ko
 
 1. **Sign up for Kody (free).** Create your account with [this referral link](https://kody.codes/signup?ref=hypercubed).
 2. **Fork kody-os.** Install it from [the kody-os listing on Kody](https://kody.codes/@hypercubed/kody-os) in one click — that forks it into your account and publishes it. Otherwise, fork this repository on GitHub and publish the package from `pkg/` through a repo session; your Kody-connected agent can do the publish.
-3. **Sign in with Kody.** Open the app while signed in to your Kody account and you skip the device gate entirely — that is the main way in, including on the Kindle Scribe. A one-time code is kept only for local testing: ask your agent to mint a 4-digit code (`mint_otp`, valid 10 minutes, single use) and type it into the unlock form; it mints a 30-day session.
+3. **Sign in with Kody.** Open the app while signed in to your Kody account and you skip the device gate entirely — that is the only way in, including on the Kindle Scribe.
 4. **Install your first app.** A fresh install starts empty — no apps seeded, including no App Store. Install the App Store from the prompt on the empty Apps page (`install_from_catalog('app-store')`), or ask your agent to add an app (for example `counter`) with `add_app`. Adding an app never needs a republish.
 
 
@@ -23,7 +23,7 @@ You need a free [Kody](https://kody.codes/?ref=hypercubed) account, a fork of ko
 - **Apps** — every installed app as a tile; Edit mode pins, hides, and adds apps to the home dashboard.
 - **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs. The App Store itself is the exception: it is a data app and requires JavaScript.
 - **Feeds and proxy** — apps declare allowlisted HTTPS upstreams (`capabilities.feeds`, `capabilities.proxy`) read through the shell's same-origin feed/proxy routes with storage caching. No auth is forwarded upstream.
-- **Access** — sign in with your Kody account to skip the device gate entirely (the main way in, including on the Kindle Scribe). A one-time code (4 digits, single use, 10 minutes) minting a 30-day session is kept for local testing only. Agents use MCP exports, which are never gated. There is no secret to configure.
+- **Access** — sign in with your Kody account to skip the device gate entirely (the only way in, including on the Kindle Scribe). The local mock target used for development skips the gate entirely. Agents use MCP exports, which are never gated. There is no secret to configure.
 - **Help and About** — built-in shell pages, not apps. They can be hidden from the Settings app.
 
 The shipped catalog has 18 apps: app-store, arrow-game, calculator, calendar, cellular-playground, clock, counter, daily-feed, eight-ball, generic-feed, hoodie-weather, link-drop, mac-puzzle, news, probe, settings, three-bit-art, and xkcd. See [`pkg/catalog/README.md`](pkg/catalog/README.md) for what each one does and the catalog membership checklist.
@@ -33,7 +33,7 @@ The shipped catalog has 18 apps: app-store, arrow-game, calculator, calendar, ce
 This repository has two different "roots", and they serve different audiences. Do not confuse them:
 
 - **This file, and `AGENTS.md` at the repository root, are for maintainers of this repository.** They describe the repo layout, how to change the shell, how to run the tests, how to write a spec, and how to publish.
-- **`pkg/` is the Kody package itself.** Its `pkg/README.md` and `pkg/AGENTS.md` are for users and agents *of the package* on Kody: how to set up a fork, unlock it, install apps, and write an app definition. Those files ship inside the package. The files at the repository root do not.
+- **`pkg/` is the Kody package itself.** Its `pkg/README.md` and `pkg/AGENTS.md` are for users and agents *of the package* on Kody: how to set up a fork, sign in, install apps, and write an app definition. Those files ship inside the package. The files at the repository root do not.
 
 If you just want to use kody-os, start with the [Setup guide](pkg/docs/setup.md). The rest of this file is for people working on the code.
 
@@ -45,9 +45,9 @@ pkg/                 The Kody package — the only directory that ships to Kody.
                      client/, bridge/, and apps/ (registry, catalog, forms, client).
   catalog/           Shipped app dirs (definition.json + RECIPE.md + index.html),
                      generated index, plus tests.
-  docs/              Package-user docs: setup, device-key,
+  docs/              Package-user docs: setup,
                      scribe-limitations, style-guide.
-  scripts/           kody dev helpers: mint-dev-otp, registry, catalog, add-app, clear-auth.
+  scripts/           kody dev helpers: registry, catalog, add-app.
   public/            Theme, favicon, screenshots, and styles.css (inlined into src/shell-css.ts).
   package.json       Single source of truth for version and build.
   README.md          Package-user README (ships with the package).
@@ -78,7 +78,7 @@ kody dev --target mock
 # → App ready at http://127.0.0.1:4302/
 ```
 
-Full local-dev instructions, including minting a dev OTP and installing the App Store, are in `pkg/README.md` and `pkg/AGENTS.md`. Two rules that bite every new maintainer, so they are stated here too:
+Full local-dev instructions, including installing the App Store, are in `pkg/README.md` and `pkg/AGENTS.md`. Two rules that bite every new maintainer, so they are stated here too:
 
 - **Run `kody dev` from `pkg/` only.** The repository root fails (missing `kody.app.entry`).
 - **Stop the preview before any mock-store write.** A running preview serves its startup snapshot from memory; a `kody execute` write made while it runs lands on disk and is then silently overwritten by the preview's next action. Stop, write, restart.
@@ -111,7 +111,7 @@ The full maintainer rules are in [`AGENTS.md`](AGENTS.md). The ones that most of
 - **GET forms only in browser UI.** Kody's edge rejects mutating requests from package-app subdomains with a foreign or `null` Origin, so never render a POST form or `fetch` a POST. `POST /apps/:id` stays for API clients only.
 - **Version + build are a single source of truth in `pkg/package.json`.** `pkg/AGENTS.md` and `pkg/README.md` headers must match it, updated in the same commit as any bump. Changes outside `pkg/` (specs, repo tooling) do not bump the version; app definitions written via `add_app` are data, not package code, and do not either.
 - **Styles are inlined.** `pkg/src/shell-css.ts` is generated from `pkg/public/styles.css` — regenerate after any theme edit.
-- **Capabilities are disclosure, not a sandbox.** Bundle scripts run same-origin with full session authority, so installing an app is trusting its code. Review third-party bundles before shipping one in the catalog.
+- **Capabilities are disclosure, not a sandbox.** Bundle scripts run same-origin with the visitor's full authority, so installing an app is trusting its code. Review third-party bundles before shipping one in the catalog.
 
 ## Publishing
 

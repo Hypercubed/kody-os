@@ -21,23 +21,19 @@ This policy's own addition, and the header correction from v0.1.5 to v0.1.7 that
 
 ```ts
 import main, { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, get_launcher_state, get_recent, clear_recent, backup, restore } from 'kody:@hypercubed/kody-os'
-import { mint_otp } from 'kody:@hypercubed/kody-os'
-
-const otp = await mint_otp() // { ok: true, code: '4821' } — single use, 10 min
 ```
 
 ## Device access gate
 
-Only `src/app.ts` fetch requests are gated; MCP exports are not. The owner mints a 4-digit OTP over MCP; typing it into the unlock form burns it and mints a session (random token, SHA-256 hash in `packageStorage()`, 30-day expiry, HttpOnly cookie named `<cookiePrefix>kody_os_auth` so the edge forwards it). There is no other way in: OTP sessions and the owner-only Kody bypass below are the whole gate — no secret, no derived code, no stored-hash fallback. `?k=` is only a single-use OTP submission transport, never a session token, and no link, form, or redirect the shell renders carries a credential.
+Only `src/app.ts` fetch requests are gated; MCP exports are not. Kody login is the only way in: a platform-verified Kody visitor with role `owner` in the owning org is served, verified per request — no session, no code, no cookie, no secret, no derived code, no stored-hash fallback. No link, form, redirect, or header the shell renders carries a credential. Under the local mock target (`kody dev --target mock`, detected by the `local:`-prefixed package/source id in the runtime context) the gate is skipped entirely, so local dev is login-free.
 
-- No secret exists to create, rotate, or revoke: steps are in [Device key](docs/device-key.md). Session and OTP registries hold SHA-256 hashes only (`kody-os.auth.sessions.v2`, `kody-os.auth.otp.v2`); the v1 keys are never read since the v2.0.0 cutover, so every pre-cutover session and OTP stopped working then and each device needed a fresh OTP or Kody login. `scripts/clear-auth.ts` clears both v2 and v1 registries in a local/mock store and returns counts only.
-- Unlock form submits to path form `/unlock/<code>` (the edge drops query strings, so `?k=` never arrives); success sets the session cookie and 303-redirects to a clean URL. Wrong/expired codes re-render locked with an inline error; 10+ failures in 10 minutes locks out with a notice. Logout is device-sessions only.
-- Unauthenticated requests get the same honest 404. The Kody bypass is owner-only (`isKodyOwnerVisitor` in `src/auth.ts` — platform visitor header with role `owner` plus a live `metaGetCurrentUser` confirm, fail-closed). Any other verified Kody visitor falls through to the device gate like an anonymous visitor. MCP exports are still ungated by fetch.
+- No secret exists to create, rotate, or revoke, and there are no shell sessions to clear: Kody login is verified per request, so signing out of Kody itself ends access. Retired OTP/session registry keys (`kody-os.auth.otp.v2`, `kody-os.auth.sessions.v2`, and the v1 keys) are never read; every pre-removal session and OTP stopped working at the publish carrying the removal, and only Kody login restores access.
+- Requests without verified visitor identity get the same honest 404. The Kody gate is owner-only (`isKodyOwnerVisitor` in `src/auth.ts` — platform visitor header with role `owner` plus a live `metaGetCurrentUser` confirm, fail-closed). Any other visitor is denied like an anonymous visitor. MCP exports are still ungated by fetch.
 - Response headers on every HTML/JSON page: `no-store`, `no-referrer`, `nosniff`, `frame-ancestors 'none'`.
 
 ## App actions and the package-app edge
 
-Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain when the browser reports a foreign or `null` `Origin`. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })`. UI actions are GET forms (`GET /apps/:id?action=<name>`, no credential field — authentication rides the session cookie); `POST /apps/:id` stays for API clients. Bundle scripts resolve action URLs against the shell-stamped `data-action-base="/apps/<id>"` container with `credentials: 'same-origin'`. Checklist: `src/apps/INTEGRATION.md`.
+Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain when the browser reports a foreign or `null` `Origin`. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })`. UI actions are GET forms (`GET /apps/:id?action=<name>`, no credential field — authentication rides the platform-verified Kody visitor); `POST /apps/:id` stays for API clients. Bundle scripts resolve action URLs against the shell-stamped `data-action-base="/apps/<id>"` container with `credentials: 'same-origin'`. Checklist: `src/apps/INTEGRATION.md`.
 
 ## Adding an app
 
@@ -48,9 +44,9 @@ Registry write, not a package change: no commit, no republish. Shipped catalog a
 - `ui.menuBar: true` also shows the app in the top menu bar while installed (after Apps, alphabetically by label). Author-controlled, not a user toggle; hidden apps are excluded, and uninstalling removes the link. No shipped app uses it today: Help and About are built-in shell pages, not catalog apps.
 - `capabilities.feeds`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }` — HTTPS only, served via `GET /feed/:app/:name` with storage caching. Data-only declarations; the route takes the feed name, never a URL.
 - `capabilities.proxy`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }`, same limits as feeds — HTTPS only, served via `GET /proxy/:app/:name` with storage caching. The route takes the proxy name, never a URL.
-- `capabilities.manageApps`: boolean. Only a bundle declaring this may use the shell management API (`GET /manage/rows|install|update|restore`); undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority.
-- `capabilities.theme`: `{ view: boolean, set: boolean }` — `view` allows the read route, `set` allows set and reset through `GET /theme/:app`; a definition with neither flag true is treated as not declaring theme. Undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with session authority.
-- Bundle scripts run same-origin with full session authority: installing an app = trusting its code. Review third-party bundles before `import_app`.
+- `capabilities.manageApps`: boolean. Only a bundle declaring this may use the shell management API (`GET /manage/rows|install|update|restore`); undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with the visitor's authority.
+- `capabilities.theme`: `{ view: boolean, set: boolean }` — `view` allows the read route, `set` allows set and reset through `GET /theme/:app`; a definition with neither flag true is treated as not declaring theme. Undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with the visitor's authority.
+- Bundle scripts run same-origin with the visitor's full authority: installing an app = trusting its code. Review third-party bundles before `import_app`.
 
 ## Smoke tests
 
@@ -80,16 +76,14 @@ Run from `pkg/` only (repo root fails: missing `kody.app.entry`). Proxy bypass r
 cd pkg
 kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
 systemctl --user enable --now kody-os-dev.service # persistent across turns; verify with is-active + curl status
-kody execute --target mock --file scripts/mint-dev-otp.ts # mint a local-dev OTP (no params); returns a 4-digit single-use code, valid 10 minutes
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
 kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}' # install from catalog by id; op update/list also supported
 kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)" # install a definition file directly; params ARE the definition, no op wrapper
-kody execute --target mock --file scripts/clear-auth.ts # clear local sessions and OTPs (v2 + v1 keys); returns counts only
 ```
 
-**Mock writes need a stopped server.** `kody dev` reads `~/.cache/kody/mock-sessions/default/state.json` once at startup and serves that snapshot from memory; `kody execute` writes the file, not the running process. A write made while the preview is running returns `{ ok: true }` and does land on disk, but the preview never shows it — and the preview's next write (any app action or state change) rewrites the file from its snapshot and silently deletes the CLI change. So stop `kody dev`, run the `registry`/`catalog`/`add-app`/mint/clear writes, then start it again; "write now, restart later" loses the write as soon as the running preview acts. Verified 2026-10-31: `add-app.ts` with a new id → `{ ok: true }` and present on disk, `GET /apps/<id>` still 404, and the definition gone from the file after one `set_count` on the preview. Live-reload covers `src/` edits; it does not cover mock data.
+**Mock writes need a stopped server.** `kody dev` reads `~/.cache/kody/mock-sessions/default/state.json` once at startup and serves that snapshot from memory; `kody execute` writes the file, not the running process. A write made while the preview is running returns `{ ok: true }` and does land on disk, but the preview never shows it — and the preview's next write (any app action or state change) rewrites the file from its snapshot and silently deletes the CLI change. So stop `kody dev`, run the `registry`/`catalog`/`add-app` writes, then start it again; "write now, restart later" loses the write as soon as the running preview acts. Verified 2026-10-31: `add-app.ts` with a new id → `{ ok: true }` and present on disk, `GET /apps/<id>` still 404, and the definition gone from the file after one `set_count` on the preview. Live-reload covers `src/` edits; it does not cover mock data.
 
-Install the `app-store` catalog app with the server stopped (see above): mint an OTP first, then `catalog.ts` install as above — no Python step needed any more. Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. Start the preview and enter the minted code in the unlock form — footer then reads `via cookie` with a clean URL. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. A minted OTP is single use, so there is no repeatable authenticated `fetch` check: verify actions in the unlocked browser instead.
+Install the `app-store` catalog app with the server stopped (see above): `catalog.ts` install as above — no Python step needed any more. Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No unlock step: the mock target serves login-free. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. There is no authenticated `fetch` check ceremony: verify actions in the browser instead.
 
 ## Edge cases
 
