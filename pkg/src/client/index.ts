@@ -367,7 +367,7 @@ if (clock && typeof setInterval !== 'undefined') {
 		function render(): void {
 			try {
 				var d = new Date()
-				el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
+				el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 			} catch (err) {
 				// Never break the page for a clock refresh.
 			}

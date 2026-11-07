@@ -204,18 +204,6 @@ Decision 6).
 
 ## 5. Verification on the Scribe
 
-- [ ] 5.1 Install via `add_app` on the live
-  store (definition as authored in task 1;
-  backup the live store first if any
-  existing app would be touched, which this
-  change does not do). Confirm `add_app`
-  returns `{ ok: true }` and the app appears
-  in `list_apps` and on the Apps page, with
-  no package republish. (The Daily Brief
-  check in the original text is overtaken:
-  Daily Brief was deleted live on 2026-11-04
-  after its feed moved to Daily Feed; there
-  is no Daily Brief left to confirm.)
 - [ ] 5.2 The user runs the app on the
   Scribe: open the empty app and read the
   prompt, push an entry from their agent
@@ -321,3 +309,5 @@ Note on mock preview check: unauthenticated curl to /apps/daily-feed returns the
 Note (2026-11-04 evening): user confirmed browser rendering of the mock app looks good with entries, then asked for the data to be removed to see the empty landing page. Mock feed cleared via act set_feed to empty (before: 2 mock entries, after: empty string, verified), dev restarted as pid 92676. The app definition itself was NOT removed, only its feed data; the pre-clear mock store is backed up at /tmp/mock-state-before-clear.json on be-quite-900.
 
 Note (2026-11-04 evening, live install): user directed install on hosted Kody with no data. Definition used was byte-identical to local pkg/catalog/daily-feed.bundle.json (sha256 6157c5e1ba0f8045cc805017ce5086fa06e1d288ac135e365ffd23b79378e5bd, catalogVersion 2, Help-style code-block prompt). Live add_app returned { ok: true, id: "daily-feed" }; verified live list_apps count 18 -> 19, daily-feed present (schemaVersion 5, reading, page), state { feed: "" }, daily-brief still present and untouched. No repo commit, push, or Kody package publish was made for this install; add_app is a registry write only. Live URL: https://hypercubed.kody.run/kody-os/apps/daily-feed (needs device session; not pinned to home unless the user adds it via Apps Edit).
+
+Removed 2026-11-07 (user direction): tasks 5.1 removed - publish/live-check tasks; the user publishes on his own schedule; live verification only where genuinely required.

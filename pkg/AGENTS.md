@@ -20,7 +20,7 @@ This policy's own addition, and the header correction from v0.1.5 to v0.1.7 that
 ## Imports
 
 ```ts
-import main, { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, get_launcher_state, backup, restore } from 'kody:@hypercubed/kody-os'
+import main, { add_app, act, list_apps, get_app_state, export_app, import_app, remove_app, get_launcher_state, get_recent, clear_recent, backup, restore } from 'kody:@hypercubed/kody-os'
 import { mint_otp } from 'kody:@hypercubed/kody-os'
 
 const otp = await mint_otp() // { ok: true, code: '4821' } — single use, 10 min
@@ -98,3 +98,4 @@ Install the `app-store` catalog app with the server stopped (see above): mint an
 - Works without JavaScript (form submit + PRG); the client only enhances `form.app-action` with `?format=json` in-place patching (guarded, falls back to native submit). Exception: the App Store itself requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`, and the rest of the shell still works without JavaScript.
 - Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.
+- App styles live in the app, never in the shell theme: never put app-specific rules in `public/styles.css` (or the generated `src/shell-css.ts`). A rule that targets one app — for example one scoped by that app's panel label (`aria-label`) — belongs in that app's own bundle CSS, as a `<style>` block in its `index.html` or a `.css` file in its `files` map.

@@ -186,15 +186,6 @@
 
 ## 5. Verification on the Scribe
 
-- [ ] 5.1 Install via `add_app` on the live
-  store (definition as authored in tasks
-  1-3; backup the live store first if any
-  existing app would be touched, which
-  this change does not do). Confirm
-  `add_app` returns `{ ok: true, id:
-  "f-flat-minor" }` and the app appears in
-  `list_apps()` and on the Apps page, with
-  no package republish.
 - [ ] 5.2 The user runs the app on the
   Scribe: type a line, run a prelude word,
   define a word, evaluate 100 factorial,
@@ -249,3 +240,5 @@ only after Phase 1 (tasks 1-5) passes.
   any version bump are implementation
   work under tasks 1-6, not part of this
   change document.
+
+Removed 2026-11-07 (user direction): tasks 5.1 removed - publish/live-check tasks; the user publishes on his own schedule; live verification only where genuinely required.

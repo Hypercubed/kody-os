@@ -251,7 +251,7 @@ function pageHeaders(): Record<string, string> {
  * immediately with the browser's local time zone and locale. */
 function headerClock(now?: Date): string {
 	var d = now ? now : new Date()
-	return d.toLocaleDateString(undefined, { timeZone: 'UTC' }) + ' ' + d.toLocaleTimeString(undefined, { timeZone: 'UTC' })
+	return d.toLocaleDateString(undefined, { timeZone: 'UTC' }) + ' ' + d.toLocaleTimeString(undefined, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' })
 }
 
 function shellChrome(opts: {

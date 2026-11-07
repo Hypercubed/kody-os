@@ -932,22 +932,25 @@ button.tile:active .tile-icon {
 	text-align: center;
 }
 
-/* Clock, Counter, Eight Ball: vertically center body content so short
-   widgets stay balanced next to taller neighbors (grid stretch makes
-   the widget fill the row; the body then centers its content).
+/* Clock, Counter, Eight Ball, Hoodie Weather: vertically center body content
+   so short widgets stay balanced next to taller neighbors (grid stretch
+   makes the widget fill the row; the body then centers its content).
    Scoped by panel label like the Counter rule above. */
 .widget[aria-label="Clock"],
 .widget[aria-label="Counter"],
-.widget[aria-label="Eight Ball"] {
+.widget[aria-label="Eight Ball"],
+.widget[aria-label="Hoodie Weather"] {
 	display: flex;
 	flex-direction: column;
 }
 .widget[aria-label="Clock"] .app-body,
 .widget[aria-label="Counter"] .app-body,
 .widget[aria-label="Eight Ball"] .app-body,
+.widget[aria-label="Hoodie Weather"] .app-body,
 .app[aria-label="Clock"] .app-body,
 .app[aria-label="Counter"] .app-body,
-.app[aria-label="Eight Ball"] .app-body {
+.app[aria-label="Eight Ball"] .app-body,
+.app[aria-label="Hoodie Weather"] .app-body {
 	flex: 1;
 	display: flex;
 	flex-direction: column;
