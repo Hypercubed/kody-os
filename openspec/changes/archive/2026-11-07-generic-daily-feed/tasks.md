@@ -2,7 +2,7 @@
 
 ## 0. Open questions first
 
-- [ ] 0.1 Ask the user design Open Questions
+- [x] 0.1 Ask the user design Open Questions
   1 (app id: `daily-feed` vs
   `generic-daily-feed`), 2 (entry cap and
   entry size defaults), 3 (catalog from the
@@ -23,6 +23,7 @@ Decision 5 (Daily Brief feed moved verbatim
 Question 5 was settled for v1 as page-only; a
 widget remains a future step (design.md,
 Decision 6).
+  Closed as moot at archive (Nov 7, 2026, Tessa): the design questions were never answered; the definition was written using spec defaults (id `daily-feed`, 14 entries / 19,000 chars, page only, no widget), and the id is now baked into live data. No longer actionable.
 - [x] 0.2 Re-check the numbers this spec
   depends on against the repo and the live
   app before building on them: Daily Brief's
@@ -246,20 +247,22 @@ question 3 moved catalog into v1.
 - Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 6.3 "Do not commit, push, or publish this change without the user's explicit direction" — a commit/publish guard that is now the standing rule; nothing is lost by removing it as a task.
 ## 7. Change hygiene
 
-- [ ] 7.1 Verify `openspec validate
+- [x] 7.1 Verify `openspec validate
   --changes` passes if the binary is
   available (otherwise check the change
   shape manually, as with other changes
   in this environment: proposal, design,
   tasks, and spec deltas present and
   internally consistent).
-- [ ] 7.2 Confirm no file outside
+  Verified by Tessa Nov 7, 2026: `openspec validate --changes` 15 passed / 3 failed (18 items); both this change and link-drop-to-kody-os valid; the 3 failures are the pre-existing set.
+- [x] 7.2 Confirm no file outside
   `openspec/changes/generic-daily-feed/`
   was changed by writing this change
   itself. The app, the catalog files, and
   any version bump are implementation
   work under tasks 1-6, not part of this
   change document.
+  Verified by Tessa Nov 7, 2026: the archive commit `d1ba63d` touched only the two change folders (10 files, all inside them); the canonical spec sync is the archive's documented job, not spec-writing side effects.
 - [x] 7.3 When the change is done, archive
   it to
   `openspec/changes/archive/<YYYY-MM-DD>-generic-daily-feed/`
@@ -317,3 +320,4 @@ Removed 2026-11-07 (user direction): tasks 5.1 removed - publish/live-check task
 ## Close-out note (2026-11-07, archive)
 
 - generic-daily-feed (Daily Feed): Scribe legs 5.2/5.3 verified by the owner on the live/Scribe check, Nov 7, 2026 (do NOT re-run). Spec deltas already synced into openspec/specs/daily-feed/spec.md (validate fix; delta vs canonical differ only by the ADDED header). Validate shape was fixed first (commit bb4b2d7); canonical spec exists. Archived with no open boxes remaining in the live-check scope.
+  Archive tidy-up Nov 7, 2026 (Tessa): all remaining boxes closed — 0.1 moot, 7.1/7.2 verified. 0 unchecked boxes remain.

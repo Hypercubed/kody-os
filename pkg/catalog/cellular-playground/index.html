@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+.cp-wrap { padding: 16px; max-width: 560px; margin: 0 auto; }
+.cp-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.cp-row button { flex: 1; }
+
+.cp-board { display: block; margin: 0 auto 8px auto; border: 2px solid #111; background: #fff; cursor: pointer; touch-action: none; image-rendering: pixelated; }
+.cp-board:focus { outline: 3px solid #111; outline-offset: 2px; }
+.cp-meta { font-size: 14px; margin: 0 0 8px 0; }
+.cp-note { font-size: 13px; color: #444; }
+</style>
+</head>
+<body>
+<div class="cp-wrap">
+<div class="cp-row">
+<button type="button" class="cp-auto os-btn--dark" data-auto="life">Life (B3/S23)</button>
+<button type="button" class="cp-auto" data-auto="brain">Brian's Brain</button>
+<button type="button" class="cp-auto" data-auto="seeds">Seeds (B2)</button>
+</div>
+<div class="cp-row">
+<button type="button" id="cp-step">Step</button>
+<button type="button" id="cp-play">Play</button>
+<button type="button" id="cp-random">Random</button>
+<button type="button" id="cp-clear">Clear</button>
+</div>
+<div class="cp-row">
+<button type="button" class="cp-paint os-btn--dark" data-paint="1">Alive</button>
+<button type="button" class="cp-paint" data-paint="0">Empty</button>
+<button type="button" class="cp-paint" data-paint="2" id="cp-paint2">Refractory</button>
+</div>
+<p class="cp-meta" id="cp-meta">Generation 0</p>
+<canvas class="cp-board" id="cp-board" width="520" height="364" tabindex="0" aria-label="Cellular automaton board">This browser cannot draw the board.</canvas>
+<p class="cp-note" id="cp-fail" style="display:none">This browser cannot draw the board (canvas 2D is unavailable).</p>
+<p class="cp-note" id="cp-help">Paint by tapping or dragging cells. Keyboard: focus the board, arrow keys move the cursor, Space paints.</p>
+<p class="cp-note">Painting: Alive fills a live cell (firing in Brian's Brain), Empty erases to an empty/off cell, Refractory fills a refractory cell and only appears for Brian's Brain.</p>
+<p class="cp-note">A kody-os rewrite of <a href="https://github.com/Hypercubed/CellularPlayground" target="_blank" rel="noopener">Hypercubed/CellularPlayground</a> on GitHub.</p>
+</div>
+<script>
+var cpScript = null;
+try { cpScript = document.currentScript; } catch (err) { cpScript = null; }
+var cpSection = null;
+(function () {
+  var el = cpScript;
+  while (el) {
+    if (el.getAttribute && el.getAttribute('data-app-id')) { cpSection = el; break; }
+    el = el.parentNode;
+  }
+  if (!cpSection) {
+    var secs = document.querySelectorAll('section[data-app-id]');
+    if (secs.length > 0) { cpSection = secs[0]; }
+  }
+})();
+var CP_W = 20;
+var CP_H = 14;
+var cpStore = null;
+var cpState = { automaton: 'life', generation: 0, grid: '' };
+var cpPaint = 1;
+var cpPlaying = false;
+var cpTimer = null;
+var cpDragging = false;
+var cpLastGrid = '';
+var cpLastAuto = '';
+var cpCanvas = null;
+var cpCtx = null;
+var cpCellCss = 26;
+var cpCellDev = 26;
+var cpDpr = 1;
+var cpCursor = 0;
+var cpFocused = false;
+var cpLastPaintIdx = -1;
+var cpLastPaintAt = 0;
+function cpEmptyGrid() {
+  var s = '', i;
+  for (i = 0; i < CP_W * CP_H; i++) { s += '0'; }
+  return s;
+}
+function cpPreset(auto) {
+  var cells = [], i, x, y;
+  for (i = 0; i < CP_W * CP_H; i++) { cells.push('0'); }
+  function setCell(px, py, v) {
+    if (px >= 0 && px < CP_W && py >= 0 && py < CP_H) { cells[py * CP_W + px] = v; }
+  }
+  if (auto === 'brain') {
+    setCell(9, 6, '1'); setCell(10, 6, '1'); setCell(11, 6, '1'); setCell(10, 5, '1');
+  } else {
+    setCell(2, 1, '1'); setCell(3, 2, '1'); setCell(1, 3, '1'); setCell(2, 3, '1'); setCell(3, 3, '1');
+    setCell(15, 10, '1'); setCell(16, 10, '1'); setCell(17, 10, '1');
+  }
+  return cells.join('');
+}
+function cpRandomGrid(auto) {
+  var cells = [], i, r;
+  for (i = 0; i < CP_W * CP_H; i++) {
+    r = Math.random();
+    if (auto === 'brain') { cells.push(r < 0.15 ? '1' : '0'); }
+    else { cells.push(r < 0.25 ? '1' : '0'); }
+  }
+  return cells.join('');
+}
+function cpAt(grid, x, y) {
+  if (x < 0 || x >= CP_W || y < 0 || y >= CP_H) { return 0; }
+  return parseInt(grid.charAt(y * CP_W + x), 10) || 0;
+}
+function cpNeighbours(grid, x, y) {
+  var n = 0, dx, dy;
+  for (dy = -1; dy <= 1; dy++) {
+    for (dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) { continue; }
+      if (cpAt(grid, x + dx, y + dy) === 1) { n += 1; }
+    }
+  }
+  return n;
+}
+function cpStepGrid(auto, grid) {
+  var out = [], x, y, v, n;
+  for (y = 0; y < CP_H; y++) {
+    for (x = 0; x < CP_W; x++) {
+      v = cpAt(grid, x, y);
+      n = cpNeighbours(grid, x, y);
+      if (auto === 'brain') {
+        if (v === 1) { out.push('2'); }
+        else if (v === 2) { out.push('0'); }
+        else { out.push(n === 2 ? '1' : '0'); }
+      } else if (auto === 'seeds') {
+        if (v === 1) { out.push('0'); }
+        else { out.push(n === 2 ? '1' : '0'); }
+      } else {
+        if (v === 1) { out.push((n === 2 || n === 3) ? '1' : '0'); }
+        else { out.push(n === 3 ? '1' : '0'); }
+      }
+    }
+  }
+  return out.join('');
+}
+function cpLayout() {
+  var canvas = document.getElementById('cp-board');
+  if (!canvas) { return false; }
+  var wrap = canvas.parentNode;
+  var avail = wrap && wrap.clientWidth ? wrap.clientWidth : 560;
+  var style = wrap && window.getComputedStyle ? window.getComputedStyle(wrap) : null;
+  var padL = style ? (parseInt(style.paddingLeft, 10) || 0) : 16;
+  var padR = style ? (parseInt(style.paddingRight, 10) || 0) : 16;
+  avail = avail - padL - padR;
+  if (avail < CP_W * 8) { avail = 528; }
+  var cell = Math.floor(avail / CP_W);
+  if (cell < 8) { cell = 8; }
+  if (cell > 40) { cell = 40; }
+  var dpr = window.devicePixelRatio || 1;
+  if (dpr < 1) { dpr = 1; }
+  if (dpr > 2) { dpr = 2; }
+  var cellDev = Math.max(1, Math.round(cell * dpr));
+  cpCellCss = cell;
+  cpCellDev = cellDev;
+  cpDpr = dpr;
+  var devW = cellDev * CP_W;
+  var devH = cellDev * CP_H;
+  if (canvas.width !== devW || canvas.height !== devH) {
+    canvas.width = devW;
+    canvas.height = devH;
+  }
+  canvas.style.width = (cell * CP_W) + 'px';
+  canvas.style.height = (cell * CP_H) + 'px';
+  return true;
+}
+function cpDraw() {
+  if (!cpCtx) { return; }
+  var w = cpCanvas.width;
+  var h = cpCanvas.height;
+  var cell = cpCellDev;
+  var x, y, i, v;
+  cpCtx.fillStyle = '#fff';
+  cpCtx.fillRect(0, 0, w, h);
+  for (y = 0; y < CP_H; y++) {
+    for (x = 0; x < CP_W; x++) {
+      i = y * CP_W + x;
+      v = cpState.grid.charAt(i);
+      cpCtx.fillStyle = v === '1' ? '#111' : (v === '2' ? '#888' : '#fff');
+      cpCtx.fillRect(x * cell, y * cell, cell, cell);
+    }
+  }
+  var line = Math.max(1, Math.round(cpDpr));
+  cpCtx.fillStyle = '#888';
+  for (x = 1; x < CP_W; x++) { cpCtx.fillRect(x * cell, 0, line, h); }
+  for (y = 1; y < CP_H; y++) { cpCtx.fillRect(0, y * cell, w, line); }
+  if (cpFocused) {
+    var cx = (cpCursor % CP_W) * cell;
+    var cy = Math.floor(cpCursor / CP_W) * cell;
+    var t = Math.max(2, Math.round(cpDpr * 2));
+    cpCtx.fillStyle = '#888';
+    cpCtx.fillRect(cx, cy, cell, t);
+    cpCtx.fillRect(cx, cy + cell - t, cell, t);
+    cpCtx.fillRect(cx, cy, t, cell);
+    cpCtx.fillRect(cx + cell - t, cy, t, cell);
+  }
+}
+function cpCellAt(e) {
+  if (!cpCanvas) { return -1; }
+  var rect = cpCanvas.getBoundingClientRect();
+  var borderL = cpCanvas.clientLeft || 0;
+  var borderT = cpCanvas.clientTop || 0;
+  var width = cpCanvas.clientWidth || rect.width || (cpCellCss * CP_W);
+  var height = cpCanvas.clientHeight || rect.height || (cpCellCss * CP_H);
+  var x = Math.floor((e.clientX - rect.left - borderL) / (width / CP_W));
+  var y = Math.floor((e.clientY - rect.top - borderT) / (height / CP_H));
+  if (x < 0 || x >= CP_W || y < 0 || y >= CP_H) { return -1; }
+  return y * CP_W + x;
+}
+function cpPaintAt(e) {
+  var idx = cpCellAt(e);
+  if (idx < 0) { return; }
+  cpCursor = idx;
+  cpPaintCell(idx);
+  if (cpFocused) { cpDraw(); }
+}
+function cpTouchPoint(e) {
+  if (e.touches && e.touches.length > 0) { return e.touches[0]; }
+  if (e.changedTouches && e.changedTouches.length > 0) { return e.changedTouches[0]; }
+  return null;
+}
+function cpKeyName(e) {
+  if (e.key) { return e.key; }
+  var c = e.keyCode;
+  if (c === 37) { return 'ArrowLeft'; }
+  if (c === 38) { return 'ArrowUp'; }
+  if (c === 39) { return 'ArrowRight'; }
+  if (c === 40) { return 'ArrowDown'; }
+  if (c === 32) { return ' '; }
+  if (c === 13) { return 'Enter'; }
+  return '';
+}
+function cpWireBoard() {
+  var c = cpCanvas;
+  if (!c) { return; }
+  c.addEventListener('mousedown', function (e) {
+    if (e.button && e.button !== 0) { return; }
+    cpDragging = true;
+    cpLastPaintIdx = -1;
+    cpPaintAt(e);
+    e.preventDefault();
+  });
+  c.addEventListener('mousemove', function (e) {
+    if (!cpDragging) { return; }
+    if (e.buttons !== undefined && (e.buttons & 1) !== 1) { return; }
+    cpPaintAt(e);
+  });
+  c.addEventListener('mouseleave', function () { cpDragging = false; });
+  document.addEventListener('mouseup', function () { cpDragging = false; });
+  c.addEventListener('touchstart', function (e) {
+    var t = cpTouchPoint(e);
+    if (!t) { return; }
+    cpDragging = true;
+    cpLastPaintIdx = -1;
+    cpPaintAt(t);
+    e.preventDefault();
+  }, false);
+  c.addEventListener('touchmove', function (e) {
+    if (!cpDragging) { return; }
+    var t = cpTouchPoint(e);
+    if (!t) { return; }
+    cpPaintAt(t);
+    e.preventDefault();
+  }, false);
+  c.addEventListener('touchend', function () { cpDragging = false; }, false);
+  c.addEventListener('touchcancel', function () { cpDragging = false; }, false);
+  c.addEventListener('focus', function () { cpFocused = true; cpDraw(); });
+  c.addEventListener('blur', function () { cpFocused = false; cpDraw(); });
+  c.addEventListener('keydown', function (e) {
+    var key = cpKeyName(e);
+    var x = cpCursor % CP_W;
+    var y = Math.floor(cpCursor / CP_W);
+    if (key === ' ' || key === 'Spacebar' || key === 'Enter') {
+      cpPaintCell(cpCursor);
+      e.preventDefault();
+      return;
+    }
+    if (key === 'ArrowLeft' || key === 'Left') { x -= 1; }
+    else if (key === 'ArrowRight' || key === 'Right') { x += 1; }
+    else if (key === 'ArrowUp' || key === 'Up') { y -= 1; }
+    else if (key === 'ArrowDown' || key === 'Down') { y += 1; }
+    else { return; }
+    e.preventDefault();
+    if (x < 0) { x = 0; }
+    if (x >= CP_W) { x = CP_W - 1; }
+    if (y < 0) { y = 0; }
+    if (y >= CP_H) { y = CP_H - 1; }
+    cpCursor = y * CP_W + x;
+    cpDraw();
+  });
+}
+function cpRebase(server, pending, sent) { return { args: pending, optimistic: pending }; }
+function cpSave(next) {
+  cpState = { automaton: next.automaton, generation: next.generation, grid: next.grid };
+  cpRender();
+  if (cpStore) { cpStore.dispatch('save', cpState, cpState, cpRebase); }
+}
+function cpLiveCount() {
+  var n = 0, i;
+  for (i = 0; i < cpState.grid.length; i++) {
+    if (cpState.grid.charAt(i) !== '0') { n += 1; }
+  }
+  return n;
+}
+function cpRender() {
+  var meta = document.getElementById('cp-meta');
+  if (meta) { meta.textContent = 'Generation ' + cpState.generation + '  |  Live cells ' + cpLiveCount() + '  |  ' + cpState.automaton; }
+  var autos = document.querySelectorAll('.cp-auto');
+  for (var a = 0; a < autos.length; a++) {
+    if (autos[a].getAttribute('data-auto') === cpState.automaton) { autos[a].className = 'cp-auto os-btn--dark'; }
+    else { autos[a].className = 'cp-auto'; }
+  }
+  var p2 = document.getElementById('cp-paint2');
+  if (p2) { p2.style.display = cpState.automaton === 'brain' ? '' : 'none'; }
+  if (cpState.automaton !== 'brain' && cpPaint === 2) { cpPaint = 1; }
+  var paints = document.querySelectorAll('.cp-paint');
+  for (var p = 0; p < paints.length; p++) {
+    if (parseInt(paints[p].getAttribute('data-paint'), 10) === cpPaint) { paints[p].className = 'cp-paint os-btn--dark'; }
+    else { paints[p].className = 'cp-paint'; }
+  }
+  if (cpState.grid === cpLastGrid && cpState.automaton === cpLastAuto) { return; }
+  cpLastGrid = cpState.grid;
+  cpLastAuto = cpState.automaton;
+  cpDraw();
+}
+function cpPaintCell(idx) {
+  var now = Date.now ? Date.now() : new Date().getTime();
+  if (idx === cpLastPaintIdx && now - cpLastPaintAt < 120) { return; }
+  cpLastPaintIdx = idx;
+  cpLastPaintAt = now;
+  var cells = cpState.grid.split('');
+  if (cpState.automaton === 'brain' && cpPaint === 1) {
+    cells[idx] = cells[idx] === '0' ? '1' : cells[idx];
+  } else {
+    cells[idx] = String(cpPaint);
+  }
+  cpSave({ automaton: cpState.automaton, generation: cpState.generation, grid: cells.join('') });
+}
+function cpStopPlay() {
+  cpPlaying = false;
+  if (cpTimer) { clearInterval(cpTimer); cpTimer = null; }
+  var b = document.getElementById('cp-play');
+  if (b) { b.textContent = 'Play'; }
+}
+function cpInit() {
+  if (window.KodyBridge && cpSection) {
+    cpStore = window.KodyBridge.create(cpSection, {
+      fieldTypes: { automaton: 'string', generation: 'integer', grid: 'string' },
+      reassert: function (desired) { return { action: 'save', args: desired, optimistic: desired, rebase: cpRebase }; }
+    });
+    cpStore.subscribe(function (snap) {
+      var d = snap.desired;
+      if (d && typeof d.grid === 'string' && d.grid.length === CP_W * CP_H) {
+        cpState = { automaton: d.automaton || 'life', generation: d.generation || 0, grid: d.grid };
+        cpRender();
+      }
+    });
+    cpStore.startSpanObserver();
+    var cur = cpStore.getState().desired;
+    if (cur && typeof cur.grid === 'string' && cur.grid.length === CP_W * CP_H) {
+      cpState = { automaton: cur.automaton || 'life', generation: cur.generation || 0, grid: cur.grid };
+    }
+  } else {
+    var seed = null;
+    var scripts = document.querySelectorAll('script[data-kody-state-seed]');
+    for (var s = 0; s < scripts.length; s++) {
+      try { seed = JSON.parse(scripts[s].textContent); } catch (err) { seed = null; }
+      if (seed) { break; }
+    }
+    if (seed && typeof seed.grid === 'string' && seed.grid.length === CP_W * CP_H) {
+      cpState = { automaton: seed.automaton || 'life', generation: seed.generation || 0, grid: seed.grid };
+    } else {
+      cpState = { automaton: 'life', generation: 0, grid: cpPreset('life') };
+    }
+  }
+  if (!cpState.grid || cpState.grid.length !== CP_W * CP_H) {
+    cpState.grid = cpPreset(cpState.automaton);
+  }
+  var canvas = document.getElementById('cp-board');
+  if (canvas && canvas.getContext) {
+    try { cpCtx = canvas.getContext('2d'); } catch (err) { cpCtx = null; }
+  }
+  if (canvas && cpCtx) {
+    cpCanvas = canvas;
+    cpCursor = Math.floor(CP_H / 2) * CP_W + Math.floor(CP_W / 2);
+    cpLayout();
+    cpWireBoard();
+  } else {
+    if (canvas) { canvas.style.display = 'none'; }
+    var fail = document.getElementById('cp-fail');
+    if (fail) { fail.style.display = ''; }
+  }
+  window.addEventListener('resize', function () {
+    if (cpCanvas && cpLayout()) { cpDraw(); }
+  });
+  var autos = document.querySelectorAll('.cp-auto');
+  for (var ai = 0; ai < autos.length; ai++) {
+    (function (b) {
+      b.addEventListener('click', function () {
+        var auto = b.getAttribute('data-auto');
+        if (auto === cpState.automaton) { return; }
+        cpStopPlay();
+        cpSave({ automaton: auto, generation: 0, grid: cpPreset(auto) });
+      });
+    })(autos[ai]);
+  }
+  var step = document.getElementById('cp-step');
+  if (step) {
+    step.addEventListener('click', function () {
+      cpSave({ automaton: cpState.automaton, generation: cpState.generation + 1, grid: cpStepGrid(cpState.automaton, cpState.grid) });
+    });
+  }
+  var play = document.getElementById('cp-play');
+  if (play) {
+    play.addEventListener('click', function () {
+      if (cpPlaying) { cpStopPlay(); return; }
+      cpPlaying = true;
+      play.textContent = 'Pause';
+      cpTimer = setInterval(function () {
+        cpSave({ automaton: cpState.automaton, generation: cpState.generation + 1, grid: cpStepGrid(cpState.automaton, cpState.grid) });
+      }, 500);
+    });
+  }
+  var rnd = document.getElementById('cp-random');
+  if (rnd) {
+    rnd.addEventListener('click', function () {
+      cpSave({ automaton: cpState.automaton, generation: 0, grid: cpRandomGrid(cpState.automaton) });
+    });
+  }
+  var clr = document.getElementById('cp-clear');
+  if (clr) {
+    clr.addEventListener('click', function () {
+      cpStopPlay();
+      cpSave({ automaton: cpState.automaton, generation: 0, grid: cpEmptyGrid() });
+    });
+  }
+  var paints = document.querySelectorAll('.cp-paint');
+  for (var i = 0; i < paints.length; i++) {
+    (function (b) {
+      b.addEventListener('click', function () {
+        cpPaint = parseInt(b.getAttribute('data-paint'), 10) || 0;
+        cpRender();
+      });
+    })(paints[i]);
+  }
+  cpRender();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', cpInit);
+} else {
+  cpInit();
+}
+</script>
+</body>
+</html>

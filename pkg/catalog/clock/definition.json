@@ -9,9 +9,9 @@
   "description": "A live clock showing the current time and date.",
   "bundle": {
     "entry": "index.html",
-    "files": {
-      "index.html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<style>\n.clock-wrap { text-align: center; padding: 32px 16px; }\n.clock-time { font-size: 48px; line-height: 1.1; margin: 0 0 8px 0; font-variant-numeric: tabular-nums; }\n.clock-date { font-size: 18px; margin: 0; }\n/* Clock: vertically center body content in the app panel and Home widget (moved from the shell theme — app styles live in the app). */\n.widget[aria-label=\"Clock\"] {\n\tdisplay: flex;\n\tflex-direction: column;\n}\n.widget[aria-label=\"Clock\"] .app-body,\n.app[aria-label=\"Clock\"] .app-body {\n\tflex: 1;\n\tdisplay: flex;\n\tflex-direction: column;\n\tjustify-content: center;\n\tmin-height: 8rem;\n}\n</style>\n</head>\n<body>\n<div class=\"clock-wrap\">\n<p class=\"clock-time\">--:--</p>\n<p class=\"clock-date\">Loading date</p>\n</div>\n<script>\nfunction padNum(n) { return (n < 10 ? '0' : '') + String(n); }\nfunction tickClock(root) {\n  var now = new Date();\n  var h = now.getHours();\n  var m = now.getMinutes();\n  var suffix = h >= 12 ? 'PM' : 'AM';\n  var h12 = h % 12;\n  if (h12 === 0) { h12 = 12; }\n  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n  var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];\n  var t = root.querySelector('.clock-time');\n  var d = root.querySelector('.clock-date');\n  if (t) { t.textContent = String(h12) + ':' + padNum(m) + ' ' + suffix; }\n  if (d) { d.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + String(now.getDate()); }\n}\nfunction initClock() {\n  var roots = document.querySelectorAll('.clock-wrap');\n  for (var i = 0; i < roots.length; i++) { tickClock(roots[i]); }\n}\ninitClock();\nsetInterval(function () {\n  var roots = document.querySelectorAll('.clock-wrap');\n  for (var i = 0; i < roots.length; i++) { tickClock(roots[i]); }\n}, 60000);\n</script>\n</body>\n</html>\n"
-    }
+    "files": [
+      "index.html"
+    ]
   },
   "ui": {
     "title": "Clock",

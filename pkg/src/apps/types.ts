@@ -139,8 +139,20 @@ export interface UiDef {
 export interface BundleManifest {
 	/** Entry file. Must be 'index.html'. */
 	entry: string
-	/** File contents keyed by relative path. Only .html/.js/.css, no '..', no absolute paths. */
-	files: Record<string, string>
+	/** Bundle files, in one of two forms (never both — carrying both is an error):
+	 * - inline map (`Record<path, content>`): the transport and stored form.
+	 *   `add_app` carries contents inline (an agent can only pass JSON) and
+	 *   installed definitions store contents inline, so the runtime, canonical,
+	 *   and stored forms are always the map.
+	 * - manifest list (`string[]`): the on-disk authoring form. Each catalog
+	 *   app directory holds `definition.json` (metadata plus this manifest)
+	 *   alongside the real bundle files (`index.html` required, plus optional
+	 *   `.js` / `.css`, flat next to `definition.json` and `RECIPE.md`).
+	 *   Tooling (`scripts/build-catalog-index.ts`, the catalog harness, and
+	 *   `assembleBundleFiles` in `registry.ts`) resolves the list to the
+	 *   runtime map before validating references, fingerprinting, or storing.
+	 * Only .html/.js/.css, no '..', no absolute paths. */
+	files: Record<string, string> | string[]
 }
 
 export interface FeedDecl {

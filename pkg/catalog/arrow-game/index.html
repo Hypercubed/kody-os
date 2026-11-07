@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+.ag-wrap { padding: 16px; max-width: 520px; margin: 0 auto; }
+.ag-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.ag-stat { border: 2px solid #111; padding: 8px; text-align: center; }
+.ag-stat b { display: block; font-size: 24px; }
+.ag-msg { min-height: 24px; text-align: center; font-weight: 600; margin: 0 0 12px 0; }
+.ag-board { display: grid; gap: 8px; margin-bottom: 12px; }
+.ag-cell, .bundle button.ag-cell { min-height: 0; font-size: 28px; border: 2px solid #111; background: #fff; color: #111; cursor: pointer; padding: 0; aspect-ratio: 1; }
+.ag-cell.safe, .bundle button.ag-cell.safe { background: #dbeafe; border-color: #2563eb; color: #1e40af; }
+.ag-cell.blocked, .bundle button.ag-cell.blocked { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+.ag-cell.empty, .bundle button.ag-cell.empty { border-color: #ddd; cursor: default; }
+.ag-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.ag-row button { flex: 1; }
+.ag-note { font-size: 13px; color: #444; }
+</style>
+</head>
+<body>
+<div class="ag-wrap">
+<div class="ag-stats">
+<div class="ag-stat">Level<b id="ag-level">1</b></div>
+<div class="ag-stat">Lives<b id="ag-lives">0</b></div>
+<div class="ag-stat">Removed<b id="ag-removed">0</b></div>
+</div>
+<p class="ag-msg" id="ag-msg">Remove the blue arrows. Red arrows are blocked and cost a life.</p>
+<div class="ag-board" id="ag-board"></div>
+<div class="ag-row">
+<button type="button" id="ag-reset">Reset board (1 life)</button>
+<button type="button" id="ag-new">New game</button>
+</div>
+<p class="ag-note">A kody-os rewrite of <a href="https://github.com/Hypercubed/arrow-game" target="_blank" rel="noopener">Hypercubed/arrow-game</a> on GitHub.</p>
+</div>
+<script>
+var agScript = null;
+try { agScript = document.currentScript; } catch (err) { agScript = null; }
+var agSection = null;
+(function () {
+  var el = agScript;
+  while (el) {
+    if (el.getAttribute && el.getAttribute('data-app-id')) { agSection = el; break; }
+    el = el.parentNode;
+  }
+  if (!agSection) {
+    var secs = document.querySelectorAll('section[data-app-id]');
+    if (secs.length > 0) { agSection = secs[0]; }
+  }
+})();
+var agStore = null;
+var agState = { board: 'U', level: 1, lives: 0, removed: 0 };
+var agOver = false;
+var agDragging = false;
+var agGesture = {};
+var agLastBoard = '';
+function agGridSize(level) { return Math.ceil(Math.sqrt(level)); }
+function agDirChar(d) {
+  if (d === 'up') { return '↑'; }
+  if (d === 'down') { return '↓'; }
+  if (d === 'left') { return '←'; }
+  return '→';
+}
+function agBlocked(list, one) {
+  var i, o;
+  for (i = 0; i < list.length; i++) {
+    o = list[i];
+    if (o.id === one.id) { continue; }
+    if (one.dir === 'up' && o.col === one.col && o.row < one.row) { return true; }
+    if (one.dir === 'down' && o.col === one.col && o.row > one.row) { return true; }
+    if (one.dir === 'left' && o.row === one.row && o.col < one.col) { return true; }
+    if (one.dir === 'right' && o.row === one.row && o.col > one.col) { return true; }
+  }
+  return false;
+}
+function agParseBoard(board, size) {
+  var list = [], i, ch, dir;
+  for (i = 0; i < board.length; i++) {
+    ch = board.charAt(i);
+    if (ch === '.') { continue; }
+    if (ch === 'U') { dir = 'up'; }
+    else if (ch === 'D') { dir = 'down'; }
+    else if (ch === 'L') { dir = 'left'; }
+    else { dir = 'right'; }
+    list.push({ id: i, row: Math.floor(i / size), col: i % size, dir: dir });
+  }
+  return list;
+}
+function agEncodeBoard(list, size) {
+  var cells = [], i, a;
+  for (i = 0; i < size * size; i++) { cells.push('.'); }
+  for (i = 0; i < list.length; i++) {
+    a = list[i];
+    cells[a.row * size + a.col] = a.dir === 'up' ? 'U' : (a.dir === 'down' ? 'D' : (a.dir === 'left' ? 'L' : 'R'));
+  }
+  return cells.join('');
+}
+function agSolvable(list) {
+  var remaining = list.slice(), i, removable, guard;
+  guard = 0;
+  while (remaining.length > 0 && guard < list.length * 2 + 10) {
+    guard += 1;
+    removable = [];
+    for (i = 0; i < remaining.length; i++) {
+      if (!agBlocked(remaining, remaining[i])) { removable.push(remaining[i]); }
+    }
+    if (removable.length === 0) { return false; }
+    for (i = 0; i < remaining.length; i++) {
+      if (remaining[i].id === removable[0].id) { remaining.splice(i, 1); break; }
+    }
+  }
+  return remaining.length === 0;
+}
+function agGenerate(level) {
+  var size = agGridSize(level), dirs = ['up', 'down', 'left', 'right'], attempt, list, i, r, c;
+  for (attempt = 0; attempt < 50; attempt++) {
+    list = [];
+    for (i = 0; i < level; i++) {
+      r = Math.floor(i / size); c = i % size;
+      list.push({ id: i, row: r, col: c, dir: dirs[Math.floor(Math.random() * 4)] });
+    }
+    if (agSolvable(list)) { return agEncodeBoard(list, size); }
+  }
+  // Fallback: center-out reverse construction (guaranteed solvable).
+  // Cells are placed centre-first; each arrow points in a direction that
+  // strictly increases its Chebyshev distance from the grid centre, so
+  // its ray contains only not-yet-placed cells and it is unblocked when
+  // placed. Forward play is placement order reversed: outside-in.
+  // This replaces the old edge-outward fallback, whose random interior
+  // arrows could face each other and deadlock (e.g. level 16, row 1).
+  var cr = (size - 1) / 2, cc = (size - 1) / 2;
+  var cells = [];
+  for (i = 0; i < level; i++) {
+    r = Math.floor(i / size); c = i % size;
+    cells.push({ id: i, row: r, col: c, dist: Math.max(Math.abs(r - cr), Math.abs(c - cc)), key: Math.random() });
+  }
+  cells.sort(function (a, b) {
+    if (a.dist !== b.dist) { return a.dist - b.dist; }
+    return a.key - b.key;
+  });
+  list = [];
+  for (i = 0; i < cells.length; i++) {
+    var cell = cells[i];
+    var dr = cell.row - cr, dc = cell.col - cc;
+    var allowed = [];
+    if (dr < 0 && Math.abs(dr) >= Math.abs(dc)) { allowed.push('up'); }
+    if (dr > 0 && Math.abs(dr) >= Math.abs(dc)) { allowed.push('down'); }
+    if (dc < 0 && Math.abs(dc) >= Math.abs(dr)) { allowed.push('left'); }
+    if (dc > 0 && Math.abs(dc) >= Math.abs(dr)) { allowed.push('right'); }
+    if (allowed.length === 0) { allowed = dirs.slice(); }
+    list.push({ id: cell.id, row: cell.row, col: cell.col, dir: allowed[Math.floor(Math.random() * allowed.length)] });
+  }
+  // Mutate the fallback only (not the random primary path): random
+  // direction changes, kept only while the board stays solvable. This
+  // breaks the perfect outside-in layering of a pure center-out board
+  // while keeping the guarantee. Budget scales with level, capped so
+  // generation stays fast even on large boards.
+  var mutAttempts = Math.min(level * 20, 1000), m, idx, oldDir, newDir;
+  for (m = 0; m < mutAttempts; m++) {
+    idx = Math.floor(Math.random() * list.length);
+    oldDir = list[idx].dir;
+    newDir = dirs[Math.floor(Math.random() * 4)];
+    if (newDir === oldDir) { continue; }
+    list[idx].dir = newDir;
+    if (!agSolvable(list)) { list[idx].dir = oldDir; }
+  }
+  return agEncodeBoard(list, size);
+}
+function agSquare() {
+  var board = document.getElementById('ag-board');
+  if (!board) { return; }
+  for (var i = 0; i < board.childNodes.length; i++) {
+    var c = board.childNodes[i];
+    if (c.offsetWidth > 0) { c.style.height = c.offsetWidth + 'px'; }
+  }
+}
+function agSetMsg(text) {
+  var el = document.getElementById('ag-msg');
+  if (el) { el.textContent = text; }
+}
+function agRebase(server, pending, sent) { return { args: pending, optimistic: pending }; }
+function agSave(next) {
+  agState = { board: next.board, level: next.level, lives: next.lives, removed: next.removed };
+  agRender();
+  if (agStore) { agStore.dispatch('save', agState, agState, agRebase); }
+}
+function agLoseLife() {
+  if (agState.lives > 0) {
+    agSave({ board: agState.board, level: agState.level, lives: agState.lives - 1, removed: agState.removed });
+    return true;
+  }
+  var checkpoint = Math.floor(agState.level / 5) * 5;
+  if (checkpoint === 0) {
+    agOver = true;
+    agSetMsg('Game over. Final level: ' + agState.level + '. Press New game.');
+    agRender();
+    return false;
+  }
+  agOver = false;
+  agSave({ board: agGenerate(checkpoint), level: checkpoint, lives: Math.floor(checkpoint / 5), removed: agState.removed });
+  agSetMsg('Back to checkpoint level ' + checkpoint + '.');
+  return true;
+}
+function agProcess(id) {
+  var size, list, target, i, next;
+  if (agOver) { return; }
+  if (agGesture[id]) { return; }
+  agGesture[id] = true;
+  size = agGridSize(agState.level);
+  list = agParseBoard(agState.board, size);
+  target = null;
+  for (i = 0; i < list.length; i++) {
+    if (list[i].id === id) { target = list[i]; break; }
+  }
+  if (!target) { return; }
+  if (agBlocked(list, target)) {
+    agSetMsg('That arrow is blocked. Minus 1 life.');
+    agLoseLife();
+    return;
+  }
+  next = [];
+  for (i = 0; i < list.length; i++) {
+    if (list[i].id !== id) { next.push(list[i]); }
+  }
+  if (next.length === 0) {
+    var nl = agState.level + 1;
+    var nv = agState.lives + (nl % 5 === 0 ? 1 : 0);
+    agSetMsg(nl % 5 === 0 ? 'Level complete. Plus 1 life.' : 'Level complete.');
+    agSave({ board: agGenerate(nl), level: nl, lives: nv, removed: agState.removed + 1 });
+    return;
+  }
+  agSave({ board: agEncodeBoard(next, size), level: agState.level, lives: agState.lives, removed: agState.removed + 1 });
+}
+function agRender() {
+  var size = agGridSize(agState.level);
+  var lv = document.getElementById('ag-level');
+  var li = document.getElementById('ag-lives');
+  var rm = document.getElementById('ag-removed');
+  if (lv) { lv.textContent = String(agState.level); }
+  if (li) { li.textContent = String(agState.lives); }
+  if (rm) { rm.textContent = String(agState.removed); }
+  if (agState.board === agLastBoard && !agOver) {
+    var boardEl = document.getElementById('ag-board');
+    if (boardEl && boardEl.childNodes.length > 0) { return; }
+  }
+  agLastBoard = agState.board;
+  var board = document.getElementById('ag-board');
+  if (!board) { return; }
+  board.style.gridTemplateColumns = 'repeat(' + size + ', 1fr)';
+  board.style.maxWidth = Math.min(520, size * 96 + (size - 1) * 8) + 'px';
+  board.style.marginLeft = 'auto';
+  board.style.marginRight = 'auto';
+  while (board.firstChild) { board.removeChild(board.firstChild); }
+  var list = agParseBoard(agState.board, size);
+  var i, r, c, arrow, cell, btn;
+  for (i = 0; i < size * size; i++) {
+    r = Math.floor(i / size); c = i % size;
+    arrow = null;
+    for (var j = 0; j < list.length; j++) {
+      if (list[j].row === r && list[j].col === c) { arrow = list[j]; break; }
+    }
+    if (!arrow) {
+      cell = document.createElement('div');
+      cell.className = 'ag-cell empty';
+      board.appendChild(cell);
+      continue;
+    }
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ag-cell ' + (agBlocked(list, arrow) ? 'blocked' : 'safe');
+    btn.textContent = agDirChar(arrow.dir);
+    btn.setAttribute('data-id', String(arrow.id));
+    (function (aid, b) {
+      b.addEventListener('click', function () { agProcess(aid); });
+      b.addEventListener('mousedown', function () { agDragging = true; agGesture = {}; });
+      b.addEventListener('mouseenter', function (e) {
+        if (agDragging && e.buttons === 1) { agProcess(aid); }
+      });
+      b.addEventListener('touchstart', function () { agDragging = true; agGesture = {}; });
+    })(arrow.id, btn);
+    board.appendChild(btn);
+  }
+  agSquare();
+}
+function agInit() {
+  if (window.KodyBridge && agSection) {
+    agStore = window.KodyBridge.create(agSection, {
+      fieldTypes: { board: 'string', level: 'integer', lives: 'integer', removed: 'integer' },
+      reassert: function (desired) { return { action: 'save', args: desired, optimistic: desired, rebase: agRebase }; }
+    });
+    agStore.subscribe(function (snap) {
+      var d = snap.desired;
+      if (d && typeof d.board === 'string') {
+        agState = { board: d.board, level: d.level || 1, lives: d.lives || 0, removed: d.removed || 0 };
+        agRender();
+      }
+    });
+    agStore.startSpanObserver();
+    var cur = agStore.getState().desired;
+    if (cur && typeof cur.board === 'string') {
+      agState = { board: cur.board, level: cur.level || 1, lives: cur.lives || 0, removed: cur.removed || 0 };
+    }
+  } else {
+    var seed = null;
+    var scripts = document.querySelectorAll('script[data-kody-state-seed]');
+    for (var s = 0; s < scripts.length; s++) {
+      try { seed = JSON.parse(scripts[s].textContent); } catch (err) { seed = null; }
+      if (seed) { break; }
+    }
+    if (seed && typeof seed.board === 'string') {
+      agState = { board: seed.board, level: seed.level || 1, lives: seed.lives || 0, removed: seed.removed || 0 };
+    }
+  }
+  window.addEventListener('resize', function () { agSquare(); });
+  document.addEventListener('mouseup', function () { agDragging = false; agGesture = {}; });
+  document.addEventListener('touchend', function () {
+    agDragging = false;
+    setTimeout(function () { agGesture = {}; }, 300);
+  });
+  var boardBox = document.getElementById('ag-board');
+  if (boardBox) {
+    boardBox.addEventListener('touchmove', function (e) {
+      if (!agDragging) { return; }
+      var t = e.touches[0];
+      var el = document.elementFromPoint(t.clientX, t.clientY);
+      while (el && !el.getAttribute('data-id')) { el = el.parentNode; }
+      if (el && el.getAttribute('data-id')) { agProcess(parseInt(el.getAttribute('data-id'), 10)); }
+    });
+  }
+  var rb = document.getElementById('ag-reset');
+  if (rb) {
+    rb.addEventListener('click', function () {
+      if (agOver) { return; }
+      agSetMsg('Board reset. Minus 1 life.');
+      if (agLoseLife()) {
+        if (!agOver) { agSave({ board: agGenerate(agState.level), level: agState.level, lives: agState.lives, removed: agState.removed }); }
+      }
+    });
+  }
+  var nb = document.getElementById('ag-new');
+  if (nb) {
+    nb.addEventListener('click', function () {
+      agOver = false;
+      agSetMsg('Remove the blue arrows. Red arrows are blocked and cost a life.');
+      agSave({ board: agGenerate(1), level: 1, lives: 0, removed: 0 });
+    });
+  }
+  agRender();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', agInit);
+} else {
+  agInit();
+}
+</script>
+</body>
+</html>

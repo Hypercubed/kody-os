@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+.counter-wrap { text-align: center; padding: 24px 16px; }
+.counter-num { font-size: 56px; line-height: 1.1; margin: 0 0 16px 0; font-variant-numeric: tabular-nums; }
+.counter-row { margin: 0; }
+.counter-hint { font-size: 13px; color: #444; margin: 12px 0 0 0; }
+/* Counter app: center the action row under the centered bundle (moved from the shell theme — app styles live in the app). */
+.app[aria-label="Counter"] .app-body,
+.widget[aria-label="Counter"] .app-body { text-align: center; }
+/* Counter: vertically center body content in the app panel and Home widget (moved from the shell theme — app styles live in the app). */
+.widget[aria-label="Counter"] {
+	display: flex;
+	flex-direction: column;
+}
+.widget[aria-label="Counter"] .app-body,
+.app[aria-label="Counter"] .app-body {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-height: 8rem;
+}
+</style>
+</head>
+<body>
+<!-- Reference implementation: bridge adapter in pkg/src/bridge/bridge.js. Pattern: read initial state from the JSON seed, render from bridge subscriptions, dispatch set_count with a delta rebase, claim the shell Reset form through the bridge. Verified by pkg/catalog/tests/counter-tests.cjs. -->
+<div class="counter-wrap">
+<p class="counter-num">0</p>
+<p class="counter-row"><button type="button" class="counter-step" data-delta="1">+1</button><button type="button" class="counter-step" data-delta="-1">-1</button></p>
+
+</div>
+<script>
+/* Reference implementation for the bridge adapter (Phase 2, decided 2026-10-30).
+ * The bridge owns the store: this bundle only renders from subscriptions,
+ * dispatches set_count, and lets the bridge handle the queue, rebase,
+ * rollback, span adoption, and the Reset-form claim. Initial state comes
+ * from the JSON seed the shell renders before this bundle, never from
+ * scraping spans — spans are only the dual-channel fallback for old
+ * bundles, and the bridge observes them for shell-form patches.
+ * Verified by pkg/catalog/tests/counter-tests.cjs. Script style is
+ * ES2019, var/function only, no arrows, template literals, optional chaining, or nullish coalescing. */
+var counterScriptEl = null;
+try { counterScriptEl = document.currentScript; } catch (err) { counterScriptEl = null; }
+var counterSectionEl = null;
+(function () {
+  var el = counterScriptEl;
+  while (el) {
+    if (el.getAttribute && el.getAttribute('data-app-id')) { counterSectionEl = el; break; }
+    el = el.parentNode;
+  }
+  if (!counterSectionEl) {
+    var sections = document.querySelectorAll('section[data-app-id]');
+    if (sections.length > 0) counterSectionEl = sections[0];
+  }
+})();
+function counterRebase(server, pending, sent) {
+  var delta = pending.count - sent.count;
+  var value = server.count + delta;
+  if (value < 0) { value = 0; }
+  return { args: { value: value }, optimistic: { count: value } };
+}
+function counterPaint(n) {
+  var nums = document.querySelectorAll('.counter-wrap .counter-num');
+  for (var i = 0; i < nums.length; i++) { nums[i].textContent = String(n); }
+}
+var counterStore = null;
+var counterInitialized = false;
+function initCounter() {
+  if (counterInitialized) { return; }
+  counterInitialized = true;
+  if (typeof window === 'undefined' || !window.KodyBridge) {
+    var span = document.querySelector('[data-field="count"] span');
+    if (span) { counterPaint(parseInt(span.textContent, 10) || 0); }
+    return;
+  }
+  counterStore = window.KodyBridge.create(counterSectionEl, { fieldTypes: { count: 'integer' }, reassert: function (desired) { return { action: 'set_count', args: { value: desired.count }, optimistic: desired, rebase: counterRebase }; } });
+  counterStore.subscribe(function (snap) {
+    counterPaint(snap.desired.count);
+  });
+  counterStore.startSpanObserver();
+  counterPaint(counterStore.get('count'));
+  var btns = document.querySelectorAll('.counter-step');
+  for (var i = 0; i < btns.length; i++) {
+    (function (btn) {
+      if (btn && btn.addEventListener) {
+        btn.addEventListener('click', function () {
+          if (!counterStore) { return; }
+          var d = parseInt(btn.getAttribute('data-delta') || '1', 10);
+          if (isNaN(d)) { d = 1; }
+          var current = counterStore.get('count');
+          if (typeof current !== 'number') { current = 0; }
+          var desired = current + d;
+          if (desired < 0) { desired = 0; }
+          if (desired === current) { return; }
+          counterStore.dispatch('set_count', { value: desired }, { count: desired }, counterRebase);
+        });
+      }
+    })(btns[i]);
+  }
+  if (counterSectionEl) {
+    var forms = counterSectionEl.querySelectorAll('form.app-action');
+    for (var f = 0; f < forms.length; f++) {
+      var input = forms[f].querySelector('input[name="action"]');
+      if (input && input.value === 'reset_count') {
+        counterStore.claimForm(forms[f], 'set_count', function () { return { value: 0 }; }, null);
+      }
+    }
+  }
+}
+if (document.readyState === 'loading') {
+  if (document.addEventListener) { document.addEventListener('DOMContentLoaded', initCounter); }
+} else {
+  initCounter();
+}
+</script>
+</body>
+</html>

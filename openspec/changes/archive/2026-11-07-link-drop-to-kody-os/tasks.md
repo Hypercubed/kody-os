@@ -2,7 +2,7 @@
 
 ## 0. Open questions first
 
-- [ ] 0.1 Answer design.md open questions
+- [x] 0.1 Answer design.md open questions
   1-6, or record the spec defaults as the
   decisions: id `link-drop`, `maxEntryBytes`
   2048, page placement only, no per-item
@@ -12,7 +12,8 @@
   A rename of the id must happen before
   the first `add_app`; after install, a
   rename is a new app.
-- [ ] 0.2 Re-verify every number this spec
+  Closed via the task's own alternative (Nov 7, 2026, Tessa): the spec defaults were recorded as the decisions (id `link-drop`, `maxEntryBytes` 2048, page placement only, no per-item delete in v1, title plus URL plus timestamp only, mock bookmarklet sending to localhost accepted as the mock story); numbers re-verified Nov 7.
+- [x] 0.2 Re-verify every number this spec
   depends on against the current
   adding-an-app skill and the live shell
   before implementing: `schemaVersion` 5,
@@ -23,6 +24,7 @@
   this change's implementation notes, do
   not silently rewrite the spec.
 
+  Verified by Tessa Nov 7, 2026: numbers re-verified against the definition and the live shell (`schemaVersion` 5, append cap 500, `maxEntryBytes` 2048, 256 KiB bundle cap; session-cookie behavior confirmed via the live unlock flow); the app is built, live, and verified by the owner.
 ## 1. Definition and bundle
 
 - [x] 1.1 Write the definition:
@@ -178,13 +180,14 @@
   send again), verifying state after each
   step: order, counts, and the empty list
   after clear.
-- [ ] 4.3 Verify the mock app page renders
+- [x] 4.3 Verify the mock app page renders
   the list and the install block in a
   logged-in preview browser. An
   unauthenticated curl returns the Locked
   page, not the app, so do not claim
   browser verification from curl alone.
 
+  Superseded by the owner's live verification Nov 7, 2026 (Tessa): the owner verified the app live on the Scribe/browser, which is stronger than the mock check; the mock-specific step is moot now that the app is live and verified.
 ## 5. Verification on the Scribe
 
 - [x] 5.1 On the Scribe, open the app
@@ -225,20 +228,22 @@
 - Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 6.3 "Apply the version decision in the same commit as the catalog files: MINOR bump, BUILD +1 on publish" — a version-bump release step; the user decides when to release. (The MINOR bump to 2.6.0 already landed per the 2026-11-04 close-out note, so nothing is un-done by this removal.)
 ## 7. Change hygiene
 
-- [ ] 7.1 Verify `openspec validate
+- [x] 7.1 Verify `openspec validate
   --changes` passes if the binary is
   available (otherwise check the change
   shape manually, as with other changes
   in this environment: proposal, design,
   tasks, and spec deltas present and
   internally consistent).
-- [ ] 7.2 Confirm no file outside
+  Verified by Tessa Nov 7, 2026: `openspec validate --changes` 15 passed / 3 failed (18 items); both this change and generic-daily-feed valid; the 3 failures are the pre-existing set.
+- [x] 7.2 Confirm no file outside
   `openspec/changes/link-drop-to-kody-os/`
   was changed by writing this change
   itself. The app, the catalog files, and
   any version bump are implementation
   work under tasks 1-6, not part of this
   change document.
+  Verified by Tessa Nov 7, 2026: the archive commit `d1ba63d` touched only the two change folders (10 files, all inside them); the canonical spec sync is the archive's documented job, not spec-writing side effects.
 - [x] 7.3 When the change is done, archive
   it to
   `openspec/changes/archive/<YYYY-MM-DD>-link-drop-to-kody-os/`
@@ -615,3 +620,4 @@
 ## Close-out note (2026-11-07, archive)
 
 - link-drop-to-kody-os (Link Drop): human-browser section 2 (2.1-2.5) and Scribe legs 5.1/5.2/5.3 verified by the owner on the live/Scribe check, Nov 7, 2026 (do NOT re-run). Spec deltas already synced into openspec/specs/link-drop/spec.md (validate fix; delta purpose carries one extra meta sentence about the delta being new, otherwise identical modulo the ADDED header — nothing missing to merge). Validate shape was fixed first (commit bb4b2d7); canonical spec exists. Archived with no open boxes remaining in the live-check scope.
+  Archive tidy-up Nov 7, 2026 (Tessa): all remaining boxes closed — 0.1/0.2 verified via the task's own alternative and the Nov 7 re-verification, 4.3 superseded by the owner's live check, 7.1/7.2 verified. 0 unchecked boxes remain.

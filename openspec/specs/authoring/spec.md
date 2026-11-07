@@ -16,12 +16,15 @@ The Scribe capability findings SHALL live at `pkg/docs/scribe-limitations.md` (n
 
 `pkg/catalog/` SHALL contain the shipped app definitions (one per-app
 directory `<id>/`, including the App Store itself), each holding
-`definition.json` plus a `RECIPE.md` stating the install steps, plus a
-README stating the catalog membership rules and the `add_app` install
-steps and the rule that editing an app requires re-running the
-catalog-index generator. The operator example SHALL install via `add_app`
-unchanged; each bundle SHALL satisfy the bundle manifest shape (entry
-`index.html`, relative `.html`/`.js`/`.css` only, within the 256 KiB cap).
+`definition.json`, `index.html`, and any optional `.js` / `.css` bundle
+files, plus a `RECIPE.md` stating the install steps, plus a README
+stating the catalog membership rules and the `add_app` install steps and
+the rule that editing an app requires re-running the catalog-index
+generator. The operator example SHALL install via `add_app` unchanged;
+each bundle SHALL satisfy the bundle manifest shape (entry `index.html`,
+relative `.html`/`.js`/`.css` only, within the 256 KiB cap), in either
+form: the inline files map or the on-disk manifest (see app-registry,
+Bundle files on disk).
 Each catalog definition SHALL carry `catalogVersion` under the rule in the
 app-registry spec delta (positive integer, starting at 1 on the app's
 first versioned release, incremented by exactly 1 on any change to that
@@ -45,6 +48,14 @@ requirement and does not appear in the Store list (see app-registry);
 #### Scenario: Catalog app directory holds definition and recipe
 - **WHEN** an agent opens a catalog app directory
 - **THEN** it contains `definition.json` and `RECIPE.md`, and the README states the generator rule for the catalog index.
+
+#### Scenario: Catalog app directory holds the entry file
+- **WHEN** an agent opens a catalog app directory
+- **THEN** it contains `definition.json`, `RECIPE.md`, and `index.html`.
+
+#### Scenario: On-disk app installs verbatim
+- **WHEN** an agent submits an on-disk catalog definition to `add_app`
+- **THEN** each returns `{ ok: true, id }` and the bundle renders.
 
 ### Requirement: Capability authoring rules
 

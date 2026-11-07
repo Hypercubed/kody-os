@@ -324,12 +324,166 @@ export function sanitizeSvgIcon(value: string): { ok: true; icon: string } | { o
 	return { ok: true as const, icon: out.join('') }
 }
 
-/** Validate the bundle manifest of a unified app definition. Returns an error string, or null when valid. */
-function validateBundleManifest(def: Record<string, unknown>): string | null {
+/**
+ * Assemble a definition's bundle files to the runtime files map.
+ * - Inline map form (`files` as `Record<path, content>`): returned as-is.
+ * - Manifest list form (`files` as `string[]`): each path is resolved with
+ *   `readFile` (relative to the app directory); a missing file is an error.
+ * A definition carrying both forms is impossible in one field, so a `files`
+ * value that is neither a map nor a list is rejected as ambiguous.
+ * Returns the assembled map, or an `{ error }` (never throws).
+ */
+export function assembleBundleFiles(
+	bundle: unknown,
+	readFile: (path: string) => string | undefined,
+): { ok: true; files: Record<string, string> } | { ok: false; error: string } {
+	if (!isRecord(bundle)) return { ok: false as const, error: 'definition.bundle must be an object (every unified app ships its own UI files)' }
+	var manifest = bundle as Record<string, unknown>
+	if (manifest['entry'] !== 'index.html') return { ok: false as const, error: 'definition.bundle.entry must be "index.html"' }
+	var rawFiles = manifest['files']
+	if (Array.isArray(rawFiles)) {
+		var out: Record<string, string> = {}
+		for (var li = 0; li < rawFiles.length; li++) {
+			var listPath = rawFiles[li]
+			if (typeof listPath !== 'string' || !isBundlePath(listPath)) {
+				return { ok: false as const, error: 'definition.bundle.files has bad path "' + String(listPath) + '" (relative .html/.js/.css only, no "..", no absolute paths)' }
+			}
+			if (listPath in out) return { ok: false as const, error: 'definition.bundle.files lists "' + listPath + '" twice' }
+			var content = readFile(listPath)
+			if (content === undefined) return { ok: false as const, error: 'definition.bundle.files lists "' + listPath + '" but it is missing on disk' }
+			out[listPath] = content
+		}
+		return { ok: true as const, files: out }
+	}
+	if (!isRecord(rawFiles)) {
+		return { ok: false as const, error: 'definition.bundle.files must be an object (inline contents map) or an array (on-disk manifest list); carrying both is an error' }
+	}
+	var inlineFiles = rawFiles as Record<string, unknown>
+	var inlineOut: Record<string, string> = {}
+	for (var key of Object.keys(inlineFiles)) inlineOut[key] = String(inlineFiles[key])
+	return { ok: true as const, files: inlineOut }
+}
+
+/** Attribute names allowed on a bundle reference element besides its target. Quoted values are blanked first so spaces inside a value can never read as an attribute; bare (value-less) attributes are still caught. */
+function bundleReferenceAttrError(tag: string, attrText: string, allowed: string[]): string | null {
+	var blanked = attrText.replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''")
+	var tokens = blanked.split(/\s+/)
+	for (var ti = 0; ti < tokens.length; ti++) {
+		var nameMatch = /^([A-Za-z-]+)/.exec(tokens[ti])
+		if (!nameMatch) continue
+		var name = nameMatch[1].toLowerCase()
+		if (name === '/') continue
+		if (allowed.indexOf(name) === -1) {
+			return 'bundle reference <' + tag + '> must carry no attributes beyond ' + allowed.join('/') + ' (found "' + name + '")'
+		}
+	}
+	return null
+}
+
+function isExternalBundleRef(target: string): boolean {
+	var lower = target.toLowerCase()
+	if (lower.indexOf('://') !== -1) return true
+	if (lower.charAt(0) === '/' && lower.charAt(1) === '/') return true
+	if (/^(https?|data|blob|file):/.test(lower)) return true
+	return false
+}
+
+/**
+ * Validate the entry's asset references against the assembled files map.
+ * The scan runs over markup only: HTML comments and inline `<script>`
+ * bodies are stripped first, so `<link>`/`<script>` text inside bundle
+ * JavaScript (for example an RSS regex) can never read as a reference.
+ * Supported forms are exactly `<script src="path"></script>` and
+ * `<link rel="stylesheet" href="path">`; every `.js`/`.css` file must
+ * be referenced, dangling references are an error, and unreferenced
+ * non-entry `.html` files stay ignored (never served, hence inert).
+ */
+export function validateBundleReferences(files: Record<string, string>): string | null {
+	var entry = files['index.html']
+	if (typeof entry !== 'string') return 'definition.bundle.files is missing the entry "index.html"'
+	var scan = entry.replace(/<!--[\s\S]*?-->/g, '')
+	scan = scan.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, '<script$1></script>')
+	var used: string[] = ['index.html']
+	var scriptRe = /<script\b([^>]*)>\s*<\/script\s*>/gi
+	var scriptMatch: RegExpExecArray | null
+	while ((scriptMatch = scriptRe.exec(scan)) !== null) {
+		var scriptAttrs = scriptMatch[1]
+		var srcMatch = /\bsrc\s*=\s*(["'])(.*?)\1/i.exec(scriptAttrs)
+		if (!srcMatch) continue
+		var srcAttrErr = bundleReferenceAttrError('script', scriptAttrs, ['src'])
+		if (srcAttrErr) return srcAttrErr
+		var src = srcMatch[2]
+		if (src === '' || isExternalBundleRef(src) || src.charAt(0) === '/' || src.indexOf('..') !== -1 || src.indexOf('\\') !== -1) {
+			return 'bundle reference <script src="' + src + '"> must be a bare relative bundle path (no absolute or external URLs)'
+		}
+		if (!(src in files)) return 'bundle reference <script src="' + src + '"> does not resolve to a manifest file'
+		if (used.indexOf(src) === -1) used.push(src)
+	}
+	var linkRe = /<link\b([^>]*?)\/?>/gi
+	var linkMatch: RegExpExecArray | null
+	while ((linkMatch = linkRe.exec(scan)) !== null) {
+		var linkAttrs = linkMatch[1]
+		var relMatch = /\brel\s*=\s*(["'])(.*?)\1/i.exec(linkAttrs)
+		if (!relMatch || relMatch[2].toLowerCase().indexOf('stylesheet') === -1) continue
+		var linkAttrErr = bundleReferenceAttrError('link', linkAttrs, ['href', 'rel'])
+		if (linkAttrErr) return linkAttrErr
+		var hrefMatch = /\bhref\s*=\s*(["'])(.*?)\1/i.exec(linkAttrs)
+		if (!hrefMatch) return 'bundle reference <link rel="stylesheet"> is missing href'
+		var href = hrefMatch[2]
+		if (href === '' || isExternalBundleRef(href) || href.charAt(0) === '/' || href.indexOf('..') !== -1 || href.indexOf('\\') !== -1) {
+			return 'bundle reference <link href="' + href + '"> must be a bare relative bundle path (no absolute or external URLs)'
+		}
+		if (!(href in files)) return 'bundle reference <link href="' + href + '"> does not resolve to a manifest file'
+		if (used.indexOf(href) === -1) used.push(href)
+	}
+	for (var path of Object.keys(files)) {
+		if (used.indexOf(path) !== -1) continue
+		if (path.slice(-3) === '.js' || path.slice(-4) === '.css') {
+			return 'bundle file "' + path + '" is unreferenced: every .js/.css file must be referenced by the entry'
+		}
+	}
+	return null
+}
+
+/** Validate the bundle manifest of a unified app definition. Returns an error string, or null when valid.
+ *
+ * Both `files` forms are accepted structurally: the inline contents map is
+ * validated fully (paths, string contents, 256 KiB cap, references);
+ * the on-disk manifest list is validated structurally (valid paths, entry
+ * included, no duplicates) and — when `readFile` is given — assembled and
+ * then validated exactly like the inline form (cap plus references).
+ * Without a reader the list form cannot be reference-checked, so
+ * `validateDefinition` (the `add_app` transport path, which carries no
+ * reader) rejects it: `add_app` transport must carry the inline map.
+ */
+function validateBundleManifest(def: Record<string, unknown>, readFile?: (path: string) => string | undefined): string | null {
 	if (!isRecord(def['bundle'])) return 'definition.bundle must be an object (every unified app ships its own UI files)'
 	var manifest = def['bundle'] as Record<string, unknown>
 	if (manifest['entry'] !== 'index.html') return 'definition.bundle.entry must be "index.html"'
-	if (!isRecord(manifest['files'])) return 'definition.bundle.files must be an object'
+	if (Array.isArray(manifest['files'])) {
+		var list = manifest['files'] as unknown[]
+		var seen: string[] = []
+		for (var li = 0; li < list.length; li++) {
+			var listPath = list[li]
+			if (typeof listPath !== 'string' || !isBundlePath(listPath)) {
+				return 'definition.bundle.files has bad path "' + String(listPath) + '" (relative .html/.js/.css only, no "..", no absolute paths)'
+			}
+			if (seen.indexOf(listPath) !== -1) return 'definition.bundle.files lists "' + listPath + '" twice'
+			seen.push(listPath)
+		}
+		if (seen.indexOf('index.html') === -1) return 'definition.bundle.files is missing the entry "index.html"'
+		if (!readFile) return 'definition.bundle.files is an on-disk manifest list: assemble it with assembleBundleFiles before validating references (add_app transport must carry the inline files map)'
+		var assembled = assembleBundleFiles(manifest, readFile)
+		if (!assembled.ok) return assembled.error
+		var listFiles = (assembled as { ok: true; files: Record<string, string> }).files
+		var listTotal = 0
+		for (var lp of Object.keys(listFiles)) listTotal += byteLength(listFiles[lp])
+		if (listTotal > BUNDLE_CAP_BYTES) {
+			return 'definition.bundle.files total ' + listTotal + ' bytes exceeds the 256 KiB cap'
+		}
+		return validateBundleReferences(listFiles)
+	}
+	if (!isRecord(manifest['files'])) return 'definition.bundle.files must be an object (inline contents map) or an array (on-disk manifest list); carrying both is an error'
 	var files = manifest['files'] as Record<string, unknown>
 	var paths = Object.keys(files)
 	if (paths.indexOf('index.html') === -1) return 'definition.bundle.files is missing the entry "index.html"'
@@ -347,7 +501,9 @@ function validateBundleManifest(def: Record<string, unknown>): string | null {
 	if (total > BUNDLE_CAP_BYTES) {
 		return 'definition.bundle.files total ' + total + ' bytes exceeds the 256 KiB cap'
 	}
-	return null
+	var stringFiles: Record<string, string> = {}
+	for (var fk of Object.keys(files)) stringFiles[fk] = files[fk] as string
+	return validateBundleReferences(stringFiles)
 }
 
 function validateUpstreamEntries(kind: string, entries: unknown): string | null {

@@ -261,8 +261,9 @@ async function test(name, fn) {
 }
 
 (async function () {
-  const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, "utf8"));
-  const html = definition.bundle.files["index.html"];
+  const loadedBundle = require('./read-bundle.cjs').readBundleFiles(DEFINITION_PATH);
+  const definition = loadedBundle.definition;
+  const html = loadedBundle.files["index.html"];
   const script = extractScript(html);
 
   await test("DEFINITION: hosting shape and feed allowlist", async function () {

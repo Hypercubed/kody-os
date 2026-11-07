@@ -92,11 +92,15 @@ this change:
    (radius 0, not the 4px field token; 2px shadow not 3px, normal weight, no
    press shift) on the judgement that its differences were
    drift, not a variant. Either call is reversible at review.
+
+   Correction 2026-11-07 (owner decision, task 5.3): the Counter and Eight Ball pills are removed. Task 5.3 deleted the `.bundle button.counter-step` and `.bundle button.ball-shake` pill rules, so both buttons now take the bare default. This supersedes Decision 6 above — the shape no longer reads as intentional. Puzzle New Game stays flattened as decided.
 7. **News active tab loses its bold.** The old
    `.news-tab-on` was bold + inverted; the new active tab is
    inverted via `.os-btn--dark` only. Inversion remains the
    state cue, per the style guide's principle 2. Bold can be
    restored with a marker rule if the owner wants it back.
+
+   Correction 2026-11-07 (owner decision, task 5.2): the active tab now matches the Apps-page Edit buttons exactly — `.bundle button.news-tab-on { background: #000; color: #fff; box-shadow: none; transform: translate(3px, 3px); }`, the same values as `.edit-toggle-btn-on`. The `.os-btn--dark` class is still on the tab (JS active classes unchanged), but the treatment is defined by the `.news-tab-on` rule, not by `.os-btn--dark` alone. Bold is not required.
 8. **`catalogVersion` +1 per touched bundle, no others.**
    Per the authoring spec rule (positive integer, +1 on any
    definition change): about 2→3, app-store 6→7, arrow-game

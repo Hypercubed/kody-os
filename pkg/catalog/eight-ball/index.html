@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+.ball-wrap { text-align: center; padding: 24px 16px; }
+.ball { width: 200px; height: 200px; margin: 0 auto 16px auto; border-radius: 50%; background: #111; color: #fff; display: flex; align-items: center; justify-content: center; }
+.window { width: 120px; height: 120px; border-radius: 50%; background: #fff; color: #111; display: flex; align-items: center; justify-content: center; padding: 12px; }
+.ball-answer { font-size: 15px; line-height: 1.3; margin: 0; }
+/* Eight Ball: vertically center body content in the app panel and Home widget (moved from the shell theme — app styles live in the app). */
+.widget[aria-label="Eight Ball"] {
+	display: flex;
+	flex-direction: column;
+}
+.widget[aria-label="Eight Ball"] .app-body,
+.app[aria-label="Eight Ball"] .app-body {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-height: 8rem;
+}
+</style>
+</head>
+<body>
+<div class="ball-wrap">
+<div class="ball" aria-hidden="true">
+<div class="window"><p class="ball-answer">Ask a question, then tap Shake.</p></div>
+</div>
+<button type="button" class="ball-shake">Shake</button>
+</div>
+<script>
+function shakeIn(root) {
+  var answers = [
+    'It is certain.',
+    'It is decidedly so.',
+    'Without a doubt.',
+    'Yes definitely.',
+    'You may rely on it.',
+    'As I see it, yes.',
+    'Most likely.',
+    'Outlook good.',
+    'Yes.',
+    'Signs point to yes.',
+    'Reply hazy, try again.',
+    'Ask again later.',
+    'Better not tell you now.',
+    'Cannot predict now.',
+    'Concentrate and ask again.',
+    'Do not count on it.',
+    'My reply is no.',
+    'My sources say no.',
+    'Outlook not so good.',
+    'Very doubtful.'
+  ];
+  var out = root.querySelector('.ball-answer');
+  if (!out) { return; }
+  var i = Math.floor(Math.random() * answers.length);
+  out.textContent = answers[i];
+}
+function initBall() {
+  var roots = document.querySelectorAll('.ball-wrap');
+  for (var i = 0; i < roots.length; i++) {
+    (function (root) {
+      var btn = root.querySelector('.ball-shake');
+      if (btn && btn.addEventListener) {
+        btn.addEventListener('click', function () { shakeIn(root); });
+      }
+    })(roots[i]);
+  }
+}
+if (document.readyState === 'loading') {
+  if (document.addEventListener) { document.addEventListener('DOMContentLoaded', initBall); }
+} else {
+  initBall();
+}
+</script>
+</body>
+</html>

@@ -32,8 +32,9 @@ function findBundle() {
   return candidates[0];
 }
 
-var def = JSON.parse(fs.readFileSync(findBundle(), 'utf8'));
-var html = def.bundle.files['index.html'];
+var linkDropBundlePath = findBundle();
+var def = require('./read-bundle.cjs').readBundleFiles(linkDropBundlePath).definition;
+var html = require('./read-bundle.cjs').readBundleFiles(linkDropBundlePath).files['index.html'];
 var script = html.slice(html.indexOf('<script>') + '<script>'.length, html.indexOf('</script>'));
 
 function makeEl() {

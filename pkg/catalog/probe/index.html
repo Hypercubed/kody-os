@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Probe</title>
+<style>
+#results { border-collapse: collapse; width: 100%; }
+#results td, #results th { border: 1px solid #000; padding: 8px 12px; text-align: left; font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>Probe</h1>
+<noscript><p><strong>JavaScript is OFF in this browser.</strong></p></noscript>
+<script>try{var __pp=window.location.pathname;var __pi=__pp.indexOf("/apps/");var __pb=__pi!==-1?__pp.slice(0,__pi)+"/apps/probe":"/apps/probe";var __pu=__pb+"?action=append_report&tag=alive&d="+encodeURIComponent("alive=js-on")+"&format=json";var __pm=new RegExp("[?&]k=([^&]*)").exec(window.location.search||"");if(__pm){__pu+="&k="+__pm[1];}var __alive=new Image();__alive.src=__pu;}catch(__e){}</script>
+<p>Step 1: wait 5 seconds (timer + network tests run automatically).</p>
+<p>Step 2: tap TAP ME once (event tests).</p>
+<p>Step 3: tap SEND RESULTS (fires every result home), or SEND (navigate) as a fallback.</p>
+<p>Step 4: tap TEST CLIPBOARD (this replaces the Scribe clipboard with a test string), then SEND RESULTS.</p>
+<button id="tapbtn" type="button">TAP ME</button>
+<button id="sendbtn" type="button">SEND RESULTS</button>
+<button id="navbtn" type="button">SEND (navigate)</button>
+<button id="clipbtn" type="button">TEST CLIPBOARD</button>
+<p id="sendstatus"></p>
+<table id="results"><tr><th>Test</th><th>Result</th></tr></table>
+<script>
+var results = {};
+var probeScriptStart = (typeof Date !== "undefined" && Date.now) ? Date.now() : 0;
+function row(name, value) {
+  results[name] = String(value);
+  try {
+    var t = document.getElementById("results");
+    var tr = document.createElement("tr");
+    var a = document.createElement("td"); a.textContent = name;
+    var b = document.createElement("td"); b.textContent = String(value);
+    tr.appendChild(a); tr.appendChild(b); t.appendChild(tr);
+  } catch (e) {}
+  beaconRow(name, value);
+}
+function actBase() {
+  try {
+    var p = window.location.pathname;
+    var i = p.indexOf("/apps/");
+    if (i !== -1) {
+      var tail = p.slice(i + 6);
+      var slash = tail.indexOf("/");
+      var id = slash === -1 ? tail : tail.slice(0, slash);
+      if (id) { return p.slice(0, i) + "/apps/" + id; }
+    }
+  } catch (e) {}
+  return "/apps/probe";
+}
+function codeSuffix() {
+  try {
+    var m = new RegExp("[?&]k=([^&]*)").exec(window.location.search || "");
+    if (m) { return "&k=" + m[1]; }
+  } catch (e2) {}
+  return "";
+}
+function pingUrl() {
+  var base = actBase();
+  try {
+    var m = new RegExp("[?&]k=([^&]*)").exec(window.location.search || "");
+    if (m) { return base + "?k=" + m[1]; }
+  } catch (e3) {}
+  return base;
+}
+function actUrl(tag, d) {
+  return actBase() + "?action=append_report&tag=" + encodeURIComponent(tag) + "&d=" + encodeURIComponent(String(d)).slice(0, 160) + "&format=json" + codeSuffix();
+}
+function fireUrl(url) {
+  try {
+    if (typeof fetch === "function") {
+      fetch(url, { headers: { "Accept": "application/json" } }).then(function () {}, function () {});
+    }
+  } catch (e4) {}
+  try {
+    var im = new Image(1, 1);
+    im.setAttribute("width", "1");
+    im.setAttribute("height", "1");
+    im.setAttribute("aria-hidden", "true");
+    im.src = url;
+    if (document.body && document.body.appendChild) document.body.appendChild(im);
+  } catch (e5) {}
+  try {
+    if (typeof XMLHttpRequest !== "undefined") {
+      var xh = new XMLHttpRequest();
+      xh.open("GET", url, true);
+      try { xh.send(); } catch (e6) {}
+    }
+  } catch (e7) {}
+}
+function beacon(tag) {
+  fireUrl(actUrl(tag, tag + "="));
+}
+function beaconRow(name, value) {
+  fireUrl(actUrl("row:" + name, "row:" + name + "=" + String(value)));
+}
+function sendAll() {
+  var keys = ["json","fetch","xhr","fetchWorks","xhrWorks","timer5000","event-click","cssGrid","localStorage","cookie","customElements","customElementDefine","customElementUpgrade","websocket","websocketConnect","blob","objectURL","fileReader","serviceWorker","syncManager","periodicSync","notification","rAF","rAFFired","mutationObserver","intersectionObserver","resizeObserver","customEvent","historyPush","clipboard","clipboardWrite","clipboardRead","clipboardMatch","geolocation","matchMediaMono","hardwareConcurrency","deviceMemory","onLine","proxy","proxyTrap","replaceAllExists","replaceAllExec","constructableStylesheet","adoptedStyleSheets","cssStyleSheetReplaceSync","customElementClassDefine","customElementLightDOM","jsonSeedAtScript","jsonSeedAtDOMContentLoaded","stateSpanAtScript","stateSpanAtDOMContentLoaded","domContentLoadedMs","reRenderLoopMs","paintAfterUpdateMs","bigintExists","bigintType","bigintPrecision","bigintFact100","bigintFact100Len","bigintDivTrunc","bigintModSign","bigintMixThrows","bigintStringifyThrows","wasmExists","wasmValidate","wasmInstantiate","wasmAdd","wasmMemory"];
+  var n = 0;
+  for (var i = 0; i < keys.length; i++) { if (results[keys[i]] !== undefined) { beaconRow(keys[i], results[keys[i]]); n++; } }
+  beacon("manual");
+  setStatus("Sent " + n + " beacons.");
+}
+function navSend() {
+  var keys = ["json","fetch","xhr","fetchWorks","xhrWorks","timer5000","event-click","cssGrid","localStorage","cookie","customElements","customElementDefine","customElementUpgrade","websocket","websocketConnect","blob","objectURL","fileReader","serviceWorker","syncManager","periodicSync","notification","rAF","rAFFired","mutationObserver","intersectionObserver","resizeObserver","customEvent","historyPush","clipboard","geolocation","matchMediaMono","hardwareConcurrency","deviceMemory","onLine","sessionStorage","viewport","proxy","proxyTrap","replaceAllExists","replaceAllExec","constructableStylesheet","adoptedStyleSheets","cssStyleSheetReplaceSync","customElementClassDefine","customElementLightDOM","jsonSeedAtScript","jsonSeedAtDOMContentLoaded","stateSpanAtScript","stateSpanAtDOMContentLoaded","domContentLoadedMs","reRenderLoopMs","paintAfterUpdateMs","bigintExists","bigintType","bigintPrecision","bigintFact100","bigintFact100Len","bigintDivTrunc","bigintModSign","bigintMixThrows","bigintStringifyThrows","wasmExists","wasmValidate","wasmInstantiate","wasmAdd","wasmMemory"];
+  var parts = [];
+  for (var j = 0; j < keys.length; j++) parts.push(keys[j] + "=" + (results[keys[j]] === undefined ? "Q" : results[keys[j]]));
+  setStatus("Navigating with summary - use Back to return.");
+  window.location = actBase() + "?action=append_report&tag=manualnav&d=" + encodeURIComponent("manualnav=" + parts.join("|")).slice(0, 1500) + codeSuffix();
+}
+try {
+  var sb = document.getElementById("sendbtn");
+  if (sb) { if (sb.addEventListener) sb.addEventListener("click", function () { sendAll(); }); else if (sb.attachEvent) sb.attachEvent("onclick", function () { sendAll(); }); }
+  var nb = document.getElementById("navbtn");
+  if (nb) { if (nb.addEventListener) nb.addEventListener("click", function () { navSend(); }); else if (nb.attachEvent) nb.attachEvent("onclick", function () { navSend(); }); }
+} catch (e) {}
+try { row("ua", navigator.userAgent); } catch (e) { row("ua", "ERROR"); }
+try { row("screen", screen.width + "x" + screen.height + " dpr=" + (window.devicePixelRatio || "?") + " depth=" + screen.colorDepth); } catch (e) { row("screen", "ERROR"); }
+try { row("viewport", window.innerWidth + "x" + window.innerHeight); } catch (e) { row("viewport", "ERROR"); }
+try { row("json", typeof JSON !== "undefined" && typeof JSON.parse === "function"); } catch (e) { row("json", "ERROR"); }
+try { row("promise", typeof Promise !== "undefined"); } catch (e) { row("promise", "ERROR"); }
+try { row("symbol", typeof Symbol !== "undefined"); } catch (e) { row("symbol", "ERROR"); }
+try { row("mapset", typeof Map !== "undefined" && typeof Set !== "undefined"); } catch (e) { row("mapset", "ERROR"); }
+try { row("objectAssign", typeof Object.assign === "function"); } catch (e) { row("objectAssign", "ERROR"); }
+try { row("arrayIncludes", typeof Array.prototype.includes === "function"); } catch (e) { row("arrayIncludes", "ERROR"); }
+try { row("stringStartsWith", typeof String.prototype.startsWith === "function"); } catch (e) { row("stringStartsWith", "ERROR"); }
+try { row("fetch", typeof fetch === "function"); } catch (e) { row("fetch", "ERROR"); }
+try { row("xhr", typeof XMLHttpRequest !== "undefined"); } catch (e) { row("xhr", "ERROR"); }
+try { row("formData", typeof FormData !== "undefined"); } catch (e) { row("formData", "ERROR"); }
+try { row("imageBeacon", typeof Image !== "undefined"); } catch (e) { row("imageBeacon", "ERROR"); }
+try { row("qsa", typeof document.querySelector === "function"); } catch (e) { row("qsa", "ERROR"); }
+try { row("addevent", typeof document.addEventListener === "function"); } catch (e) { row("addevent", "ERROR"); }
+try { row("classList", !!(document.body && document.body.classList)); } catch (e) { row("classList", "ERROR"); }
+try { row("getComputedStyle", typeof getComputedStyle === "function"); } catch (e) { row("getComputedStyle", "ERROR"); }
+try {
+  var CE = window.customElements;
+  var ceOk = (typeof CE !== "undefined") && (typeof CE.define === "function") && (typeof CE.get === "function") && (typeof CE.whenDefined === "function");
+  row("customElements", ceOk);
+  if (ceOk) {
+    try {
+      var hermes = CE.get("probe-el-v7");
+      row("customElementRegistry", hermes === undefined);
+    } catch (e2) { row("customElementRegistry", "ERROR"); }
+    try {
+      var PE = function () {};
+      PE.prototype = Object.create(HTMLElement.prototype);
+      CE.define("probe-el-v7", PE);
+      row("customElementDefine", CE.get("probe-el-v7") ? "defined" : "missing");
+    } catch (e3) { row("customElementDefine", "threw"); }
+    try {
+      var inst = document.createElement("probe-el-v7");
+      row("customElementUpgrade", (inst && inst.localName === "probe-el-v7") ? "upgraded" : "odd");
+    } catch (e4) { row("customElementUpgrade", "super-required"); }
+  } else { row("customElementRegistry", "n/a"); row("customElementDefine", "n/a"); row("customElementUpgrade", "n/a"); }
+} catch (e5) { row("customElements", "ERROR"); }
+try {
+  var wsOk = (typeof WebSocket !== "undefined");
+  row("websocket", wsOk);
+  if (wsOk) {
+    try {
+      var ws = new WebSocket("wss://127.0.0.1:9/");
+      ws.onopen = function () { results["websocketConnect"] = "opened"; row("websocketConnect", "opened"); };
+      ws.onerror = function () { results["websocketConnect"] = "error"; row("websocketConnect", "error"); };
+      ws.onclose = function () { if (results["websocketConnect"] === undefined) { results["websocketConnect"] = "closed"; row("websocketConnect", "closed"); } };
+    } catch (e6) { row("websocketConnect", "threw"); }
+  } else { row("websocketConnect", "n/a"); }
+} catch (e7) { row("websocket", "ERROR"); row("websocketConnect", "ERROR"); }
+try {
+  var blb = new Blob(["x"], {type: "text/plain"});
+  row("blob", (blb && blb.size === 1) ? "yes" : "odd");
+  try {
+    var ourl = (typeof URL !== "undefined" && URL.createObjectURL) ? URL.createObjectURL(blb) : "";
+    row("objectURL", (ourl && ourl.indexOf("blob:") === 0) ? "yes" : "no");
+    try { if (ourl && URL.revokeObjectURL) URL.revokeObjectURL(ourl); } catch (e8) {}
+  } catch (e9) { row("objectURL", "ERROR"); }
+  try {
+    if (typeof FileReader !== "undefined") {
+      var fr = new FileReader();
+      fr.onload = function () { results["fileReader"] = (fr.result === "x") ? "yes" : "mismatch"; row("fileReader", results["fileReader"]); };
+      fr.onerror = function () { results["fileReader"] = "ERROR"; row("fileReader", "ERROR"); };
+      fr.readAsText(blb);
+    } else { row("fileReader", "n/a"); }
+  } catch (e10) { row("fileReader", "ERROR"); }
+} catch (e11) { row("blob", "threw"); row("objectURL", "n/a"); row("fileReader", "n/a"); }
+try {
+  row("serviceWorker", (typeof navigator !== "undefined" && "serviceWorker" in navigator) ? "present" : "absent");
+  row("syncManager", (typeof window !== "undefined" && "SyncManager" in window) ? "present" : "absent");
+  row("periodicSync", (typeof window !== "undefined" && "PeriodicSyncManager" in window) ? "present" : "absent");
+  row("notification", (typeof window !== "undefined" && "Notification" in window) ? ("present-" + Notification.permission) : "absent");
+} catch (e12) { row("serviceWorker", "ERROR"); }
+try {
+  var rafOk = (typeof requestAnimationFrame === "function");
+  row("rAF", rafOk);
+  if (rafOk) { requestAnimationFrame(function () { results["rAFFired"] = "fired"; row("rAFFired", "fired"); }); }
+  row("mutationObserver", (typeof MutationObserver !== "undefined"));
+  row("intersectionObserver", (typeof IntersectionObserver !== "undefined"));
+  row("resizeObserver", (typeof ResizeObserver !== "undefined"));
+  row("customEvent", (function () { try { var ce = new CustomEvent("probe-ce"); return ce.type === "probe-ce"; } catch (e13) { return false; } })());
+  row("historyPush", (typeof history !== "undefined" && typeof history.pushState === "function"));
+  row("clipboard", (typeof navigator !== "undefined" && !!navigator.clipboard));
+  row("geolocation", (typeof navigator !== "undefined" && !!navigator.geolocation));
+  row("matchMediaMono", (typeof matchMedia === "function") ? (matchMedia("(monochrome)").matches ? "yes" : "no") : "n/a");
+  row("hardwareConcurrency", (typeof navigator !== "undefined" && navigator.hardwareConcurrency) ? String(navigator.hardwareConcurrency) : "?");
+  row("deviceMemory", (typeof navigator !== "undefined" && navigator.deviceMemory) ? String(navigator.deviceMemory) : "?");
+  row("onLine", (typeof navigator !== "undefined" && typeof navigator.onLine !== "undefined") ? String(navigator.onLine) : "?");
+} catch (e14) { row("rAF", "ERROR"); }
+try {
+  var s = document.body.style;
+  row("cssGrid", "gridTemplateColumns" in s);
+  row("cssFlex", "flexBasis" in s);
+  s.setProperty("--probe-test", "5px");
+  row("cssVars", s.getPropertyValue("--probe-test") === "5px");
+} catch (e) { row("css", "ERROR"); }
+try {
+  var ls = "no", ss = "no", ck = "no";
+  try { localStorage.setItem("p", "1"); ls = localStorage.getItem("p") === "1" ? "yes" : "broken"; localStorage.removeItem("p"); } catch (e) { ls = "ERROR"; }
+  try { sessionStorage.setItem("p", "1"); ss = sessionStorage.getItem("p") === "1" ? "yes" : "broken"; sessionStorage.removeItem("p"); } catch (e) { ss = "ERROR"; }
+  try { document.cookie = "probe=1"; ck = document.cookie.indexOf("probe=1") !== -1 ? "yes" : "no"; } catch (e) { ck = "ERROR"; }
+  row("localStorage", ls); row("sessionStorage", ss); row("cookie", ck);
+} catch (e) { row("storage", "ERROR"); }
+
+/* --- Phase 2 probe items (approved Oct 30, 2026) --- */
+try {
+  row("jsonSeedAtScript", document.querySelector('script[type="application/json"]') ? "yes" : "no");
+  row("stateSpanAtScript", document.querySelector("[data-field]") ? "yes" : "no");
+} catch (e) { row("jsonSeedAtScript", "ERROR"); row("stateSpanAtScript", "ERROR"); }
+try {
+  row("proxy", (typeof Proxy !== "undefined"));
+  if (typeof Proxy !== "undefined") {
+    try {
+      var pt = {};
+      var px = new Proxy(pt, { get: function (t, k) { return (k === "probeVal") ? 42 : t[k]; } });
+      row("proxyTrap", (px.probeVal === 42) ? "yes" : "no");
+    } catch (e2) { row("proxyTrap", "threw"); }
+  } else { row("proxyTrap", "n/a"); }
+} catch (e3) { row("proxy", "ERROR"); row("proxyTrap", "ERROR"); }
+try {
+  row("replaceAllExists", (typeof String.prototype.replaceAll === "function"));
+  if (typeof String.prototype.replaceAll === "function") {
+    try { row("replaceAllExec", ("a-b-c".replaceAll("-", "_") === "a_b_c") ? "yes" : "mismatch"); }
+    catch (e4) { row("replaceAllExec", "threw"); }
+  } else { row("replaceAllExec", "n/a"); }
+} catch (e5) { row("replaceAllExists", "ERROR"); row("replaceAllExec", "ERROR"); }
+try {
+  var csOk = (typeof CSSStyleSheet !== "undefined");
+  row("constructableStylesheet", csOk);
+  if (csOk) {
+    try {
+      var cs = new CSSStyleSheet();
+      row("cssStyleSheetReplaceSync", (typeof cs.replaceSync === "function") ? (function () { try { cs.replaceSync(".probe-phase2{color:#000}"); return "yes"; } catch (e6) { return "threw"; } })() : "no-replaceSync");
+    } catch (e7) { row("cssStyleSheetReplaceSync", "threw"); }
+  } else { row("cssStyleSheetReplaceSync", "n/a"); }
+  row("adoptedStyleSheets", ("adoptedStyleSheets" in document) ? "yes" : "no");
+} catch (e8) { row("constructableStylesheet", "ERROR"); row("adoptedStyleSheets", "ERROR"); }
+try {
+  var classDefine = "n/a";
+  if (typeof window.customElements !== "undefined" && typeof window.customElements.define === "function") {
+    try {
+      var clsFn = new Function("return class ProbeElV8 extends HTMLElement { connectedCallback() { try { this.textContent = 'phase2-light'; } catch (e9) {} } };")();
+      window.customElements.define("probe-el-v8", clsFn);
+      classDefine = window.customElements.get("probe-el-v8") ? "defined" : "missing";
+      try {
+        var el8 = document.createElement("probe-el-v8");
+        document.body.appendChild(el8);
+        row("customElementLightDOM", (el8.textContent === "phase2-light") ? "yes" : "not-rendered");
+        document.body.removeChild(el8);
+      } catch (e10) { row("customElementLightDOM", "threw"); }
+    } catch (e11) { classDefine = "threw"; row("customElementLightDOM", "n/a"); }
+  } else { row("customElementLightDOM", "n/a"); }
+  row("customElementClassDefine", classDefine);
+} catch (e12) { row("customElementClassDefine", "ERROR"); row("customElementLightDOM", "ERROR"); }
+try {
+  var paintDiv = document.createElement("div");
+  paintDiv.id = "probe-paint";
+  paintDiv.textContent = "0";
+  document.body.appendChild(paintDiv);
+  var t0 = (typeof Date !== "undefined" && Date.now) ? Date.now() : 0;
+  for (var ri = 0; ri < 100; ri++) { paintDiv.textContent = String(ri); }
+  var t1 = (typeof Date !== "undefined" && Date.now) ? Date.now() : 0;
+  row("reRenderLoopMs", String(t1 - t0));
+  if (typeof requestAnimationFrame === "function") {
+    var t2 = (typeof Date !== "undefined" && Date.now) ? Date.now() : 0;
+    requestAnimationFrame(function () {
+      var t3 = (typeof Date !== "undefined" && Date.now) ? Date.now() : 0;
+      row("paintAfterUpdateMs", String(t3 - t2));
+    });
+  } else { row("paintAfterUpdateMs", "n/a"); }
+} catch (e13) { row("reRenderLoopMs", "ERROR"); row("paintAfterUpdateMs", "ERROR"); }
+try {
+  if (document.addEventListener) {
+    document.addEventListener("DOMContentLoaded", function () {
+      try {
+        row("jsonSeedAtDOMContentLoaded", document.querySelector('script[type="application/json"]') ? "yes" : "no");
+        row("stateSpanAtDOMContentLoaded", document.querySelector("[data-field]") ? "yes" : "no");
+        if (probeScriptStart && typeof Date !== "undefined" && Date.now) { row("domContentLoadedMs", String(Date.now() - probeScriptStart)); }
+      } catch (e14) {}
+    });
+  }
+} catch (e15) {}
+
+/* --- BigInt probe items (approved Oct 31, 2026) --- */
+/* NOTE: no BigInt literal syntax anywhere in this block (see builder). */
+try {
+  row("bigintExists", (typeof BigInt !== "undefined" && typeof BigInt === "function"));
+  if (typeof BigInt !== "undefined" && typeof BigInt === "function") {
+    try { row("bigintType", (typeof BigInt(10) === "bigint") ? "yes" : "mismatch"); }
+    catch (eB1) { row("bigintType", "threw"); }
+    try {
+      var bp = BigInt("9007199254740991") + BigInt(2);
+      row("bigintPrecision", (String(bp) === "9007199254740993") ? "yes" : "mismatch");
+    } catch (eB2) { row("bigintPrecision", "threw"); }
+    try {
+      var bf = BigInt(1);
+      for (var bi = 2; bi <= 100; bi++) { bf = bf * BigInt(bi); }
+      var bfs = String(bf);
+      row("bigintFact100", (bfs === "93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000") ? "yes" : "mismatch");
+      row("bigintFact100Len", String(bfs.length));
+    } catch (eB3) { row("bigintFact100", "threw"); row("bigintFact100Len", "threw"); }
+    try {
+      var bd = BigInt(-3) / BigInt(2);
+      row("bigintDivTrunc", (String(bd) === "-1") ? "yes" : "mismatch");
+    } catch (eB4) { row("bigintDivTrunc", "threw"); }
+    try {
+      var bm = BigInt(-3) % BigInt(2);
+      row("bigintModSign", (String(bm) === "-1") ? "yes" : "mismatch");
+    } catch (eB5) { row("bigintModSign", "threw"); }
+    try {
+      var bx = BigInt(1) + 1;
+      row("bigintMixThrows", "no-throw");
+    } catch (eB6) { row("bigintMixThrows", "throws"); }
+    try {
+      var bs = JSON.stringify(BigInt(1));
+      row("bigintStringifyThrows", "no-throw");
+    } catch (eB7) { row("bigintStringifyThrows", "throws"); }
+  } else {
+    row("bigintType", "n/a");
+    row("bigintPrecision", "n/a");
+    row("bigintFact100", "n/a");
+    row("bigintFact100Len", "n/a");
+    row("bigintDivTrunc", "n/a");
+    row("bigintModSign", "n/a");
+    row("bigintMixThrows", "n/a");
+    row("bigintStringifyThrows", "n/a");
+  }
+} catch (eB0) {
+  row("bigintExists", "ERROR");
+  row("bigintType", "ERROR");
+  row("bigintPrecision", "ERROR");
+  row("bigintFact100", "ERROR");
+  row("bigintFact100Len", "ERROR");
+  row("bigintDivTrunc", "ERROR");
+  row("bigintModSign", "ERROR");
+  row("bigintMixThrows", "ERROR");
+  row("bigintStringifyThrows", "ERROR");
+}
+/* --- end BigInt probe items --- */
+
+/* --- Wasm probe items (approved Oct 31, 2026) --- */
+try {
+  var wasmOk = (typeof WebAssembly !== "undefined" && typeof WebAssembly.Module === "function" && typeof WebAssembly.Instance === "function" && typeof WebAssembly.validate === "function");
+  row("wasmExists", wasmOk);
+  if (wasmOk) {
+    var wasmBytes = new Uint8Array([0,97,115,109,1,0,0,0,1,7,1,96,2,127,127,1,127,3,2,1,0,7,7,1,3,97,100,100,0,0,10,9,1,7,0,32,0,32,1,106,11]);
+    try { row("wasmValidate", WebAssembly.validate(wasmBytes) ? "yes" : "no"); }
+    catch (eW1) { row("wasmValidate", "threw"); }
+    try {
+      var wasmMod = new WebAssembly.Module(wasmBytes);
+      var wasmInst = new WebAssembly.Instance(wasmMod, {});
+      row("wasmInstantiate", "yes");
+      try { row("wasmAdd", (wasmInst.exports.add(40, 2) === 42) ? "yes" : "mismatch"); }
+      catch (eW2) { row("wasmAdd", "threw"); }
+    } catch (eW3) { row("wasmInstantiate", "threw"); row("wasmAdd", "n/a"); }
+    try {
+      var wasmMem = new WebAssembly.Memory({initial: 1});
+      row("wasmMemory", (wasmMem.buffer.byteLength === 65536) ? "yes" : "mismatch");
+    } catch (eW4) { row("wasmMemory", "threw"); }
+  } else {
+    row("wasmValidate", "n/a");
+    row("wasmInstantiate", "n/a");
+    row("wasmAdd", "n/a");
+    row("wasmMemory", "n/a");
+  }
+} catch (eW0) {
+  row("wasmExists", "ERROR");
+  row("wasmValidate", "ERROR");
+  row("wasmInstantiate", "ERROR");
+  row("wasmAdd", "ERROR");
+  row("wasmMemory", "ERROR");
+}
+/* --- end Wasm probe items --- */
+beacon("load");
+try {
+  if (typeof XMLHttpRequest !== "undefined") {
+    var x = new XMLHttpRequest();
+    x.open("GET", pingUrl(), true);
+    x.onload = function () { results["xhrWorks"] = (x.status === 200) ? "yes" : ("status-" + x.status); };
+    x.onerror = function () { results["xhrWorks"] = "ERROR"; };
+    try { x.send(); } catch (e) { results["xhrWorks"] = "SEND-ERROR"; }
+  } else { results["xhrWorks"] = "n/a"; }
+} catch (e) { results["xhrWorks"] = "ERROR"; }
+try {
+  if (typeof fetch === "function") {
+    fetch(pingUrl()).then(function (r) { results["fetchWorks"] = (r.status === 200) ? "yes" : ("status-" + r.status); }, function () { results["fetchWorks"] = "ERROR"; });
+  } else { results["fetchWorks"] = "n/a"; }
+} catch (e) { results["fetchWorks"] = "ERROR"; }
+try {
+  setTimeout(function () {
+    row("timer5000", "fired");
+    if (results["websocketConnect"] === undefined) { results["websocketConnect"] = "hung"; row("websocketConnect", "hung"); }
+    if (results["rAFFired"] === undefined && results["rAF"] === "true") { results["rAFFired"] = "stalled"; row("rAFFired", "stalled"); }
+    if (results["fileReader"] === undefined) { results["fileReader"] = "hung"; row("fileReader", "hung"); }
+    beacon("timed");
+  }, 5000);
+  row("timerScheduled", "yes");
+} catch (e) { row("timerScheduled", "ERROR"); }
+try {
+  var btn = document.getElementById("tapbtn");
+  function tapped(ev) { row("event-" + ev, "fired"); beacon("tap"); }
+  if (btn.addEventListener) {
+    btn.addEventListener("click", function () { tapped("click"); });
+    btn.addEventListener("touchstart", function () { tapped("touchstart"); });
+    btn.addEventListener("mousedown", function () { tapped("mousedown"); });
+    row("tapListener", "attached");
+  } else if (btn.attachEvent) {
+    btn.attachEvent("onclick", function () { tapped("click-legacy"); });
+    row("tapListener", "legacy-attached");
+  } else { row("tapListener", "NONE"); }
+} catch (e) { row("tapListener", "ERROR"); }
+
+function clipboardErrorName(err) {
+  try { return err && err.name ? err.name : "error"; } catch (e) { return "error"; }
+}
+function testClipboard() {
+  var cb = (typeof navigator !== "undefined") ? navigator.clipboard : undefined;
+  if (!cb || typeof cb.writeText !== "function" || typeof cb.readText !== "function") {
+    row("clipboardWrite", "absent");
+    row("clipboardRead", "absent");
+    row("clipboardMatch", "n/a");
+    setStatus("Clipboard API absent.");
+    return;
+  }
+  setStatus("Testing clipboard...");
+  try {
+    cb.writeText("kody-os-probe").then(function () {
+      row("clipboardWrite", "ok");
+      try {
+        cb.readText().then(function (text) {
+          row("clipboardRead", "ok");
+          row("clipboardMatch", text === "kody-os-probe" ? "yes" : "no");
+          setStatus("Clipboard test done.");
+        }, function (err) {
+          row("clipboardRead", "rejected-" + clipboardErrorName(err));
+          row("clipboardMatch", "n/a");
+          setStatus("Clipboard read rejected.");
+        });
+      } catch (e2) {
+        row("clipboardRead", "threw");
+        row("clipboardMatch", "n/a");
+        setStatus("Clipboard read threw.");
+      }
+    }, function (err) {
+      row("clipboardWrite", "rejected-" + clipboardErrorName(err));
+      try {
+        cb.readText().then(function (text) {
+          row("clipboardRead", "ok");
+          row("clipboardMatch", text === "kody-os-probe" ? "yes" : "no");
+          setStatus("Clipboard write rejected; read done.");
+        }, function (err2) {
+          row("clipboardRead", "rejected-" + clipboardErrorName(err2));
+          row("clipboardMatch", "n/a");
+          setStatus("Clipboard write and read rejected.");
+        });
+      } catch (e3) {
+        row("clipboardRead", "threw");
+        row("clipboardMatch", "n/a");
+        setStatus("Clipboard write rejected; read threw.");
+      }
+    });
+  } catch (e) {
+    row("clipboardWrite", "threw");
+    row("clipboardRead", "n/a");
+    row("clipboardMatch", "n/a");
+    setStatus("Clipboard write threw.");
+  }
+}
+try {
+  var clipbtn = document.getElementById("clipbtn");
+  if (clipbtn) {
+    if (clipbtn.addEventListener) clipbtn.addEventListener("click", function () { testClipboard(); });
+    else if (clipbtn.attachEvent) clipbtn.attachEvent("onclick", function () { testClipboard(); });
+  }
+} catch (e4) {}
+
+function setStatus(msg) {
+  try { var st = document.getElementById("sendstatus"); if (st) st.textContent = msg; } catch (e) {}
+}
+</script>
+</body>
+</html>

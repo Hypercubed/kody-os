@@ -1,0 +1,433 @@
+<div id="news-root" class="news">
+<header class="news-masthead">
+<h1 class="news-name">News</h1>
+<p id="news-date" class="news-date"></p>
+</header>
+<nav id="news-tabs" class="news-tabs" aria-label="News sections"></nav>
+<h2 id="news-title" class="news-title"></h2>
+<div id="news-status" class="news-status" aria-live="polite"></div>
+<div id="news-body"></div>
+</div>
+<style>
+.news { padding: 16px; }
+.news-masthead { border-bottom: 3px solid #000; padding: 0 0 8px 0; margin: 0 0 12px 0; }
+.news-name { font-size: 30px; line-height: 1.1; margin: 0; letter-spacing: 0.06em; text-transform: uppercase; }
+.news-date { font-size: 14px; margin: 6px 0 0 0; }
+.news-tabs { display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 8px; margin: 0 0 16px 0; }
+/* News active tab matches the Apps page Edit pressed treatment (flat inversion, no shadow, pressed shift) — inversion only, no bold. */
+.bundle button.news-tab-on { background: #000; color: #fff; box-shadow: none; transform: translate(3px, 3px); }
+.news-title { font-size: 22px; margin: 0 0 4px 0; }
+.news-status { font-size: 16px; margin: 0 0 12px 0; min-height: 20px; }
+.news-list { list-style: none; margin: 0; padding: 0; }
+.news-item { border-top: 2px solid #000; padding: 12px 0 12px 0; }
+.news-headline { display: block; font-size: 19px; line-height: 1.3; font-weight: bold; color: #000; text-decoration: underline; overflow-wrap: break-word; }
+.news-headline-plain { text-decoration: none; }
+.news-summary { font-size: 16px; line-height: 1.4; margin: 6px 0 0 0; overflow-wrap: break-word; }
+.news-thumb { display: block; max-width: 240px; width: 100%; height: auto; margin: 10px 0 0 0; border: 1px solid #000; }
+.news-error { border: 2px solid #000; padding: 12px; }
+.news-error p { margin: 0 0 8px 0; font-size: 16px; line-height: 1.4; }
+.news-error-text { font-weight: bold; }
+
+</style>
+<script>
+(function () {
+  var MAX_ITEMS = 10;
+  var MAX_SUMMARY = 350;
+  var ERROR_TEXT = "Could not fetch the wires for this section.";
+  var HINT_TEXT = "Check the connection, then tap Retry to reload this section.";
+  var SECTIONS = [
+    { name: "world", label: "World", title: "Top Headlines" },
+    { name: "technology", label: "Technology", title: "Technology Headlines" },
+    { name: "business", label: "Business", title: "Business Headlines" },
+    { name: "science", label: "Science", title: "Science Headlines" },
+    { name: "arts", label: "Arts", title: "Arts Headlines" },
+    { name: "finance", label: "Finance", title: "Finance Headlines" }
+  ];
+  var root = document.getElementById("news-root");
+  if (!root) { return; }
+  var dateEl = document.getElementById("news-date");
+  var tabsEl = document.getElementById("news-tabs");
+  var titleEl = document.getElementById("news-title");
+  var statusEl = document.getElementById("news-status");
+  var bodyEl = document.getElementById("news-body");
+  var current = SECTIONS[0];
+  var requestSeq = 0;
+
+  function clearEl(el) {
+    while (el && el.firstChild) { el.removeChild(el.firstChild); }
+  }
+
+  function normalize(text) {
+    var raw = text === undefined || text === null ? "" : String(text);
+    var parts = raw.split(/\s+/);
+    var out = [];
+    var i;
+    for (i = 0; i < parts.length; i++) {
+      if (parts[i] !== "") { out.push(parts[i]); }
+    }
+    return out.join(" ");
+  }
+
+  function truncate(text) {
+    if (text.length <= MAX_SUMMARY) { return text; }
+    return text.slice(0, MAX_SUMMARY - 1) + "…";
+  }
+
+  function unescapeEntities(text) {
+    var out = text === undefined || text === null ? "" : String(text);
+    out = out.replace(/&#x([0-9a-fA-F]+);/g, function (match, code) {
+      return String.fromCharCode(parseInt(code, 16));
+    });
+    out = out.replace(/&#([0-9]+);/g, function (match, code) {
+      return String.fromCharCode(parseInt(code, 10));
+    });
+    out = out.replace(/&lt;/g, "<");
+    out = out.replace(/&gt;/g, ">");
+    out = out.replace(/&quot;/g, "\"");
+    out = out.replace(/&apos;/g, "'");
+    out = out.replace(/&nbsp;/g, " ");
+    out = out.replace(/&amp;/g, "&");
+    return out;
+  }
+
+  function dropTagged(container, name) {
+    var list = container.getElementsByTagName(name);
+    while (list.length > 0) {
+      var node = list[0];
+      if (node.parentNode) { node.parentNode.removeChild(node); }
+      else { break; }
+    }
+  }
+
+  /* Strip a feed-supplied description to plain text: markup, script and
+   * style never reach the list, only the text they wrap. */
+  function plainText(raw) {
+    if (!raw) { return ""; }
+    var text = "";
+    if (typeof DOMParser !== "undefined") {
+      var doc = null;
+      try { doc = new DOMParser().parseFromString(String(raw), "text/html"); }
+      catch (e) { doc = null; }
+      if (doc && doc.body) {
+        dropTagged(doc.body, "script");
+        dropTagged(doc.body, "style");
+        dropTagged(doc.body, "iframe");
+        text = doc.body.textContent || "";
+      }
+    }
+    if (text === "") {
+      text = unescapeEntities(String(raw).replace(/<[^>]*>/g, " "));
+    }
+    return normalize(text);
+  }
+
+  function childText(parent, tag) {
+    var i, node;
+    for (i = 0; i < parent.childNodes.length; i++) {
+      node = parent.childNodes[i];
+      if (node.nodeType === 1 && node.nodeName === tag) { return node.textContent || ""; }
+    }
+    return "";
+  }
+
+  function firstTag(parent, tag) {
+    var found = parent.getElementsByTagName(tag);
+    if (found && found.length > 0) { return found[0]; }
+    return null;
+  }
+
+  function looksLikeImage(url) {
+    return /\.(jpg|jpeg|png|gif|webp)([?]|$)/i.test(url);
+  }
+
+  /* Absolute http(s) only: a feed link or thumbnail is never allowed to
+   * become javascript:, data:, or any other scheme. */
+  function safeUrl(url) {
+    if (!url) { return ""; }
+    var resolved = String(url);
+    try {
+      var base = typeof window !== "undefined" && window.location ? window.location.href : undefined;
+      resolved = new URL(String(url), base).href;
+    } catch (e) { resolved = String(url); }
+    if (resolved.indexOf("http://") === 0 || resolved.indexOf("https://") === 0) { return resolved; }
+    return "";
+  }
+
+  function thumbFromElement(el) {
+    var candidates = [];
+    var i, url, type, medium, node;
+    var thumb = firstTag(el, "media:thumbnail");
+    if (thumb) { candidates.push(thumb.getAttribute("url") || ""); }
+    var contents = el.getElementsByTagName("media:content");
+    for (i = 0; i < contents.length; i++) {
+      url = contents[i].getAttribute("url") || "";
+      medium = contents[i].getAttribute("medium") || "";
+      if (url !== "" && (medium === "image" || looksLikeImage(url))) { candidates.push(url); }
+    }
+    var enclosures = el.getElementsByTagName("enclosure");
+    for (i = 0; i < enclosures.length; i++) {
+      url = enclosures[i].getAttribute("url") || "";
+      type = enclosures[i].getAttribute("type") || "";
+      if (url !== "" && type.indexOf("image/") === 0) { candidates.push(url); }
+    }
+    for (i = 0; i < candidates.length; i++) {
+      var safe = safeUrl(candidates[i]);
+      if (safe !== "") { return safe; }
+    }
+    return "";
+  }
+
+  function thumbFromBlock(block) {
+    var m = /<media:thumbnail[^>]*url=["']([^"']+)["']/i.exec(block);
+    if (m) { return safeUrl(m[1]); }
+    m = /<media:content[^>]*url=["']([^"']+)["']/i.exec(block);
+    if (m && looksLikeImage(m[1])) { return safeUrl(m[1]); }
+    m = /<enclosure[^>]*url=["']([^"']+)["']/i.exec(block);
+    if (m && looksLikeImage(m[1])) { return safeUrl(m[1]); }
+    return "";
+  }
+
+  function tagValue(block, re) {
+    var m = re.exec(block);
+    if (!m) { return ""; }
+    var v = m[1];
+    if (v.indexOf("<![CDATA[") === 0) { v = v.slice(9); }
+    if (v.slice(-3) === "]]>") { v = v.slice(0, -3); }
+    return unescapeEntities(v);
+  }
+
+  function parseItemsRegex(text) {
+    var items = [];
+    var re = /<item>([\s\S]*?)<\/item>/g;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var block = m[1];
+      items.push({
+        title: tagValue(block, /<title[^>]*>([\s\S]*?)<\/title>/i),
+        link: tagValue(block, /<link[^>]*>([\s\S]*?)<\/link>/i),
+        description: tagValue(block, /<description[^>]*>([\s\S]*?)<\/description>/i) || tagValue(block, /<content:encoded[^>]*>([\s\S]*?)<\/content:encoded>/i),
+        thumb: thumbFromBlock(block)
+      });
+    }
+    return items.length > 0 ? items : null;
+  }
+
+  function parseItems(xmlText) {
+    var text = xmlText === undefined || xmlText === null ? "" : String(xmlText);
+    text = text.trim();
+    if (text === "") { return null; }
+    if (typeof DOMParser === "undefined") { return parseItemsRegex(text); }
+    var doc = null;
+    try { doc = new DOMParser().parseFromString(text, "text/xml"); }
+    catch (e) { doc = null; }
+    if (!doc) { return parseItemsRegex(text); }
+    var errs = doc.getElementsByTagName("parsererror");
+    if (errs && errs.length > 0) { return parseItemsRegex(text); }
+    var itemEls = doc.getElementsByTagName("item");
+    if (!itemEls || itemEls.length === 0) { return null; }
+    var items = [];
+    var i, el, desc;
+    for (i = 0; i < itemEls.length; i++) {
+      el = itemEls[i];
+      desc = childText(el, "description");
+      if (desc === "") { desc = childText(el, "content:encoded"); }
+      items.push({
+        title: childText(el, "title"),
+        link: childText(el, "link"),
+        description: desc,
+        thumb: thumbFromElement(el)
+      });
+    }
+    return items;
+  }
+
+  function formatDate(d) {
+    try {
+      return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    } catch (e) { return ""; }
+  }
+
+  /* Same-origin proxy only: the declared feed name, never a URL. */
+  function feedUrl(name) {
+    var base = "";
+    var el = root;
+    while (el) {
+      if (el.getAttribute) {
+        var attr = el.getAttribute("data-action-base");
+        if (attr) { base = attr; break; }
+      }
+      el = el.parentNode;
+    }
+    if (base === "" && typeof window !== "undefined" && window.location) {
+      base = window.location.pathname || "";
+    }
+    var suffix = "/apps/news";
+    if (base.length > suffix.length && base.slice(base.length - suffix.length) === suffix) {
+      base = base.slice(0, base.length - suffix.length);
+    } else if (base === suffix) {
+      base = "";
+    } else {
+      var appsAt = base.indexOf("/apps/");
+      base = appsAt !== -1 ? base.slice(0, appsAt) : "";
+    }
+    var url = base + "/feed/news/" + name;
+    if (typeof window !== "undefined" && window.location && window.location.search) {
+      var m = /(?:^|[?&])k=([^&]+)/.exec(window.location.search);
+      if (m) { url = url + "?k=" + encodeURIComponent(m[1]); }
+    }
+    return url;
+  }
+
+  function fetchText(url, onOk, onErr) {
+    if (typeof fetch === "function") {
+      fetch(url, { credentials: "same-origin" }).then(function (res) {
+        if (!res.ok) { throw new Error("HTTP " + res.status); }
+        return res.text();
+      }).then(onOk).catch(onErr);
+      return;
+    }
+    if (typeof XMLHttpRequest !== "undefined") {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      try { xhr.withCredentials = true; } catch (e) { /* no credentials support */ }
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status >= 200 && xhr.status < 300) { onOk(xhr.responseText); }
+          else { onErr(new Error("HTTP " + xhr.status)); }
+        }
+      };
+      xhr.onerror = function () { onErr(new Error("Network error")); };
+      try { xhr.send(); } catch (e) { onErr(e); }
+      return;
+    }
+    onErr(new Error("fetch unavailable"));
+  }
+
+  function renderError() {
+    clearEl(bodyEl);
+    if (statusEl) { statusEl.textContent = ""; }
+    var box = document.createElement("div");
+    box.className = "news-error";
+    var msg = document.createElement("p");
+    msg.className = "news-error-text";
+    msg.textContent = ERROR_TEXT;
+    var hint = document.createElement("p");
+    hint.className = "news-error-hint";
+    hint.textContent = HINT_TEXT;
+    var retry = document.createElement("button");
+    retry.setAttribute("type", "button");
+    retry.className = "news-retry";
+    retry.textContent = "Retry";
+    retry.addEventListener("click", function () { load(current); });
+    box.appendChild(msg);
+    box.appendChild(hint);
+    box.appendChild(retry);
+    bodyEl.appendChild(box);
+  }
+
+  function renderItems(items) {
+    clearEl(bodyEl);
+    if (statusEl) { statusEl.textContent = ""; }
+    var list = document.createElement("ol");
+    list.className = "news-list";
+    var count = items.length < MAX_ITEMS ? items.length : MAX_ITEMS;
+    var i;
+    for (i = 0; i < count; i++) {
+      var item = items[i];
+      var li = document.createElement("li");
+      li.className = "news-item";
+      var titleText = normalize(item.title);
+      if (titleText === "") { titleText = "Untitled story"; }
+      var link = safeUrl(item.link);
+      var head;
+      if (link !== "") {
+        head = document.createElement("a");
+        head.className = "news-headline";
+        head.setAttribute("href", link);
+        head.setAttribute("target", "_blank");
+        head.setAttribute("rel", "noopener noreferrer");
+      } else {
+        head = document.createElement("span");
+        head.className = "news-headline news-headline-plain";
+      }
+      head.textContent = titleText;
+      li.appendChild(head);
+      var summaryText = truncate(plainText(item.description));
+      if (summaryText !== "") {
+        var summary = document.createElement("p");
+        summary.className = "news-summary";
+        summary.textContent = summaryText;
+        li.appendChild(summary);
+      }
+      if (item.thumb) {
+        var img = document.createElement("img");
+        img.className = "news-thumb";
+        img.setAttribute("src", item.thumb);
+        img.setAttribute("alt", titleText);
+        li.appendChild(img);
+      }
+      list.appendChild(li);
+    }
+    bodyEl.appendChild(list);
+  }
+
+  function load(section) {
+    requestSeq = requestSeq + 1;
+    var seq = requestSeq;
+    /* Clear first: the previous section must never read as current while
+     * this one is still in flight. */
+    clearEl(bodyEl);
+    if (statusEl) { statusEl.textContent = "Fetching " + section.label + " headlines…"; }
+    fetchText(feedUrl(section.name), function (xml) {
+      if (seq !== requestSeq) { return; }
+      var items = parseItems(xml);
+      if (!items || items.length === 0) { renderError(); return; }
+      renderItems(items);
+    }, function () {
+      if (seq !== requestSeq) { return; }
+      renderError();
+    });
+  }
+
+  function select(section) {
+    current = section;
+    if (titleEl) { titleEl.textContent = section.title; }
+    renderTabs();
+    load(section);
+  }
+
+  function renderTabs() {
+    if (!tabsEl) { return; }
+    clearEl(tabsEl);
+    var i;
+    for (i = 0; i < SECTIONS.length; i++) {
+      tabsEl.appendChild(makeTab(SECTIONS[i]));
+    }
+  }
+
+  function makeTab(section) {
+    var btn = document.createElement("button");
+    btn.setAttribute("type", "button");
+    var active = section.name === current.name;
+    btn.className = active ? "news-tab news-tab-on os-btn--dark" : "news-tab";
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+    btn.textContent = section.label;
+    btn.addEventListener("click", function () { select(section); });
+    return btn;
+  }
+
+  function init() {
+    if (!tabsEl || !titleEl || !statusEl || !bodyEl) { return; }
+    if (dateEl) { dateEl.textContent = formatDate(new Date()); }
+    if (titleEl) { titleEl.textContent = current.title; }
+    renderTabs();
+    load(current);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>

@@ -10,9 +10,10 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFINITION_PATH = path.join(__dirname, '..', 'settings/definition.json');
-const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, 'utf8'));
+const loadedBundle = require('./read-bundle.cjs').readBundleFiles(DEFINITION_PATH);
+const definition = loadedBundle.definition;
 const bytes = fs.readFileSync(DEFINITION_PATH);
-const html = definition.bundle.files[definition.bundle.entry];
+const html = loadedBundle.files[definition.bundle.entry];
 const script = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
 const markup = html.slice(0, html.indexOf('<script>'));
 
@@ -38,7 +39,7 @@ check(definition.ui && definition.ui.title === 'Settings' && definition.ui.openA
 check(definition.stateSchema && definition.stateSchema.type === 'object' && Object.keys(definition.stateSchema.initial).length === 0 && Object.keys(definition.stateSchema.fields).length === 0, 'stateSchema is an empty object schema');
 check(definition.actions && Object.keys(definition.actions).length === 0, 'actions is empty');
 check(bytes.length < 256 * 1024, 'bundle file is under the 256 KiB cap (' + bytes.length + ' bytes)');
-check(definition.bundle.entry === 'index.html' && Object.keys(definition.bundle.files).length === 1, 'bundle has the single index.html entry');
+check(definition.bundle.entry === 'index.html' && Object.keys(loadedBundle.files).length === 1, 'bundle has the single index.html entry');
 
 check((html.match(/<style>/g) || []).length === 1, 'exactly one inline style block');
 check((html.match(/<script>/g) || []).length === 1, 'exactly one inline script block');

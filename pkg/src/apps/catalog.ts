@@ -14,7 +14,11 @@
  * and is never hand-written: editing an app or a recipe means re-running
  * the generator. Definitions stay statically imported because install needs
  * the full definition; the index supplies membership, order, and each
- * entry's `installMode`.
+ * entry's `installMode`. Bundle contents ride the generated assembly
+ * module `catalog-bundles.generated.ts` (same generator, same run): the
+ * on-disk files stay the single source of truth, and each definition is
+ * assembled to its runtime files map at module load below — no text
+ * imports, which the Kody bundler rejects (see bundle-files Decision 4).
  *
  * Catalog definitions are publisher-shipped and trusted like any
  * `add_app` definition: installing one trusts its bundle code, which
@@ -42,7 +46,32 @@ import settingsDefinition from '../../catalog/settings/definition.json' with { t
 import threeBitArtDefinition from '../../catalog/three-bit-art/definition.json' with { type: 'json' }
 import xkcdDefinition from '../../catalog/xkcd/definition.json' with { type: 'json' }
 import catalogIndex from '../../catalog/catalog.json' with { type: 'json' }
+import { CATALOG_BUNDLE_FILES } from './catalog-bundles.generated.ts'
 import type { AppDefinition } from './types.ts'
+
+/**
+ * Assemble one imported definition to its runtime form: an on-disk
+ * manifest list (`files` as `string[]`) resolves through the generated
+ * assembly module; an inline files map passes through unchanged (so this
+ * module keeps working between a definition edit and the next generator
+ * run). Unknown ids and manifests with no assembled contents throw: a
+ * missing entry means the generator was not re-run, never a silent
+ * empty bundle.
+ */
+function assembledDefinition(manifest: AppDefinition): AppDefinition {
+	var raw = (manifest as unknown as Record<string, unknown>)['bundle'] as Record<string, unknown>
+	if (!isRecord(raw)) throw new Error('catalog definition "' + manifest.id + '" has no bundle')
+	if (!Array.isArray(raw['files'])) return manifest
+	var files = CATALOG_BUNDLE_FILES[manifest.id]
+	if (files === undefined) {
+		throw new Error('catalog definition "' + manifest.id + '" has no assembled bundle files: re-run scripts/build-catalog-index.ts')
+	}
+	return Object.assign({}, manifest, { bundle: { entry: 'index.html', files: files } }) as AppDefinition
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 /** Install mode reported by the listing. Absent in a definition means `json`. */
 export type CatalogInstallMode = 'json' | 'recipe-only'
@@ -57,8 +86,8 @@ interface CatalogIndexEntry {
 	recipePath: string
 }
 
-/** Import list, alphabetical by id. The order is the listing order. */
-var CATALOG: AppDefinition[] = [
+/** Import list, alphabetical by id. The order is the listing order. Each entry is assembled to its runtime files map at module load. */
+var CATALOG_MANIFESTS: AppDefinition[] = [
 	appStoreDefinition as AppDefinition,
 	arrowGameDefinition as AppDefinition,
 	calculatorDefinition as AppDefinition,
@@ -78,6 +107,8 @@ var CATALOG: AppDefinition[] = [
 	threeBitArtDefinition as AppDefinition,
 	xkcdDefinition as AppDefinition,
 ]
+
+var CATALOG: AppDefinition[] = CATALOG_MANIFESTS.map(assembledDefinition)
 
 function definitionById(id: string): AppDefinition | null {
 	for (var i = 0; i < CATALOG.length; i++) {

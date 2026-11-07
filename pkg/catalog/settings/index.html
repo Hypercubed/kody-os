@@ -1,0 +1,267 @@
+<div class="st">
+<p id="st-status">Loading the shell theme…</p>
+<div id="st-panel" style="display:none">
+<div class="st-field">
+<h3>Background</h3>
+<p>Current: <span id="st-background-value">…</span> (<span id="st-background-source">…</span>)</p>
+<p id="st-background-note" class="st-note" style="display:none">Custom grid, set via file or agent. Choose desk or paper below to replace it.</p>
+<div class="st-forms">
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="background" value="desk">
+<button type="submit">Desk</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="background" value="paper">
+<button type="submit">Paper</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<input type="hidden" name="field" value="background">
+<button type="submit">Reset background</button>
+</form>
+</div>
+</div>
+<div class="st-field">
+<h3>Name</h3>
+<p>Current: <span id="st-name-value">…</span> (<span id="st-name-source">…</span>)</p>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<label>New name <input type="text" name="name" id="st-name-input" value="" maxlength="200"></label>
+<button type="submit">Set name</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<input type="hidden" name="field" value="name">
+<button type="submit">Reset name</button>
+</form>
+</div>
+<div class="st-field">
+<h3>Title</h3>
+<p>Current: <span id="st-title-value">…</span> (<span id="st-title-source">…</span>)</p>
+<p class="st-note">Blank clears the title; the shell then shows the name.</p>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<label>New title <input type="text" name="title" id="st-title-input" value=""></label>
+<button type="submit">Set title</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<input type="hidden" name="field" value="title">
+<button type="submit">Reset title</button>
+</form>
+</div>
+<div class="st-field">
+<h3>Icon</h3>
+<p>Current: <span id="st-icon-value">…</span> (<span id="st-icon-source">…</span>)</p>
+<p id="st-icon-note" class="st-note" style="display:none">Custom mark, set via file or agent. Type a glyph below, or use the stock mark, to replace it.</p>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<label>Glyph <input type="text" name="icon" id="st-icon-input" value=""></label>
+<button type="submit">Set icon</button>
+</form>
+<div class="st-forms">
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="icon" value="">
+<button type="submit">Stock mark</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<input type="hidden" name="field" value="icon">
+<button type="submit">Reset icon</button>
+</form>
+</div>
+</div>
+<div class="st-field">
+<h3>Pages</h3>
+<p>Help: <span id="st-showHelp-value">…</span> (<span id="st-showHelp-source">…</span>)</p>
+<div class="st-forms">
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="showHelp" value="1">
+<button type="submit">Show Help</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="showHelp" value="0">
+<button type="submit">Hide Help</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<input type="hidden" name="field" value="showHelp">
+<button type="submit">Reset Help</button>
+</form>
+</div>
+<p>About: <span id="st-showAbout-value">…</span> (<span id="st-showAbout-source">…</span>)</p>
+<div class="st-forms">
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="showAbout" value="1">
+<button type="submit">Show About</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="set">
+<input type="hidden" name="showAbout" value="0">
+<button type="submit">Hide About</button>
+</form>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<input type="hidden" name="field" value="showAbout">
+<button type="submit">Reset About</button>
+</form>
+</div>
+</div>
+<div class="st-field">
+<h3>Reset all</h3>
+<form method="get" action="../theme/settings">
+<input type="hidden" name="action" value="reset">
+<button type="submit">Reset all to file defaults</button>
+</form>
+</div>
+</div>
+</div>
+<style>
+.st-field { margin: 0 0 28px 0; }
+.st-field h3 { margin: 0 0 8px 0; }
+.st-field p { margin: 0 0 12px 0; }
+.st-forms { display: flex; flex-wrap: wrap; gap: 12px; }
+.st-forms form { margin: 0; }
+.st-note { font-size: 16px; }
+#st-status { font-size: 18px; }
+</style>
+<script>
+/* Settings panel. Stateless: no theme in app state, no act() calls.
+ * Reads the shell theme through GET /theme/<id> (cookie session),
+ * renders each field's effective value with its source, and submits
+ * changes as plain GET forms. With JavaScript, submits go through
+ * fetch with format=json and re-render in place; without it, the
+ * form round-trips with a 303 back to this panel. Pure functions are
+ * defined first so Node tests can load this script without a DOM and
+ * call them directly; DOM wiring is guarded by typeof document. */
+function stAppIdFromBase(base) {
+  var parts = String(base).split('/');
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] === 'apps' && i + 1 < parts.length) return parts[i + 1];
+  }
+  return '';
+}
+function stThemeBase(base) {
+  var id = stAppIdFromBase(base);
+  if (id === '') return '';
+  return String(base).replace('/apps/' + id, '/theme/' + id);
+}
+function stIsGrid(value) {
+  return typeof value === 'object' && value !== null && Array.isArray(value.grid);
+}
+function stIsSvg(value) {
+  return typeof value === 'string' && value.indexOf('<svg') === 0;
+}
+function stSourceLabel(field, override) {
+  if (override && override[field] !== undefined) return 'override';
+  return 'file default';
+}
+function stDisplayValue(field, effective) {
+  if (field === 'background') {
+    if (stIsGrid(effective.background)) return 'custom grid';
+    return effective.background;
+  }
+  if (field === 'icon') {
+    if (stIsSvg(effective.icon)) return 'custom mark';
+    if (effective.icon === '') return 'stock mark';
+    return effective.icon;
+  }
+  if (field === 'showHelp' || field === 'showAbout') {
+    return effective[field] === false ? 'hidden' : 'shown';
+  }
+  return effective[field];
+}
+function stFormQuery(form) {
+  var params = new URLSearchParams();
+  var els = form.elements || [];
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    if (el.name) params.append(el.name, el.value);
+  }
+  params.set('format', 'json');
+  if (typeof window !== 'undefined' && window.location) params.set('from', window.location.pathname);
+  return params.toString();
+}
+if (typeof document !== 'undefined') {
+  var stRoot = document.querySelector('.st');
+  var stBase = '';
+  var stNode = stRoot;
+  while (stNode) {
+    if (stNode.getAttribute) {
+      var stFound = stNode.getAttribute('data-action-base');
+      if (stFound) { stBase = stFound; break; }
+    }
+    stNode = stNode.parentNode;
+  }
+  if (stBase === '' && typeof window !== 'undefined' && window.location) stBase = window.location.pathname;
+  var stTheme = stThemeBase(stBase);
+  var stStatus = document.getElementById('st-status');
+  var stPanel = document.getElementById('st-panel');
+  function stSetStatus(text) { if (stStatus) stStatus.textContent = text; }
+  function stRender(theme) {
+    var fields = ['background', 'name', 'title', 'icon', 'showHelp', 'showAbout'];
+    for (var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      var valueEl = document.getElementById('st-' + field + '-value');
+      if (valueEl) valueEl.textContent = stDisplayValue(field, theme.effective);
+      var sourceEl = document.getElementById('st-' + field + '-source');
+      if (sourceEl) sourceEl.textContent = stSourceLabel(field, theme.override);
+    }
+    var bgNote = document.getElementById('st-background-note');
+    if (bgNote) bgNote.style.display = stIsGrid(theme.effective.background) ? '' : 'none';
+    var iconNote = document.getElementById('st-icon-note');
+    if (iconNote) iconNote.style.display = stIsSvg(theme.effective.icon) ? '' : 'none';
+    var nameInput = document.getElementById('st-name-input');
+    if (nameInput) nameInput.value = theme.effective.name;
+    var titleInput = document.getElementById('st-title-input');
+    if (titleInput) titleInput.value = theme.override.title !== undefined ? theme.override.title : '';
+    var iconInput = document.getElementById('st-icon-input');
+    if (iconInput) iconInput.value = (theme.override.icon !== undefined && !stIsSvg(theme.override.icon)) ? theme.override.icon : '';
+    if (stPanel) stPanel.style.display = '';
+  }
+  function stLoad() {
+    if (stTheme === '') { stSetStatus('Could not find this app on the page.'); return; }
+    fetch(stTheme + '?format=json', { credentials: 'same-origin' }).then(function (resp) {
+      return resp.json();
+    }).then(function (theme) {
+      if (!theme || theme.ok !== true) { stSetStatus('Could not read the shell theme.'); return; }
+      stRender(theme);
+      stSetStatus('');
+    }).catch(function () {
+      stSetStatus('Could not read the shell theme.');
+    });
+  }
+  var stForms = document.querySelectorAll ? document.querySelectorAll('.st form') : [];
+  for (var f = 0; f < stForms.length; f++) {
+    (function (form) {
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var action = form.getAttribute('action') || stTheme;
+        var url = action + (action.indexOf('?') === -1 ? '?' : '&') + stFormQuery(form);
+        fetch(url, { credentials: 'same-origin' }).then(function (resp) {
+          return resp.json();
+        }).then(function (result) {
+          if (!result || result.ok !== true) {
+            stSetStatus(result && result.error ? result.error : 'That change was not saved.');
+            return;
+          }
+          stSetStatus('Saved.');
+          stLoad();
+        }).catch(function () {
+          form.submit();
+        });
+      });
+    })(stForms[f]);
+  }
+  if (stTheme !== '') {
+    for (var g = 0; g < stForms.length; g++) { stForms[g].setAttribute('action', stTheme); }
+  }
+  stLoad();
+}
+</script>

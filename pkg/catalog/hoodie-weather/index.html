@@ -1,0 +1,649 @@
+<div class="hw">
+  <div class="hw-main">
+    <div class="hw-readout">
+      <p class="hw-label" id="hw-label">Seattle, WA</p>
+      <div class="hw-temp-line">
+        <p class="hw-temp" id="hw-temp">--</p>
+        <p class="hw-cond" id="hw-cond">Loading forecast...</p>
+      </div>
+      <p class="hw-rain" id="hw-rain"></p>
+    </div>
+    <div class="hw-verdicts" id="hw-verdicts">
+    <div class="hw-verdict" data-verdict="raincoat" hidden>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAADsQAAA7EB9YPtSQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAo0SURBVHic7Z1brB1VGcd/PaflWMqhFlvOUVq8VG0iVMVLYtUQL0ALIkGxkghouESbEqkSsYhgeJH4ZFSwCQ8+2QeUxNK0VkyAio1vhFRQYrAaW+kFWkoQpIBttw9rT5jz7dkz6/Ktmdln1i9ZD3vvNev71lr/PWvNug0kEolEIpFIdIcxYD3wz35Y3/8u0QHeC+wEeiL8CTinQb8SkRkDbgdeZ7Dys/AacBvpbjDrWAI8yPCKl+ER4K2NeJpQ51PAIewrPwsHgPPrdzehyVrgGO6Vn28Srqrd64QKG4AT+Fd+Fk4Cd9breiKEMeDnhFe8DPeQOoetZw6wCf3Kz8Iv+jYSLeWnxKv8LPy4ttwknPg28Ss/CzfVlKeEJZeg0+GzDceBNbXkLFHJUuAw9VV+Fp4Dzqohf4kSxoBHqb/ys/AIqVPYKDfgVmF7gZ8Bq4EVwIJ+WNH/7m5gn2Oa10XPZaKQxcDz2FXSvzEVNW6R7jhwPfCMZdpHgLco5SnhwI+wq6AtwGke6U8CWy1t3BWQj4QHi4GXqK6YnxA2ejeG3djCf4AzAuwkHNmI3T9fY+h2DLs7wXcUbCUseYLqNt/ntj+MSWB/hc3divYSJZxDMz1zmyeO90WwmxCsp/pRz6a378o45s5SZntdBLtRGcXpzVUVvz+AGRbW5gSmL1DGxyLYjcooCuDcit9/F9H2jorfV0a0HYVRFMCSit/3RLT9j4rfq3xLKPAK5e2wZu9fclqF7Vci2o7CKE5k9Cp+j52npu2rMopNQEKRJICOkwTQcZIAOk4SQMdJAug4SQAdJwmg4yQBdJwkgI6TBNBxkgA6ThJAxxklAZwJXGMRz2Ydf0io4pq+ryNBm6cux4DzgAuAz2OWgo2SYJ8CtgEPYfYv/q9Zd4ppmwAWA5/GVPplwHSz7qhxFHgYI4btmBPIWkHTAhj1f7kvI3F3iM2lwEHit9F1xfMNB4DPlZTTrKVqjX1XBNDD7GVohCZvt6c2aLttxFzIWkqTAniqQdtt469NGW5SAE82aLttNFYWSQDtIAmg43SyLN6MOYi5zU8B9zmk5xtO9sti1nM+sFB8t5f2CuA+YK6IsyyCv/IRcCGz9D0FO4BPiO+2004BFFX+XMyxM9r+bhd2Pgn8tsC/KNTVB3g/5mhVuX26jW3fb4CrMcfBZswFNgOXR7Any2Al5ujb8yLYGqAuAdyKmXeQAvhLTfZdWE9x5V8ZyZ4sg6yMZs2hU+/ETHb0gD+K31bSviYgPwM5F9McaPuYD/JPsav//XFgeYGfI0f+7R0vMHMG8hTMe3naJICtmDeGLSNOm58Pr/XLIM8Lud/vKfBzpDiTwQMdlok4T6JbqJLQeDHDE8KHs8Xvx4i8JiJ2H+AmYL74Tt7yZCFo86vI6YdQ1AHM8ybgxpgOxBTAJKZDJYndEVwqPl9Ne0UwrAOY55sMjp+oEVMA3wAWFXwf+1HwbmY+wx+nvSKougOAqfwbavBFlXkMP3f/zyKubPc0gs1AjqSJPsDZwodhR+A+w2BnsdVcz/BMy57vHGb2fGOKYGnud0ndlS+fiOZR/kQ0Mi+mGMMscCjLvDzscVdFfC0R5MfyJXULYJewXzUm8jciNNkx+gBfoPrQ5LqGhK8E7sf885cB90ay44NN+59nBRGGomMIwGYIs845gcsxC1D3ARdHtOOKfPy1OWb2Vm0ntAXwGewOTB6FSaHYuN4BAD6K2TjTWn6PXfv3L3HdQuIsDikLkjptFy0CsV0b8WCB763gA9hXYlEBuL6ubZQFULQIxOUP8KEC/73QbAK+h/1WszmYN3/k6VIzUHT7d9mmd4uWI1oCeBdwheM1dc8JtAmfDmCetcC7NRzREsAtDA66VNHljqBPBzDPOHCzki/BFE352oQ6Foe0tQ+gMRD2KmbdQuPchV8huA6FzhYBvI7eUPgPC/JRK6cTNo4fe3FIGwVQtQjEJbxI4FRxaB9gHWGbGrrYDwht//OcDnw94PogAUwAG0KMkwQA4W8auxmzcsiLEAF8DXhbwPWQBADhApjG7vQ0VcaApwlvD+tYHNK2PoDs91S9B9km7MHzbam+d4AvAu/xvDbPlPj8kkKabedl8VnjTMHlmGl4Z3wFsNHzOok8Lu0spXTbjGw2Dyql+32fi3wEcAHwER9jBewXn7sgAJlHWQa+fBD4rOtFPgLQ+vdDEgDoCQA86sZVAF4qKyEJQFcAFwIfdrnAVQC3oXu6aBKArgAAvusS2UUAyzG9f02SAPQFcAUOT2guAtiI57NmCUkA+gIYJ8LZAlOYnaragyJy69izEWy0bSDokLB7RgQbr2I5Smt7Bwgabx7CMcxMYsY8zHHxs50lmLxmHMWUhSYTmJ3ZKoRO+Q4Lfxd26hwGbvIO0GNwOHhPBBsvYjFTa3MHuNEmIQ+62P5nxO4HgPnjrquKVCWACcz+9BgkAbxBDAEAfIvBAzpmUCWAa4m37kxmOnRqOaPo9q6FVtp1CWAK+GpZhDIBxF55qn0HeAAzszZNnIMWt2EKdKpvK4S6BABmYMh1xTZgdtbG7Ah9SdjbHJCW3AY+RfVOG0lZ3BOY3ntG6PFxm4XttYrlWhS+XJDfSh6L7NQqYW+nZzpFB0FMW1wnqYov5+1DRLBTpPVxz3Rsw24ch/AviuxQD3i7sOmzwijkTF9JVfwtQ2z5iOBpkc47PNJwDRcW5HkoD0d25iTmCSPPy45p/JrBChnHvimR2Fxz/xCbv3T0/b8ijVOIvzv6oYI8F3JuZEd6mCHfPIscrw+tfF8BaIpAjq3UMQwuN+QWclkNjjwubLqITqPyQwSgJQJZGY87+uATLi3I9wDzMat1YzqyTdhcbXmdVuWHCkBDBBeJa7d5+OASdlMxKJRnPmYUKcabPXsMHtZ0ncU1mpWvIYBQEVwrrrvX04eqcBCLEcFhTGC2Hu1XduoOYeeOivjala8lgBAR3C6u+UGAD0XhOcwaDpUXdGZCOKDknDz0cFNJXM3HrxgC6OH3OLpJxC87XNMlHEax4iWnYvYDhgphtUh3a0ncJSKu1kscJKHpVZ1MKsNWEXdNoP3DwJ2YWcDoLCBMCPKAhGGjjieZOQKn+QYPiUaaZSeTyvCYsO97QEatFS9ZgJlsOGzhaL5S5VKwss7mdszY/jS6b/CQaKW7hTdOJt1REk/uCFqE22DQ4X7ZLyjIS+1kdwSbp4Y/iGvnYSZbtCqgaQHYhhPMXBoG8KjFdUcw//ho7xAIIRPCIYZn4CvimrqXgrVFAD0Gl4ZdVRK31RUvmcRsIjnCzEw8y+AcwCriFnKbBSCP1Z1gcEj4SL8sJwt8bj2TmF2r+zDHw8reP5h1AV0VQNHZimv6ZbWvX3YjWfEubKC7AlBbuu1Lk6+Pz+jSYlBJ43lPAmiWxvOeBNAsjec9CaBZGs97GwQQ9dWoLafxs37bIICjTTvQIM837UAbWIP961Jm02PgXorHRRKJRCKRSCSi838OPaIKo+7s3AAAAABJRU5ErkJggg==" alt="Raincoat" width="128" height="128" />
+    </div>
+    <div class="hw-verdict" data-verdict="jacket" hidden>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAADsQAAA7EB9YPtSQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAA3HSURBVHic7Z15kB1FHcc/u9ndLDnICeSQGA5NOATkMgaVgAiIiApCCgtvS0HFqwTxAsRSAaWoEA8sQbSMlKKCCFQ4hACGQwWRBAIkmHCFJQmQANkQkuw+//jOMPPem/v1zHtvtj9VXfveTG+/7unf/Kb717/+DVgsFovFYrFYLBaLxWKxWCwWi6XkdDS7Ak1gGLA7MBXoBDYCjwIbmlkpS750Au8D/gK8AlQC0oPAd4CdmlRHS07sDdxNcKcHpX7gG0hTWNqcbwNbSN75/nQfsEvxVbaYoAO4mGwd7099wFsKrrvFAL+m8c530zpgr2Krb2mEL2Ou8920HNi+yEZYsnEw8BrmBaAC/LHAdlgy0AU8TD6d76YTCmtNQZTJEPR54GcR5/uBJcAjwPPAy8A2YDRS7zsD+wHTI8p4HI0HtjReXYtJtgfWUn/HrgR+BByAjEFJmAB8Arge2BpQ5lcM1ttiiNqB3zLgI9Qbc7rRHXwEcDxwInAM8A5gYkC5uwGXUS0ITweUa2kyD6HO2QqcD/T4zs0Evgf8i3ijUB+wAAmGv4x9gAd8+Y7NrymWtMxGnfICcIjv+D7ADcAg2QZ8zyJ13+2U1wtc5Zz7W54NsqRjPrpzZzrfu5AW2IaZkf9DeIagTuBSpGnG5tssS1LuB2Y5n0cAN2N++vcKcLTzG53A1cAH822WJQlTgU85n7uBW8nPBrAZeLfzW6OAr+XaMksiJuPZMn5KvkYgd5zhrhBOybVlllQcTvbBXtq0iHIZ0NqeYci6V0Tnu6l0JuF25mSK7fwKch+ztAh5jPqTpP2LaJwlmimYm++nTRcX0L7cSbpA0qocR7Bd/mq04tcorwLfB1YEnDveQPmWBgly/dqGFnbGAtcEnE+aVgB7OL/zw5A8k3JunyWGJdR3ymq8OXoH8OOAPHHpAWC8U8Yo4PKQfHZRqMlsJLhjNuCZajvQkm7Szn8KWRhBziHLIvJ+Kce2FUJXsyvQAD3AyJBzY4A/I8eOBcCpwGL0TO8HNgEvOXmHozWEcU559yAt8gZk9JkeUYfxEecsOTOR+Lt5C/DODGX3Iv+B0s8E2lkDvAJ8F/kAHIbu5Fq6gT+hzR3r0N18KrAd6mSXDcBSpC0ALgQOCvndQeB24Ca019DSAoxFbmErCb5Tf+vk6wT+G5LnKCfPQQTbFjaiAeUbc2+NJZaJqMNmU23L6AJOo95BdBCY4+T5EPWdu9g51wH8u+bcNuDnwA6+3+lwfvvjSLu0syZtedzO/hZSuU9Q3UF9wCVoz7/LGOCKmnx3+M7fW3NujnP8/TXHl1Jt8h0NfBPZCPz5+tEO5Plo4GmFokF2QAOsMJUelAZQp/vX6T+ALIJuHndAONd37D5f/nvwNMYleOOEYcDpNWXFpX7gFuR1bEnBNDQXT2u8cdMraJOIu2a/G57X8A3OsV7gRefY6c6xQ53vm4FTfPXZCwlJ1vpUkPayROD3yb+Rxi62mxYCOzpljkYbPbbhGXl+gaaJ7rP9CnSH+6eNn0U2g0brMoA2p4Asi/4ZyJBmZ+BONFUDqW+Tnj2r8Dx6h6Fp3hnO97ehtQKQIehJvE7qQgJiqh4V9EgBjSk2AJ9LfbVKRg/elGy+c+wQzF70CrL4HeGUPwyFf3HZ1/l7DF7nj0TawnQ9rnPKn+J8H2SIryiejXdxfuMc2xPzF76C1Ph7nN8YRv0yuDtiHwHcllMdfuf8xpt9x/qQCXrIMQPZ5d0LcadzfDjBGzJNCYGrCYLoQYPEPH67giKQAby35vhlCa9ZaegE/kH1RVjrO187xzYtBAcG1KkDLR7l9bsVtN8Q4Ks1xweJFszS8QWCL9AE5/x1IedNpdV4MwGX83L+zQpesKlLA86tJHxls1RMAdYTfIFmO3myOHCkTffiLR6dRP57Cgbwpn6LQvKcn/5yth9/JfwiuVu8PhORx2RyTcd/KOC3/ue7Bn0hebbizUQKo0in0LnINBvGDOfvYwXUpWgedf6OIdyPsAu5nnWHnM+FogRgPDAvJo8rAI9G5mpPXKGeGZlLdolCQ9AUJQAXER+E2b0469AmzDKRVABA0Ux2j81liCIE4DC0bh7Hbnjqr2yPAVerzYjMJbYDfkVBG1DzFoARJG9MFxICKN9jII0AgPwTPplPVarJWwDOxevUJLgqskwaYAOwxvmc5BHg8hMKeHdBngIwHG+tPSnuBSqTBnDb4tdwSRhHAVogTwHYgqxuaSjjTMDVZrsQ7LkcxSrDdakjTwGoIBt3mpBqrgZYiTx7ysAS528a9b8GGcRKE6B6FnAX8RazLXjh1xYkyN/qlsBBvJ1FSV5g0Y9Mwm0fmv5kZNU6CW8G0IHCtz5B9EX4qJN/OsHxf9tJAFz7fhfRDq4DzvXyL1JNQ3GO51Ptkt7yvJXqxZV/Au/yne9BmzjCFoWeQj58IMtYrQt3OwjARuQI6j5iz4zIewuKUu4yBnW83xcxt0dBHsaGc4FzAo7/Ha2FP+R8n4C8gk6lOi7vaiRE63x13Jtsg6goFqKOmoV8E03xJGrjJt+xc6m/JkuQYNzkfO9Go/7zqJ/+9aPr9ZrBeuaG61sflLYCv6S6gbsjZ4xBNGeeRfnoRJtaKsAzaOXTH9nkCLQJJUqrHJZHxUxrgHHozo0Lp74RrQ9cgFzDQELR75zzczDabRNV5mZfOUl4FXnprkcrlLNIfi06iI8TvBy9vGJzzfFpaDl4q/P9QGTwOTTB714AnJWwjk3jJNI9K59GvvdhnXsc+fkI5j0IvJXwpd2dkSYcSFHeAyFltRRpInH401UBZfUgdZlH5xQhABXg0wHtOgRpurRlDaLQuEYxbQg6Kj5LICeiVTA/M6n33Ws3gpw9P4wWydLSARzZWHXqMSkAe6GwKll4hvpneBnCr0wIOLa8gfJaWgCOjs8Syh3xWUrDnfFZQjkSw1rbZGFZ1T80dlHajWVU74NIw0QMh6g1JQDboTdvZWUoCUAFLyJJFhq50eowJQDvon4Ql5Q1lMsBJAmNCHxLCkAjnivuNrGhRCMCYHRhyJQAXIsWfbJwu6E6tBNLkBUyLf3AD0xWxFQgo5eQOXU80gY7IqPFjkhipzif/ceHo/gAvw8pswwOIS+HHB9AC2EXIYPX82hguBaZims/rwGecz6X5r3Fo2LOd1NOS6Cf4RS8E6gWUxrgLGS3X48Wg1yJXef8dT+vQyZNqF/0qWUrcou6lurl4nbhZhR3KIra5d2RSINOQppzkvN9BzzN+SLwdfQm84YxIQBvRw4MSRjAE4T70Lv3NkTkvxFF7jwHRQ8xKQjuitxa5K1jirVoeXsenrCHMRdtl5+KOjrpFvFOdMO1BCeQXUWe14T6tgpjkQbIct3uN1UJE7OARp5hbeXrZpjtya7RjGlCE4+ARgQgbJTs53CkKWZi1nR9APK7vxzFDzbFyyjs3TlUu4UF5cuKsTC0zRaAuKneyWiamIfvouuEMhKzkbrGoUHaHBT1ZGtIvkamucZmDibuqEbUUdRF6EXvA27X17QeiELWhjFAtIaIoqUEIC8NsA/t7xMQ58iZVQsYGwM0WwCinoNZvGZajbg2ZB0HDAkNMBTI2v6WEoCsA8kKBex+bXGyGqCMCYCJWUCaeD7bkKVsNTKTNuIfVwbORH3gOsCOjs7+OuvisyTDhAAsQA4h++OtYLn2/2fxOnwN3mZPi1hFtQ1iBFo5neSkychEPBWtA0xF5uWzTVXAhABsRLt+LY2zCS3yGFnoSYLpFxv14kmq/+9kPGmegpwbFyIf+bgFkzJzFHAlsnX0IS1ZqzX9GrUlw+d1o/fyvUD6RY05EeXul6G8VvMHiNvWvThlea8BD5PtbaiBmJgFHA18jGxGm+kR55ZSoCrMiWtizk9PWV4PWha/IFNtAmi2KTjKBj+AdgU3smjSTK5E2iWKoJ1DSTAWJ8HEGODFBv43bhHmLmQSPoPkQRaT4trhl5K9I4LoRw4hC2Ly9ZL97WEtNRbYl+zPyPkB5Q0VJpP9usVplsSYeATkqQHKTCNtb+SaV2FCABpRR0kuwlzyeY9QXrOAfjQr8r8MM2vbw2gpAdhEfSiUpIyJOX8a6qDCwqcbYASaFS0mertcXNujyLKpJBBTLlZZJfKRiHOjgAszltsKzEDh8MJ4HM10smBsEGjKEthH9Vu7w3ge2b9XAQ8S/RaRvYnfPNLqzI44txy9zHIusKuTppFspa+v8aoJUwIwDy8+kNvBK53k/55mTl+GFyzHtWGRk1yGoSgrrkDs4iT3804ocGZLBtToJbn/3gjUoCjm0P6m4Jtj2jgOac6k1834TWFyMcg/EOxFDdvVl6agua8rzf8h+C2eQ4nDkdFoC9oH2YcWg1bWpCfReCHrYDsUkwIwGb31czrJLGvGG9OGuIGxevBulCC2oBjKl2FwHQDMbrToQ04MSc2qaSJ7lpWkN0EPemRljS0Uiuk4gYvis7yOFYD0WvA20xUw7RByK3BKzbH1eM+yZWg9eyXx/oAVw3VrRe5Gy+i7ojiLe+I9CmZSvVv4MTQWMIppAViI4uSvQIaOFcg0moWWWvHKSBLnzfVot2/tjt9ONCV8E1L/xsy/7UIHMha18zTwWLOXxDxFvjw6LRVkU3+u2RXJyDzg+mZXIg7TjwDTPIhMwl8E9sCswLohau41XO5LaHt4nBHIYrFYLBaLxWKxWCwWi8VisVgK4v/PI6VP+Zov9wAAAABJRU5ErkJggg==" alt="Jacket" width="128" height="128" />
+    </div>
+    <div class="hw-verdict" data-verdict="hoodie" hidden>
+      <img src="data:image/png;base64,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" alt="Hoodie" width="128" height="128" />
+    </div>
+    <div class="hw-verdict" data-verdict="tshirt" hidden>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAMAAAD04JH5AAAAA3NCSVQICAjb4U/gAAAACXBIWXMAAAX/AAAF/wHJdq1WAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAXdQTFRF////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZGkTnwAAAHx0Uk5TAAECAwUHCAkKCw8QEhMUFRcYGiAmKSosLS8wMjM1Nzo9QEJERUdJSktOT1NUVldYW2JlZ2lrbXBzdnd5fH+HiIqLkJKTlZaZm56foKKjpautrrCxs7S4ubu/wsPFxsfJzM3O2drb3N7h4uTl5+jq6+/w8vT19/j5+/z9/mmy4JkAAAMKSURBVHja7ZvXV+JQEMZHsYtd0QXECsq6NuyCFQvq2kAFlRXUtYO6iqJm/vh9CAiBBJIYk5f5nuDOnfl+cLhlcg4AJBKJJE7V9rmNvmJxc4v7Nubs1cp5Fxgc6+eIiOgRl+BBRMTzdYeh4OvutcO7j5gUY2EHnUNNusyJuqYhJ/vKwnwmPO4O137F3egKpYohIrrZ8SnE2IlndnpkwGqxWAdGpmc9JzHEKTbq5qQwIZdRnrtp5QYzdc2GyiLIo0gZG73OitysmCTbdwf4PNDMRsf5YuNszMybGOiW4q4bPEN+bbMTCteyQ+uFbGxbIPVsUCfSvnTsCoXEGIUIfif8jYxg8tVYqQj7qpkHzCF/Ylqh+4MDtprwB3+u7IeZqjz2De4Y5tZEcqphJ/VZvT+SoxN50mPuhlzLbusN8ynemlon83sX7+8Xe/Pmz6HWeN4Cb1tCy7LTj2J028jZdjnbc+OtqBL+Tp4ffn8YRSpiEPoGDRGxNcL93CVROnqJ4nXfw+/fcy+hyOVoaknoXVIyERHXKrLtK9YkFrl36QEAoG7xGSUr6qzk2lc6o9KrPC/WAdReoCw9LdnKk+7ltqUneVX+1kAAZSt+vLkwObmweRyXX+MAgqip/oBXWwAv2LUFsAOEtfQPA0CvlgC9AAAh7fxDAABg1Q7Ayu4jmq3EYGIj69IKoCu5lR5p43/0eZJ0aAPQkTrLDrXwP0w7TNu1AGhPP84D6vsHOPeJNvUB2rg3mgO1/Q8ybnQWtQEsmXfKfXX997MutWZ1AczZ12qfmv4+vsaQ21czpy/K+b2cMrxdPlc7aT2sz1EPUeUAolDv8KX13Tu8nVVz4nZ9vWwrAQBlAQCgxLaceHz02szf2/16wo+gsyX5VmkAAIAWZ/AD//0U6m6LTPq0d98BAAB6U5HIZ0XfBCBeBEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAABEAAd8oB3MkC8CgH4JEFYHxVyv9V5p+9alxeReSqARKJRBLWfyadpl2FeraEAAAAAElFTkSuQmCC" alt="T-shirt" width="128" height="128" />
+    </div>
+    </div>
+  </div>
+  <p class="hw-status" id="hw-status" role="status"></p>
+  <p class="hw-error" id="hw-error" role="alert" hidden></p>
+  <p class="hw-notice" id="hw-notice" hidden></p>
+  <div class="hw-actions">
+    <button class="hw-btn" id="hw-refresh" type="button">Refresh</button>
+    <button class="hw-btn" id="hw-retry" type="button" hidden>Retry</button>
+    <button class="hw-btn" id="hw-search-toggle" type="button">Change place</button>
+  </div>
+  <div class="hw-search" id="hw-search" hidden>
+    <label class="hw-search-label" for="hw-query">Search for a city</label>
+    <input id="hw-query" type="search" autocomplete="off" maxlength="80" />
+    <p class="hw-search-status" id="hw-search-status"></p>
+    <ul class="hw-results" id="hw-results"></ul>
+  </div>
+  <p class="hw-note">A kody-os rewrite of <a href="https://github.com/Hypercubed/HoodieWeather" target="_blank" rel="noopener">Hypercubed/HoodieWeather</a> on GitHub.</p>
+</div>
+<style>
+.hw { padding: 16px; max-width: 420px; margin: 0 auto; }
+.hw-main { display: grid; grid-template-columns: 1fr 96px; gap: 12px; align-items: center; margin: 0 0 8px 0; }
+.hw-readout { min-width: 0; }
+.hw-label { font-size: 20px; font-weight: bold; margin: 0 0 2px 0; overflow-wrap: break-word; }
+.hw-temp-line { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; margin: 0 0 2px 0; }
+.hw-temp { font-size: 31px; line-height: 1.1; margin: 0; font-variant-numeric: tabular-nums; }
+.hw-cond { font-size: 31px; margin: 0; }
+.hw-rain { font-size: 16px; margin: 0; }
+.hw-verdicts { margin: 0; }
+.hw-verdict { margin: 0; }
+.hw-verdict[hidden] { display: none; }
+.hw-verdict img { display: block; margin: 0; width: 96px; height: 96px; }
+.hw-status { font-size: 16px; margin: 8px 0; min-height: 20px; }
+.hw-error, .hw-notice { border: 2px solid #000; padding: 12px; font-size: 16px; margin: 8px 0; overflow-wrap: break-word; }
+.hw-error[hidden], .hw-notice[hidden], .hw-search[hidden] { display: none; }
+.hw-actions { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 8px; gap: 8px; margin: 12px 0 0 0; }
+
+.hw-btn[hidden] { display: none; }
+
+.hw-search { margin: 12px 0 0 0; border-top: 2px solid #000; padding: 12px 0 0 0; }
+.hw-search-label { display: block; font-size: 16px; margin: 0 0 6px 0; }
+.hw-search input { width: 100%; }
+.hw-search-status { font-size: 15px; margin: 8px 0; min-height: 18px; }
+.hw-results { list-style: none; margin: 0; padding: 0; }
+.hw-results li { margin: 0 0 8px 0; }
+
+.hw-results button small { display: block; font-size: 14px; margin: 2px 0 0 0; }
+.hw-note { font-size: 13px; color: #444; margin: 12px 0 0 0; }
+section.widget[data-app-id="hoodie-weather"] .app-body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 8rem; }
+section.widget .hw-btn, section.widget .hw-note { display: none; }
+/* Hoodie Weather: vertically center body content in the app panel and Home widget (moved from the shell theme — app styles live in the app). */
+.widget[aria-label="Hoodie Weather"] {
+	display: flex;
+	flex-direction: column;
+}
+.widget[aria-label="Hoodie Weather"] .app-body,
+.app[aria-label="Hoodie Weather"] .app-body {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-height: 8rem;
+}
+</style>
+<script>
+var hwScriptEl = null;
+try { hwScriptEl = document.currentScript; } catch (err) { hwScriptEl = null; }
+var hwSectionEl = null;
+(function () {
+  var el = hwScriptEl;
+  while (el) {
+    if (el.getAttribute && el.getAttribute('data-app-id')) { hwSectionEl = el; break; }
+    el = el.parentNode;
+  }
+  if (!hwSectionEl) {
+    var sections = document.querySelectorAll('section[data-app-id]');
+    if (sections.length > 0) { hwSectionEl = sections[0]; }
+  }
+})();
+var HW_DEFAULT = { lat: 47606200, lon: -122332100, label: 'Seattle, WA' };
+var HW_FEED_NAME = 'default';
+var HW_TIMEOUT_MS = 8000;
+var HW_NAME_TIMEOUT_MS = 5000;
+var HW_GEO_TIMEOUT_MS = 8000;
+var hwStore = null;
+var hwPlace = { lat: HW_DEFAULT.lat, lon: HW_DEFAULT.lon, label: HW_DEFAULT.label };
+var hwLastKey = '';
+var hwLoadSeq = 0;
+var hwInitialized = false;
+var hwGeoTried = false;
+var hwSnapshotTimer = null;
+var hwSearchTimer = null;
+var hwSearchRequest = 0;
+
+function hwEl(id) {
+  var root = hwSectionEl && hwSectionEl.querySelector ? hwSectionEl : document;
+  return root.querySelector('#' + id);
+}
+function hwQueryAll(selector) {
+  var root = hwSectionEl && hwSectionEl.querySelectorAll ? hwSectionEl : document;
+  return root.querySelectorAll(selector);
+}
+function hwSetText(id, value) {
+  var el = hwEl(id);
+  if (el) { el.textContent = value; }
+}
+function hwNum(value) {
+  return (typeof value === 'number' && isFinite(value)) ? value : null;
+}
+function hwRound(value) {
+  return Math.round(value);
+}
+function hwPlaceKey(place) {
+  return String(place.lat) + ',' + String(place.lon);
+}
+function hwIsDefault(place) {
+  return place.lat === HW_DEFAULT.lat && place.lon === HW_DEFAULT.lon;
+}
+function hwActionBase() {
+  if (hwSectionEl && hwSectionEl.querySelector) {
+    var bundle = hwSectionEl.querySelector('.bundle');
+    if (bundle && bundle.getAttribute) {
+      var base = bundle.getAttribute('data-action-base');
+      if (base) { return base; }
+    }
+  }
+  var path = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
+  var at = path.indexOf('/apps/');
+  if (at !== -1) {
+    var rest = path.slice(at + 6);
+    var slash = rest.indexOf('/');
+    var id = slash === -1 ? rest : rest.slice(0, slash);
+    if (id) { return path.slice(0, at) + '/apps/' + id; }
+  }
+  return '/apps/hoodie-weather';
+}
+function hwOriginPrefix() {
+  var base = hwActionBase();
+  var at = base.lastIndexOf('/apps/');
+  return at === -1 ? '' : base.slice(0, at);
+}
+function hwQuerySuffix() {
+  var key = '';
+  try {
+    var match = /[?&]k=([^&]+)/.exec(window.location.search || '');
+    if (match) { key = match[1]; }
+  } catch (err) { key = ''; }
+  if (!key && hwSectionEl && hwSectionEl.querySelector) {
+    var input = hwSectionEl.querySelector('input[name="k"]');
+    if (input && input.value) { key = input.value; }
+  }
+  return key ? ('?k=' + encodeURIComponent(key)) : '';
+}
+function hwFeedUrl() {
+  return hwOriginPrefix() + '/feed/hoodie-weather/' + HW_FEED_NAME + hwQuerySuffix();
+}
+function hwFixedDegrees(micro) {
+  return (micro / 1000000).toFixed(4);
+}
+function hwWeatherUrl(place) {
+  return 'https://api.open-meteo.com/v1/forecast?latitude=' + hwFixedDegrees(place.lat) +
+    '&longitude=' + hwFixedDegrees(place.lon) +
+    '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m' +
+    '&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m' +
+    '&forecast_days=1&timezone=auto&temperature_unit=fahrenheit&wind_speed_unit=mph';
+}
+function hwNwsPointsUrl(place) {
+  return 'https://api.weather.gov/points/' + hwFixedDegrees(place.lat) + ',' + hwFixedDegrees(place.lon);
+}
+function hwGeocodeUrl(query) {
+  return 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(query) + '&count=6&language=en&format=json';
+}
+function hwFetchText(url, opts, timeoutMs) {
+  return new Promise(function (resolve, reject) {
+    if (typeof fetch !== 'function') { reject(new Error('fetch unavailable')); return; }
+    var finished = false;
+    var timer = setTimeout(function () {
+      if (finished) { return; }
+      finished = true;
+      reject(new Error('timed out'));
+    }, timeoutMs);
+    function done(err, value) {
+      if (finished) { return; }
+      finished = true;
+      clearTimeout(timer);
+      if (err) { reject(err); } else { resolve(value); }
+    }
+    var result;
+    try {
+      result = fetch(url, opts || {});
+    } catch (err) { done(err); return; }
+    if (!result || typeof result.then !== 'function') { done(new Error('fetch failed')); return; }
+    result.then(function (response) {
+      if (!response || !response.ok) { done(new Error('HTTP ' + (response ? response.status : 'error'))); return; }
+      return response.text().then(function (body) { done(null, body); }, function (err) { done(err); });
+    }, function (err) { done(err); });
+  });
+}
+function hwFetchJson(url, opts, timeoutMs) {
+  return hwFetchText(url, opts, timeoutMs).then(function (body) {
+    var data;
+    try { data = JSON.parse(body); } catch (err) { throw new Error('bad JSON'); }
+    return data;
+  });
+}
+function hwLocalNowKey(timezone, fallback) {
+  try {
+    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat && timezone) {
+      var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      var parts = fmt.formatToParts(new Date());
+      var got = {};
+      for (var i = 0; i < parts.length; i++) { got[parts[i].type] = parts[i].value; }
+      var hour = got.hour === '24' ? '00' : got.hour;
+      return got.year + '-' + got.month + '-' + got.day + 'T' + hour + ':' + got.minute;
+    }
+  } catch (err) { /* fall through */ }
+  if (typeof fallback === 'string' && fallback.length >= 16) { return fallback.slice(0, 16); }
+  return '';
+}
+function hwVerdict(rainPct, apparentF) {
+  var rain = hwNum(rainPct);
+  var apparent = hwNum(apparentF);
+  if (rain === null) { rain = 0; }
+  if (apparent === null) { apparent = 0; }
+  if (rain > 30) { return 'raincoat'; }
+  if (apparent < 51) { return 'jacket'; }
+  if (apparent < 65) { return 'hoodie'; }
+  return 'tshirt';
+}
+function hwWindChill(tempF, windMph) {
+  var temp = hwNum(tempF);
+  var wind = hwNum(windMph);
+  if (temp === null) { return null; }
+  if (wind === null || wind <= 3) { return temp; }
+  var power = Math.pow(wind, 0.16);
+  return 35.74 + 0.6215 * temp - 35.75 * power + 0.4275 * temp * power;
+}
+function hwConditions(code) {
+  var c = hwNum(code);
+  if (c === null) { return 'Conditions unavailable'; }
+  if (c === 0) { return 'Clear'; }
+  if (c === 1) { return 'Mainly clear'; }
+  if (c === 2) { return 'Partly cloudy'; }
+  if (c === 3) { return 'Overcast'; }
+  if (c === 45 || c === 48) { return 'Fog'; }
+  if (c === 51 || c === 53 || c === 55) { return 'Drizzle'; }
+  if (c === 56 || c === 57) { return 'Freezing drizzle'; }
+  if (c === 61 || c === 63 || c === 65) { return 'Rain'; }
+  if (c === 66 || c === 67) { return 'Freezing rain'; }
+  if (c === 71 || c === 73 || c === 75) { return 'Snow'; }
+  if (c === 77) { return 'Snow grains'; }
+  if (c === 80 || c === 81 || c === 82) { return 'Showers'; }
+  if (c === 85 || c === 86) { return 'Snow showers'; }
+  if (c === 95) { return 'Thunderstorm'; }
+  if (c === 96 || c === 99) { return 'Thunderstorm with hail'; }
+  return 'Cloudy';
+}
+function hwHourlyAt(hourly, index, key) {
+  if (!hourly || !hourly[key] || index === null) { return null; }
+  return hwNum(hourly[key][index]);
+}
+function hwExtract(data) {
+  if (!data || typeof data !== 'object') { return null; }
+  var hourly = data.hourly ? data.hourly : null;
+  var current = data.current ? data.current : {};
+  var index = null;
+  if (hourly && hourly.time && hourly.time.length > 0) {
+    var nowKey = hwLocalNowKey(data.timezone, current.time);
+    for (var i = 0; i < hourly.time.length; i++) {
+      if (String(hourly.time[i]) >= nowKey) { index = i; break; }
+    }
+    if (index === null) { index = hourly.time.length - 1; }
+  }
+  var temp = hwHourlyAt(hourly, index, 'temperature_2m');
+  if (temp === null) { temp = hwNum(current.temperature_2m); }
+  var apparent = hwHourlyAt(hourly, index, 'apparent_temperature');
+  if (apparent === null) { apparent = hwNum(current.apparent_temperature); }
+  var wind = hwHourlyAt(hourly, index, 'wind_speed_10m');
+  if (wind === null) { wind = hwNum(current.wind_speed_10m); }
+  if (apparent === null) { apparent = hwWindChill(temp, wind); }
+  var rain = hwHourlyAt(hourly, index, 'precipitation_probability');
+  if (rain === null) { rain = 0; }
+  var code = hwHourlyAt(hourly, index, 'weather_code');
+  if (code === null) { code = hwNum(current.weather_code); }
+  if (temp === null) { return null; }
+  return { temp: temp, apparent: apparent === null ? temp : apparent, rain: rain, code: code };
+}
+function hwNwsPlaceLabel(meta, fallback) {
+  var props = meta && meta.properties ? meta.properties : null;
+  var rel = props && props.relativeLocation ? props.relativeLocation.properties : null;
+  if (!rel) { return fallback; }
+  var city = (typeof rel.city === 'string' && rel.city !== '') ? rel.city : '';
+  var state = (typeof rel.state === 'string' && rel.state !== '') ? rel.state : '';
+  var label = city && state ? city + ', ' + state : (city || state);
+  if (label === '') { return fallback; }
+  if (label.length > 80) { label = label.slice(0, 80); }
+  return label;
+}
+function hwHideVerdicts() {
+  var rows = hwQueryAll('.hw-verdict');
+  for (var i = 0; i < rows.length; i++) { rows[i].hidden = true; }
+}
+function hwShowVerdict(name) {
+  hwHideVerdicts();
+  var rows = hwQueryAll('.hw-verdict');
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].getAttribute('data-verdict') === name) { rows[i].hidden = false; }
+  }
+}
+function hwNotice(message) {
+  var el = hwEl('hw-notice');
+  if (el) {
+    if (message) { el.textContent = message; el.hidden = false; }
+    else { el.textContent = ''; el.hidden = true; }
+  }
+  var retry = hwEl('hw-retry');
+  if (retry) { retry.hidden = !message; }
+}
+function hwShowLoading() {
+  hwSetText('hw-status', 'Loading forecast...');
+  hwSetText('hw-temp', '--');
+  hwSetText('hw-cond', '');
+  hwSetText('hw-rain', '');
+  var err = hwEl('hw-error');
+  if (err) { err.hidden = true; err.textContent = ''; }
+  hwHideVerdicts();
+}
+function hwShowError(message) {
+  hwHideVerdicts();
+  hwSetText('hw-temp', '--');
+  hwSetText('hw-cond', '');
+  hwSetText('hw-rain', '');
+  hwSetText('hw-status', '');
+  var err = hwEl('hw-error');
+  if (err) { err.textContent = message; err.hidden = false; }
+  hwNotice('');
+  var retry = hwEl('hw-retry');
+  if (retry) { retry.hidden = false; }
+}
+function hwPaint(weather, label, notice) {
+  hwSetText('hw-label', label);
+  hwSetText('hw-temp', hwRound(weather.temp) + '\u00B0F');
+  var cond = (typeof weather.cond === 'string' && weather.cond !== '') ? weather.cond : hwConditions(weather.code);
+  hwSetText('hw-cond', cond);
+  hwSetText('hw-rain', 'Rain ' + hwRound(weather.rain) + '%');
+  hwSetText('hw-status', '');
+  var err = hwEl('hw-error');
+  if (err) { err.hidden = true; err.textContent = ''; }
+  hwNotice(notice ? notice : '');
+  hwShowVerdict(hwVerdict(weather.rain, weather.apparent));
+}
+function hwLoadDefault(seq, notice) {
+  hwShowLoading();
+  hwFetchJson(hwFeedUrl(), { credentials: 'same-origin' }, HW_TIMEOUT_MS).then(function (data) {
+    if (seq !== hwLoadSeq) { return; }
+    var weather = hwExtract(data);
+    if (!weather) { hwShowError('The default forecast was empty.'); return; }
+    hwPaint(weather, HW_DEFAULT.label, notice);
+  }, function () {
+    if (seq !== hwLoadSeq) { return; }
+    hwShowError('Could not load the default forecast.');
+  });
+}
+function hwLoadFallback(seq, place) {
+  hwFetchJson(hwFeedUrl(), { credentials: 'same-origin' }, HW_TIMEOUT_MS).then(function (data) {
+    if (seq !== hwLoadSeq) { return; }
+    var weather = hwExtract(data);
+    if (!weather) { hwShowError('The default forecast was empty.'); return; }
+    hwPaint(weather, HW_DEFAULT.label);
+    hwNotice('Could not reach ' + place.label + '. Showing ' + HW_DEFAULT.label + '.');
+  }, function () {
+    if (seq !== hwLoadSeq) { return; }
+    hwShowError('Could not load the forecast.');
+  });
+}
+function hwLoadSavedDirect(seq, place, notice) {
+  hwFetchJson(hwWeatherUrl(place), { credentials: 'omit' }, HW_TIMEOUT_MS).then(function (data) {
+    if (seq !== hwLoadSeq) { return; }
+    var weather = hwExtract(data);
+    if (!weather) { hwLoadFallback(seq, place); return; }
+    hwPaint(weather, place.label, notice);
+  }, function () {
+    if (seq !== hwLoadSeq) { return; }
+    hwLoadFallback(seq, place);
+  });
+}
+function hwLoadSaved(place) {
+  var seq = hwLoadSeq + 1;
+  hwLoadSeq = seq;
+  hwShowLoading();
+  hwLoadSavedDirect(seq, place, '');
+}
+function hwStartDefault() {
+  hwStartForPlace(hwPlace);
+}
+function hwStartForPlace(place) {
+  var seq = hwLoadSeq + 1;
+  hwLoadSeq = seq;
+  hwNotice('');
+  if (hwIsDefault(place)) {
+    hwLoadDefault(seq);
+  } else {
+    hwShowLoading();
+    hwLoadSavedDirect(seq, place, '');
+  }
+  if (place.label === 'Current location') { hwNamePlace(seq, place); }
+}
+function hwNamePlace(seq, place) {
+  hwFetchJson(hwNwsPointsUrl(place), { credentials: 'omit' }, HW_NAME_TIMEOUT_MS).then(function (meta) {
+    if (seq !== hwLoadSeq) { return; }
+    if (hwPlace.lat !== place.lat || hwPlace.lon !== place.lon) { return; }
+    var better = hwNwsPlaceLabel(meta, place.label);
+    if (better === place.label) { return; }
+    place.label = better;
+    hwAdoptPlaceLabel(place.lat, place.lon, better);
+  }, function () { /* naming is enhance-only */ });
+}
+function hwPlaceFromStore() {
+  var lat = hwStore ? hwStore.get('lat') : hwPlace.lat;
+  var lon = hwStore ? hwStore.get('lon') : hwPlace.lon;
+  var label = hwStore ? hwStore.get('label') : hwPlace.label;
+  if (typeof lat !== 'number') { lat = HW_DEFAULT.lat; }
+  if (typeof lon !== 'number') { lon = HW_DEFAULT.lon; }
+  if (typeof label !== 'string' || label === '') { label = HW_DEFAULT.label; }
+  return { lat: lat, lon: lon, label: label };
+}
+function hwOnSnapshot(snap) {
+  var next = { lat: snap.desired.lat, lon: snap.desired.lon, label: snap.desired.label };
+  if (typeof next.lat !== 'number') { next.lat = HW_DEFAULT.lat; }
+  if (typeof next.lon !== 'number') { next.lon = HW_DEFAULT.lon; }
+  if (typeof next.label !== 'string' || next.label === '') { next.label = HW_DEFAULT.label; }
+  hwPlace = next;
+  var nextKey = hwPlaceKey(hwPlace);
+  if (nextKey === hwLastKey) { return; }
+  if (hwSnapshotTimer !== null) { clearTimeout(hwSnapshotTimer); }
+  hwSnapshotTimer = setTimeout(function () {
+    hwSnapshotTimer = null;
+    var key = hwPlaceKey(hwPlace);
+    if (key === hwLastKey) { return; }
+    hwLastKey = key;
+    hwStartForPlace(hwPlace);
+  }, 40);
+}
+function hwSetPlace(lat, lon, label) {
+  if (typeof lat !== 'number' || typeof lon !== 'number' || lat < -90000000 || lat > 90000000 || lon < -180000000 || lon > 180000000) { return; }
+  if (typeof label !== 'string' || label === '') { label = 'Selected place'; }
+  if (label.length > 80) { label = label.slice(0, 80); }
+  var place = { lat: lat, lon: lon, label: label };
+  if (hwStore) {
+    hwStore.dispatch('set_location', { lat: lat, lon: lon, label: label }, { lat: lat, lon: lon, label: label }, null);
+    return;
+  }
+  hwPlace = place;
+  hwLastKey = hwPlaceKey(place);
+  hwSetText('hw-label', label);
+  hwStartForPlace(place);
+}
+function hwAdoptPlaceLabel(lat, lon, label) {
+  hwPlace = { lat: lat, lon: lon, label: label };
+  hwSetText('hw-label', label);
+  if (hwStore) {
+    hwStore.dispatch('set_location', { lat: lat, lon: lon, label: label }, { lat: lat, lon: lon, label: label }, null);
+  }
+}
+function hwRefresh() {
+  if (hwSnapshotTimer !== null) { clearTimeout(hwSnapshotTimer); hwSnapshotTimer = null; }
+  hwLastKey = hwPlaceKey(hwPlace);
+  hwStartForPlace(hwPlace);
+}
+function hwRetry() {
+  hwStartForPlace(hwPlace);
+}
+function hwIsWidget() { if (!hwSectionEl) { return false; } var cls = ''; try { cls = hwSectionEl.className || ''; } catch (err) { cls = ''; } return cls.indexOf('widget') !== -1; } function hwClaimRestoreForm() {
+  if (!hwStore || !hwSectionEl || !hwSectionEl.querySelectorAll) { return; }
+  var forms = hwSectionEl.querySelectorAll('form.app-action');
+  for (var i = 0; i < forms.length; i++) {
+    var input = forms[i].querySelector('input[name="action"]');
+    if (input && input.value === 'restore_default') {
+      hwStore.claimForm(forms[i], 'restore_default', function () { return {}; }, null); if (hwIsWidget() && forms[i].style) { forms[i].style.display = 'none'; }
+    }
+  }
+}
+function hwResultPlace(result) {
+  if (!result) { return null; }
+  var lat = hwNum(result.latitude);
+  var lon = hwNum(result.longitude);
+  if (lat === null || lon === null) { return null; }
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) { return null; }
+  var name = (typeof result.name === 'string' && result.name !== '') ? result.name : 'Selected place';
+  var detail = '';
+  if (typeof result.admin1 === 'string' && result.admin1 !== '') { detail = result.admin1; }
+  if (typeof result.country === 'string' && result.country !== '') { detail = detail ? detail + ', ' + result.country : result.country; }
+  var label = name + (detail ? ', ' + detail : '');
+  if (label.length > 80) { label = label.slice(0, 80); }
+  return { lat: Math.round(lat * 1000000), lon: Math.round(lon * 1000000), label: label, detail: detail };
+}
+function hwRenderResults(results) {
+  var list = hwEl('hw-results');
+  var status = hwEl('hw-search-status');
+  if (!list) { return; }
+  while (list.firstChild) { list.removeChild(list.firstChild); }
+  var places = [];
+  var source = results ? results : [];
+  for (var i = 0; i < source.length; i++) {
+    var place = hwResultPlace(source[i]);
+    if (place) { places.push(place); }
+  }
+  if (places.length === 0) {
+    if (status) { status.textContent = 'No places found.'; }
+    return;
+  }
+  if (status) { status.textContent = ''; }
+  for (var j = 0; j < places.length; j++) {
+    (function (place) {
+      var li = document.createElement('li');
+      var button = document.createElement('button');
+      button.type = 'button';
+      var name = document.createElement('span');
+      name.textContent = place.label;
+      button.appendChild(name);
+      if (place.detail) {
+        var sub = document.createElement('small');
+        sub.textContent = place.detail;
+        button.appendChild(sub);
+      }
+      button.addEventListener('click', function () {
+        hwOpenSearch(false);
+        hwSetPlace(place.lat, place.lon, place.label);
+      });
+      li.appendChild(button);
+      list.appendChild(li);
+    })(places[j]);
+  }
+}
+function hwOpenSearch(open) {
+  var panel = hwEl('hw-search');
+  if (panel) { panel.hidden = !open; }
+  var toggle = hwEl('hw-search-toggle');
+  if (toggle) { toggle.textContent = open ? 'Close search' : 'Change place'; }
+  if (open) {
+    var input = hwEl('hw-query');
+    if (input && input.focus) { input.focus(); }
+  }
+}
+function hwOnSearchInput() {
+  var input = hwEl('hw-query');
+  var status = hwEl('hw-search-status');
+  if (!input) { return; }
+  var query = String(input.value || '').replace(/^\s+|\s+$/g, '');
+  if (hwSearchTimer !== null) { clearTimeout(hwSearchTimer); hwSearchTimer = null; }
+  if (query.length < 2) {
+    hwRenderResults([]);
+    if (status) { status.textContent = 'Type at least 2 letters.'; }
+    return;
+  }
+  if (status) { status.textContent = 'Searching...'; }
+  hwSearchTimer = setTimeout(function () {
+    hwSearchTimer = null;
+    hwSearchRequest += 1;
+    var token = hwSearchRequest;
+    hwFetchJson(hwGeocodeUrl(query), { credentials: 'omit' }, HW_TIMEOUT_MS).then(function (data) {
+      if (token !== hwSearchRequest) { return; }
+      hwRenderResults(data && data.results ? data.results : []);
+    }, function () {
+      if (token !== hwSearchRequest) { return; }
+      hwRenderResults([]);
+      if (status) { status.textContent = 'City search failed.'; }
+    });
+  }, 300);
+}
+function hwTryGeolocation() {
+  if (hwGeoTried) { return; }
+  hwGeoTried = true;
+  if (typeof navigator === 'undefined' || !navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') { return; }
+  try {
+    navigator.geolocation.getCurrentPosition(function (position) {
+      if (!position || !position.coords) { return; }
+      var lat = hwNum(position.coords.latitude);
+      var lon = hwNum(position.coords.longitude);
+      if (lat === null || lon === null) { return; }
+      hwSetPlace(Math.round(lat * 1000000), Math.round(lon * 1000000), 'Current location');
+    }, function () {}, { timeout: HW_GEO_TIMEOUT_MS, maximumAge: 600000 });
+  } catch (err) { /* geolocation is enhance-only */ }
+}
+function hwInit() {
+  if (hwInitialized) { return; }
+  hwInitialized = true;
+  if (typeof window !== 'undefined' && window.KodyBridge && hwSectionEl) {
+    hwStore = window.KodyBridge.create(hwSectionEl, {
+      fieldTypes: { lat: 'integer', lon: 'integer', label: 'string' },
+      reassert: function (desired) {
+        return { action: 'set_location', args: { lat: desired.lat, lon: desired.lon, label: desired.label }, optimistic: { lat: desired.lat, lon: desired.lon, label: desired.label }, rebase: null };
+      }
+    });
+    hwStore.subscribe(hwOnSnapshot);
+    hwStore.startSpanObserver();
+    hwClaimRestoreForm();
+  }
+  hwPlace = hwPlaceFromStore();
+  hwLastKey = hwPlaceKey(hwPlace);
+  hwSetText('hw-label', hwPlace.label);
+  if (hwIsDefault(hwPlace)) {
+    hwStartDefault();
+    hwTryGeolocation();
+  } else {
+    hwStartForPlace(hwPlace);
+  }
+  var refresh = hwEl('hw-refresh');
+  if (refresh) { refresh.addEventListener('click', hwRefresh); }
+  var retry = hwEl('hw-retry');
+  if (retry) { retry.addEventListener('click', hwRetry); }
+  var toggle = hwEl('hw-search-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', function () {
+      var panel = hwEl('hw-search');
+      hwOpenSearch(!panel || panel.hidden);
+    });
+  }
+  var query = hwEl('hw-query');
+  if (query) { query.addEventListener('input', hwOnSearchInput); }
+}
+if (document.readyState === 'loading') {
+  if (document.addEventListener) { document.addEventListener('DOMContentLoaded', hwInit); }
+} else {
+  hwInit();
+}
+</script>

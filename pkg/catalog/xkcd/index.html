@@ -1,0 +1,510 @@
+<div class="feed">
+<div class="feed-nav">
+<button id="feed-prev" type="button" aria-label="Previous" title="Previous"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+<span id="feed-pos"></span>
+<button id="feed-next" type="button" aria-label="Next" title="Next"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+</div>
+<div class="feed-actions">
+<button id="feed-refresh" type="button">Refresh</button>
+<span id="feed-status" class="feed-status"></span>
+</div>
+<h2 id="feed-title"></h2>
+<div id="feed-date" class="feed-date"></div>
+<div id="feed-body"></div>
+</div>
+<style>
+
+.feed-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; margin: 12px 0 12px 0; }
+.feed-nav button { display: flex; align-items: center; justify-content: center; }
+
+
+#feed-pos { font-size: 18px; text-align: center; white-space: pre-wrap; padding: 0 12px; }
+.feed-actions { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; margin: 0 0 12px 0; }
+.feed-status { font-size: 14px; }
+#feed-title { font-size: 20px; margin: 16px 0 4px 0; }
+.feed-date { font-size: 14px; margin: 0 0 12px 0; }
+#feed-body { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; font-family: system-ui, sans-serif; font-size: 18px; line-height: 1.4; margin: 0; }
+#feed-body p { margin: 0 0 12px 0; white-space: pre-wrap; }
+#feed-body a { color: #000; text-decoration: underline; overflow-wrap: break-word; word-break: break-all; }
+#feed-body img { max-width: 100%; height: auto; display: block; margin: 12px auto; border: 1px solid #000; }
+#feed-body h1, #feed-body h2, #feed-body h3 { font-size: 18px; margin: 16px 0 8px 0; }
+#feed-body ul, #feed-body ol { margin: 0 0 12px 20px; padding: 0; }
+#feed-body blockquote { margin: 0 0 12px 0; padding-left: 12px; border-left: 2px solid #000; }
+#feed-body pre, #feed-body code { white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, monospace; font-size: 16px; }
+.feed-alt { font-size: 16px; font-style: italic; margin: 8px 0 12px 0; white-space: pre-wrap; }
+.app-body p { white-space: pre-wrap; }
+</style>
+<script>
+var xkcdScriptEl = null;
+try { xkcdScriptEl = document.currentScript; } catch (err) { xkcdScriptEl = null; }
+var xkcdSectionEl = null;
+(function () {
+  var el = xkcdScriptEl;
+  while (el) {
+    if (el.getAttribute && el.getAttribute('data-app-id')) { xkcdSectionEl = el; break; }
+    el = el.parentNode;
+  }
+  if (!xkcdSectionEl) {
+    var sections = document.querySelectorAll('section[data-app-id]');
+    if (sections.length > 0) { xkcdSectionEl = sections[0]; }
+  }
+})();
+(function () {
+  var FEED_URL = "https://xkcd.com/rss.xml";
+  var CACHE_KEY = "xkcd-feed-v1";
+  function fieldText(name) {
+    var p = document.querySelector('p[data-field="' + name + '"]');
+    if (!p) { return ""; }
+    var span = p.querySelector("span");
+    if (!span) { return ""; }
+    var text = span.textContent;
+    if (text) { return text; }
+    var attr = span.getAttribute("data-value");
+    return attr ? attr : "";
+  }
+  function hideField(name) {
+    var p = document.querySelector('p[data-field="' + name + '"]');
+    if (p) { p.style.display = "none"; }
+  }
+  function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function unescapeEntities(text) {
+    return text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'").replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
+  }
+  function childText(parent, tag) {
+    var i, node;
+    for (i = 0; i < parent.childNodes.length; i++) {
+      node = parent.childNodes[i];
+      if (node.nodeType === 1 && node.nodeName === tag) {
+        return node.textContent || "";
+      }
+    }
+    return "";
+  }
+  function tagValue(block, tag) {
+    var re = new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)</" + tag + ">");
+    var m = re.exec(block);
+    if (!m) { return ""; }
+    var v = m[1];
+    if (v.indexOf("<![CDATA[") === 0) { v = v.slice(9); }
+    if (v.slice(-3) === "]]>") { v = v.slice(0, -3); }
+    return unescapeEntities(v);
+  }
+  function parseFeedXmlRegex(text) {
+    var items = [];
+    var re = /<item>([\s\S]*?)<\/item>/g;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var block = m[1];
+      items.push({
+        title: tagValue(block, "title"),
+        link: tagValue(block, "link"),
+        guid: tagValue(block, "guid"),
+        pubDate: tagValue(block, "pubDate"),
+        description: tagValue(block, "description") || tagValue(block, "content:encoded")
+      });
+    }
+    return items.length ? items : null;
+  }
+  function parseFeedXml(xmlText) {
+    var text = (xmlText || "").replace(/^\s+/, "").replace(/\s+$/, "");
+    if (!text) { return null; }
+    if (text.indexOf("<rss") === -1 && text.indexOf("&lt;rss") !== -1) {
+      text = unescapeEntities(text);
+    }
+    if (typeof DOMParser === "undefined") { return parseFeedXmlRegex(text); }
+    var doc;
+    try {
+      doc = new DOMParser().parseFromString(text, "text/xml");
+    } catch (e) {
+      return parseFeedXmlRegex(text);
+    }
+    if (!doc) { return parseFeedXmlRegex(text); }
+    var errs = doc.getElementsByTagName("parsererror");
+    if (errs && errs.length > 0) { return parseFeedXmlRegex(text); }
+    var itemEls = doc.getElementsByTagName("item");
+    if (!itemEls || itemEls.length === 0) { return null; }
+    var items = [];
+    var i;
+    for (i = 0; i < itemEls.length; i++) {
+      var el = itemEls[i];
+      var desc = childText(el, "description");
+      if (!desc) { desc = childText(el, "content:encoded"); }
+      items.push({
+        title: childText(el, "title"),
+        link: childText(el, "link"),
+        guid: childText(el, "guid"),
+        pubDate: childText(el, "pubDate"),
+        description: desc
+      });
+    }
+    return items;
+  }
+  function formatLocalDate(d) {
+    try {
+      return d.toLocaleDateString(undefined, {weekday: "long", year: "numeric", month: "long", day: "numeric"});
+    } catch (e) {
+      return "";
+    }
+  }
+  function formatPubDate(raw) {
+    var d, formatted;
+    if (!raw) { return ""; }
+    d = new Date(raw);
+    if (isNaN(d.getTime())) { return raw; }
+    formatted = formatLocalDate(d);
+    return formatted ? formatted : raw;
+  }
+  function isSafeUrl(u) {
+    return u.indexOf("http://") === 0 || u.indexOf("https://") === 0;
+  }
+  function resolveUrl(u, base) {
+    if (!u) { return ""; }
+    try {
+      return new URL(u, base || "").href;
+    } catch (e) {
+      return u;
+    }
+  }
+  function safeLink(u, base) {
+    var resolved = resolveUrl(u, base || FEED_URL);
+    return isSafeUrl(resolved) ? resolved : "";
+  }
+  function sanitizeHtml(html, baseUrl) {
+    if (!html || typeof DOMParser === "undefined") { return null; }
+    var doc;
+    try {
+      doc = new DOMParser().parseFromString(html, "text/html");
+    } catch (e) {
+      return null;
+    }
+    if (!doc || !doc.body) { return null; }
+    var allowed = {P: 1, H1: 1, H2: 1, H3: 1, UL: 1, OL: 1, LI: 1, BLOCKQUOTE: 1, PRE: 1, CODE: 1, STRONG: 1, B: 1, EM: 1, I: 1, U: 1, A: 1, IMG: 1, FIGURE: 1, FIGCAPTION: 1, HR: 1, BR: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1, DIV: 1, SPAN: 1};
+    var dropped = {SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, FORM: 1, INPUT: 1, BUTTON: 1, SELECT: 1, TEXTAREA: 1, LINK: 1, META: 1, TITLE: 1, SVG: 1, MATH: 1, VIDEO: 1, AUDIO: 1, SOURCE: 1, TRACK: 1, NOSCRIPT: 1};
+    var imgCount = 0;
+    var out = document.createElement("div");
+    function cleanNode(node, parent) {
+      var i;
+      if (node.nodeType === 3) {
+        parent.appendChild(document.createTextNode(node.nodeValue));
+        return;
+      }
+      if (node.nodeType !== 1) { return; }
+      var tag = node.tagName;
+      if (dropped[tag]) { return; }
+      if (tag === "IMG") {
+        if (imgCount >= 5) { return; }
+        var src = node.getAttribute("src") || "";
+        var resolved = resolveUrl(src, baseUrl);
+        if (!isSafeUrl(resolved)) { return; }
+        imgCount = imgCount + 1;
+        var img = document.createElement("img");
+        img.setAttribute("src", resolved);
+        var alt = node.getAttribute("alt") || node.getAttribute("title") || "";
+        if (alt) { img.setAttribute("alt", alt); }
+        parent.appendChild(img);
+        return;
+      }
+      if (tag === "A") {
+        var href = node.getAttribute("href") || "";
+        var resolvedHref = resolveUrl(href, baseUrl);
+        if (!isSafeUrl(resolvedHref)) {
+          for (i = 0; i < node.childNodes.length; i++) { cleanNode(node.childNodes[i], parent); }
+          return;
+        }
+        var a = document.createElement("a");
+        a.setAttribute("href", resolvedHref);
+        for (i = 0; i < node.childNodes.length; i++) { cleanNode(node.childNodes[i], a); }
+        parent.appendChild(a);
+        return;
+      }
+      if (allowed[tag]) {
+        var el = document.createElement(tag.toLowerCase());
+        for (i = 0; i < node.childNodes.length; i++) { cleanNode(node.childNodes[i], el); }
+        parent.appendChild(el);
+        return;
+      }
+      for (i = 0; i < node.childNodes.length; i++) { cleanNode(node.childNodes[i], parent); }
+    }
+    for (var k = 0; k < doc.body.childNodes.length; k++) {
+      cleanNode(doc.body.childNodes[k], out);
+    }
+    return out;
+  }
+  function looksLikeHtml(s) {
+    return s.indexOf("<img") !== -1 || s.indexOf("<p") !== -1 || s.indexOf("<a ") !== -1 || s.indexOf("<br") !== -1 || s.indexOf("<ul") !== -1 || s.indexOf("<ol") !== -1;
+  }
+  function linkify(text) {
+    var escaped = escapeHtml(text);
+    return escaped.replace(/(https?:\/\/[^\s<]+)/g, function (match, url) {
+      var trailing = "";
+      while (url.length > 0 && '.,;:!?)]}"'.indexOf(url.charAt(url.length - 1)) !== -1) {
+        trailing = url.charAt(url.length - 1) + trailing;
+        url = url.slice(0, -1);
+      }
+      return '<a href="' + url + '">' + url + '</a>' + trailing;
+    });
+  }
+  function init() {
+    var body = document.getElementById("feed-body");
+    var pos = document.getElementById("feed-pos");
+    var titleEl = document.getElementById("feed-title");
+    var dateEl = document.getElementById("feed-date");
+    var statusEl = document.getElementById("feed-status");
+    var prevBtn = document.getElementById("feed-prev");
+    var nextBtn = document.getElementById("feed-next");
+    var refreshBtn = document.getElementById("feed-refresh");
+    if (!body || !pos || !prevBtn || !nextBtn || !titleEl || !dateEl || !statusEl || !refreshBtn) { return; }
+    var items = [];
+    /* Bridge (Phase 2): initial feed comes from the JSON seed via the
+     * bridge store, falling back to the span readout when the bridge is
+     * absent. The bundle never dispatches set_feed itself -- that action
+     * is for external writers -- so this port changes no server writes;
+     * the subscription only re-renders when an external writer changes
+     * the stored feed while the page is open. Navigation index stays
+     * local, like before. */
+    var xkcdStore = null;
+    if (typeof window !== 'undefined' && window.KodyBridge && xkcdSectionEl) {
+      xkcdStore = window.KodyBridge.create(xkcdSectionEl, { fieldTypes: { feed: 'string' } });
+      xkcdStore.subscribe(function (snap) {
+        var feed = snap.desired.feed || '';
+        var parsed = parseFeedXml(feed);
+        if (parsed && parsed.length > 0) { setItems(parsed, 'Stored feed'); render(); }
+      });
+      xkcdStore.startSpanObserver();
+    }
+    var index = 0;
+    var sourceLabel = "";
+    function setItems(feedItems, label) {
+      var reversed = [];
+      var r;
+      for (r = feedItems.length - 1; r >= 0; r--) { reversed.push(feedItems[r]); }
+      items = reversed;
+      index = items.length - 1;
+      sourceLabel = label;
+    }
+    function saveCache(xml) {
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({xml: xml, fetchedAt: new Date().getTime()}));
+        }
+      } catch (e) { /* storage unavailable; stored feed still works */ }
+    }
+    function loadCache() {
+      try {
+        if (typeof localStorage === "undefined") { return null; }
+        var raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) { return null; }
+        var parsed = JSON.parse(raw);
+        if (!parsed || !parsed.xml) { return null; }
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+    function wrapImagesInLinks(container, link) {
+      var safe = safeLink(link);
+      if (!safe) { return; }
+      var imgs = container.getElementsByTagName("img");
+      var list = [];
+      var i;
+      for (i = 0; i < imgs.length; i++) { list.push(imgs[i]); }
+      for (i = 0; i < list.length; i++) {
+        var img = list[i];
+        if (img.parentNode && img.parentNode.tagName === "A") { continue; }
+        var a = document.createElement("a");
+        a.setAttribute("href", safe);
+        img.parentNode.insertBefore(a, img);
+        a.appendChild(img);
+      }
+    }
+    function addAltCaptions(container) {
+      var imgs = container.getElementsByTagName("img");
+      var list = [];
+      var i;
+      for (i = 0; i < imgs.length; i++) { list.push(imgs[i]); }
+      for (i = 0; i < list.length; i++) {
+        var img = list[i];
+        var alt = img.getAttribute("alt") || "";
+        if (!alt) { continue; }
+        var cap = document.createElement("p");
+        cap.className = "feed-alt";
+        cap.textContent = alt;
+        var target = img;
+        if (img.parentNode && img.parentNode.tagName === "A") { target = img.parentNode; }
+        if (target.parentNode) { target.parentNode.insertBefore(cap, target.nextSibling); }
+      }
+    }
+    function render() {
+      if (items.length === 0) {
+        body.textContent = "No comics yet. Tap Refresh to fetch xkcd.";
+        pos.textContent = "";
+        titleEl.textContent = "";
+        dateEl.textContent = "";
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+      }
+      var item = items[index];
+      titleEl.textContent = item.title || "xkcd";
+      dateEl.textContent = formatPubDate(item.pubDate);
+      var desc = item.description || "";
+      while (body.firstChild) { body.removeChild(body.firstChild); }
+      var safeItemLink = safeLink(item.link);
+      var usedHtml = false;
+      if (looksLikeHtml(desc)) {
+        var clean = sanitizeHtml(desc, safeItemLink || FEED_URL);
+        if (clean && clean.textContent.replace(/^\s+/, "").replace(/\s+$/, "")) {
+          wrapImagesInLinks(clean, safeItemLink);
+          body.appendChild(clean);
+          addAltCaptions(body);
+          usedHtml = true;
+        } else if (clean) {
+          wrapImagesInLinks(clean, safeItemLink);
+          body.appendChild(clean);
+          addAltCaptions(body);
+          usedHtml = true;
+        }
+      }
+      if (!usedHtml) {
+        body.innerHTML = linkify(desc);
+      }
+      if (safeItemLink) {
+        var linkP = document.createElement("p");
+        var linkA = document.createElement("a");
+        linkA.setAttribute("href", safeItemLink);
+        linkA.textContent = "View on xkcd.com";
+        linkP.appendChild(linkA);
+        body.appendChild(linkP);
+      }
+      pos.textContent = formatPubDate(item.pubDate) + "\n" + (index + 1) + " of " + items.length;
+      statusEl.textContent = sourceLabel;
+      prevBtn.disabled = index <= 0;
+      nextBtn.disabled = index >= items.length - 1;
+    }
+    function proxyFeedUrl() {
+      var base = "";
+      var el = document.getElementById("feed-refresh");
+      while (el) {
+        if (el.getAttribute) {
+          var ab = el.getAttribute("data-action-base");
+          if (ab) { base = ab; break; }
+        }
+        el = el.parentNode;
+      }
+      if (!base && typeof window.location !== "undefined") {
+        base = window.location.pathname || "";
+      }
+      var suffix = "/apps/xkcd";
+      if (base.length > suffix.length && base.slice(base.length - suffix.length) === suffix) {
+        base = base.slice(0, base.length - suffix.length);
+      } else if (base === suffix) {
+        base = "";
+      } else {
+        var appsAt = base.indexOf("/apps/");
+        if (appsAt !== -1) { base = base.slice(0, appsAt); }
+        else { base = ""; }
+      }
+      var url = base + "/feed/xkcd/xkcd";
+      if (typeof window.location !== "undefined" && window.location.search) {
+        var m = /(?:^|[?&])k=([^&]+)/.exec(window.location.search);
+        if (m) { url = url + "?k=" + encodeURIComponent(m[1]); }
+      }
+      return url;
+    }
+    function fetchText(url, withCreds, onOk, onErr) {
+      if (typeof fetch === "function") {
+        var opts = withCreds ? { credentials: "same-origin" } : {};
+        fetch(url, opts).then(function (res) {
+          if (!res.ok) { throw new Error("HTTP " + res.status); }
+          return res.text();
+        }).then(onOk).catch(onErr);
+      } else if (typeof XMLHttpRequest !== "undefined") {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        if (withCreds) { try { xhr.withCredentials = true; } catch (e) { /* no credentials support */ } }
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) { onOk(xhr.responseText); }
+            else { onErr(new Error("HTTP " + xhr.status)); }
+          }
+        };
+        xhr.onerror = function () { onErr(new Error("Network error")); };
+        try { xhr.send(); } catch (e) { onErr(e); }
+      } else {
+        onErr(new Error("fetch unavailable"));
+      }
+    }
+    function fetchLive() {
+      refreshBtn.disabled = true;
+      statusEl.textContent = "Fetching xkcd\u2026";
+      function showParsed(xml, label) {
+        var parsed = parseFeedXml(xml);
+        if (!parsed || parsed.length === 0) { return false; }
+        setItems(parsed, label);
+        render();
+        saveCache(xml);
+        statusEl.textContent = label;
+        refreshBtn.disabled = false;
+        return true;
+      }
+      function onDirectText(xml) {
+        if (showParsed(xml, "Live fetch")) { return; }
+        statusEl.textContent = "Live fetch returned no comics. Showing stored feed.";
+        refreshBtn.disabled = false;
+      }
+      function onBothFailed(err) {
+        var msg = (err && err.message) ? err.message : "fetch failed";
+        if (items.length > 0) { render(); }
+        statusEl.textContent = "Live fetch failed (" + msg + "). The proxy and the direct fetch both failed; showing the stored feed so images still work. Tap Refresh to retry.";
+        refreshBtn.disabled = false;
+      }
+      function tryDirect() {
+        fetchText(FEED_URL, false, onDirectText, onBothFailed);
+      }
+      function onProxyText(xml) {
+        if (showParsed(xml, "Live fetch (proxy)")) { return; }
+        tryDirect();
+      }
+      function onProxyFailed() { tryDirect(); }
+      var proxyUrl = proxyFeedUrl();
+      if (proxyUrl) {
+        fetchText(proxyUrl, true, onProxyText, onProxyFailed);
+      } else {
+        tryDirect();
+      }
+    }
+    prevBtn.addEventListener("click", function () {
+      if (index > 0) { index = index - 1; render(); }
+    });
+    nextBtn.addEventListener("click", function () {
+      if (index < items.length - 1) { index = index + 1; render(); }
+    });
+    refreshBtn.addEventListener("click", function () { fetchLive(); });
+    var initialFeed = xkcdStore ? xkcdStore.get('feed') : fieldText("feed");
+    var stored = parseFeedXml(initialFeed);
+    if (stored && stored.length > 0) {
+      setItems(stored, "Stored feed");
+      render();
+    } else {
+      var cached = loadCache();
+      var cachedItems = cached ? parseFeedXml(cached.xml) : null;
+      if (cachedItems && cachedItems.length > 0) {
+        setItems(cachedItems, "Cached feed");
+        render();
+      } else {
+        body.textContent = "Fetching xkcd\u2026";
+        pos.textContent = "";
+      }
+    }
+    hideField("feed");
+    fetchLive();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>

@@ -40,8 +40,9 @@ try {
 }
 
 const DEFINITION_PATH = path.join(__dirname, "..", "cellular-playground/definition.json");
-const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, "utf8"));
-const html = definition.bundle.files[definition.bundle.entry];
+const loadedBundle = require('./read-bundle.cjs').readBundleFiles(DEFINITION_PATH);
+const definition = loadedBundle.definition;
+const html = loadedBundle.files[definition.bundle.entry];
 
 let failures = 0;
 function check(cond, msg) {

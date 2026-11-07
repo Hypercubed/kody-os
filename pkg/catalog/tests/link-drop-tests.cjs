@@ -30,7 +30,7 @@ function findBundle() {
 }
 
 var bundlePath = findBundle();
-var def = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+var def = require('./read-bundle.cjs').readBundleFiles(bundlePath).definition;
 check('definition id is link-drop', def.id === 'link-drop', def.id);
 check('schemaVersion is 5', def.schemaVersion === 5, def.schemaVersion);
 check('category is utilities', def.category === 'utilities', def.category);
@@ -60,7 +60,7 @@ check('ui hides state, page placement, no shell actions (bundle owns Clear All)'
   def.ui.placements.indexOf('page') !== -1 &&
   (!def.ui.actions || def.ui.actions.length === 0),
   JSON.stringify(def.ui));
-var html = def.bundle.files['index.html'];
+var html = require('./read-bundle.cjs').readBundleFiles(bundlePath).files['index.html'];
 check('bundle under 256 KiB', Buffer.byteLength(html, 'utf8') < 256 * 1024, Buffer.byteLength(html, 'utf8'));
 check('install block names link-drop, no copy-code block, no Clipboard API',
   html.indexOf('link-drop') !== -1 && html.indexOf('Or copy this code') === -1 &&

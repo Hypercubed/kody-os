@@ -18,8 +18,9 @@ function check(name, ok, detail) {
   if (!ok) { failures.push(name); }
 }
 
-var def = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'generic-feed/definition.json'), 'utf8'));
-var html = def.bundle.files['index.html'];
+var genericFeedBundlePath = path.join(__dirname, '..', 'generic-feed/definition.json');
+var def = require('./read-bundle.cjs').readBundleFiles(genericFeedBundlePath).definition;
+var html = require('./read-bundle.cjs').readBundleFiles(genericFeedBundlePath).files['index.html'];
 var script = html.slice(html.indexOf('<script>') + '<script>'.length, html.indexOf('</script>'));
 
 function makeEl() {

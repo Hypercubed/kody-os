@@ -18,8 +18,9 @@ function check(name, ok, detail) {
   if (!ok) { failures.push(name); }
 }
 
-var def = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'daily-feed/definition.json'), 'utf8'));
-var html = def.bundle.files['index.html'];
+var dailyFeedBundlePath = path.join(__dirname, '..', 'daily-feed/definition.json');
+var def = require('./read-bundle.cjs').readBundleFiles(dailyFeedBundlePath).definition;
+var html = require('./read-bundle.cjs').readBundleFiles(dailyFeedBundlePath).files['index.html'];
 var script = html.slice(html.indexOf('<script>') + '<script>'.length, html.indexOf('</script>'));
 
 function makeEl() {

@@ -1,0 +1,232 @@
+<div class="ld">
+<form id="ld-clear-form" method="get"><button id="ld-clear-btn" type="submit">Clear All</button></form>
+<div id="ld-list" style="display:none"></div>
+<div id="ld-install">
+<p>Send a link to kody-os from any browser, and open it here later.</p>
+<h3>Install the bookmarklet</h3>
+<p>Drag this link to your bookmarks bar:</p>
+<p><a id="ld-bookmarklet" href="#">Send link to kody-os</a></p>
+<p>Or ask your agent. Tell your agent:</p>
+<p><code>Add the link [link] to my kody-os "link-drop" app</code></p>
+</div>
+<p id="ld-note" style="display:none">Stored links could not be read.</p>
+</div>
+<style>
+
+.ld-item { font-size: 18px; min-height: 48px; padding: 12px 0; margin: 0 0 4px 0; overflow-wrap: break-word; word-break: break-all; }
+.ld-item a { color: #000; }
+.ld-item .ld-text { font-size: 18px; }
+.ld code { overflow-wrap: break-word; word-break: break-all; }
+#ld-clear-form button { margin: 0 0 16px 0; }
+#ld-bookmarklet { display: inline-block; min-height: 48px; font-size: 18px; padding: 12px 16px; background: #fff; color: #000; border: 2px solid #000; box-shadow: 2px 2px 0 #000; }
+.ld-compact { margin-top: 24px; }
+section.widget #ld-clear-form, section.widget #ld-install { display: none; }
+</style>
+<script>
+/* Link Drop viewer. Pure functions are defined first so Node
+ * tests can load this script without a DOM and call them
+ * directly; DOM wiring is guarded by typeof document. No act()
+ * calls from the bundle itself: sends arrive over the shell
+ * GET-action URL from the bookmarklet, and clear is a shell
+ * ui.actions button. No copy control, no localStorage. */
+function ldEscape(text) {
+  return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function ldByteLength(text) {
+  var s = String(text);
+  try {
+    if (typeof TextEncoder !== "undefined") { return new TextEncoder().encode(s).length; }
+  } catch (err) { }
+  return s.length;
+}
+function ldIsHttpUrl(url) {
+  if (typeof url !== "string" || url === "") { return false; }
+  if (/\s/.test(url) || url.indexOf("<") !== -1 || url.indexOf('"') !== -1) { return false; }
+  var lower = url.toLowerCase();
+  return lower.indexOf("http://") === 0 || lower.indexOf("https://") === 0;
+}
+function ldParseEntry(raw) {
+  if (typeof raw !== "string") { return { ok: false, text: String(raw || "") }; }
+  var parsed = null;
+  try { parsed = JSON.parse(raw); } catch (err) { parsed = null; }
+  if (!parsed || typeof parsed !== "object" || typeof parsed.url !== "string" || parsed.url === "") {
+    return { ok: false, text: raw };
+  }
+  return { ok: true, t: (typeof parsed.t === "string") ? parsed.t : "", title: (typeof parsed.title === "string") ? parsed.title : "", url: parsed.url };
+}
+function ldFormatTime(raw) {
+  if (!raw) { return ""; }
+  var d = new Date(raw);
+  if (isNaN(d.getTime())) { return raw; }
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+function ldBuildEntry(title, url, iso) {
+  var t = String(title || "");
+  var entry = JSON.stringify({ t: iso, title: t, url: url });
+  var guard = 0;
+  while (ldByteLength(entry) > 2048 && t.length > 0 && guard < 12) {
+    guard = guard + 1;
+    var excess = ldByteLength(entry) - 2048;
+    t = t.slice(0, Math.max(0, t.length - excess - 10));
+    entry = JSON.stringify({ t: iso, title: t, url: url });
+  }
+  return entry;
+}
+function ldAppBase(pathname) {
+  var p = String(pathname || "");
+  var i = p.indexOf("/apps/");
+  if (i === -1) { return "/apps/link-drop"; }
+  return p.slice(0, i) + "/apps/link-drop";
+}
+function ldAbsoluteUrl(base, loc) {
+  var b = String(base || "");
+  if (b === "") { return ""; }
+  if (b.indexOf("http://") === 0 || b.indexOf("https://") === 0) { return b; }
+  var origin = "";
+  if (loc) {
+    if (loc.origin) { origin = loc.origin; }
+    else if (loc.protocol && loc.host) { origin = loc.protocol + "//" + loc.host; }
+  }
+  if (origin !== "" && origin.charAt(origin.length - 1) === "/") { origin = origin.slice(0, -1); }
+  return origin + b;
+}
+function ldAppUrl(origin, pathname) {
+  var o = String(origin || "");
+  if (o !== "" && o.charAt(o.length - 1) === "/") { o = o.slice(0, -1); }
+  return o + ldAppBase(pathname);
+}
+function ldBookmarklet(base) {
+  var code = "javascript:(function(){var u=location.href,t=document.title,i=new Date().toISOString();";
+  code += "function bl(s){try{return new TextEncoder().encode(s).length;}catch(e){return s.length;}}";
+  code += "var e=JSON.stringify({t:i,title:t,url:u});";
+  code += "var g=0;while(bl(e)>2048&&t.length>0&&g<12){g=g+1;t=t.slice(0,Math.max(0,t.length-(bl(e)-2048)-10));e=JSON.stringify({t:i,title:t,url:u});}";
+  code += "window.open('" + base + "?action=send&entry='+encodeURIComponent(e),'_blank');})();";
+  return code;
+}
+if (typeof document !== "undefined" && document.getElementById) {
+  (function () {
+    var installEl = document.getElementById("ld-install");
+    var listEl = document.getElementById("ld-list");
+    var noteEl = document.getElementById("ld-note");
+    var markEl = document.getElementById("ld-bookmarklet");
+    var clearForm = document.getElementById("ld-clear-form");
+    function readLinks() {
+      var links = null;
+      try {
+        if (typeof window !== "undefined" && window.KodyBridge) {
+          var scriptEl = null;
+          try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }
+          var section = null;
+          var el = scriptEl;
+          while (el) {
+            if (el.getAttribute && el.getAttribute("data-app-id")) { section = el; break; }
+            el = el.parentNode;
+          }
+          if (!section) {
+            var sections = document.querySelectorAll("section[data-app-id]");
+            if (sections.length > 0) { section = sections[0]; }
+          }
+          if (section) {
+            var store = window.KodyBridge.create(section, { fieldTypes: { links: "array" } });
+            var val = store.get("links");
+            if (val && typeof val.length === "number") { links = val; }
+          }
+        }
+      } catch (err) { links = null; }
+      if (!links) {
+        var seeds = document.querySelectorAll('script[data-kody-state-seed="1"]');
+        var s, parsed;
+        for (s = 0; s < seeds.length; s++) {
+          try {
+            parsed = JSON.parse(seeds[s].textContent);
+            if (parsed && parsed.links && typeof parsed.links.length === "number") { links = parsed.links; break; }
+          } catch (err) { }
+        }
+      }
+      if (!links) {
+        var p = document.querySelector('[data-field="links"]');
+        if (p) {
+          try {
+            var fromSpan = JSON.parse(p.textContent || "");
+            if (fromSpan && typeof fromSpan.length === "number") { links = fromSpan; }
+          } catch (err) { links = null; }
+        }
+      }
+      return links || [];
+    }
+    function renderItem(raw) {
+      var parsed = ldParseEntry(raw);
+      if (!parsed.ok) {
+        return '<div class="ld-item"><div class="ld-text">' + ldEscape(parsed.text) + "</div></div>";
+      }
+      var time = ldFormatTime(parsed.t);
+      var suffix = time ? " - " + ldEscape(time) : "";
+      if (ldIsHttpUrl(parsed.url)) {
+        return '<div class="ld-item"><a href="' + ldEscape(parsed.url) + '">' + ldEscape(parsed.title || parsed.url) + "</a>" + suffix + "</div>";
+      }
+      return '<div class="ld-item"><div class="ld-text">' + ldEscape(parsed.title || parsed.url) + suffix + "</div></div>";
+    }
+    function findActionBase() {
+      var base = "";
+      try {
+        var scriptEl = null;
+        try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }
+        var el = scriptEl;
+        while (el) {
+          if (el.getAttribute && el.getAttribute("data-action-base")) { base = el.getAttribute("data-action-base"); break; }
+          el = el.parentNode;
+        }
+        if (!base) {
+          var holders = document.querySelectorAll("[data-action-base]");
+          if (holders.length > 0 && holders[0].getAttribute) { base = holders[0].getAttribute("data-action-base") || ""; }
+        }
+      } catch (err) { base = ""; }
+      return base;
+    }
+    function init() {
+      var base = "/apps/link-drop";
+      var loc = null;
+      try {
+        if (typeof window !== "undefined" && window.location) { loc = window.location; }
+      } catch (err) { loc = null; }
+      try {
+        var stamped = findActionBase();
+        if (stamped) { base = stamped; }
+        else if (loc && loc.pathname) { base = ldAppBase(loc.pathname); }
+        base = ldAbsoluteUrl(base, loc);
+        if (!base) { base = "/apps/link-drop"; }
+      } catch (err) { base = "/apps/link-drop"; }
+      var mark = ldBookmarklet(base);
+      if (markEl && markEl.setAttribute) { markEl.setAttribute("href", mark); }
+      if (clearForm && clearForm.setAttribute) { clearForm.setAttribute("action", base + "?action=clear"); }
+      var links = readLinks();
+      if (!links || links.length === 0) {
+        listEl.style.display = "none";
+        installEl.style.display = "";
+        noteEl.style.display = "none";
+        return;
+      }
+      var html = "";
+      var i;
+      for (i = links.length - 1; i >= 0; i--) {
+        html += renderItem(links[i]);
+      }
+      listEl.innerHTML = html;
+      listEl.style.display = "";
+      noteEl.style.display = "none";
+      installEl.style.display = "";
+      try {
+        if (installEl.parentNode && installEl.parentNode.appendChild) {
+          installEl.parentNode.appendChild(installEl);
+        }
+      } catch (err) { }
+      try { installEl.className = "ld-compact"; } catch (err) { }
+    }
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      init();
+    } else {
+      document.addEventListener("DOMContentLoaded", init);
+    }
+  })();
+}
+</script>

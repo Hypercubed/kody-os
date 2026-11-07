@@ -15,8 +15,9 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFINITION_PATH = path.join(__dirname, '..', 'settings/definition.json');
-const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, 'utf8'));
-const html = definition.bundle.files[definition.bundle.entry];
+const loadedBundle = require('./read-bundle.cjs').readBundleFiles(DEFINITION_PATH);
+const definition = loadedBundle.definition;
+const html = loadedBundle.files[definition.bundle.entry];
 const script = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
 
 let failures = 0;

@@ -15,7 +15,7 @@ function check(name, ok, detail) {
 }
 
 var bundlePath = path.join(__dirname, '..', 'daily-feed/definition.json');
-var def = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+var def = require('./read-bundle.cjs').readBundleFiles(bundlePath).definition;
 check('definition id is daily-feed', def.id === 'daily-feed', def.id);
 check('schemaVersion is 5', def.schemaVersion === 5, def.schemaVersion);
 check('catalogVersion is 5', def.catalogVersion === 5, def.catalogVersion);
@@ -34,7 +34,7 @@ check('ui hides state, page placement',
   def.ui && def.ui.hideState === true &&
   def.ui.placements && def.ui.placements.indexOf('page') !== -1,
   JSON.stringify(def.ui));
-var html = def.bundle.files['index.html'];
+var html = require('./read-bundle.cjs').readBundleFiles(bundlePath).files['index.html'];
 check('bundle under 256 KiB', Buffer.byteLength(html, 'utf8') < 256 * 1024, Buffer.byteLength(html, 'utf8'));
 check('prompt names app id and set_feed',
   html.indexOf('daily-feed') !== -1 && html.indexOf('set_feed') !== -1 && html.indexOf('14') !== -1,

@@ -41,6 +41,7 @@ export { isBundleDefinition } from './types.ts'
 export {
 	act,
 	add_app,
+	assembleBundleFiles,
 	backup,
 	BUNDLE_CAP_BYTES,
 	canonicalizeDefinition,
@@ -89,6 +90,7 @@ export {
 	summarizeCapabilities,
 	SUPPORTED_SCHEMA_VERSIONS,
 	update_from_catalog,
+	validateBundleReferences,
 	validateCatalogDefinition,
 	validateDefinition,
 	writeInstallSnapshot,

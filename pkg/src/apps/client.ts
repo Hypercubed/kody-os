@@ -77,9 +77,14 @@ function inlineBundleAssets(entry: string, def: AppDefinition, used: string[]): 
 
 /**
  * Render a bundle definition's entry HTML inlined for the app panel.
- * Extra bundle .js/.css files not referenced by the entry are appended as
- * inline script/style blocks; extra .html files are ignored. Throws when the
- * stored entry is missing or unreadable so callers can degrade gracefully.
+ * Only assets the entry explicitly references (`<script src>` /
+ * `<link rel="stylesheet" href>`) execute: unreferenced `.js`/`.css`
+ * files are never appended (that append was loader magic executing code
+ * the author never referenced, so it is removed — see bundle-files).
+ * Extra `.html` files are ignored. References with no matching bundle
+ * file are dropped, never fetched, as the fail-closed fallback for
+ * already-stored definitions. Throws when the stored entry is missing
+ * or unreadable so callers can degrade gracefully.
  *
  * When `actionBase` is given, the container carries it as
  * `data-action-base` so bundle scripts can resolve action URLs against the
@@ -92,21 +97,11 @@ export function renderBundleContent(def: AppDefinition, actionBase?: string): st
 	}
 	var used: string[] = ['index.html']
 	var inlined = inlineBundleAssets(entry, def, used)
-	var raw = def as unknown as Record<string, unknown>
-	var files = isRecord(raw['bundle']) ? ((raw['bundle'] as Record<string, unknown>)['files'] as Record<string, unknown>) : {}
-	var extra = ''
-	for (var path of Object.keys(files)) {
-		if (used.indexOf(path) !== -1) continue
-		var content = files[path]
-		if (typeof content !== 'string') continue
-		if (path.slice(-3) === '.js') extra += '\n<script>' + content + '</script>'
-		else if (path.slice(-4) === '.css') extra += '\n<style>' + content + '</style>'
-	}
 	var baseAttr =
 		typeof actionBase === 'string' && actionBase !== ''
 			? ' data-action-base="' + escapeHtml(actionBase) + '"'
 			: ''
-	return '<div class="bundle" data-bundle="' + escapeHtml(def.id) + '"' + baseAttr + '>\n' + inlined + extra + '\n</div>'
+	return '<div class="bundle" data-bundle="' + escapeHtml(def.id) + '"' + baseAttr + '>\n' + inlined + '\n</div>'
 }
 
 /**

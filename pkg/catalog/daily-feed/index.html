@@ -1,0 +1,281 @@
+<div class="df">
+<div id="df-prompt">
+<p>No daily feed data has been pushed to this app yet. (catalog test v4)</p>
+<h3>Set up the push</h3>
+<p>Copy this prompt into a Kody-connected agent:</p>
+<p class="gate-hint"><code>Please set up a daily feed push for my kody-os app "daily-feed". Using Kody execute against kody:@hypercubed/kody-os, read its current state, prepend one new RSS item (newest first, at most 14 items total), and set the full feed with the act action "set_feed". Do not overwrite the feed if the current feed cannot be read or parsed. The feed is RSS XML with one item per entry, each with title, link, pubDate, and a plain-text description.<br><br>– App id: daily-feed<br>– Action: set_feed<br>– Format: RSS XML, newest first, at most 14 entries</code></p>
+<p>The app will show the latest entry once a push lands, with Previous and Next to step through entries.</p>
+</div>
+<div id="df-viewer" style="display:none">
+<div class="feed-nav">
+<button id="df-prev" type="button" aria-label="Previous" title="Previous"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+<span id="df-pos"></span>
+<button id="df-next" type="button" aria-label="Next" title="Next"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+</div>
+<h2 id="df-title"></h2>
+<div id="df-date" class="feed-date"></div>
+<div id="df-body"></div>
+<p id="df-linkp" style="display:none"><a id="df-link" href="#">Open source</a></p>
+</div>
+<p id="df-note" style="display:none">Stored feed could not be read.</p>
+</div>
+<style>
+
+.feed-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; margin: 12px 0 12px 0; }
+.feed-nav button { display: flex; align-items: center; justify-content: center; }
+
+
+#df-pos { font-size: 18px; text-align: center; white-space: pre-wrap; padding: 0 12px; }
+/* Empty page: no bundle font or sizing of its own, so it reads
+ * like the Help app, which carries no bundle CSS and lets the
+ * shell theme style its prose, headings, and code. */
+#df-title { font-size: 20px; margin: 16px 0 4px 0; }
+.feed-date { font-size: 14px; margin: 0 0 12px 0; }
+#df-body { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; font-size: 18px; line-height: 1.4; margin: 0; }
+#df-body p { margin: 0 0 12px 0; white-space: pre-wrap; }
+#df-body a, #df-link { color: #000; text-decoration: underline; overflow-wrap: break-word; word-break: break-all; }
+#df-note { font-size: 18px; }
+</style>
+<script>
+/* Daily Feed viewer. Read-only: no act() calls, no fetch, no
+ * copy control, no localStorage. State is read from the JSON
+ * seed the shell renders before this bundle (bridge path), with
+ * the shell span readout as fallback. Pure functions are defined
+ * first so Node tests can load this script without a DOM and call
+ * them directly; DOM wiring is guarded by typeof document. */
+function dfEscape(text) {
+  return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function dfUnescape(text) {
+  return String(text).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'").replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
+}
+function dfStripPunct(url) {
+  var punct = "";
+  while (url.length > 0) {
+    var last = url.charAt(url.length - 1);
+    if (last === "." || last === "," || last === ";" || last === ":" || last === "!" || last === "?" || last === ")" || last === "]") {
+      punct = last + punct;
+      url = url.slice(0, -1);
+    } else {
+      break;
+    }
+  }
+  return [url, punct];
+}
+function dfLinkify(escapedText) {
+  var re = /Source:\s*(https?:\/\/[^\s<]+)|(https?:\/\/[^\s<]+)/g;
+  return escapedText.replace(re, function (match, sourceUrl, bareUrl) {
+    var raw = sourceUrl || bareUrl;
+    var parts = dfStripPunct(raw);
+    var clean = parts[0];
+    var punct = parts[1];
+    if (sourceUrl) {
+      return '<a href="' + clean + '">Source</a>' + punct;
+    }
+    return '<a href="' + clean + '">' + clean + '</a>' + punct;
+  });
+}
+function dfTagValue(block, tag) {
+  var re = new RegExp("<" + tag + "[^>]*>([\\s\\S]*?)</" + tag + ">");
+  var m = re.exec(block);
+  if (!m) { return ""; }
+  var v = m[1];
+  if (v.indexOf("<![CDATA[") === 0) { v = v.slice(9); }
+  if (v.slice(-3) === "]]>") { v = v.slice(0, -3); }
+  return dfUnescape(v);
+}
+function dfParseFeedRegex(text) {
+  var items = [];
+  var re = /<item>([\s\S]*?)<\/item>/g;
+  var m;
+  while ((m = re.exec(text)) !== null) {
+    var block = m[1];
+    items.push({
+      title: dfTagValue(block, "title"),
+      link: dfTagValue(block, "link"),
+      guid: dfTagValue(block, "guid"),
+      pubDate: dfTagValue(block, "pubDate"),
+      description: dfTagValue(block, "description") || dfTagValue(block, "content:encoded")
+    });
+  }
+  return items;
+}
+function dfFormatPubDate(raw) {
+  if (!raw) { return ""; }
+  var d = new Date(raw);
+  if (isNaN(d.getTime())) { return ""; }
+  return d.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+function dfIsWellFormedFeed(text) {
+  if (text.indexOf("<rss") !== -1) { return true; }
+  if (text.indexOf("<channel") !== -1) { return true; }
+  if (text.indexOf("<feed") !== -1) { return true; }
+  return false;
+}
+function dfParseFeed(text, domParser) {
+  var feed = String(text || "");
+  if (feed.trim() === "") { return { items: [], status: "empty" }; }
+  var items = [];
+  var parsedByDom = false;
+  if (domParser) {
+    try {
+      var doc = domParser.parseFromString(feed, "text/xml");
+      var errors = doc.getElementsByTagName("parsererror");
+      if (!errors || errors.length === 0) {
+        var els = doc.getElementsByTagName("item");
+        var i, el;
+        for (i = 0; i < els.length; i++) {
+          el = els[i];
+          items.push({
+            title: dfDomChild(el, "title"),
+            link: dfDomChild(el, "link"),
+            guid: dfDomChild(el, "guid"),
+            pubDate: dfDomChild(el, "pubDate"),
+            description: dfDomChild(el, "description") || dfDomChild(el, "content:encoded")
+          });
+        }
+        parsedByDom = true;
+      }
+    } catch (err) {
+      parsedByDom = false;
+    }
+  }
+  if (!parsedByDom) {
+    items = dfParseFeedRegex(feed);
+    if (items.length === 0 && !dfIsWellFormedFeed(feed)) {
+      return { items: [], status: "unparseable" };
+    }
+  }
+  items.reverse();
+  return { items: items, status: "ok" };
+}
+function dfDomChild(parent, tag) {
+  var i, node;
+  for (i = 0; i < parent.childNodes.length; i++) {
+    node = parent.childNodes[i];
+    if (node.nodeType === 1 && node.nodeName === tag) {
+      return node.textContent || "";
+    }
+  }
+  return "";
+}
+if (typeof document !== "undefined" && document.getElementById) {
+  (function () {
+    var viewer = document.getElementById("df-viewer");
+    var promptEl = document.getElementById("df-prompt");
+    var noteEl = document.getElementById("df-note");
+    var prevBtn = document.getElementById("df-prev");
+    var nextBtn = document.getElementById("df-next");
+    var posEl = document.getElementById("df-pos");
+    var titleEl = document.getElementById("df-title");
+    var dateEl = document.getElementById("df-date");
+    var bodyEl = document.getElementById("df-body");
+    var linkP = document.getElementById("df-linkp");
+    var linkA = document.getElementById("df-link");
+    var items = [];
+    var index = 0;
+    function readFeed() {
+      var feed = "";
+      try {
+        if (typeof window !== "undefined" && window.KodyBridge) {
+          var scriptEl = null;
+          try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }
+          var section = null;
+          var el = scriptEl;
+          while (el) {
+            if (el.getAttribute && el.getAttribute("data-app-id")) { section = el; break; }
+            el = el.parentNode;
+          }
+          if (!section) {
+            var sections = document.querySelectorAll("section[data-app-id]");
+            if (sections.length > 0) { section = sections[0]; }
+          }
+          if (section) {
+            var store = window.KodyBridge.create(section, { fieldTypes: { feed: "string" } });
+            var val = store.get("feed");
+            if (typeof val === "string") { feed = val; }
+          }
+        }
+      } catch (err) {
+        feed = "";
+      }
+      if (!feed) {
+        var seeds = document.querySelectorAll('script[data-kody-state-seed="1"]');
+        var s, parsed;
+        for (s = 0; s < seeds.length; s++) {
+          try {
+            parsed = JSON.parse(seeds[s].textContent);
+            if (parsed && typeof parsed.feed === "string") { feed = parsed.feed; break; }
+          } catch (err) { }
+        }
+      }
+      if (!feed) {
+        var p = document.querySelector('p[data-field="feed"]');
+        if (p) {
+          var span = p.querySelector("span");
+          if (span) { feed = span.textContent || ""; }
+        }
+      }
+      return feed;
+    }
+    function render() {
+      if (items.length === 0) { return; }
+      var item = items[index];
+      var title = item.title || ("Entry " + (index + 1));
+      titleEl.textContent = title;
+      var dateText = dfFormatPubDate(item.pubDate);
+      dateEl.textContent = dateText;
+      var desc = item.description || "";
+      var paragraphs = desc.split(/\n\s*\n/);
+      var html = "";
+      var i;
+      for (i = 0; i < paragraphs.length; i++) {
+        if (paragraphs[i].trim() === "") { continue; }
+        html += "<p>" + dfLinkify(dfEscape(paragraphs[i])) + "</p>";
+      }
+      if (html === "") { html = "<p></p>"; }
+      bodyEl.innerHTML = html;
+      if (item.link && (item.link.indexOf("http://") === 0 || item.link.indexOf("https://") === 0)) {
+        linkA.setAttribute("href", item.link);
+        linkP.style.display = "";
+      } else {
+        linkP.style.display = "none";
+      }
+      posEl.textContent = (dateText || title) + "\n" + (index + 1) + " of " + items.length;
+      prevBtn.disabled = index <= 0;
+      nextBtn.disabled = index >= items.length - 1;
+    }
+    function init() {
+      var feed = readFeed();
+      var result = dfParseFeed(feed, (typeof DOMParser !== "undefined") ? new DOMParser() : null);
+      if (result.status === "empty" || result.items.length === 0) {
+        viewer.style.display = "none";
+        promptEl.style.display = "";
+        if (result.status === "unparseable") {
+          noteEl.style.display = "";
+        } else {
+          noteEl.style.display = "none";
+        }
+        return;
+      }
+      items = result.items;
+      index = items.length - 1;
+      promptEl.style.display = "none";
+      noteEl.style.display = "none";
+      viewer.style.display = "";
+      render();
+      prevBtn.addEventListener("click", function () {
+        if (index > 0) { index = index - 1; render(); }
+      });
+      nextBtn.addEventListener("click", function () {
+        if (index < items.length - 1) { index = index + 1; render(); }
+      });
+    }
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      init();
+    } else {
+      document.addEventListener("DOMContentLoaded", init);
+    }
+  })();
+}
+</script>

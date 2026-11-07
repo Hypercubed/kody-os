@@ -228,8 +228,9 @@ async function test(name, fn) {
 }
 
 (async function () {
-  const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, "utf8"));
-  const newHtml = definition.bundle.files["index.html"];
+  const loadedBundle = require('./read-bundle.cjs').readBundleFiles(DEFINITION_PATH);
+  const definition = loadedBundle.definition;
+  const newHtml = loadedBundle.files["index.html"];
 
   await test("DEFINITION: counter shape the bundle tests assume", async function () {
     assert(definition.id === "counter", "id is counter");

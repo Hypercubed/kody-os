@@ -110,6 +110,15 @@ build artifact, not the authoring source — the on-disk files stay the
 single source of truth. Do not assert text imports work until the probe
 passes.
 
+Probe result (Nov 7, 2026): FAIL. A probe module
+`scripts/probe-text-import.ts` importing `../probe-text-fixture.html`
+with `{ type: "text" }`, run via `kody execute --target mock`, was
+rejected at bundle time: `Importing with a type attribute of "text" is
+not supported`. Probe files removed after the run. Approach decided:
+the generator-emitted assembly module fallback. `catalog.ts` does NOT
+use text imports; `scripts/build-catalog-index.ts` emits the assembly
+module and `catalog.ts` imports it.
+
 ### Decision 5 — DEVIATION: install stays static-import; there is no fetch
 
 This deviates from the brief, which said "install fetches the
@@ -207,9 +216,9 @@ splitting a block into a referenced file is a separate, later edit.
 
 ## Open questions
 
-- OQ1: Does the Kody bundler inline text imports? Decided by the phase 1
-  probe (Decision 4). If it does not, the generator-emitted assembly
-  module is the fallback.
+- OQ1: Does the Kody bundler inline text imports? DECIDED Nov 7, 2026
+  by the phase 1 probe (Decision 4): NO (`with { type: "text" }` is not
+  supported). The generator-emitted assembly module is the approach.
 - OQ2: Sequencing with help-about-built-in's in-flight sync. The
   concurrent agent is archiving shell-settings, then help-about-built-in,
   whose deltas touch app-registry ("Catalog index", "Catalog version").
