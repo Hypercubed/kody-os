@@ -79,18 +79,19 @@ version; the version decision is recorded at commit time.
 
 ## 5. Review and ship decisions (owner only)
 
-- [ ] 5.1 Visual check on Scribe and/or preview: 20px buttons,
+- [x] 5.1 Visual check on Scribe and/or preview: 20px buttons,
   1px borders (was 2px `#111` in many apps), 2px shadows,
   flattened Puzzle New Game, Calculator keys, Hoodie Weather
   (16px input, buttons in the 2-column actions grid),
   Cellular/News dark toggle states, one page and one widget. (Kept Nov 6, 2026: checks the named visual outcomes of this change per app — 20px buttons, 1px borders, 2px shadows, specific toggle states — not a routine check.)
-- [ ] 5.2 News active tab bold: restore it with a marker rule,
+- [x] 5.2 News active tab bold: restore it with a marker rule,
   or accept inversion-only as the state cue.
-- [ ] 5.3 Pill variants: confirm Counter and Eight Ball pills
+- [x] 5.3 Pill variants: confirm Counter and Eight Ball pills
   stay variants and Puzzle New Game stays flattened, or
   reverse either call.
 - Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 5.4 "Commit scope: spec and implementation together or separately, and the version decision for that commit" — a commit-scope task; the commit already landed as ef654da, so the decision is moot.
 - Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 5.5 "Push destination and publish: GitHub only, Kody publish, both, or neither" — a push/publish task, already done: pushed to GitHub as ef654da and published to Kody as v2.6.0 build 31; live has since moved to v2.7.0 build 32.
+  - Done Nov 7, 2026 (owner decisions): 5.1 deleted `.hw-results button { display: block; width: 100%; text-align: left; }` from hoodie-weather (v8->v9); `.hw-results button small` kept; `hw-btn` hooks kept; no other bundle shares that full-width result-button cause (other `button` layout rules — `.ag-row button`, `.cal-bar button`, `.cp-row button`, `.feed-nav button`, `.tb-row button`, game tiles/palette — differ for layout/game-state reasons, left unchanged); bundle buttons verified in-memory (3x .hw-btn + results now all bare-default inline; shell `restore_default` form remains shell chrome outside `.bundle`, unchanged — no shell change allowed). 5.2 added bundle-only `.bundle button.news-tab-on { background: #000; color: #fff; box-shadow: none; transform: translate(3px, 3px); }` to news (v3->v4), matching `.edit-toggle-btn-on` exactly, no bold; JS active classes unchanged. 5.3 deleted `.bundle button.counter-step` pill (counter v4->v5) and `.bundle button.ball-shake` pill (eight-ball v4->v5); `counter-step`/`ball-shake` classes kept as JS hooks; both verified bare-default (square radius 0, 48px). Catalog index regenerated (`build-catalog-index.ts`, 18 apps). Evidence: `bun tests/catalog-harness.ts` ALL PASSED (18 apps); `bun tests/store-harness.ts` ALL PASSED; `bun build pkg/src/app.ts --target=browser --external 'kody:*'` succeeds; in-memory `renderAppSection` checks per app (see turn log); mock server not reinstalled per handoff (running mock serves pre-edit installed defs, so in-memory render is the verification).
 - [ ] 5.6 Future consideration, not part of this change: a
   harness check that fails a bundle button look rule
   duplicating a default, so the drift this change removed

@@ -57,8 +57,8 @@
     {
       "id": "counter",
       "label": "Counter",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:3262203713-1700876522-6481",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:3364533401-1204250391-6374",
       "installMode": "json",
       "definitionPath": "counter/definition.json",
       "recipePath": "counter/RECIPE.md"
@@ -75,8 +75,8 @@
     {
       "id": "eight-ball",
       "label": "Eight Ball",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:360762088-3608574309-3197",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:4157599228-4250843866-3124",
       "installMode": "json",
       "definitionPath": "eight-ball/definition.json",
       "recipePath": "eight-ball/RECIPE.md"
@@ -93,8 +93,8 @@
     {
       "id": "hoodie-weather",
       "label": "Hoodie Weather",
-      "catalogVersion": 8,
-      "fingerprint": "fnv:1796464568-3422042318-43948",
+      "catalogVersion": 9,
+      "fingerprint": "fnv:3917638344-1411347385-43877",
       "installMode": "json",
       "definitionPath": "hoodie-weather/definition.json",
       "recipePath": "hoodie-weather/RECIPE.md"
@@ -120,8 +120,8 @@
     {
       "id": "news",
       "label": "News",
-      "catalogVersion": 3,
-      "fingerprint": "fnv:3288154179-3382010861-17850",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:1418403558-3631841351-18097",
       "installMode": "json",
       "definitionPath": "news/definition.json",
       "recipePath": "news/RECIPE.md"

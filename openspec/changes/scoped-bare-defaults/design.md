@@ -89,7 +89,7 @@ this change:
    and padding only; font, border, and shadow now come from
    the default), because the shape reads as intentional.
    Puzzle's New Game was flattened to the bare default
-   (radius 4 not 0, 2px shadow not 3px, normal weight, no
+   (radius 0, not the 4px field token; 2px shadow not 3px, normal weight, no
    press shift) on the judgement that its differences were
    drift, not a variant. Either call is reversible at review.
 7. **News active tab loses its bold.** The old
