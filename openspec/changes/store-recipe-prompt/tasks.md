@@ -32,9 +32,8 @@
 - [ ] 2.2 Prompt element: `<span class="store-recipe-prompt">` with
   a `<code>` child holding the prompt text, set via `textContent`
   (escape-first — never `innerHTML` for text built from a row id or
-  label). Prompt form: `Install <label> using its recipe: ask your
-  agent to follow pkg/catalog/<id>/RECIPE.md and verify with
-  list_apps.` (exact string finalized here; tests assert the parts.)
+  label). Prompt form: `Install <label> using its recipe: read
+  pkg/docs/install-guide.md, then follow pkg/catalog/<id>/RECIPE.md.` (exact string finalized here; tests assert the parts.)
 - [ ] 2.3 `store.css`: add a scoped rule for the prompt element
   (selectable text, readable on the Scribe).
 - [ ] 2.4 No copy button and no Clipboard API use for the prompt

@@ -26,9 +26,9 @@ and tested with a fixture row, ready for the first `recipe-only` app.
 - The App Store bundle renders a recipe prompt in place of the Add
   button on not-installed `recipe-only` rows: selectable text in a
   `<code>` element, no copy button, no Clipboard API (the shell's
-  established pattern for agent prompts). The prompt is a short
-  instruction naming the app and its recipe file, not the full recipe
-  text — the agent reads the recipe file itself.
+  established pattern for agent prompts). The prompt is a short instruction in two parts — read the install
+  guide (`pkg/docs/install-guide.md`), then follow the app’s recipe
+  file — not the full recipe text; the agent reads both files itself.
 - `json` not-installed rows keep one-tap Add, with no prompt. Installed rows keep their existing controls; the prompt
   never appears on an installed row.
 - `app-store-tests.cjs` gains fixture checks for both modes (the

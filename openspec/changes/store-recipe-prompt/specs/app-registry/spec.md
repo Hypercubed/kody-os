@@ -12,8 +12,9 @@ prompt in place of one-tap install. The manage rows SHALL carry
 a row SHALL be treated as `json`. For a not-installed row whose
 `installMode` is `recipe-only`, the App Store bundle SHALL render
 the recipe prompt in place of the Add button: selectable text in a
-`<code>` element naming the app, its recipe file
-(`pkg/catalog/<id>/RECIPE.md`), and the verify step (`list_apps`),
+`<code>` element naming the app, the install guide
+(`pkg/docs/install-guide.md`), and its recipe file
+(`pkg/catalog/<id>/RECIPE.md`),
 with no copy button and no Clipboard API use. `json`
 not-installed rows SHALL offer one-tap Add with no prompt.
 Installed rows SHALL keep their existing controls and never show
@@ -24,7 +25,7 @@ the prompt.
 - **WHEN** a Store row is not installed and its `installMode` is
   `recipe-only`
 - **THEN** the row renders the recipe prompt (a `<code>` element
-  naming the app, its recipe file, and the verify step) and offers
+  naming the app, the install guide, and its recipe file) and offers
   no Add button.
 
 #### Scenario: Json not-installed row installs with one tap

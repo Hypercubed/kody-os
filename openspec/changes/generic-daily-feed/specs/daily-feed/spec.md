@@ -7,7 +7,7 @@ kody-os. One app, one feed, one entry at a
 time, with an empty-state prompt that tells
 the user how to get an agent to start pushing.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Daily Feed app definition
 

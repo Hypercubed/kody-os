@@ -9,6 +9,8 @@ An app is a JSON definition in `packageStorage()`. Adding one is a registry writ
 
 The browser shell has no add control. Agents add with the package's MCP `add_app` (or an `execute` wrapper). The shell can hide, pin, and add an app to the homepage; deletion is MCP-only (`remove_app`).
 
+Before installing any app, read `pkg/docs/install-guide.md` and follow it: security-check the bundle, tell the user the capabilities, and get the user’s go-ahead first. This applies to every install — from the App Store, from a recipe, or from anywhere else.
+
 Before writing a bundle that displays state, read the [Bundle/shell interaction contract](#bundleshell-interaction-contract) below and run the [pre-`add_app` authoring checklist](#pre-add_app-authoring-checklist). A bundle that only follows the definition contract above will render, but its display can go stale the first time a shell action form fires; the contract is what keeps bundle display and shell state in sync.
 
 ## Definition contract

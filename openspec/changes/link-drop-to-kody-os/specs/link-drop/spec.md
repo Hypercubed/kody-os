@@ -9,7 +9,7 @@ including on the Kindle Scribe. This spec
 delta is new: there is no existing
 link-drop spec to modify.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Link Drop app definition
 

@@ -59,7 +59,7 @@ The prompt names the app and its recipe file and the verify step, in
 this form (exact string finalized at implementation; tests assert the
 parts, not the full string):
 
-`Install <label> using its recipe: ask your agent to follow pkg/catalog/<id>/RECIPE.md and verify with list_apps.`
+`Install <label> using its recipe: read pkg/docs/install-guide.md, then follow pkg/catalog/<id>/RECIPE.md.`
 
 The full recipe text is deliberately NOT embedded. The agent reads
 the recipe file itself — that is what a recipe is for. The index
