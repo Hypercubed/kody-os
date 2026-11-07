@@ -1,0 +1,166 @@
+{
+  "apps": [
+    {
+      "id": "app-store",
+      "label": "App Store",
+      "catalogVersion": 13,
+      "fingerprint": "fnv:2993244728-1506542736-14282",
+      "installMode": "json",
+      "definitionPath": "app-store/definition.json",
+      "recipePath": "app-store/RECIPE.md"
+    },
+    {
+      "id": "arrow-game",
+      "label": "Arrow Game",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:433625581-1746312783-16010",
+      "installMode": "json",
+      "definitionPath": "arrow-game/definition.json",
+      "recipePath": "arrow-game/RECIPE.md"
+    },
+    {
+      "id": "calculator",
+      "label": "Calculator",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:3124691263-342541594-6075",
+      "installMode": "json",
+      "definitionPath": "calculator/definition.json",
+      "recipePath": "calculator/RECIPE.md"
+    },
+    {
+      "id": "calendar",
+      "label": "Calendar",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:1255583477-3128230553-4512",
+      "installMode": "json",
+      "definitionPath": "calendar/definition.json",
+      "recipePath": "calendar/RECIPE.md"
+    },
+    {
+      "id": "cellular-playground",
+      "label": "Cellular Playground",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:2125561215-2416806857-18786",
+      "installMode": "json",
+      "definitionPath": "cellular-playground/definition.json",
+      "recipePath": "cellular-playground/RECIPE.md"
+    },
+    {
+      "id": "clock",
+      "label": "Clock",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:1750848548-3243061971-2139",
+      "installMode": "json",
+      "definitionPath": "clock/definition.json",
+      "recipePath": "clock/RECIPE.md"
+    },
+    {
+      "id": "counter",
+      "label": "Counter",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:729316599-3295542004-5829",
+      "installMode": "json",
+      "definitionPath": "counter/definition.json",
+      "recipePath": "counter/RECIPE.md"
+    },
+    {
+      "id": "daily-feed",
+      "label": "Daily Feed",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:2968920884-3654776355-13295",
+      "installMode": "recipe-or-json",
+      "definitionPath": "daily-feed/definition.json",
+      "recipePath": "daily-feed/RECIPE.md"
+    },
+    {
+      "id": "eight-ball",
+      "label": "Eight Ball",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:3610319218-3201433356-2768",
+      "installMode": "json",
+      "definitionPath": "eight-ball/definition.json",
+      "recipePath": "eight-ball/RECIPE.md"
+    },
+    {
+      "id": "generic-feed",
+      "label": "Generic Feed",
+      "catalogVersion": 1,
+      "fingerprint": "fnv:3909410942-1916491356-12836",
+      "installMode": "recipe-or-json",
+      "definitionPath": "generic-feed/definition.json",
+      "recipePath": "generic-feed/RECIPE.md"
+    },
+    {
+      "id": "hoodie-weather",
+      "label": "Hoodie Weather",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:1175956246-105186569-43503",
+      "installMode": "json",
+      "definitionPath": "hoodie-weather/definition.json",
+      "recipePath": "hoodie-weather/RECIPE.md"
+    },
+    {
+      "id": "link-drop",
+      "label": "Link Drop",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:3353256188-3681484168-11534",
+      "installMode": "json",
+      "definitionPath": "link-drop/definition.json",
+      "recipePath": "link-drop/RECIPE.md"
+    },
+    {
+      "id": "mac-puzzle",
+      "label": "Puzzle",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:604030178-4084625838-11462",
+      "installMode": "json",
+      "definitionPath": "mac-puzzle/definition.json",
+      "recipePath": "mac-puzzle/RECIPE.md"
+    },
+    {
+      "id": "news",
+      "label": "News",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:3288154179-3382010861-17850",
+      "installMode": "json",
+      "definitionPath": "news/definition.json",
+      "recipePath": "news/RECIPE.md"
+    },
+    {
+      "id": "probe",
+      "label": "Probe",
+      "catalogVersion": 6,
+      "fingerprint": "fnv:1404168398-4019052685-30711",
+      "installMode": "json",
+      "definitionPath": "probe/definition.json",
+      "recipePath": "probe/RECIPE.md"
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "catalogVersion": 2,
+      "fingerprint": "fnv:2261089715-2957115858-11799",
+      "installMode": "json",
+      "definitionPath": "settings/definition.json",
+      "recipePath": "settings/RECIPE.md"
+    },
+    {
+      "id": "three-bit-art",
+      "label": "3-Bit Art",
+      "catalogVersion": 19,
+      "fingerprint": "fnv:270898149-3019694919-27778",
+      "installMode": "json",
+      "definitionPath": "three-bit-art/definition.json",
+      "recipePath": "three-bit-art/RECIPE.md"
+    },
+    {
+      "id": "xkcd",
+      "label": "xkcd",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:4033132722-3040306256-22176",
+      "installMode": "json",
+      "definitionPath": "xkcd/definition.json",
+      "recipePath": "xkcd/RECIPE.md"
+    }
+  ]
+}

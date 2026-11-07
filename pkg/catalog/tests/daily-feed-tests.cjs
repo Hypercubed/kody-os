@@ -14,7 +14,7 @@ function check(name, ok, detail) {
   if (!ok) { failures.push(name); }
 }
 
-var bundlePath = path.join(__dirname, '..', 'daily-feed.bundle.json');
+var bundlePath = path.join(__dirname, '..', 'daily-feed/definition.json');
 var def = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
 check('definition id is daily-feed', def.id === 'daily-feed', def.id);
 check('schemaVersion is 5', def.schemaVersion === 5, def.schemaVersion);

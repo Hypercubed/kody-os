@@ -2,6 +2,7 @@ import { SHELL_CSS } from './shell-css.ts'
 import { SESSION_COOKIE_BARE, authenticate, authPathFor, checkCode, isKodyOwnerVisitor, isSecureRequest, revokeSession, sessionCookie, sessionCookieName, unlockAllowed } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
+import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
 import type { AuthPath } from './auth.ts'
 
@@ -17,6 +18,9 @@ interface Chrome {
 	clientModuleUrl: string
 	theme: ResolvedTheme
 	authPath?: AuthPath
+	/** Effective page-visibility flags from the merged settings file + override. */
+	showHelp?: boolean
+	showAbout?: boolean
 }
 
 /** Raw fork-editable theme file shape: every field optional strings. */
@@ -171,7 +175,7 @@ export function getTheme(): Promise<ThemeFile> {
 	if (!themePromise) {
 		try {
 			// @ts-ignore optional theme file; the bundler inlines it when present, rejection means absent.
-			var req = import('../os-theme.json', { with: { type: 'json' } })
+			var req = import('../settings.json', { with: { type: 'json' } })
 			themePromise = req.then(
 				function (m: unknown): ThemeFile {
 					var rec = m as { default?: unknown } | null
@@ -264,8 +268,8 @@ function shellChrome(opts: {
 	closeLabel?: string
 	/** App pages opt into the page-mode expand/collapse controls. */
 	expandable?: boolean
-	/** Menu-bar apps, already filtered (hidden excluded) and sorted by label. Omitted on locked, 404, and transient pages. */
-	menuApps?: { id: string, label: string }[]
+	/** Menu-bar entries, already filtered (hidden excluded) and sorted; built-in Help/About are appended. Omitted on locked, 404, and transient pages. */
+	menuApps?: { id: string, label: string, builtin?: boolean }[]
 	/** Id of the menu app currently being viewed, for aria-current. */
 	currentApp?: string
 }): string {
@@ -307,7 +311,7 @@ function shellChrome(opts: {
 			menuLinks +=
 				'\t\t\t<a href="' +
 				safeBase +
-				'/apps/' +
+				(menuApp.builtin === true ? '/' : '/apps/') +
 				escapeAttribute(menuApp.id) +
 				'"' +
 				(opts.currentApp === menuApp.id ? ' aria-current="page"' : '') +
@@ -626,8 +630,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var renderWidgetSection = c.renderWidgetSection
 
 			/** Menu-bar links for one render: flagged, non-hidden apps, sorted by label (id breaks ties). */
-			function menuAppsFor(apps: { id: string, label: string, menuBar: boolean }[], hiddenIds: string[]): { id: string, label: string }[] {
-				var out: { id: string, label: string }[] = []
+			function menuAppsFor(apps: { id: string, label: string, menuBar: boolean }[], hiddenIds: string[], showHelp?: boolean, showAbout?: boolean): { id: string, label: string, builtin?: boolean }[] {
+				var out: { id: string, label: string, builtin?: boolean }[] = []
 				for (var mi = 0; mi < apps.length; mi++) {
 					if (apps[mi].menuBar && hiddenIds.indexOf(apps[mi].id) === -1) out.push({ id: apps[mi].id, label: apps[mi].label })
 				}
@@ -640,6 +644,10 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					if (a.id > b.id) return 1
 					return 0
 				})
+				// Built-in links are shell-owned: the only menu entries not
+				// derived from an installed app, shown only when enabled.
+				if (showHelp !== false) out.push({ id: 'help', label: 'Help', builtin: true })
+				if (showAbout !== false) out.push({ id: 'about', label: 'About', builtin: true })
 				return out
 			}
 
@@ -647,7 +655,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				return get_app(id).then(function (entry): Promise<Response> {
 					if ('error' in entry) return Promise.resolve(notFoundPage(chrome))
 					return Promise.all([list_apps(), get_hidden()]).then(function (parts): Promise<Response> {
-						var menu = menuAppsFor(parts[0], parts[1])
+						var menu = menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout)
 						return record_use(id).then(
 							function (): Response {
 								return renderAppPage(id, withError, entry.definition, entry.state, fromParam, menu)
@@ -662,7 +670,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					return Promise.all([list_apps(), get_homepage(), get_hidden()]).then(function (parts): Promise<Response> {
 						var apps = parts[0]
 						var homepageIds = parts[1]
-						var menu = menuAppsFor(apps, parts[2])
+						var menu = menuAppsFor(apps, parts[2], chrome.showHelp, chrome.showAbout)
 						var byId: Record<string, number> = {}
 						for (var bi = 0; bi < apps.length; bi++) byId[apps[bi].id] = bi
 						var ordered: string[] = []
@@ -777,7 +785,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					// removed Store does not have).
 					if (gid === 'app-store' && (query.get('pin') !== null || query.get('hide') !== null || query.get('home') !== null)) {
 						return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
-							var menu = menuAppsFor(parts[0], parts[1])
+							var menu = menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout)
 							var body =
 								'\t\t\t<section class="app" aria-label="App Store">\n' +
 								'\t\t\t\t<div class="app-body">\n' +
@@ -802,7 +810,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						return get_app('app-store').then(function (entry): Promise<Response> | Response {
 							if (!('error' in entry)) return appBody(gid, '', query.get('from') || '')
 							return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
-								var menu = menuAppsFor(parts[0], parts[1])
+								var menu = menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout)
 								var body =
 									'\t\t\t<section class="app" aria-label="App Store">\n' +
 									'\t\t\t\t<div class="app-body">\n' +
@@ -908,15 +916,35 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 			}
 
-			// GET /help — Help is a catalog app now; redirect to its app page
-			// with a clean URL (no query string is ever carried forward).
+			// GET /help — built-in shell page. Same shared help block as the
+			// empty Home and Apps pages, served in the shared chrome. No
+			// installed-apps list: Help is not an app.
 			if (method === 'GET' && path === '/help') {
-				return Promise.resolve(
-					new Response(null, {
-						status: 303,
-						headers: { Location: appBasePath + '/apps/help' },
-					}),
-				)
+				if (chrome.showHelp === false) return Promise.resolve(notFoundPage(chrome))
+				return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
+					var helpLines = renderEmptyHelp(appBasePath, { omitClosing: true }).split('\n')
+					var helpBody = ''
+					for (var hli = 0; hli < helpLines.length; hli++) helpBody += '\t\t\t' + helpLines[hli] + '\n'
+					return new Response(
+						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Help', authPath: authPath, menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'help', body: helpBody }),
+						{ status: 200, headers: pageHeaders() },
+					)
+				})
+			}
+
+			// GET /about — built-in shell page. The content is the retired about
+			// catalog bundle's markup, moved verbatim into shell code.
+			if (method === 'GET' && path === '/about') {
+				if (chrome.showAbout === false) return Promise.resolve(notFoundPage(chrome))
+				return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
+					var aboutLines = renderAboutContent().split('\n')
+					var aboutBody = ''
+					for (var ali = 0; ali < aboutLines.length; ali++) aboutBody += '\t\t\t' + aboutLines[ali] + '\n'
+					return new Response(
+						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'About', authPath: authPath, menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'about', body: aboutBody }),
+						{ status: 200, headers: pageHeaders() },
+					)
+				})
 			}
 
 			// GET /logout — confirm first, revoke only on ?confirm=1, then land home.
@@ -1014,9 +1042,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						var helpIndented = ''
 						for (var hli = 0; hli < helpLines.length; hli++) helpIndented += '\t\t\t\t' + helpLines[hli] + '\n'
 						return Promise.resolve(new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body:
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds, chrome.showHelp, chrome.showAbout), body:
 							'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
-							'\t\t\t\t<div class="section-head"><h2>Apps</h2></div>\n' +
 							helpIndented +
 							'\t\t\t</section>' }),
 							{ status: 200, headers: pageHeaders() },
@@ -1088,7 +1115,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								var olines = overlays[oii].split('\n')
 								for (var lj = 0; lj < olines.length; lj++) indentedSections += '\t\t\t' + olines[lj] + '\n'
 							}							return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds), body: indentedSections }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds, chrome.showHelp, chrome.showAbout), body: indentedSections }),
 								{ status: 200, headers: pageHeaders() },
 							)
 						})
@@ -1240,7 +1267,12 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 											if (themeTitle !== null) themePayload.title = themeTitle
 											if (themeIcon !== null) themePayload.icon = themeIcon
 											if (themeGrid !== null) themePayload.background = themeGridValue(themeGrid)
-											else if (themeBackground !== null) themePayload.background = themeBackground
+											else											if (themeBackground !== null) themePayload.background = themeBackground
+											var themeShowHelp = themeQuery.get('showHelp')
+											var themeShowAbout = themeQuery.get('showAbout')
+											if (themeShowHelp !== null) themePayload.showHelp = themeShowHelp
+											if (themeShowAbout !== null) themePayload.showAbout = themeShowAbout
+
 											return set_shell_theme(themeDefaults, themePayload).then(function (themeSetResult) {
 												if (!themeSetResult.ok) return new Response(JSON.stringify(themeSetResult), { status: 400, headers: themeJsonHeaders })
 												if (themeWantJson) return new Response(JSON.stringify(themeSetResult), { status: 200, headers: themeJsonHeaders })
@@ -1298,6 +1330,10 @@ var app = {
 			fileThemeValues = mergedTheme.effective
 		} catch (err) {
 		}
+		// Page visibility rides the same file-default + override merge as the
+		// theme; both flags default to shown when absent or non-boolean.
+		var showHelp = fileThemeValues.showHelp !== false
+		var showAbout = fileThemeValues.showAbout !== false
 		var theme = resolveTheme({
 			name: fileThemeValues.name,
 			title: fileThemeValues.title,
@@ -1312,7 +1348,7 @@ var app = {
 			theme.version = '0.1.0'
 			theme.build = ''
 		}
-		var chrome: Chrome = { appBasePath: appBasePath, assetBasePath: assetBasePath, clientModuleUrl: clientModuleUrl, theme: theme }
+		var chrome: Chrome = { appBasePath: appBasePath, assetBasePath: assetBasePath, clientModuleUrl: clientModuleUrl, theme: theme, showHelp: showHelp, showAbout: showAbout }
 		var rawPath = new URL(request.url).pathname
 		var appsAt = rawPath.indexOf('/apps/')
 		var path = appsAt === -1 ? rawPath : rawPath.slice(appsAt)

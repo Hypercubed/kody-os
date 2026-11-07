@@ -1,6 +1,6 @@
 /* jsdom harness for the hoodie-weather bundle.
  *
- * Tests the definition exactly as stored in ../hoodie-weather.bundle.json:
+ * Tests the definition exactly as stored in ../hoodie-weather/definition.json:
  * the classifier boundaries, next-hour slot selection, the apparent
  * temperature fallback, the three location layers (declared feed floor,
  * saved-place direct fetch with honest fallback, enhance-only geolocation),
@@ -37,7 +37,7 @@ try {
   }
 }
 
-const DEFINITION_PATH = path.join(__dirname, "..", "hoodie-weather.bundle.json");
+const DEFINITION_PATH = path.join(__dirname, "..", "hoodie-weather/definition.json");
 const BRIDGE_PATH = path.join(__dirname, "..", "..", "src", "bridge", "bridge.js");
 
 const DEFAULT_SEED = { lat: 47606200, lon: -122332100, label: "Seattle, WA" };

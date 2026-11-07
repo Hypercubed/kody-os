@@ -62,6 +62,15 @@ function clone<T>(v: T): T {
 	return JSON.parse(JSON.stringify(v)) as T
 }
 
+/** Install steps named by install_from_catalog('id'), in recipe order. */
+function installSteps(text: string): string[] {
+	var steps: string[] = []
+	var pattern = /install_from_catalog\('([a-z0-9][a-z0-9-]{0,63})'\)/g
+	var match: RegExpExecArray | null
+	while ((match = pattern.exec(text)) !== null) steps.push(match[1])
+	return steps
+}
+
 // Empty registry stays empty (empty-install): a blank store installs
 // nothing on its own; the Store appears only through an explicit
 // install; removing the last app leaves the registry empty, no re-seed.
@@ -240,12 +249,19 @@ function clone<T>(v: T): T {
 {
 	var help = renderEmptyHelp('')
 	check('empty help names the App Store prompt', help.indexOf('Add the App Store to my empty kody-os shell.') !== -1, '')
+	var promptSteps = installSteps(help)
+	check('App Store prompt points at the app-store recipe', help.indexOf('pkg/catalog/app-store/RECIPE.md') !== -1, '')
+	check('App Store prompt stops at the recipe reference', help.indexOf('RECIPE.md).') !== -1 && promptSteps.length === 0, promptSteps.join(','))
+	check('App Store prompt names no collection recipe', help.indexOf('starter') === -1 && help.indexOf('collections/') === -1, '')
 	check('empty help has both prompts as gate-hint code', help.indexOf('<h3>Install the App Store</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('class="gate-hint"') !== -1, '')
 	check('empty help lists Add your own apps before Install the App Store', help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') < help.indexOf('<h3>Install the App Store</h3>'), '')
 	check('empty help has no copy button or Clipboard API', help.indexOf('navigator.clipboard') === -1 && help.indexOf('<button') === -1, '')
-	var helpDef = get_catalog_definition('help') as unknown as { bundle: { files: Record<string, string> } }
-	var helpHtml = helpDef.bundle.files['index.html']
-	check('empty help prompt 2 matches Help prompt and asks no App id', help.indexOf('Add a new app to my hosted kody-os app on Kody.') !== -1 && helpHtml.indexOf('Add a new app to my hosted kody-os app on Kody.') !== -1 && help.indexOf('Name: [display name]') !== -1 && helpHtml.indexOf('Name: [display name]') !== -1 && help.indexOf('App id: [slug]') === -1 && helpHtml.indexOf('App id: [slug]') === -1, '')
+	var helpPageBlock = renderEmptyHelp('', { omitClosing: true })
+	check('Help page omits the empty-state closing line', helpPageBlock.indexOf('Once something is installed') === -1, '')
+	check('empty Home/Apps keep the closing line', help.indexOf('Once something is installed') !== -1, '')
+	check('Help page block differs only by the closing line', help.indexOf(helpPageBlock) === 0, '')
+	check('Help and About are not catalog apps any more', get_catalog_definition('help') === null && get_catalog_definition('about') === null)
+	check('empty help prompt 2 asks no App id', help.indexOf('Add a new app to my hosted kody-os app on Kody.') !== -1 && help.indexOf('Name: [display name]') !== -1 && help.indexOf('App id: [slug]') === -1, '')
 	var dashNoApps = renderDashboard([], '', false)
 	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Add the App Store') !== -1, '')
 	check('Home and Apps render the same help block', dashNoApps.indexOf(help) !== -1, '')

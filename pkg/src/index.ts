@@ -18,7 +18,7 @@
  *
  * const info = await main()
  * console.log(info.package) // @hypercubed/kody-os
- * // counter comes from pkg/catalog/counter.bundle.json via add_app
+ * // counter comes from pkg/catalog/counter/definition.json via add_app
  */
 import { getTheme } from './app.ts'
 import { fileThemeToValues, get_shell_theme as themeGet, reset_shell_theme as themeReset, set_shell_theme as themeSet } from './shell-theme.ts'

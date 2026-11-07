@@ -193,7 +193,7 @@ pattern in `pkg/README.md`:
 
 ```sh
 cd pkg
-python3 -c "import json; d=json.load(open('catalog/counter.bundle.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
+python3 -c "import json; d=json.load(open('catalog/counter/definition.json')); json.dump({'op':'add','definition':d}, open('/tmp/add.json','w'))"
 kody execute --target mock --file scripts/registry.ts --params "$(cat /tmp/add.json)"
 ```
 

@@ -19,9 +19,9 @@ function check(name, ok, detail) {
 
 function findBundle() {
   var candidates = [
-    path.join(__dirname, 'link-drop.bundle.json'),
-    path.join(__dirname, '..', 'link-drop.bundle.json'),
-    path.join(__dirname, '..', 'pkg', 'catalog', 'link-drop.bundle.json')
+    path.join(__dirname, 'link-drop/definition.json'),
+    path.join(__dirname, '..', 'link-drop/definition.json'),
+    path.join(__dirname, '..', 'pkg', 'catalog', 'link-drop/definition.json')
   ];
   for (var i = 0; i < candidates.length; i++) {
     if (fs.existsSync(candidates[i])) { return candidates[i]; }

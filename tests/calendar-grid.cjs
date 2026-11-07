@@ -1,5 +1,5 @@
 'use strict';
-// jsdom grid proofs for pkg/catalog/calendar.bundle.json (spec task 2.1).
+// jsdom grid proofs for pkg/catalog/calendar/definition.json (spec task 2.1).
 // Runs outside pkg/; jsdom lives in /tmp/jsdom-test (or JSDOM_PATH).
 // The bundle script uses the window's Date, so each case installs a
 // FakeDate in beforeParse: no-arg construction returns the mocked
@@ -11,7 +11,7 @@ var jsdomPath = process.env.JSDOM_PATH || '/tmp/jsdom-test/node_modules/jsdom';
 var JSDOM = require(jsdomPath).JSDOM;
 
 var bundle = JSON.parse(fs.readFileSync(
-  path.join(__dirname, '..', 'pkg', 'catalog', 'calendar.bundle.json'), 'utf8'));
+  path.join(__dirname, '..', 'pkg', 'catalog', 'calendar/definition.json'), 'utf8'));
 var html = bundle.bundle.files['index.html'];
 
 var failures = [];

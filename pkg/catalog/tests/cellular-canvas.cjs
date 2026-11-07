@@ -1,6 +1,6 @@
 /* jsdom harness for the cellular-playground canvas board.
  *
- * Tests the bundle exactly as stored in ../cellular-playground.bundle.json:
+ * Tests the bundle exactly as stored in ../cellular-playground/definition.json:
  * the board renders as one canvas (no per-cell DOM), a 20 by 14 grid draws
  * one rectangle per cell, pointer hit-testing and keyboard painting reach
  * the right cell, Step advances the automaton, and a browser without a 2D
@@ -39,7 +39,7 @@ try {
   }
 }
 
-const DEFINITION_PATH = path.join(__dirname, "..", "cellular-playground.bundle.json");
+const DEFINITION_PATH = path.join(__dirname, "..", "cellular-playground/definition.json");
 const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, "utf8"));
 const html = definition.bundle.files[definition.bundle.entry];
 

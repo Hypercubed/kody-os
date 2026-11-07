@@ -576,17 +576,21 @@ export function renderWidgetSection(
  * writeText/readText are denied with NotAllowedError).
  * appBasePath is accepted so call sites pass the same context as the
  * other renderers; the help text currently contains no links.
+ *
+ * The built-in Help page passes `omitClosing: true`: the closing line
+ * ("Once something is installed...") is true of the first-run empty
+ * state, not of the Help page itself. Empty Home / empty Apps keep it.
  */
-export function renderEmptyHelp(appBasePath: string): string {
+export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: boolean }): string {
 	void appBasePath
-	return (
+	var block =
 		'<p>No apps installed yet. This shell starts empty \u2014 nothing is installed until you add it. Pick a path below. Copy a prompt into a Kody-connected agent.</p>\n' +
 		'<h3>Add your own apps</h3>\n' +
-		'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Name: [display name]<br>\u2013 What it does: [one sentence]</code></p>\n' +
+		'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Name: [display name]<br>\u2013 What it does: [describe what it should do]</code></p>\n' +
 		'<h3>Install the App Store</h3>\n' +
-		'<p class="gate-hint"><code>Add the App Store to my empty kody-os shell. Install the `app-store` catalog app with `install_from_catalog`, verify with `list_apps` that `app-store` is installed, and confirm the App Store page lists catalog apps. Do not install any other app, and do not publish or change the package source.</code></p>\n' +
-		'<p>Once something is installed, this help goes away and the Apps page lists it instead.</p>'
-	)
+		'<p class="gate-hint"><code>Add the App Store to my empty kody-os shell. Follow the app-store recipe (pkg/catalog/app-store/RECIPE.md).</code></p>\n'
+	if (opts && opts.omitClosing === true) return block
+	return block + '<p>Once something is installed, this help goes away and the Apps page lists it instead.</p>'
 }
 
 /**

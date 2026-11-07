@@ -32,7 +32,7 @@ The shipped catalog has 16 apps: about, app-store, arrow-game, calculator, calen
 pkg/                 The Kody package — the only directory that ships to Kody.
   src/               Shell source: app.ts (fetch handler), auth.ts, feeds.ts,
                      client/, bridge/, and apps/ (registry, catalog, forms, client).
-  catalog/           Shipped app definitions (*.bundle.json) plus catalog tests.
+  catalog/           Shipped app dirs (definition.json + RECIPE.md), generated index, plus tests.
   docs/              Package-user docs: setup, device-key,
                      scribe-limitations, style-guide.
   scripts/           kody dev helpers: mint-dev-otp, registry, catalog, add-app, clear-auth.
@@ -115,7 +115,7 @@ Entire tracking was removed from this repository in November 2026 (checkpoints d
 
 The next planned change, spec'd but not yet implemented, moves the catalog out of the package so the App Store can read it from this public repository instead of from the shipped bundle:
 
-- `catalog-out-of-pkg`: move `pkg/catalog/*.bundle.json` to `catalog/` at the repo root, with a generated `catalog/index.json`.
+- `catalog-out-of-pkg`: move the `pkg/catalog/<id>/` directories to `catalog/` at the repo root, with a generated `catalog/index.json`.
 - `public-pinned-catalog`: the Store reads the public catalog pinned to a release tag (never `main` HEAD by default).
 - `bootstrap-after-fork`: docs for bootstrapping About, Help, and Store from the pinned release after forking.
 

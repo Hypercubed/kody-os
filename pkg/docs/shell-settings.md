@@ -1,7 +1,7 @@
 # Shell theme settings
 
 The shell theme (name, title, icon, background) has two layers: file
-defaults and a stored override. The file layer is `pkg/os-theme.json`
+defaults and a stored override. The file layer is `pkg/settings.json`
 (name `kody-os`, empty title, empty icon, background `desk`); the
 override layer is one storage key, `kody-os.shell.theme`, holding only
 the fields that differ. The effective theme is the per-field merge of
@@ -91,7 +91,7 @@ confirmation gate (a theme addition on update needs confirmation).
 ## Settings panel
 
 The catalog `settings` app is the browser path for changing the shell
-theme (see the Help app). It is stateless — no theme in app state, no
+theme (see the built-in Help page). It is stateless — no theme in app state, no
 `act()` — and is not installed by default. Each field shows its
 effective value with its source (file default or override). Controls:
 background desk/paper buttons, name/title text inputs (title blank

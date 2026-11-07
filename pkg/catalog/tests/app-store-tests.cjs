@@ -1,6 +1,6 @@
 /* jsdom harness for the data-only App Store bundle.
  *
- * Tests the bundle exactly as stored in ../app-store.bundle.json, with
+ * Tests the bundle exactly as stored in ../app-store/definition.json, with
  * a mocked management API (fetch stub): rows render from /manage/rows,
  * capabilities are disclosed in plain words, a modified-app update
  * shows the bundle's own confirmation UI and only applies on confirm,
@@ -37,7 +37,7 @@ try {
   }
 }
 
-const DEFINITION_PATH = path.join(__dirname, "..", "app-store.bundle.json");
+const DEFINITION_PATH = path.join(__dirname, "..", "app-store/definition.json");
 const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, "utf8"));
 const html = definition.bundle.files[definition.bundle.entry];
 const js = definition.bundle.files["store.js"];

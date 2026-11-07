@@ -18,7 +18,7 @@ function check(name, ok, detail) {
   if (!ok) { failures.push(name); }
 }
 
-var def = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'generic-feed.bundle.json'), 'utf8'));
+var def = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'generic-feed/definition.json'), 'utf8'));
 var html = def.bundle.files['index.html'];
 var script = html.slice(html.indexOf('<script>') + '<script>'.length, html.indexOf('</script>'));
 

@@ -1,6 +1,6 @@
 /* Node tests for the Settings bundle (no DOM needed).
  *
- * Checks the definition exactly as stored in ../settings.bundle.json:
+ * Checks the definition exactly as stored in ../settings/definition.json:
  * shape, icon, capabilities, stateless schema, size cap, one inline
  * style, plain GET forms with relative theme actions, the ES2019
  * ceiling on the bundle script, and no state-seed, clipboard, or
@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFINITION_PATH = path.join(__dirname, '..', 'settings.bundle.json');
+const DEFINITION_PATH = path.join(__dirname, '..', 'settings/definition.json');
 const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, 'utf8'));
 const bytes = fs.readFileSync(DEFINITION_PATH);
 const html = definition.bundle.files[definition.bundle.entry];
@@ -29,7 +29,7 @@ function check(cond, msg) {
 check(definition.id === 'settings', 'id is settings');
 check(definition.name === 'Settings' && definition.label === 'Settings', 'name and label are Settings');
 check(definition.schemaVersion === 5, 'schemaVersion is 5');
-check(definition.catalogVersion === 1, 'catalogVersion is 1');
+check(definition.catalogVersion === 2, 'catalogVersion is 2');
 check(definition.icon === '\u2699', 'icon is the single glyph U+2699');
 check(definition.category === 'utilities', 'category is utilities');
 check(typeof definition.description === 'string' && definition.description.length > 0, 'description is present');
@@ -62,7 +62,7 @@ check(script.indexOf('data-action-base') !== -1, 'script resolves the app id fro
 check(script.indexOf('form.action') === -1, 'script never reads the shadowed form.action property');check(script.indexOf("credentials: 'same-origin'") !== -1 || script.indexOf('credentials: "same-origin"') !== -1, 'fetch uses the cookie session (same-origin credentials)');
 
 const forms = html.match(/<form[\s\S]*?<\/form>/g) || [];
-check(forms.length === 11, 'eleven GET forms (got ' + forms.length + ')');
+check(forms.length === 17, 'seventeen GET forms (got ' + forms.length + ')');
 let formsOk = true;
 for (const form of forms) {
   if (form.indexOf('method="get"') === -1) formsOk = false;
@@ -74,6 +74,11 @@ check(html.indexOf('st-background-note') !== -1, 'custom-grid notice element exi
 check(html.indexOf('st-icon-note') !== -1, 'custom-mark notice element exists');
 check(html.indexOf('Reset all to file defaults') !== -1, 'reset-all control exists');
 check(html.indexOf('Stock mark') !== -1, 'stock-mark control exists');
+check(html.indexOf('<h3>Pages</h3>') !== -1, 'Pages section exists');
+check(html.indexOf('name="showHelp" value="1"') !== -1 && html.indexOf('name="showHelp" value="0"') !== -1, 'Help Show / Hide controls exist');
+check(html.indexOf('name="showAbout" value="1"') !== -1 && html.indexOf('name="showAbout" value="0"') !== -1, 'About Show / Hide controls exist');
+check(html.indexOf('name="field" value="showHelp"') !== -1 && html.indexOf('name="field" value="showAbout"') !== -1, 'per-field page resets exist');
+check(html.indexOf('st-showHelp-value') !== -1 && html.indexOf('st-showAbout-value') !== -1, 'page-state readouts exist');
 
 if (failures > 0) {
   console.error(failures + ' settings check(s) failed');

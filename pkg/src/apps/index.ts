@@ -6,7 +6,7 @@
  * @example
  * import { add_app, list_apps, act } from './src/apps/index.ts'
  *
- * await add_app(counterBundle) // parsed pkg/catalog/counter.bundle.json
+ * await add_app(counterBundle) // parsed pkg/catalog/counter/definition.json
  * await act('counter', 'set_count', { value: 1 })
  */
 export type {

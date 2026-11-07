@@ -47,7 +47,7 @@ These come from the package and the Scribe ceiling, and they bind maintainer wor
 
 ## Catalog rules
 
-- A catalog app is one `*.bundle.json` in `pkg/catalog/`, plus one import line in `pkg/src/apps/catalog.ts` (alphabetical by id), plus one entry in `pkg/catalog/README.md`, plus a harness pass (validate + install in a blank store + empty initial state + directory/import match).
+- A catalog app is one directory `pkg/catalog/<id>/` holding `definition.json` + `RECIPE.md`, plus one import line in `pkg/src/apps/catalog.ts` (alphabetical by id), plus one entry in `pkg/catalog/README.md`, plus a re-run of the catalog-index generator (`bun scripts/build-catalog-index.ts`), plus a harness pass (validate + install in a blank store + initial state + index/directory/import match).
 - `catalogVersion` starts at 1 on a definition's first versioned release and increments by exactly 1 on any change to that definition file — never for an unrelated app or a shell change, never reused, never decreased. It is distinct from `schemaVersion` and from the package version.
 - Install snapshots are written only by store install/update (including seeding), never by generic `add_app`/`import_app`, deleted by `remove_app`, and never included in exports. The Store never auto-updates.
 - Catalog bundles run with session authority. Shipping a definition in the catalog is trusting its bundle code, exactly as `add_app` trusts any definition. Review third-party bundles before adding one.

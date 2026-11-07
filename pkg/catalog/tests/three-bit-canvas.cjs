@@ -1,6 +1,6 @@
 /* jsdom harness for the three-bit-art canvas board.
  *
- * Tests the bundle exactly as stored in ../three-bit-art.bundle.json:
+ * Tests the bundle exactly as stored in ../three-bit-art/definition.json:
  * one canvas replaces the 16 by 16 div grid, one Mode button cycles
  * Color -> Motif + Color -> Bayer + Color -> Color, each mode draws
  * its tiles at an integer device-pixel scale (cell size a multiple
@@ -46,7 +46,7 @@ try {
   }
 }
 
-const DEFINITION_PATH = path.join(__dirname, "..", "three-bit-art.bundle.json");
+const DEFINITION_PATH = path.join(__dirname, "..", "three-bit-art/definition.json");
 const definition = JSON.parse(fs.readFileSync(DEFINITION_PATH, "utf8"));
 const html = definition.bundle.files[definition.bundle.entry];
 

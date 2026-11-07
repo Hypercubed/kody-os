@@ -112,7 +112,7 @@ body {
 	bottom: 0;
 }
 
-/* Fork glyph mark from os-theme.json: replaces the default Kody mark when set. */
+/* Fork glyph mark from settings.json: replaces the default Kody mark when set. */
 .os-mark-glyph {
 	display: inline-flex;
 	align-items: center;
@@ -126,7 +126,7 @@ body {
 	line-height: 1;
 }
 
-/* Inline-SVG mark from os-theme.json: sanitized at resolve time, monochrome.
+/* Inline-SVG mark from settings.json: sanitized at resolve time, monochrome.
    Fixed box like tile icons; strokes follow the text color, fills come from
    the markup so line art stays line art. */
 .os-mark-glyph svg {
@@ -137,7 +137,7 @@ body {
 }
 
 /* Default header mark: the official Kody mark in public/favicon.png.
-   A theme icon from os-theme.json still replaces it (see .os-mark-glyph). */
+   A theme icon from settings.json still replaces it (see .os-mark-glyph). */
 .os-mark-img {
 	display: block;
 	width: auto;

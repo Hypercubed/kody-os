@@ -62,6 +62,13 @@ var NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 var EXPORT_FORMAT = 'kody-os-app/2'
 var EXPORT_FORMAT_V1 = 'kody-os-app/1'
 
+/**
+ * Catalog apps retired into built-in shell pages. An upgraded store that
+ * still has one of these rows must not show a stale app beside the shell
+ * page, so the row is pruned the next time the registry is read.
+ */
+var RETIRED_APP_IDS = ['help', 'about']
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -590,6 +597,12 @@ export function validateDefinition(def: unknown): string | null {
 			return 'definition.catalogVersion must be a positive integer'
 		}
 	}
+	if (def['installMode'] !== undefined) {
+		var installMode = def['installMode']
+		if (installMode !== 'json' && installMode !== 'recipe-only' && installMode !== 'recipe-or-json') {
+			return 'definition.installMode must be "json", "recipe-only", or "recipe-or-json"'
+		}
+	}
 	if (def['icon'] !== undefined) {
 		if (typeof def['icon'] !== 'string') return 'definition.icon must be a string'
 		var icon = def['icon'] as string
@@ -720,7 +733,8 @@ export function validateCatalogDefinition(def: unknown): string | null {
  * Canonical stored form of a definition: exactly the normalization
  * add_app applies (schema version restamp, effects migration, icon
  * sanitization, open-mode derivation, capability defaults, bundle file
- * stringification, catalogVersion preserved when present). Callers
+ * stringification, catalogVersion and installMode preserved when
+ * present). Callers
  * must have validated the definition first. Fingerprints and status
  * classification run on this form, never on a raw catalog file, so a
  * clean store install matches its own snapshot.
@@ -759,6 +773,7 @@ export function canonicalizeDefinition(definition: AppDefinition): AppDefinition
 		actions: canonicalActions as unknown as AppDefinition['actions'],
 	}
 	if (definition.catalogVersion !== undefined) def.catalogVersion = definition.catalogVersion
+	if (definition.installMode !== undefined) def.installMode = definition.installMode
 	return def
 }
 
@@ -781,7 +796,7 @@ function stableStringify(value: unknown): string {
 
 /**
  * Deterministic fingerprint of a definition's canonical stored form,
- * excluding catalogVersion: content equality wins whatever the version
+ * excluding catalogVersion and installMode: content equality wins whatever the version
  * fields say (spec Decision 9), so a catalog version bump with no
  * content change still fingerprints as up to date, while version
  * ordering itself is carried separately in Iv/Cv and in the snapshot.
@@ -793,6 +808,7 @@ function stableStringify(value: unknown): string {
 export function fingerprintDefinition(definition: AppDefinition): string {
 	var canon = canonicalizeDefinition(definition) as unknown as Record<string, unknown>
 	delete canon['catalogVersion']
+	delete canon['installMode']
 	var text = stableStringify(canon)
 	var h1 = 2166136261
 	var h2 = 2166136261
@@ -1075,6 +1091,7 @@ function loadEntry(
 	store: KeyStore,
 	id: string,
 ): Promise<{ definition: AppDefinition; state: AppState } | { error: string }> {
+	if (RETIRED_APP_IDS.indexOf(id) !== -1) return Promise.resolve({ error: 'unknown app "' + id + '"' })
 	return Promise.all([
 		readJson<AppDefinition>(store, defKey(id)),
 		readJson<AppState>(store, stateKey(id)),
@@ -1132,8 +1149,10 @@ export function get_homepage(store?: KeyStore): Promise<string[]> {
  */
 export function get_launcher_state(store?: KeyStore): Promise<{ pinned: string[]; hidden: string[]; recent: string[]; homepage: string[] }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return Promise.all([readPinned(active), readHidden(active), readRecent(active), readHomepage(active)]).then(function (parts) {
-			return { pinned: parts[0], hidden: parts[1], recent: parts[2], homepage: parts[3] }
+		return pruneRetiredApps(active).then(function (): Promise<{ pinned: string[]; hidden: string[]; recent: string[]; homepage: string[] }> {
+			return Promise.all([readPinned(active), readHidden(active), readRecent(active), readHomepage(active)]).then(function (parts) {
+				return { pinned: parts[0], hidden: parts[1], recent: parts[2], homepage: parts[3] }
+			})
 		})
 	})
 }
@@ -1242,7 +1261,45 @@ export function set_hide(id: string, want: boolean, store?: KeyStore): Promise<s
 	})
 }
 
-/** List every installed app. Registry-read-only. */
+/**
+ * Drop retired-app rows (and their state, snapshot, and launcher entries)
+ * left installed before Help/About became shell pages. Returns the surviving
+ * registry ids. A clean store is read-only: no write happens when no retired
+ * id is present.
+ */
+function pruneRetiredApps(store: KeyStore): Promise<string[]> {
+	return readRegistry(store).then(function (ids: string[]): Promise<string[]> {
+		var retired: string[] = []
+		for (var i = 0; i < ids.length; i++) {
+			if (RETIRED_APP_IDS.indexOf(ids[i]) !== -1) retired.push(ids[i])
+		}
+		if (retired.length === 0) return ids
+		var kept = ids.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
+		var chain: Promise<unknown> = writeRegistry(store, kept)
+		for (var r = 0; r < retired.length; r++) {
+			;(function (id: string): void {
+				chain = chain
+					.then(function (): Promise<void> { return deleteKey(store, defKey(id)) })
+					.then(function (): Promise<void> { return deleteKey(store, stateKey(id)) })
+					.then(function (): Promise<void> { return deleteInstallSnapshot(store, id) })
+			})(retired[r])
+		}
+		return chain.then(function (): Promise<string[]> {
+			function clean(list: string[]): string[] {
+				return list.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
+			}
+			return Promise.all([readPinned(store), readHidden(store), readRecent(store), readHomepage(store)]).then(function (lists): Promise<string[]> {
+				return writePinned(store, clean(lists[0]))
+					.then(function () { return writeHidden(store, clean(lists[1])) })
+					.then(function () { return writeRecent(store, clean(lists[2])) })
+					.then(function () { return writeHomepage(store, clean(lists[3])) })
+					.then(function (): string[] { return kept })
+			})
+		})
+	})
+}
+
+/** List every installed app. Registry-read-only apart from retiring stale rows. */
 export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<AppSummary[]> {
 	var activeStore: KeyStore | undefined = store
 	var options: ListAppsOptions | undefined = opts
@@ -1253,7 +1310,7 @@ export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<App
 	return resolveStore(activeStore).then(function (active: KeyStore): Promise<AppSummary[]> {
 		var hiddenP: Promise<string[]> = options && options.includeHidden === false ? readHidden(active) : Promise.resolve([] as string[])
 		return hiddenP.then(function (hidden: string[]): Promise<AppSummary[]> {
-			return readRegistry(active).then(function (ids: string[]): Promise<AppSummary[]> {
+			return pruneRetiredApps(active).then(function (ids: string[]): Promise<AppSummary[]> {
 			var out: AppSummary[] = []
 			var chain = Promise.resolve()
 			for (var id of ids) {

@@ -1,6 +1,6 @@
 /* jsdom harness for the counter example bundle (bridge port, Phase 2).
  *
- * Tests the definition exactly as stored in ../counter.bundle.json: the
+ * Tests the definition exactly as stored in ../counter/definition.json: the
  * bundle's step behaviour through window.KodyBridge, its sync with the
  * JSON seed and the shell-rendered state field, and the shell Reset
  * form's in-place patch. These are behaviour tests, not live tests:
@@ -14,7 +14,7 @@
  *   mkdir -p /tmp/jsdom-test && cd /tmp/jsdom-test && npm init -y && npm install jsdom
  *   node pkg/catalog/tests/counter-tests.cjs
  *
- * Run from anywhere; the harness finds counter.bundle.json relative to
+ * Run from anywhere; the harness finds counter/definition.json relative to
  * itself. If jsdom lives elsewhere, point JSDOM_PATH at its folder
  * (the folder containing jsdom's package.json), e.g.
  * JSDOM_PATH=/somewhere/node_modules/jsdom. A plain require('jsdom')
@@ -56,7 +56,7 @@ try {
   }
 }
 
-const DEFINITION_PATH = path.join(__dirname, "..", "counter.bundle.json");
+const DEFINITION_PATH = path.join(__dirname, "..", "counter/definition.json");
 
 function extractScript(html) {
   const m = html.match(/<script>([\s\S]*?)<\/script>/);

@@ -1,7 +1,7 @@
 /**
  * Shell theme overrides (shell-settings Phase 1: storage layer only).
  *
- * The published file theme (`pkg/os-theme.json`, resolved in app.ts) stays
+ * The published settings file (`pkg/settings.json`, resolved in app.ts) stays
  * the default. This module owns one durable override, stored under
  * `kody-os.shell.theme`, merged per field on every page render. No MCP
  * export, route, or panel app is added by Phase 1; later phases call
@@ -28,6 +28,8 @@ export interface ShellThemeOverride {
 	title?: string
 	icon?: string
 	background?: string | { grid: number[] }
+	showHelp?: boolean
+	showAbout?: boolean
 }
 
 /**
@@ -41,6 +43,8 @@ export interface ShellThemeValues {
 	title: string
 	icon: string
 	background: string | { grid: number[] }
+	showHelp: boolean
+	showAbout: boolean
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -82,7 +86,11 @@ export function fileThemeToValues(raw: unknown): ShellThemeValues {
 	} else if (isValidThemeGrid(src['background'])) {
 		background = copyGrid(src['background'] as { grid: number[] })
 	}
-	return { name: name, title: title, icon: icon, background: background }
+	// Page-visibility flags default to shown; a non-boolean file value falls
+	// back to shown for that flag only (write path rejects, read path forgives).
+	var showHelp = src['showHelp'] !== false
+	var showAbout = src['showAbout'] !== false
+	return { name: name, title: title, icon: icon, background: background, showHelp: showHelp, showAbout: showAbout }
 }
 
 /** Read the stored override, forgiving per field: corrupt JSON reads as no override. */
@@ -106,6 +114,8 @@ export function readThemeOverride(store: KeyStore): Promise<ShellThemeOverride> 
 		} else if (isValidThemeGrid(raw['background'])) {
 			out.background = copyGrid(raw['background'] as { grid: number[] })
 		}
+		if (typeof raw['showHelp'] === 'boolean') out.showHelp = raw['showHelp']
+		if (typeof raw['showAbout'] === 'boolean') out.showAbout = raw['showAbout']
 		return out
 	})
 }
@@ -116,7 +126,9 @@ export function resolveThemeValues(defaults: ShellThemeValues, override: ShellTh
 	var title = override.title !== undefined ? override.title : (defaults.title !== '' ? defaults.title : name)
 	var icon = override.icon !== undefined ? override.icon : defaults.icon
 	var background = override.background !== undefined ? override.background : defaults.background
-	return { name: name, title: title, icon: icon, background: background }
+	var showHelp = override.showHelp !== undefined ? override.showHelp : defaults.showHelp
+	var showAbout = override.showAbout !== undefined ? override.showAbout : defaults.showAbout
+	return { name: name, title: title, icon: icon, background: background, showHelp: showHelp, showAbout: showAbout }
 }
 
 function writeOverride(store: KeyStore, override: ShellThemeOverride): Promise<void> {
@@ -144,7 +156,7 @@ export function get_shell_theme(
  */
 export function validateThemeSet(payload: unknown): { ok: true; cleaned: Record<string, unknown> } | { ok: false; error: string } {
 	if (!isRecord(payload)) return { ok: false as const, error: 'theme set payload must be an object' }
-	var allowed = ['name', 'title', 'icon', 'background']
+	var allowed = ['name', 'title', 'icon', 'background', 'showHelp', 'showAbout']
 	for (var key of Object.keys(payload)) {
 		if (allowed.indexOf(key) === -1) return { ok: false as const, error: 'unknown theme field "' + key + '"' }
 	}
@@ -184,6 +196,21 @@ export function validateThemeSet(payload: unknown): { ok: true; cleaned: Record<
 			cleaned['icon'] = value
 		}
 	}
+	var flagFields = ['showHelp', 'showAbout']
+	for (var fi = 0; fi < flagFields.length; fi++) {
+		var flag = flagFields[fi]
+		value = payload[flag]
+		if (value === undefined) continue
+		if (value === null) {
+			cleaned[flag] = null
+		} else if (value === true || value === '1') {
+			cleaned[flag] = true
+		} else if (value === false || value === '0') {
+			cleaned[flag] = false
+		} else {
+			return { ok: false as const, error: 'theme ' + flag + ' must be a boolean or "1"/"0"' }
+		}
+	}
 	value = payload['background']
 	if (value !== undefined) {
 		if (value === null) {
@@ -209,7 +236,7 @@ export function set_shell_theme(
 	return resolveStore(store).then(function (active: KeyStore) {
 		return readThemeOverride(active).then(function (current: ShellThemeOverride) {
 			var next: ShellThemeOverride = {}
-			var fields = ['name', 'title', 'icon', 'background']
+			var fields = ['name', 'title', 'icon', 'background', 'showHelp', 'showAbout']
 			for (var i = 0; i < fields.length; i++) {
 				var field = fields[i]
 				if (field in checked.cleaned) {
@@ -232,7 +259,7 @@ export function reset_shell_theme(
 	field?: string,
 	store?: KeyStore,
 ): Promise<{ ok: true; effective: ShellThemeValues } | { ok: false; error: string }> {
-	if (field !== undefined && ['name', 'title', 'icon', 'background'].indexOf(field) === -1) {
+	if (field !== undefined && ['name', 'title', 'icon', 'background', 'showHelp', 'showAbout'].indexOf(field) === -1) {
 		return Promise.resolve({ ok: false as const, error: 'unknown theme field "' + field + '"' })
 	}
 	return resolveStore(store).then(function (active: KeyStore) {

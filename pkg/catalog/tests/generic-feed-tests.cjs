@@ -14,7 +14,7 @@ function check(name, ok, detail) {
   if (!ok) { failures.push(name); }
 }
 
-var bundlePath = path.join(__dirname, '..', 'generic-feed.bundle.json');
+var bundlePath = path.join(__dirname, '..', 'generic-feed/definition.json');
 var def = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
 check('definition id is generic-feed', def.id === 'generic-feed', def.id);
 check('schemaVersion is 5', def.schemaVersion === 5, def.schemaVersion);

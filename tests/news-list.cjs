@@ -1,5 +1,5 @@
 'use strict';
-// jsdom proofs for pkg/catalog/news.bundle.json (news-app spec task 2.3).
+// jsdom proofs for pkg/catalog/news/definition.json (news-app spec task 2.3).
 // Runs outside pkg/; jsdom lives in /tmp/jsdom-test (or JSDOM_PATH).
 //
 //   bun tests/news-list.cjs
@@ -17,7 +17,7 @@ var jsdomPath = process.env.JSDOM_PATH || '/tmp/jsdom-test/node_modules/jsdom';
 var JSDOM = require(jsdomPath).JSDOM;
 
 var bundle = JSON.parse(fs.readFileSync(
-  path.join(__dirname, '..', 'pkg', 'catalog', 'news.bundle.json'), 'utf8'));
+  path.join(__dirname, '..', 'pkg', 'catalog', 'news/definition.json'), 'utf8'));
 var entry = bundle.bundle.files['index.html'];
 
 var failures = [];
