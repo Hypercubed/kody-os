@@ -2,119 +2,92 @@
 <p id="st-status">Loading the shell theme…</p>
 <div id="st-panel" style="display:none">
 <div class="st-field">
-<h3>Background</h3>
-<p>Current: <span id="st-background-value">…</span> (<span id="st-background-source">…</span>)</p>
+<h2 class="os-section-title">Background</h2>
+<p>Now: <span id="st-background-value">…</span> <span class="st-badge" id="st-background-badge">…</span></p>
 <p id="st-background-note" class="st-note" style="display:none">Custom grid, set via file or agent. Choose desk or paper below to replace it.</p>
-<div class="st-forms">
+<div class="st-segmented">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="background" value="desk">
-<button type="submit">Desk</button>
+<button type="submit" id="st-bg-desk">Desk</button>
 </form>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="background" value="paper">
-<button type="submit">Paper</button>
+<button type="submit" id="st-bg-paper">Paper</button>
 </form>
+</div>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="background">
-<button type="submit">Reset background</button>
+<button type="submit" class="st-quiet">Reset background</button>
 </form>
 </div>
-</div>
 <div class="st-field">
-<h3>Name</h3>
-<p>Current: <span id="st-name-value">…</span> (<span id="st-name-source">…</span>)</p>
+<h2 class="os-section-title">Name</h2>
+<p>Now: <span id="st-name-value">…</span> <span class="st-badge" id="st-name-badge">…</span></p>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
-<label>New name <input type="text" name="name" id="st-name-input" value="" maxlength="200"></label>
-<button type="submit">Set name</button>
+<label>Name <input type="text" name="name" id="st-name-input" value="" maxlength="200"></label>
+<button type="submit">Save</button>
 </form>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="name">
-<button type="submit">Reset name</button>
+<button type="submit" class="st-quiet">Reset name</button>
 </form>
 </div>
 <div class="st-field">
-<h3>Title</h3>
-<p>Current: <span id="st-title-value">…</span> (<span id="st-title-source">…</span>)</p>
-<p class="st-note">Blank clears the title; the shell then shows the name.</p>
-<form method="get" action="../theme/settings">
-<input type="hidden" name="action" value="set">
-<label>New title <input type="text" name="title" id="st-title-input" value=""></label>
-<button type="submit">Set title</button>
-</form>
-<form method="get" action="../theme/settings">
-<input type="hidden" name="action" value="reset">
-<input type="hidden" name="field" value="title">
-<button type="submit">Reset title</button>
-</form>
-</div>
-<div class="st-field">
-<h3>Icon</h3>
-<p>Current: <span id="st-icon-value">…</span> (<span id="st-icon-source">…</span>)</p>
+<h2 class="os-section-title">Icon</h2>
+<p>Now: <span id="st-icon-value">…</span> <span class="st-badge" id="st-icon-badge">…</span></p>
 <p id="st-icon-note" class="st-note" style="display:none">Custom mark, set via file or agent. Type a glyph below, or use the stock mark, to replace it.</p>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <label>Glyph <input type="text" name="icon" id="st-icon-input" value=""></label>
-<button type="submit">Set icon</button>
+<button type="submit">Save</button>
 </form>
-<div class="st-forms">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="icon" value="">
-<button type="submit">Stock mark</button>
+<button type="submit" class="st-quiet">Stock mark</button>
 </form>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="icon">
-<button type="submit">Reset icon</button>
+<button type="submit" class="st-quiet">Reset icon</button>
 </form>
-</div>
 </div>
 <div class="st-field">
-<h3>Pages</h3>
-<p>Help: <span id="st-showHelp-value">…</span> (<span id="st-showHelp-source">…</span>)</p>
-<div class="st-forms">
+<h2 class="os-section-title">Pages</h2>
+<p>Help — Now: <span id="st-showHelp-value">…</span> <span class="st-badge" id="st-showHelp-badge">…</span></p>
+<div class="st-segmented">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
-<input type="hidden" name="showHelp" value="1">
-<button type="submit">Show Help</button>
-</form>
-<form method="get" action="../theme/settings">
-<input type="hidden" name="action" value="set">
-<input type="hidden" name="showHelp" value="0">
-<button type="submit">Hide Help</button>
+<input type="hidden" name="showHelp" id="st-showHelp-want" value="0">
+<button type="submit" class="edit-toggle-btn" id="st-showHelp-toggle" role="switch" aria-checked="false" aria-label="Hide Help"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg></button>
 </form>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="showHelp">
-<button type="submit">Reset Help</button>
+<button type="submit" class="st-quiet">Reset Help</button>
 </form>
 </div>
-<p>About: <span id="st-showAbout-value">…</span> (<span id="st-showAbout-source">…</span>)</p>
-<div class="st-forms">
+<p>About — Now: <span id="st-showAbout-value">…</span> <span class="st-badge" id="st-showAbout-badge">…</span></p>
+<div class="st-segmented">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
-<input type="hidden" name="showAbout" value="1">
-<button type="submit">Show About</button>
-</form>
-<form method="get" action="../theme/settings">
-<input type="hidden" name="action" value="set">
-<input type="hidden" name="showAbout" value="0">
-<button type="submit">Hide About</button>
+<input type="hidden" name="showAbout" id="st-showAbout-want" value="0">
+<button type="submit" class="edit-toggle-btn" id="st-showAbout-toggle" role="switch" aria-checked="false" aria-label="Hide About"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg></button>
 </form>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <input type="hidden" name="field" value="showAbout">
-<button type="submit">Reset About</button>
+<button type="submit" class="st-quiet">Reset About</button>
 </form>
 </div>
 </div>
 <div class="st-field">
-<h3>Reset all</h3>
+<h2 class="os-section-title">Reset all</h2>
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="reset">
 <button type="submit">Reset all to file defaults</button>
@@ -124,18 +97,20 @@
 </div>
 <style>
 .st-field { margin: 0 0 28px 0; }
-.st-field h3 { margin: 0 0 8px 0; }
 .st-field p { margin: 0 0 12px 0; }
-.st-forms { display: flex; flex-wrap: wrap; gap: 12px; }
-.st-forms form { margin: 0; }
+.st-segmented { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 12px 0; }
+.st-segmented form { margin: 0; }
+.st-badge { display: inline-block; padding: 2px 10px; border: 1px solid #000; font-size: 14px; font-weight: bold; }
+.st-badge-changed { background: #000; color: #fff; }
+button.st-quiet { border: 0; box-shadow: none; padding: 0; min-height: 48px; text-decoration: underline; font-weight: normal; font-size: 16px; }
 .st-note { font-size: 16px; }
 #st-status { font-size: 18px; }
 </style>
 <script>
 /* Settings panel. Stateless: no theme in app state, no act() calls.
  * Reads the shell theme through GET /theme/<id> (cookie session),
- * renders each field's effective value with its source, and submits
- * changes as plain GET forms. With JavaScript, submits go through
+ * renders each field's effective value with a default/changed badge, and
+ * submits changes as plain GET forms. With JavaScript, submits go through
  * fetch with format=json and re-render in place; without it, the
  * form round-trips with a 303 back to this panel. Pure functions are
  * defined first so Node tests can load this script without a DOM and
@@ -158,9 +133,9 @@ function stIsGrid(value) {
 function stIsSvg(value) {
   return typeof value === 'string' && value.indexOf('<svg') === 0;
 }
-function stSourceLabel(field, override) {
-  if (override && override[field] !== undefined) return 'override';
-  return 'file default';
+function stBadgeState(field, override) {
+  if (override && override[field] !== undefined) return 'changed';
+  return 'default';
 }
 function stDisplayValue(field, effective) {
   if (field === 'background') {
@@ -204,25 +179,50 @@ if (typeof document !== 'undefined') {
   var stStatus = document.getElementById('st-status');
   var stPanel = document.getElementById('st-panel');
   function stSetStatus(text) { if (stStatus) stStatus.textContent = text; }
+  function stSetBadge(field, theme) {
+    var badge = document.getElementById('st-' + field + '-badge');
+    if (!badge) return;
+    var state = stBadgeState(field, theme.override);
+    badge.textContent = state;
+    badge.className = state === 'changed' ? 'st-badge st-badge-changed' : 'st-badge';
+  }
+  function stRenderPageRow(theme, field, label) {
+    var hidden = theme.effective[field] === false;
+    var toggle = document.getElementById('st-' + field + '-toggle');
+    if (toggle) {
+      if (hidden) {
+        toggle.className = 'edit-toggle-btn edit-toggle-btn-on';
+      } else {
+        toggle.className = 'edit-toggle-btn';
+      }
+      toggle.setAttribute('aria-checked', hidden ? 'true' : 'false');
+      toggle.setAttribute('aria-label', (hidden ? 'Show ' : 'Hide ') + label);
+    }
+    var want = document.getElementById('st-' + field + '-want');
+    if (want) want.value = hidden ? '1' : '0';
+  }
   function stRender(theme) {
-    var fields = ['background', 'name', 'title', 'icon', 'showHelp', 'showAbout'];
+    var fields = ['background', 'name', 'icon', 'showHelp', 'showAbout'];
     for (var i = 0; i < fields.length; i++) {
       var field = fields[i];
       var valueEl = document.getElementById('st-' + field + '-value');
       if (valueEl) valueEl.textContent = stDisplayValue(field, theme.effective);
-      var sourceEl = document.getElementById('st-' + field + '-source');
-      if (sourceEl) sourceEl.textContent = stSourceLabel(field, theme.override);
+      stSetBadge(field, theme);
     }
     var bgNote = document.getElementById('st-background-note');
     if (bgNote) bgNote.style.display = stIsGrid(theme.effective.background) ? '' : 'none';
     var iconNote = document.getElementById('st-icon-note');
     if (iconNote) iconNote.style.display = stIsSvg(theme.effective.icon) ? '' : 'none';
+    var deskBtn = document.getElementById('st-bg-desk');
+    if (deskBtn) deskBtn.className = theme.effective.background === 'desk' ? 'os-btn--dark' : '';
+    var paperBtn = document.getElementById('st-bg-paper');
+    if (paperBtn) paperBtn.className = theme.effective.background === 'paper' ? 'os-btn--dark' : '';
     var nameInput = document.getElementById('st-name-input');
     if (nameInput) nameInput.value = theme.effective.name;
-    var titleInput = document.getElementById('st-title-input');
-    if (titleInput) titleInput.value = theme.override.title !== undefined ? theme.override.title : '';
     var iconInput = document.getElementById('st-icon-input');
     if (iconInput) iconInput.value = (theme.override.icon !== undefined && !stIsSvg(theme.override.icon)) ? theme.override.icon : '';
+    stRenderPageRow(theme, 'showHelp', 'Help');
+    stRenderPageRow(theme, 'showAbout', 'About');
     if (stPanel) stPanel.style.display = '';
   }
   function stLoad() {

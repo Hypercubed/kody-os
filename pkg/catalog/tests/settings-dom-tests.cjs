@@ -4,7 +4,7 @@
  * Loads the bundle script exactly as stored in ../settings/definition.json,
  * with a stub document (getElementById, querySelector for the .st root,
  * querySelectorAll for the forms), a stub window, and a stub fetch.
- * Checks the pure helpers, the read-route render (values, sources,
+ * Checks the pure helpers, the read-route render (values, badges,
  * custom grid / custom mark notices), the form submit flows (desk,
  * name, title, icon, reset-all) through format=json with in-place
  * re-render and no navigation, the error path, and the native-submit
@@ -48,16 +48,18 @@ const GRID_FIXTURE = {
   effective: { name: 'kody-os', title: 'kody-os', icon: SVG_ICON, background: { grid: GRID }, showHelp: true, showAbout: true },
 };
 
-const IDS = ['st-status', 'st-panel', 'st-background-value', 'st-background-source',
-  'st-background-note', 'st-name-value', 'st-name-source', 'st-title-value',
-  'st-title-source', 'st-icon-value', 'st-icon-source', 'st-icon-note',
-  'st-name-input', 'st-title-input', 'st-icon-input',
-  'st-showHelp-value', 'st-showHelp-source', 'st-showAbout-value', 'st-showAbout-source'];
+const IDS = ['st-status', 'st-panel', 'st-background-value', 'st-background-badge',
+  'st-background-note', 'st-name-value', 'st-name-badge',
+  'st-icon-value', 'st-icon-badge', 'st-icon-note',
+  'st-name-input', 'st-icon-input', 'st-bg-desk', 'st-bg-paper',
+  'st-showHelp-value', 'st-showHelp-badge', 'st-showAbout-value', 'st-showAbout-badge',
+  'st-showHelp-toggle', 'st-showHelp-want', 'st-showAbout-toggle', 'st-showAbout-want'];
 
 function makeEl() {
   return {
-    textContent: '', value: '', style: {}, handlers: {},
-    getAttribute: function () { return null; },
+    textContent: '', value: '', style: {}, handlers: {}, attrs: {},
+    getAttribute: function (name) { return this.attrs[name] || null; },
+    setAttribute: function (name, value) { this.attrs[name] = String(value); },
     parentNode: null,
     addEventListener: function (type, fn) { this.handlers[type] = fn; },
   };
@@ -99,6 +101,7 @@ function parseForms(markup, byId) {
       if (id && byId[id[1]]) {
         var el = byId[id[1]];
         el.name = name ? name[1] : '';
+        el.value = value ? value[1] : '';
         els.push(el);
       } else {
         els.push({ name: name ? name[1] : '', value: value ? value[1] : '' });
@@ -164,8 +167,8 @@ async function main() {
   check(global.stIsSvg(SVG_ICON) === true, 'svg icon detected');
   check(global.stIsSvg('\u2699') === false, 'glyph is not svg');
   check(global.stIsSvg('') === false, 'empty icon is not svg');
-  check(global.stSourceLabel('background', { background: 'paper' }) === 'override', 'overridden field is labelled override');
-  check(global.stSourceLabel('name', {}) === 'file default', 'default field is labelled file default');
+  check(global.stBadgeState('background', { background: 'paper' }) === 'changed', 'overridden field badges changed');
+  check(global.stBadgeState('name', {}) === 'default', 'default field badges default');
   check(global.stDisplayValue('background', { background: { grid: GRID } }) === 'custom grid', 'grid displays as custom grid');
   check(global.stDisplayValue('background', { background: 'desk' }) === 'desk', 'desk displays as desk');
   check(global.stDisplayValue('icon', { icon: '' }) === 'stock mark', 'empty icon displays as stock mark');
@@ -177,22 +180,26 @@ async function main() {
   // Read-route render (paper fixture).
   check(s0.calls.length === 1 && s0.calls[0] === '/kody-os/theme/settings?format=json', 'load fetches the read route with format=json (got ' + s0.calls[0] + ')');
   check(s0.byId['st-background-value'].textContent === 'paper', 'background value renders');
-  check(s0.byId['st-background-source'].textContent === 'override', 'background source renders as override');
+  check(s0.byId['st-background-badge'].textContent === 'changed', 'background badge renders as changed');
+  check(s0.byId['st-background-badge'].className.indexOf('st-badge-changed') !== -1, 'background badge is inverted when changed');
   check(s0.byId['st-name-value'].textContent === 'kody-os', 'name value renders');
-  check(s0.byId['st-name-source'].textContent === 'file default', 'name source renders as file default');
-  check(s0.byId['st-title-value'].textContent === 'kody-os', 'title value renders (name fallback)');
+  check(s0.byId['st-name-badge'].textContent === 'default', 'name badge renders as default');
+  check(s0.byId['st-name-badge'].className.indexOf('st-badge-changed') === -1, 'name badge is plain when default');
   check(s0.byId['st-icon-value'].textContent === 'stock mark', 'icon value renders as stock mark');
   check(s0.byId['st-showHelp-value'].textContent === 'shown', 'Help page state renders as shown');
-  check(s0.byId['st-showHelp-source'].textContent === 'file default', 'Help page state source renders as file default');
+  check(s0.byId['st-showHelp-badge'].textContent === 'default', 'Help page state badge renders as default');
   check(s0.byId['st-showAbout-value'].textContent === 'shown', 'About page state renders as shown');
   check(s0.byId['st-name-input'].value === 'kody-os', 'name input is prefilled with the effective name');
-  check(s0.byId['st-title-input'].value === '', 'title input is blank with no title override');
   check(s0.byId['st-icon-input'].value === '', 'icon input is blank with no icon override');
+  check(s0.byId['st-bg-paper'].className === 'os-btn--dark', 'paper segment is inverted when effective');
+  check(s0.byId['st-bg-desk'].className === '', 'desk segment is plain when not effective');
+  check(s0.byId['st-showHelp-toggle'].className === 'edit-toggle-btn', 'Help toggle is plain when shown');
+  check(s0.byId['st-showHelp-want'].value === '0', 'Help toggle submits hide when shown');
   check(s0.byId['st-panel'].style.display === '', 'panel shows after a successful read');
   check(s0.byId['st-status'].textContent === '', 'status clears after a successful read');
   check(s0.byId['st-background-note'].style.display === 'none', 'grid notice hidden for desk/paper');
   check(s0.byId['st-icon-note'].style.display === 'none', 'mark notice hidden for stock/glyph');
-  check(s0.forms.length === 17, 'seventeen forms wired (got ' + s0.forms.length + ')');
+  check(s0.forms.length === 13, 'thirteen forms wired (got ' + s0.forms.length + ')');
   check(s0.forms[0].getAttribute('action') === '/kody-os/theme/settings', 'form action attribute is the derived theme route');
   // Regression: hidden inputs named 'action' shadow form.action in a real DOM,
   // so the submit handler must read the action attribute, not the property.
@@ -224,16 +231,6 @@ async function main() {
   await settle();
   check(s0.calls[callsBefore].indexOf('name=verify-name') !== -1, 'name submit carries the typed name');
   check(nameForm.submitted === false, 'name submit does not navigate');
-
-  // Title submit: blank clears, typed title flows through.
-  var titleForm = findForm(s0.forms, 'title', '');
-  check(titleForm !== null, 'title form found');
-  s0.byId['st-title-input'].value = 'My Title';
-  callsBefore = s0.calls.length;
-  s0.queue.push({ ok: true, override: { background: 'paper', title: 'My Title' }, effective: { name: 'kody-os', title: 'My Title', icon: '', background: 'paper' } });
-  titleForm.handlers.submit({ preventDefault: function () {} });
-  await settle();
-  check(s0.calls[callsBefore].indexOf('title=My+Title') !== -1, 'title submit carries the typed title');
 
   // Pages submit: hiding About flows through action=set + showAbout=0.
   var hideAbout = findForm(s0.forms, 'showAbout', '0');
@@ -282,7 +279,7 @@ async function main() {
   check(s1.byId['st-icon-value'].textContent === 'custom mark', 'svg icon displays as custom mark');
   check(s1.byId['st-icon-note'].style.display === '', 'mark notice shows for a custom mark');
   check(s1.byId['st-icon-input'].value === '', 'icon input stays blank for a custom mark');
-  check(s1.byId['st-background-source'].textContent === 'override', 'grid source renders as override');
+  check(s1.byId['st-background-badge'].textContent === 'changed', 'grid badge renders as changed');
 
   // Pathname fallback: no data-action-base on the page, id from the URL.
   var s2 = runScenario(READ_FIXTURE, false);

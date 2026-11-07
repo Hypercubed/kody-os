@@ -3,7 +3,7 @@
   "name": "Settings",
   "label": "Settings",
   "schemaVersion": 5,
-  "catalogVersion": 2,
+  "catalogVersion": 3,
   "icon": "⚙",
   "category": "utilities",
   "description": "Change the shell theme from the browser: name, title, icon, and background.",
@@ -21,7 +21,8 @@
   },
   "ui": {
     "title": "Settings",
-    "openAs": "page"
+    "openAs": "page",
+    "menuBar": true
   },
   "stateSchema": {
     "type": "object",
