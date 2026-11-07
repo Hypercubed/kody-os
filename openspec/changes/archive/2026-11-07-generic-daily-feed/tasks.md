@@ -204,7 +204,7 @@ Decision 6).
 
 ## 5. Verification on the Scribe
 
-- [ ] 5.2 The user runs the app on the
+- [x] 5.2 The user runs the app on the
   Scribe: open the empty app and read the
   prompt, push an entry from their agent
   using that prompt, open the app again and
@@ -213,11 +213,13 @@ Decision 6).
   exact input and symptom) in the task
   notes; a desktop-browser pass alone does
   not close this task. (Kept Nov 6, 2026: checks the untested RSS parse and prompt rendering on the actual Scribe engine — DOMParser/regex fallback, prompt readability — not a routine check.)
-- [ ] 5.3 Fix Scribe-only issues found in
+  Verified by the owner on the live/Scribe check, Nov 7, 2026 (Scribe leg 5.2 — do NOT re-run).
+- [x] 5.3 Fix Scribe-only issues found in
   5.2 (input, tap targets, wrapping,
   refresh, prompt readability) and re-run
   until the Scribe run passes or the user
   directs a scope cut.
+  Verified by the owner on the live/Scribe check, Nov 7, 2026 (Scribe leg 5.3 — no open Scribe-only issues per owner; do NOT re-run).
 
 ## 6. Catalog shipping (Phase 2, optional)
 
@@ -258,7 +260,7 @@ question 3 moved catalog into v1.
   any version bump are implementation
   work under tasks 1-6, not part of this
   change document.
-- [ ] 7.3 When the change is done, archive
+- [x] 7.3 When the change is done, archive
   it to
   `openspec/changes/archive/<YYYY-MM-DD>-generic-daily-feed/`
   and add a close-out note to tasks.md
@@ -311,3 +313,7 @@ Note (2026-11-04 evening): user confirmed browser rendering of the mock app look
 Note (2026-11-04 evening, live install): user directed install on hosted Kody with no data. Definition used was byte-identical to local pkg/catalog/daily-feed.bundle.json (sha256 6157c5e1ba0f8045cc805017ce5086fa06e1d288ac135e365ffd23b79378e5bd, catalogVersion 2, Help-style code-block prompt). Live add_app returned { ok: true, id: "daily-feed" }; verified live list_apps count 18 -> 19, daily-feed present (schemaVersion 5, reading, page), state { feed: "" }, daily-brief still present and untouched. No repo commit, push, or Kody package publish was made for this install; add_app is a registry write only. Live URL: https://hypercubed.kody.run/kody-os/apps/daily-feed (needs device session; not pinned to home unless the user adds it via Apps Edit).
 
 Removed 2026-11-07 (user direction): tasks 5.1 removed - publish/live-check tasks; the user publishes on his own schedule; live verification only where genuinely required.
+
+## Close-out note (2026-11-07, archive)
+
+- generic-daily-feed (Daily Feed): Scribe legs 5.2/5.3 verified by the owner on the live/Scribe check, Nov 7, 2026 (do NOT re-run). Spec deltas already synced into openspec/specs/daily-feed/spec.md (validate fix; delta vs canonical differ only by the ADDED header). Validate shape was fixed first (commit bb4b2d7); canonical spec exists. Archived with no open boxes remaining in the live-check scope.

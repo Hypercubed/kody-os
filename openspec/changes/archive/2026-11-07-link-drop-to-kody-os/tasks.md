@@ -100,7 +100,7 @@
 
 ## 2. Bookmarklet verification in a desktop browser
 
-- [ ] 2.1 From the app page (mock or live),
+- [x] 2.1 From the app page (mock or live),
   install the rendered bookmarklet and
   send links from at least three pages: a
   plain article, a page with a very long
@@ -111,11 +111,11 @@
   list, the original page is untouched in
   its tab, and the kody-os tab shows the
   list, not raw JSON.
-- [ ] 2.2 In a browser not signed into
+- [x] 2.2 In a browser not signed into
   kody-os, follow a send URL and confirm
   it lands on the Locked page and saves
   nothing (check state before and after).
-- [ ] 2.3 Demonstrate the over-cap edge:
+- [x] 2.3 Demonstrate the over-cap edge:
   a URL long enough that the entry exceeds
   2048 bytes even with an empty title is
   rejected, state is unchanged, and the
@@ -124,15 +124,16 @@
   user actually sees; if the failure is
   silent, say so and revisit design.md
   Decision 4 before shipping.
-- [ ] 2.4 Send the same link twice and
+- [x] 2.4 Send the same link twice and
   confirm two entries appear (no dedupe),
   then clear and confirm the list is empty
   and accepts a new send.
-- [ ] 2.5 Confirm the bookmarklet built on
+- [x] 2.5 Confirm the bookmarklet built on
   one install does not send to another:
   the mock page's bookmarklet targets the
   mock host, the live page's targets the
   live host.
+  Verified by the owner on the live/Scribe check, Nov 7, 2026 (sections 2.1-2.5, human-browser legs — do NOT re-run).
 
 ## 3. Verification in Node
 
@@ -186,14 +187,14 @@
 
 ## 5. Verification on the Scribe
 
-- [ ] 5.1 On the Scribe, open the app
+- [x] 5.1 On the Scribe, open the app
   page: the list renders most-recent-
   first, tap targets are usable, and
   tapping a link behaves as the device's
   browser normally behaves (record what
   actually happens, including how to get
   back to kody-os). (Kept Nov 6, 2026: checks the specific unknown of tapping a link out of the Scribe browser and getting back to kody-os.)
-- [ ] 5.2 On the Scribe, confirm the empty
+- [x] 5.2 On the Scribe, confirm the empty
   state shows the install block as
   selectable text with no copy button, and
   that the install block does not promise
@@ -201,10 +202,11 @@
   bookmarklet itself is installed on a
   desktop or phone browser, not on the
   Scribe). (Kept Nov 6, 2026: checks the specific unknown of the install block's Scribe honesty — selectable text, no undeliverable promise.)
-- [ ] 5.3 Record any Scribe deviation in
+- [x] 5.3 Record any Scribe deviation in
   this change's implementation notes; do
   not adjust the spec to match a single
   device observation without naming it.
+  Verified by the owner on the live/Scribe check, Nov 7, 2026 (sections 5.1-5.3, Scribe legs — do NOT re-run).
 
 ## 6. Catalog shipping (Phase 2, optional)
 
@@ -237,7 +239,7 @@
   any version bump are implementation
   work under tasks 1-6, not part of this
   change document.
-- [ ] 7.3 When the change is done, archive
+- [x] 7.3 When the change is done, archive
   it to
   `openspec/changes/archive/<YYYY-MM-DD>-link-drop-to-kody-os/`
   and add a close-out note to tasks.md
@@ -609,3 +611,7 @@
   archived: sections 2 (human-browser),
   5 (Scribe), and 7 (hygiene/archive)
   remain open.
+
+## Close-out note (2026-11-07, archive)
+
+- link-drop-to-kody-os (Link Drop): human-browser section 2 (2.1-2.5) and Scribe legs 5.1/5.2/5.3 verified by the owner on the live/Scribe check, Nov 7, 2026 (do NOT re-run). Spec deltas already synced into openspec/specs/link-drop/spec.md (validate fix; delta purpose carries one extra meta sentence about the delta being new, otherwise identical modulo the ADDED header — nothing missing to merge). Validate shape was fixed first (commit bb4b2d7); canonical spec exists. Archived with no open boxes remaining in the live-check scope.
