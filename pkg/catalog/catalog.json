@@ -65,8 +65,8 @@
     {
       "id": "clock",
       "label": "Clock",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:406913688-85074250-2548",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:433473223-3408256014-2743",
       "installMode": "json",
       "definitionPath": "clock/definition.json",
       "recipePath": "clock/RECIPE.md",
@@ -185,8 +185,8 @@
     {
       "id": "settings",
       "label": "Settings",
-      "catalogVersion": 3,
-      "fingerprint": "fnv:511908577-3714226804-13571",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:1797112672-3764888493-14017",
       "installMode": "json",
       "definitionPath": "settings/definition.json",
       "recipePath": "settings/RECIPE.md",

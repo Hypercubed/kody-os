@@ -42,15 +42,18 @@ function tickClock(root) {
   if (t) { t.textContent = String(h12) + ':' + padNum(m) + ' ' + suffix; }
   if (d) { d.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + String(now.getDate()); }
 }
-function initClock() {
+function renderAllClocks() {
   var roots = document.querySelectorAll('.clock-wrap');
   for (var i = 0; i < roots.length; i++) { tickClock(roots[i]); }
 }
-initClock();
-setInterval(function () {
-  var roots = document.querySelectorAll('.clock-wrap');
-  for (var i = 0; i < roots.length; i++) { tickClock(roots[i]); }
-}, 60000);
+renderAllClocks();
+/* Align to the wall-clock minute boundary (like the shell header clock): wait out the
+   remainder of the current minute, then tick every 60 seconds. Keeps the 60-second cadence. */
+var msToNextMinute = 60000 - (Date.now() % 60000);
+setTimeout(function () {
+  renderAllClocks();
+  setInterval(renderAllClocks, 60000);
+}, msToNextMinute);
 </script>
 </body>
 </html>

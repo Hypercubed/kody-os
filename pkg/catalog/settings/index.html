@@ -60,7 +60,6 @@
 <div class="st-field">
 <h2 class="os-section-title">Pages</h2>
 <p>Help — Now: <span id="st-showHelp-value">…</span> <span class="st-badge" id="st-showHelp-badge">…</span></p>
-<div class="st-segmented">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="showHelp" id="st-showHelp-want" value="0">
@@ -71,9 +70,7 @@
 <input type="hidden" name="field" value="showHelp">
 <button type="submit" class="st-quiet">Reset Help</button>
 </form>
-</div>
 <p>About — Now: <span id="st-showAbout-value">…</span> <span class="st-badge" id="st-showAbout-badge">…</span></p>
-<div class="st-segmented">
 <form method="get" action="../theme/settings">
 <input type="hidden" name="action" value="set">
 <input type="hidden" name="showAbout" id="st-showAbout-want" value="0">
@@ -84,7 +81,6 @@
 <input type="hidden" name="field" value="showAbout">
 <button type="submit" class="st-quiet">Reset About</button>
 </form>
-</div>
 </div>
 <div class="st-field">
 <h2 class="os-section-title">Reset all</h2>
@@ -186,6 +182,15 @@ if (typeof document !== 'undefined') {
     badge.textContent = state;
     badge.className = state === 'changed' ? 'st-badge st-badge-changed' : 'st-badge';
   }
+  function stMenuLink(pageId) {
+    var links = document.querySelectorAll ? document.querySelectorAll('a') : [];
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href') || '';
+      if (href.indexOf('/apps/') !== -1) continue;
+      if (href === '/' + pageId || href.substr(-(pageId.length + 1)) === '/' + pageId) return links[i];
+    }
+    return null;
+  }
   function stRenderPageRow(theme, field, label) {
     var hidden = theme.effective[field] === false;
     var toggle = document.getElementById('st-' + field + '-toggle');
@@ -200,6 +205,8 @@ if (typeof document !== 'undefined') {
     }
     var want = document.getElementById('st-' + field + '-want');
     if (want) want.value = hidden ? '1' : '0';
+    var menuLink = stMenuLink(label.toLowerCase());
+    if (menuLink) menuLink.style.display = hidden ? 'none' : '';
   }
   function stRender(theme) {
     var fields = ['background', 'name', 'icon', 'showHelp', 'showAbout'];

@@ -123,6 +123,10 @@ function runScenario(readFixture, useActionBase) {
   var root = makeEl();
   root.parentNode = wrapper;
   var forms = parseForms(html, byId);
+  var menuLinks = [];
+  var helpLink = makeEl(); helpLink.attrs.href = '/kody-os/help'; menuLinks.push(helpLink);
+  var aboutLink = makeEl(); aboutLink.attrs.href = '/kody-os/about'; menuLinks.push(aboutLink);
+  var appLink = makeEl(); appLink.attrs.href = '/kody-os/apps/counter'; menuLinks.push(appLink);
   var calls = [];
   var queue = [];
   function fetchStub(url, opts) {
@@ -133,13 +137,13 @@ function runScenario(readFixture, useActionBase) {
   }
   global.document = {
     querySelector: function (sel) { return sel === '.st' ? root : null; },
-    querySelectorAll: function (sel) { return sel === '.st form' ? forms : []; },
+    querySelectorAll: function (sel) { if (sel === '.st form') return forms; if (sel === 'a') return menuLinks; return []; },
     getElementById: function (id) { return byId[id] || null; },
   };
   global.window = { location: { pathname: '/kody-os/apps/settings' } };
   global.fetch = fetchStub;
   (0, eval)(script);
-  return { byId: byId, forms: forms, calls: calls, queue: queue };
+  return { byId: byId, forms: forms, calls: calls, queue: queue, menuLinks: menuLinks };
 }
 function findForm(forms, name, value) {
   for (var i = 0; i < forms.length; i++) {
@@ -242,6 +246,9 @@ async function main() {
   await settle();
   check(s0.calls[callsBefore].indexOf('action=set') !== -1 && s0.calls[callsBefore].indexOf('showAbout=0') !== -1, 'hide-About submit carries action=set and showAbout=0');
   check(s0.byId['st-showAbout-value'].textContent === 'hidden', 'hide-About re-render shows hidden');
+  check(s0.menuLinks[1].style.display === 'none', 'hide-About hides the About menu link immediately');
+  check(s0.menuLinks[0].style.display === '', 'hide-About leaves the Help menu link shown');
+  check(s0.menuLinks[2].style.display !== 'none', 'hide-About leaves the app menu link shown');
   check(hideAbout.submitted === false, 'hide-About submit does not navigate');
 
   // Reset-all submit with an error result: status shows the error, no reload, no navigation.

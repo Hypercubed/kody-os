@@ -9,14 +9,13 @@ Current package version: **v3.0.0** (build 33). See `pkg/package.json` for the a
 
 ## Run it
 
-You need a free Kody account, a fork of kody-os, and a publish. The full steps, with checks, are in the [Setup guide](pkg/docs/setup.md). The short version:
+You need a free [Kody](https://kody.codes/?ref=hypercubed) account, a fork of kody-os, and a publish. The full steps, with checks, are in the [Setup guide](pkg/docs/setup.md). The short version:
 
 1. **Sign up for Kody (free).** Create your account with [this referral link](https://kody.codes/signup?ref=hypercubed).
-2. **Fork kody-os.** If the Kody listing is public, install it from Kody in one click — that forks it into your account and publishes it. Otherwise, fork this repository on GitHub and publish the package from `pkg/` through a repo session; your Kody-connected agent can do the publish.
-3. **Unlock with a one-time code.** Ask your agent to mint a 4-digit code (`mint_otp`, valid 10 minutes, single use) and type it into the unlock form. It mints a 30-day session. On the Kindle Scribe, mint a fresh code at the start of each session — the Scribe drops cookies between sessions.
+2. **Fork kody-os.** Install it from [the kody-os listing on Kody](https://kody.codes/@hypercubed/kody-os) in one click — that forks it into your account and publishes it. Otherwise, fork this repository on GitHub and publish the package from `pkg/` through a repo session; your Kody-connected agent can do the publish.
+3. **Sign in with Kody.** Open the app while signed in to your Kody account and you skip the device gate entirely — that is the main way in, including on the Kindle Scribe. A one-time code is kept only for local testing: ask your agent to mint a 4-digit code (`mint_otp`, valid 10 minutes, single use) and type it into the unlock form; it mints a 30-day session.
 4. **Install your first app.** A fresh install starts empty — no apps seeded, including no App Store. Install the App Store from the prompt on the empty Apps page (`install_from_catalog('app-store')`), or ask your agent to add an app (for example `counter`) with `add_app`. Adding an app never needs a republish.
 
-If you cannot find a Kody listing for kody-os, the package is still private — that is a publisher-side step, not something you can do from your account.
 
 ## What it does
 
@@ -24,7 +23,7 @@ If you cannot find a Kody listing for kody-os, the package is still private — 
 - **Apps** — every installed app as a tile; Edit mode pins, hides, and adds apps to the home dashboard.
 - **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs. The App Store itself is the exception: it is a data app and requires JavaScript.
 - **Feeds and proxy** — apps declare allowlisted HTTPS upstreams (`capabilities.feeds`, `capabilities.proxy`) read through the shell's same-origin feed/proxy routes with storage caching. No auth is forwarded upstream.
-- **Access** — the browser shell is locked by one-time codes (4 digits, single use, 10 minutes) minting a 30-day session, plus an owner-only Kody login bypass. Agents use MCP exports, which are never gated. There is no secret to configure.
+- **Access** — sign in with your Kody account to skip the device gate entirely (the main way in, including on the Kindle Scribe). A one-time code (4 digits, single use, 10 minutes) minting a 30-day session is kept for local testing only. Agents use MCP exports, which are never gated. There is no secret to configure.
 - **Help and About** — built-in shell pages, not apps. They can be hidden from the Settings app.
 
 The shipped catalog has 18 apps: app-store, arrow-game, calculator, calendar, cellular-playground, clock, counter, daily-feed, eight-ball, generic-feed, hoodie-weather, link-drop, mac-puzzle, news, probe, settings, three-bit-art, and xkcd. See [`pkg/catalog/README.md`](pkg/catalog/README.md) for what each one does and the catalog membership checklist.

@@ -123,9 +123,7 @@ Sessions end two ways: the in-app Logout link (shown only on
 device sessions) deletes that device's session at once, or the
 30-day expiry. Logging out one device never affects another.
 
-On the Kindle Scribe, the browser drops cookies between
-sessions: enter a fresh OTP at the start of each Scribe session.
-Within one Scribe session the cookie works and URLs stay clean.
+On the Kindle Scribe, sign in with your Kody account like anywhere else — no code is needed. If the Scribe asks for a code, the Kody session has lapsed; sign in to Kody again.
 
 Check: after entering a code, the shell loads with a clean URL
 and the footer reads `via cookie`. After opening the app signed
@@ -218,8 +216,7 @@ returns 200, and acting on it changes its state. Useful checks:
 - **Locked page after entering a code.** The code was used,
   expired (10 minutes), or mistyped; mint a fresh one. If you
   see "Too many attempts", wait out the 10-minute window.
-- **Scribe asks for a code every time.** Expected: the Scribe
-  drops cookies between sessions. Mint a fresh OTP per session.
+- **Scribe asks for a code every time.** The Scribe signs in with your Kody account like any other browser — no code is needed. If it asks for a code, the Kody session has lapsed; sign in to Kody again.
 - **Logout link missing.** Logout appears only on device
   (cookie) sessions. Kody-login sessions have no device session
   to revoke; sign out of Kody instead.

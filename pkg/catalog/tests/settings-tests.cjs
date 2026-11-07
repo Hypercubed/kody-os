@@ -30,7 +30,7 @@ function check(cond, msg) {
 check(definition.id === 'settings', 'id is settings');
 check(definition.name === 'Settings' && definition.label === 'Settings', 'name and label are Settings');
 check(definition.schemaVersion === 5, 'schemaVersion is 5');
-check(definition.catalogVersion === 3, 'catalogVersion is 3');
+check(definition.catalogVersion === 4, 'catalogVersion is 4');
 check(definition.icon === '\u2699', 'icon is the single glyph U+2699');
 check(definition.category === 'utilities', 'category is utilities');
 check(typeof definition.description === 'string' && definition.description.length > 0, 'description is present');
@@ -86,6 +86,8 @@ check(markup.indexOf('st-title') === -1 && markup.indexOf('>Title<') === -1, 'no
 check(html.indexOf('name="field" value="showHelp"') !== -1 && html.indexOf('name="field" value="showAbout"') !== -1, 'per-field page resets exist');
 check(html.indexOf('os-section-title') !== -1 && html.indexOf('<h3>') === -1, 'sections use the shared black-bar title, no bare h3s');
 check(html.indexOf('st-showHelp-value') !== -1 && html.indexOf('st-showAbout-value') !== -1, 'page-state readouts exist');
+check(script.indexOf('stMenuLink') !== -1, 'script updates the menu-bar link after a toggle');
+check(html.indexOf('st-segmented') !== -1, 'Background keeps its segmented control');
 
 if (failures > 0) {
   console.error(failures + ' settings check(s) failed');
