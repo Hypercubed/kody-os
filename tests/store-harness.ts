@@ -248,7 +248,7 @@ function installSteps(text: string): string[] {
 // Empty states + prompt sync (empty-install + mini-apps-user-facing).
 {
 	var help = renderEmptyHelp('')
-	check('empty help names the App Store prompt', help.indexOf('Add the App Store to my empty kody-os shell.') !== -1, '')
+	check('empty help names the App Store prompt', help.indexOf('Add the App Store to my kody-os shell.') !== -1, '')
 	var promptSteps = installSteps(help)
 	check('App Store prompt points at the app-store recipe', help.indexOf('pkg/catalog/app-store/RECIPE.md') !== -1, '')
 	check('App Store prompt stops at the recipe reference', help.indexOf('RECIPE.md).') !== -1 && promptSteps.length === 0, promptSteps.join(','))
@@ -257,8 +257,8 @@ function installSteps(text: string): string[] {
 	check('empty help lists Add your own apps before Install the App Store', help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') < help.indexOf('<h3>Install the App Store</h3>'), '')
 	check('empty help has no copy button or Clipboard API', help.indexOf('navigator.clipboard') === -1 && help.indexOf('<button') === -1, '')
 	var helpPageBlock = renderEmptyHelp('', { omitClosing: true })
-	check('Help page omits the empty-state closing line', helpPageBlock.indexOf('Once something is installed') === -1, '')
-	check('empty Home/Apps keep the closing line', help.indexOf('Once something is installed') !== -1, '')
+	check('Help page omits the empty-state closing line', helpPageBlock.indexOf('Once an app is installed') === -1, '')
+	check('empty Home/Apps keep the closing line', help.indexOf('Once an app is installed') !== -1, '')
 	check('Help page block differs only by the closing line', help.indexOf(helpPageBlock) === 0, '')
 	check('Help and About are not catalog apps any more', get_catalog_definition('help') === null && get_catalog_definition('about') === null)
 	check('empty help prompt 2 asks no App id', help.indexOf('Add a new app to my hosted kody-os app on Kody.') !== -1 && help.indexOf('Name: [display name]') !== -1 && help.indexOf('App id: [slug]') === -1, '')
@@ -266,7 +266,7 @@ function installSteps(text: string): string[] {
 	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Add the App Store') !== -1, '')
 	check('Home and Apps render the same help block', dashNoApps.indexOf(help) !== -1, '')
 	var dashHasApps = renderDashboard([], '', true)
-	check('Home with apps but none on Home prompts Add to home', dashHasApps.indexOf('No widgets yet') !== -1 && dashHasApps.indexOf('You have apps installed') !== -1 && dashHasApps.indexOf('Add the App Store') === -1, '')
+	check('Home with apps but none on Home prompts Add to home', dashHasApps.indexOf('No widgets yet') === -1 && dashHasApps.indexOf('You have apps installed') === -1 && dashHasApps.indexOf('Add some to Home from the Apps page.') !== -1 && dashHasApps.indexOf('Add the App Store') === -1, '')
 	var dashWidgets = renderDashboard(['<section class="widget">x</section>'], '', true)
 	check('Home with widgets renders the widgets', dashWidgets.indexOf('widget') !== -1 && dashWidgets.indexOf('No widgets yet') === -1, '')
 	var homeTiles = renderHomeTiles([], '')

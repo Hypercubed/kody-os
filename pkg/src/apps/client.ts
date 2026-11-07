@@ -578,7 +578,7 @@ export function renderWidgetSection(
  * other renderers; the help text currently contains no links.
  *
  * The built-in Help page passes `omitClosing: true`: the closing line
- * ("Once something is installed...") is true of the first-run empty
+ * ("Once an app is installed...") is true of the first-run empty
  * state, not of the Help page itself. Empty Home / empty Apps keep it.
  */
 export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: boolean }): string {
@@ -588,9 +588,9 @@ export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: bool
 		'<h3>Add your own apps</h3>\n' +
 		'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Name: [display name]<br>\u2013 What it does: [describe what it should do]</code></p>\n' +
 		'<h3>Install the App Store</h3>\n' +
-		'<p class="gate-hint"><code>Add the App Store to my empty kody-os shell. Follow the app-store recipe (pkg/catalog/app-store/RECIPE.md).</code></p>\n'
+		'<p class="gate-hint"><code>Add the App Store to my kody-os shell. Follow the app-store recipe (pkg/catalog/app-store/RECIPE.md).</code></p>\n'
 	if (opts && opts.omitClosing === true) return block
-	return block + '<p>Once something is installed, this help goes away and the Apps page lists it instead.</p>'
+	return block + '<p>Once an app is installed your apps show up on the Apps page.</p>'
 }
 
 /**
@@ -604,8 +604,7 @@ export function renderDashboard(widgets: string[], appBasePath: string, hasApps:
 		if (hasApps === true) {
 			return (
 				'<section class="dashboard dashboard-empty" aria-label="Home">\n' +
-				'<h2>No widgets yet</h2>\n' +
-				'<p class="empty-hint">You have apps installed \u2014 add some to Home from the Apps page. Open Apps, tap Edit, and use Add to home on a row. They appear here live with no republish.</p>\n' +
+				'<p class="empty-hint">Add some to Home from the Apps page. Open Apps, tap Edit, and use Add to home on a row. They appear here live.</p>\n' +
 				'</section>'
 			)
 		}

@@ -27,8 +27,8 @@ change).
   (pkg/catalog/collections/starter/RECIPE.md):
   install_from_catalog('app-store'), install_from_catalog('help'),
   install_from_catalog('about'), then verify with list_apps that all three
-  are installed."), closing line ("Once something is installed, this help
-  goes away and the Apps page lists it instead."). It renders on the empty
+  are installed."), closing line ("Once an app is installed your apps
+  show up on the Apps page."). It renders on the empty
   Apps page and, via `renderDashboard`, on the empty Home page. The Install
   prompt lives ONLY in `client.ts` — the Help bundle and README carry only
   the "Add your own apps" prompt.
@@ -104,8 +104,7 @@ The canonical source is the current empty-home text: `renderEmptyHelp` in
 empty Home page renders it (via `renderDashboard`), and the empty Apps page
 renders it. "Identical" means the same block content — intro, both prompts,
 closing line — not three copies. The Help page omits the closing line
-("Once something is installed, this help goes away and the Apps page lists
-it instead."): it describes the first-run empty state, not the Help page
+("Once an app is installed your apps show up on the Apps page."): it describes the first-run empty state, not the Help page
 itself, and the user directed its removal on the Help page only (Nov 6,
 2026). Empty Home and empty Apps keep the line; the block is otherwise
 identical on all three surfaces. The only text change in the block is the App
@@ -215,7 +214,7 @@ canonical specs yet.
 ### Decision 7: the App Store prompt points directly at app-store — DECIDED
 
 New prompt text (the only change inside `renderEmptyHelp`): "Add the App
-Store to my empty kody-os shell. Follow the app-store recipe
+Store to my kody-os shell. Follow the app-store recipe
 (pkg/catalog/app-store/RECIPE.md)." It points at the app's own recipe,
 which is the trivial install-and-verify — no collection, no help/about
 installs — and stops there, leaving the steps to the recipe. The store harness prompt-sync checks are updated to
@@ -288,9 +287,8 @@ bump wins.
 2. **Migration seam.** Decision 8 recommends pruning at the registry read /
    dispatch path; the implementation picks the seam. Open until the
    implementation names it.
-3. **Closing line on the Help page — RESOLVED.** The Help page omits "Once
-   something is installed, this help goes away and the Apps page lists it
-   instead." (user direction, Nov 6, 2026: that line is about the empty
+3. **Closing line on the Help page — RESOLVED.** The Help page omits "Once an
+   app is installed your apps show up on the Apps page." (user direction, Nov 6, 2026: that line is about the empty
    state, so it stays only on empty Home and empty Apps). Exact-equality
    applies to the intro and the two prompts, not the closing line.
 4. **Setup-guide pointer.** The Help page no longer points at
