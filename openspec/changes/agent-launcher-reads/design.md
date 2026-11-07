@@ -11,10 +11,12 @@ See proposal.md (Why). The facts established on 2026-10-28:
 
 > Correction 2026-10-30 (partially supersedes the Context facts and Decision 2 above, recorded outside this change): `get_pinned`, `get_hidden`, and `get_homepage` are now exported from `pkg/src/index.ts` with `main()` `useWhen` entries, as are the setters `set_pin`/`set_pinned`, `set_home`/`set_homepage`/`move_home`, and `set_hide`/`set_hidden` — so the "reads only, setters deferred" decision no longer describes the pin/home/hide surface. `get_recent` was deliberately NOT exported per user direction on 2026-10-30 (recency stays internal), which conflicts with this spec's four-reader aggregate as written: `get_launcher_state()` is still unbuilt, and its `recent` field needs a decision before task 1.1 can close (either the aggregate drops `recent`, or it reads recent internally without exporting `get_recent` separately).
 
+> Correction 2026-11-07 (supersedes the 2026-10-30 direction on `get_recent` and answers Open Question 1): agents CAN now read the recency list and clear it. `get_recent` is exported from the package root like the other three readers, and `clear_recent` — which already exists in the registry ('Empty the recency list without touching apps, pins, or hidden flags') — is exported from the package root too. The aggregate keeps its `recent` field, now read through the exported reader instead of internally. Decision 2 ('reads only; setters deferred') no longer describes this change at all: the one write it adds is `clear_recent`, and only `clear_recent` — no other launcher write surface is added here.
+
 ## Goals / Non-Goals
 
 - Goals: agents can read every launcher list through the same import path as every other registry read; reads work on blank stores (empty lists) and on the hosted and preview stores alike; the new surface is discoverable via `main()`.
-- Non-goals: launcher writes by agents (deferred, see Decision 2); extending `AppSummary` with launcher flags (see Decision 3); any change to list contents, ordering rules, or scrub behavior.
+- Non-goals: launcher writes by agents (deferred, see Decision 2 — except `clear_recent`, added 2026-11-07, see Correction 2026-11-07); extending `AppSummary` with launcher flags (see Decision 3); any change to list contents, ordering rules, or scrub behavior.
 
 ## Decisions
 
@@ -35,5 +37,5 @@ None — additive exports, no stored-data change. Old clients keep working; new 
 
 ## Open Questions
 
-1. Should the deferred setters follow-up also cover `move_home`/`clear_recent`, or only pin/hide/homepage membership? (Decision for the follow-up change, recorded here so it is not lost.) Partially overtaken 2026-11-06: the pin/home/hide setters — including `move_home` — were exported from the package root outside this change (verified in `pkg/src/index.ts`); `clear_recent` remains internal (in `pkg/src/apps/index.ts` only, not the root). The remaining question is only whether `clear_recent` needs an agent surface.
+1. Should the deferred setters follow-up also cover `move_home`/`clear_recent`, or only pin/hide/homepage membership? (Decision for the follow-up change, recorded here so it is not lost.) Partially overtaken 2026-11-06: the pin/home/hide setters — including `move_home` — were exported from the package root outside this change (verified in `pkg/src/index.ts`); `clear_recent` remains internal (in `pkg/src/apps/index.ts` only, not the root). The remaining question is only whether `clear_recent` needs an agent surface. Answered 2026-11-07: yes — `clear_recent` gets an agent surface (root export + `main()` entry).
 2. Should `main()`'s `exports` list gain one entry per reader, or a single `launcher state` entry covering the aggregate? Recommendation: one entry per export, matching the existing one-entry-per-function pattern; confirm at apply time against the `main()` shape.

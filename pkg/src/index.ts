@@ -121,8 +121,12 @@ export default async function main(): Promise<{
 				useWhen: 'Read the hidden app ids.',
 			},
 			{
+				name: 'get_recent',
+				useWhen: 'Read the recent app ids, most recent first.',
+			},
+			{
 				name: 'get_launcher_state',
-				useWhen: 'Read pinned, hidden, recent, and homepage ids together in stored order; recency is read internally and is not a separate export.',
+				useWhen: 'Read pinned, hidden, recent, and homepage ids together in stored order.',
 			},
 			{
 				name: 'backup',
@@ -156,6 +160,10 @@ export default async function main(): Promise<{
 				name: 'set_hidden',
 				useWhen: 'Overwrite the whole hidden list.',
 			},
+			{
+				name: 'clear_recent',
+				useWhen: 'Empty the recency list without touching apps, pins, or hidden flags.',
+			},
 		],
 		note: 'Phase 2 app layer — data-driven apps via packageStorage.',
 	}
@@ -184,6 +192,7 @@ export {
 	act,
 	add_app,
 	backup,
+	clear_recent,
 	delete_backup,
 	export_app,
 	export_install,
@@ -194,6 +203,7 @@ export {
 	get_homepage,
 	get_launcher_state,
 	get_pinned,
+	get_recent,
 	import_app,
 	import_install,
 	install_from_catalog,
