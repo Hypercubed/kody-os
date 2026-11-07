@@ -192,7 +192,7 @@
   tapping a link behaves as the device's
   browser normally behaves (record what
   actually happens, including how to get
-  back to kody-os).
+  back to kody-os). (Kept Nov 6, 2026: checks the specific unknown of tapping a link out of the Scribe browser and getting back to kody-os.)
 - [ ] 5.2 On the Scribe, confirm the empty
   state shows the install block as
   selectable text with no copy button, and
@@ -200,7 +200,7 @@
   anything the Scribe cannot do (the
   bookmarklet itself is installed on a
   desktop or phone browser, not on the
-  Scribe).
+  Scribe). (Kept Nov 6, 2026: checks the specific unknown of the install block's Scribe honesty — selectable text, no undeliverable promise.)
 - [ ] 5.3 Record any Scribe deviation in
   this change's implementation notes; do
   not adjust the spec to match a single
@@ -220,13 +220,7 @@
 - [x] 6.2 Run the catalog harness and
   confirm all catalog checks pass with the
   new app included.
-- [ ] 6.3 Apply the version decision in the
-  same commit as the catalog files: MINOR
-  bump, BUILD +1 on publish, per
-  `pkg/AGENTS.md`. Do not commit, push, or
-  publish without explicit user direction
-  at each stop.
-
+- Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 6.3 "Apply the version decision in the same commit as the catalog files: MINOR bump, BUILD +1 on publish" — a version-bump release step; the user decides when to release. (The MINOR bump to 2.6.0 already landed per the 2026-11-04 close-out note, so nothing is un-done by this removal.)
 ## 7. Change hygiene
 
 - [ ] 7.1 Verify `openspec validate

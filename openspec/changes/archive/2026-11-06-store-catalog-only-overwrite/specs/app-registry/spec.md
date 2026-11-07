@@ -10,7 +10,7 @@ fingerprint (S), the current catalog definition's fingerprint (C,
 canonicalized the same way), the installed `catalogVersion` (Iv), and
 the catalog `catalogVersion` (Cv):
 
-- I == C: up to date, clean; no update is offered.
+- I == C: up to date, clean; no update is offered. A Remove control is offered.
 - I == S and Iv < Cv: behind, clean; an Update control is offered.
 - I == S, Iv == Cv, and I != C: catalog-differing (the catalog changed
   without a version bump); an Update control is offered with no
@@ -66,9 +66,9 @@ in alphabetical-by-id order. Each row's badge and controls SHALL
 follow its state under the update-status requirement, plus these
 rules:
 
-- Not installed (catalog only): Install only. No Pin, Hide, Home, Update,
+- Not installed (catalog only): Add only. No Pin, Hide, Home, Update,
   Restore, or Open control.
-- Installed: Update, Overwrite, Restore, or neither according to the
+- Installed: Update, Overwrite, Restore, or Remove according to the
   update-status requirement. Pin, Hide, and Home live in Apps Edit,
   not in the Store list.
 - Installed with no catalog entry: no row. Such apps are managed
@@ -88,7 +88,7 @@ rules:
 
 #### Scenario: Catalog-only row offers install only
 - **WHEN** a catalog app is not installed
-- **THEN** its row offers Install and no Pin, Hide, Home, Update, Restore, or Open control.
+- **THEN** its row offers Add and no Pin, Hide, Home, Update, Restore, or Open control.
 
 #### Scenario: Storage-only app does not appear
 - **WHEN** an installed app has no catalog entry

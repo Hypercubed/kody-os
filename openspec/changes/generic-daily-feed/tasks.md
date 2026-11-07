@@ -224,7 +224,7 @@ Decision 6).
   outcome (pass, or each failure with the
   exact input and symptom) in the task
   notes; a desktop-browser pass alone does
-  not close this task.
+  not close this task. (Kept Nov 6, 2026: checks the untested RSS parse and prompt rendering on the actual Scribe engine — DOMParser/regex fallback, prompt readability — not a routine check.)
 - [ ] 5.3 Fix Scribe-only issues found in
   5.2 (input, tap targets, wrapping,
   refresh, prompt readability) and re-run
@@ -252,18 +252,8 @@ question 3 moved catalog into v1.
   (validate + install in a blank store +
   empty initial state + directory / import
   match) with no other catalog file changed.
-- [x] 6.2 Apply the MINOR version bump in
-  the same commit as the catalog files
-  per `pkg/AGENTS.md` (BUILD +1 on publish;
-  `pkg/AGENTS.md` + `pkg/README.md`
-  headers updated in that commit).
-- [ ] 6.3 Do not commit, push, or publish
-  this change without the user's explicit
-  direction for that step, and do not
-  approve any Kody capability re-approval
-  on the owner's behalf (none is expected
-  for a data app, but the rule stands).
-
+- Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 6.2 "Apply the MINOR version bump in the same commit as the catalog files" (was already marked done when removed) — a version-bump release step; the user decides when to release.
+- Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 6.3 "Do not commit, push, or publish this change without the user's explicit direction" — a commit/publish guard that is now the standing rule; nothing is lost by removing it as a task.
 ## 7. Change hygiene
 
 - [ ] 7.1 Verify `openspec validate

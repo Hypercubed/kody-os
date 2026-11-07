@@ -4,10 +4,10 @@
 
 This change is a record of work directed by the owner on 2026-11-05,
 implemented in the VM working tree (main at 5bbefe40), committed as `7582828`, and published to Kody as v2.7.0 build 32 (live).
-The tasks in tasks.md are marked done where they are done. The ship tasks in section 6 (commit, publish) have since happened - committed as `7582828`, published to Kody as v2.7.0 build 32 - and are recorded there; the remaining open item is the human-browser / Scribe check (6.3).
+The tasks in tasks.md are marked done where they are done. The ship steps (commit, publish) have since happened — committed as `7582828`, published to Kody as v2.7.0 build 32. Part 6 of tasks.md was removed Nov 6, 2026 at user direction (release is the user call; no generic Scribe verify).
 Nothing in this change commits, pushes, or publishes anything.
 
-Later Store work (commit `08b81cd`, Nov 5, 2026) changed not-installed rows from Install to Add and gave up-to-date rows a Remove control, so the Install wording and 'up-to-date rows offer neither' in this change's spec deltas are superseded; that later work's spec update is still owed and is not folded in here.
+Later Store work (commit `08b81cd`, Nov 5, 2026) changed not-installed rows from Install to Add and gave up-to-date rows a Remove control; this change's spec deltas were amended Nov 6, 2026 to the current Add/Remove wording, so that spec update is now folded in here.
 
 ## Why
 

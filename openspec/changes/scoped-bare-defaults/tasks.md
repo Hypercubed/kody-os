@@ -83,17 +83,14 @@ version; the version decision is recorded at commit time.
   1px borders (was 2px `#111` in many apps), 2px shadows,
   flattened Puzzle New Game, Calculator keys, Hoodie Weather
   (16px input, buttons in the 2-column actions grid),
-  Cellular/News dark toggle states, one page and one widget.
+  Cellular/News dark toggle states, one page and one widget. (Kept Nov 6, 2026: checks the named visual outcomes of this change per app — 20px buttons, 1px borders, 2px shadows, specific toggle states — not a routine check.)
 - [ ] 5.2 News active tab bold: restore it with a marker rule,
   or accept inversion-only as the state cue.
 - [ ] 5.3 Pill variants: confirm Counter and Eight Ball pills
   stay variants and Puzzle New Game stays flattened, or
   reverse either call.
-- [ ] 5.4 Commit scope: spec and implementation together or
-  separately, and the version decision for that commit
-  (at the time, the package was 2.6.0, build 30 in the working tree; the commit later landed as `ef654da`).
-- [ ] 5.5 Push destination and publish: GitHub only, Kody
-  publish, both, or neither — each needs its own direction. (Outcome: pushed to GitHub as `ef654da` and published to Kody as v2.6.0 build 31; live has since moved to v2.7.0 build 32.)
+- Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 5.4 "Commit scope: spec and implementation together or separately, and the version decision for that commit" — a commit-scope task; the commit already landed as ef654da, so the decision is moot.
+- Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 5.5 "Push destination and publish: GitHub only, Kody publish, both, or neither" — a push/publish task, already done: pushed to GitHub as ef654da and published to Kody as v2.6.0 build 31; live has since moved to v2.7.0 build 32.
 - [ ] 5.6 Future consideration, not part of this change: a
   harness check that fails a bundle button look rule
   duplicating a default, so the drift this change removed

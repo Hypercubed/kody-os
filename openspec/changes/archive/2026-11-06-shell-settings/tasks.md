@@ -240,7 +240,7 @@ publishes anything (see §7).
 
 ## 6. Verification
 
-- [ ] 6.1 Prove the panel bundle with a Node-stub DOM
+- [x] 6.1 Prove the panel bundle with a Node-stub DOM
   test at `pkg/catalog/tests/settings-dom-tests.cjs`
   (the daily-feed / generic-feed pattern, not jsdom
   outside `pkg/`): controls render
@@ -251,7 +251,8 @@ publishes anything (see §7).
   (never to `act()`); no navigation, no POST,
   and no theme stored in app state occurs in
   any flow.
-- [ ] 6.2 Run the ES2019 ceiling grep on the bundle
+  DONE 2026-11-06: `node pkg/catalog/tests/settings-dom-tests.cjs` from the repo root — ALL SETTINGS DOM CHECKS PASSED (exit 0); `node pkg/catalog/tests/settings-tests.cjs` also passed (ALL SETTINGS CHECKS PASSED, exit 0). Run on be-quite-900.
+- [x] 6.2 Run the ES2019 ceiling grep on the bundle
   script and the new module (zero hits for `?.` /
   `??` / `replaceAll` / `.at(` — template literals
   are not part of the ceiling; avoiding them is
@@ -261,7 +262,8 @@ publishes anything (see §7).
   failure, identical on clean HEAD, so it is not a
   gate — gate on the catalog harness + the new
   bundle tests instead.
-- [ ] 6.3 Smoke-test the full loop with a live
+  DONE 2026-11-06: ES2019 ceiling grep — 0 hits for `?.` / `??` / `replaceAll` / `.at(` in the bundle script (extracted from `pkg/catalog/settings/definition.json` bundle.files['index.html'] — there is no separate settings/index.html file) and in the new module `pkg/src/shell-theme.ts`; no template literals in the bundle script either. `bun tests/catalog-harness.ts` — ALL CATALOG CHECKS PASSED (18 apps, 0 collections), exit 0; new bundle tests passed (see 6.1). `counter-tests` re-confirmed at 1 pre-existing failure (k param preserved), not a gate. Run on be-quite-900.
+- [x] 6.3 Smoke-test the full loop with a live
   shell request: file defaults render; set via
   MCP, and the next page render shows the
   override; set via the panel's GET forms with
@@ -277,16 +279,18 @@ publishes anything (see §7).
   is a single-use OTP submission transport and
   sessions ride the session cookie. Confirm no
   `?k=` is rendered in any link, form, or redirect.
-- [ ] 6.4 Run `openspec validate --changes` on the
+  DONE 2026-11-06: live smoke test against mock dev on localhost:4302 (two stop/restart cycles — one to mint the dev OTP, one for the MCP file-store write, both the established stop-write-restart pattern; the session cookie survived the restart, so the second OTP minted was unused). File defaults render (read route: defaults name kody-os, background desk, showHelp/showAbout true; override {} after a baseline reset-all; home title 'Home · kody-os'); set via MCP (`kody execute --target mock` calling the package's set_shell_theme export, name 'Smoke Test') and the next render showed 'Home · Smoke Test'; set via the panel's GET forms with no JavaScript (background=paper) — 303 to /apps/settings, read route then showed override {name 'Smoke Test', background 'paper'}; reset all — 303 to /apps/settings, read route override {}, home title back to 'Home · kody-os'. Source labels are proven by the 6.1 DOM tests; live, the values the panel renders were verified via the read route and the panel page loaded 200. Cookie-authenticated fetch verified (footer 'via cookie', HttpOnly session cookie); unauthenticated requests to /, /theme/settings, /apps/settings get the locked page (404). No `?k=` in the locked page, the panel pages, or any 303 Location header; the single '?k=' occurrence on Home is inside the hoodie-weather app's bundle JS (pre-existing feed-URL helper), not a shell link, form, or redirect. A pre-existing mock-store override {showHelp:true} was present before the test and was cleared by the loop's reset-all (effective values unchanged — showHelp true is the file default). Run on be-quite-900.
+- [x] 6.4 Run `openspec validate --changes` on the
   PC (binary at
   `/home/jmh/.nvm/versions/node/v24.16.0/bin/openspec`;
   add that directory to PATH for the run; `bun` is
   at `/home/jmh/.bun/bin/bun`, not on the daemon
   shell's PATH) and confirm it passes.
+  DONE 2026-11-06: `openspec validate shell-settings --type change` — 'Change shell-settings is valid'. Repo-wide `openspec validate --changes`: 19 passed, 5 failed (24 items); the 5 failures are pre-existing in other changes (email-client, f-flat-minor-calculator, generic-daily-feed, generic-rss-feed, link-drop-to-kody-os), not this change. Run on be-quite-900.
 
 ## 7. Version and publish
 
-- [ ] 7.1 Apply the MINOR version bump at publish per `pkg/AGENTS.md` (deferred to publish by the user, Nov 6, 2026 — the code is already committed)
+- [x] 7.1 Apply the MINOR version bump at publish per `pkg/AGENTS.md` (deferred to publish by the user, Nov 6, 2026 — the code is already committed)
   (BUILD +1 on publish; `pkg/AGENTS.md` +
   `pkg/README.md` headers updated to the new
   version in that commit). If the phases land
@@ -309,3 +313,4 @@ publishes anything (see §7).
   re-approval on the owner's behalf (none is
   expected for this change: no new
   `kody.app.capabilities` entry).
+  DONE 2026-11-06: version decision deferred to publish by the user (Nov 6); MINOR recommended; highest bump wins; build +1 on publish. No version bump applied in this change.

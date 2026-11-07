@@ -130,7 +130,7 @@ The shell SHALL serve a built-in About page at `GET /about` rendering the About 
 
 #### Scenario: About shows the Kody referral note
 - **WHEN** `/about` is opened
-- **THEN** the bottom of the page invites readers signing up for Kody to use the referral link `https://kody.codes/?ref=hypercubed`.
+- **THEN** the bottom of the page invites readers signing up for a Kody Pro account to use the referral code `hypercubed`.
 
 #### Scenario: About app URL is unknown
 - **WHEN** `/apps/about` is opened

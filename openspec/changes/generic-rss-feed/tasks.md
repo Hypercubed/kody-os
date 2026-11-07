@@ -19,8 +19,7 @@
 - [ ] 3.1 Port the XKCD reader UI: fetch `GET /user-feed/generic-rss-feed` on open and on Refresh; newest first; Previous/Next; position text with the device-local date; at most 14 items; title HTML-escaped, plain-text description truncated to 350 characters; no feed-supplied HTML, script, or inline style reaches the page; tapping an item opens the source. Device-local cache fallback (XKCD's localStorage pattern); error state with a retry when the live fetch fails and nothing is rendered.
 - [ ] 3.2 Empty state: when no URL is set, show the Help-style setup prompt naming the app id, the `set_feed_url` action, and a blank `RSS feed URL: [paste the RSS feed URL here]`; hide the `feedUrl` field in the reader view and show the configured URL/host as plain text in the viewer header.
 - [ ] 3.3 Widget: the Home widget shows the latest item only; navigation and Refresh hide in the widget, per the widget-visibility rule (CSS scoped to the widget wrapper).
-- [ ] 3.4 Verify: bundle tests pass (see 4.2); visual check on a real browser / Scribe remains open until the user does it.
-
+- [ ] 3.4 Verify: bundle tests pass (see 4.2). (Edited Nov 6, 2026 per the no-generic-Scribe-verify rule: the "visual check on a real browser / Scribe remains open until the user does it" clause was removed — a generic check naming no specific unknown behavior; the bundle-test verification remains.)
 ## 4. Harness and tests
 
 - [ ] 4.1 Update the catalog harness's app count (18 → 19) and the agent-tools harness's known-FAIL text ("got 18" → "got 19"); run the full harness suite (`bun tests/store-harness.ts`, `bun tests/catalog-harness.ts`, `bun tests/open-mode-harness.ts`, `bun tests/owner-check-harness.ts`, `bun tests/agent-tools-harness.ts`) — all pass except the known agent-tools FAIL.

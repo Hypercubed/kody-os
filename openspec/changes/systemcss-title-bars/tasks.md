@@ -42,8 +42,7 @@ implementation commit (MINOR per proposal.md, build
   checked. A `kody dev` check that could not
   run in the working environment must be
   recorded as substituted — by which harness
-  and why — not as done.
-
+  and why — not as done. (Kept Nov 6, 2026: checks the named Scribe-width behaviors per phase — ellipsis, modal, under-30rem — that gate the next phase, not a routine check.)
 ## 1. Title treatment: size, plate, stripes
 
 - [ ] 1.1 In `pkg/public/styles.css`, move the
@@ -164,4 +163,4 @@ implementation commit (MINOR per proposal.md, build
   every title bar, long and short titles,
   modal open, narrow screen, and every box
   tappable at 48px. Record what was checked
-  and what was substituted, if anything.
+  and what was substituted, if anything. (Kept Nov 6, 2026: checks the named per-phase Scribe behaviors — title ellipsis, modal, 48px tappability at narrow width — not a routine check.)

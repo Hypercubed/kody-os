@@ -1,6 +1,36 @@
 # Spec Delta
 
-## MODIFIED Requirements
+## REMOVED Requirements
+
+### Requirement: Three key-delivery paths with visible fallback
+
+The three key-delivery paths are gone with the legacy access key. Authentication is by exactly two login paths only (see ADDED "Exactly two login paths, no legacy path"): a platform-verified Kody visitor, or a session cookie issued by burning an OTP. No credential is carried in any URL, link, form, redirect, or header.
+
+### Requirement: Unlock writes localStorage where available
+
+The unlock path no longer writes a device key to localStorage. A successful OTP unlock writes only the minted session token (see ADDED "Unlock writes only the session token to localStorage"), and no code is ever stored.
+
+### Requirement: Kody-authenticated visitors skip the device key
+
+Retired as worded with the device key. Kody-authenticated visitors are still served without a cookie, now falling through to the session-cookie gate instead of a device-key gate (see ADDED "Kody-authenticated visitors skip the device gate").
+
+### Requirement: Key is derived from a UI-managed secret, never stored
+
+Retired in full. There is no derived key, no UI-managed secret, and no secret-derived value anywhere in the package (see ADDED "No derived key exists; no secret is consulted").
+
+### Requirement: Key management is Kody-UI-only
+
+Retired in full with the secret. There is no key to create or replace, and no Kody UI secret step is part of this package's setup (see ADDED "No derived key exists; no secret is consulted").
+
+### Requirement: Key is optional; login-only mode stays private
+
+Retired in full. There is no secret to define, so there is no anonymous device-key path to enable; the app serves Kody-logged-in users and OTP-unlocked sessions only (see ADDED "Exactly two login paths, no legacy path").
+
+### Requirement: OTP sessions replace the secret on the device path
+
+Retired as worded. OTP sessions no longer replace a secret — they are the only device path, with no secret gate of any kind (see ADDED "OTP sessions are the only device path").
+
+## ADDED Requirements
 
 ### Requirement: Exactly two login paths, no legacy path
 
@@ -40,18 +70,6 @@ consulted at request time, and no secret need is declared.
   valid session cookie
 - **THEN** it is denied (locked) and the response carries no app
   content.
-
-### Requirement: Footer reports the active auth path
-
-Every shell page footer SHALL include the active auth path (`via kody`,
-`via cookie`, or `locked`) so the login path is observable without
-devtools. The `via key` path SHALL NOT appear. The Logout link
-SHALL appear only for cookie-authenticated pages.
-
-#### Scenario: Owner reads the auth path off the page
-- **WHEN** any authenticated page is fetched
-- **THEN** the footer names `via kody` or `via cookie` as the path
-  that authenticated the request, or `locked` when denied.
 
 ### Requirement: Unlock writes only the session token to localStorage
 
@@ -184,3 +202,17 @@ here (see design.md, Relationship to auth-rethink).
 - **WHEN** a URL carrying a previously submitted `?k=` OTP value
   is opened again
 - **THEN** it is denied (locked), because the OTP is already burned.
+
+## MODIFIED Requirements
+
+### Requirement: Footer reports the active auth path
+
+Every shell page footer SHALL include the active auth path (`via kody`,
+`via cookie`, or `locked`) so the login path is observable without
+devtools. The `via key` path SHALL NOT appear. The Logout link
+SHALL appear only for cookie-authenticated pages.
+
+#### Scenario: Owner reads the auth path off the page
+- **WHEN** any authenticated page is fetched
+- **THEN** the footer names `via kody` or `via cookie` as the path
+  that authenticated the request, or `locked` when denied.

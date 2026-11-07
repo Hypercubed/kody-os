@@ -68,7 +68,7 @@ implementation commit, per the catalog rules.
   (1.5rem) and at e-ink resolution; any icon
   that goes faint keeps its width with a
   note in the README (design.md Risks),
-  rather than a silent exception.
+  rather than a silent exception. (Kept Nov 6, 2026: the visual check names the specific unknown — per-icon faintness at tile size on e-ink — with a named fallback of keeping the width.)
 - [ ] 2.3 Write the normalized strings back
   into their catalog bundles, incrementing
   each touched bundle's `catalogVersion` by

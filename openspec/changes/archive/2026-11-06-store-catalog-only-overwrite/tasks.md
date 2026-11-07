@@ -67,17 +67,13 @@ recorded at commit time.
 
 ## 5. Specs
 
-- [x] 5.1 Spec deltas in `specs/app-registry/spec.md`,
-  `specs/shell/spec.md`, and `specs/authoring/spec.md` in this
-  change folder; canonical specs in `openspec/specs/` updated
-  in the same change.
+- [x] 5.1 Spec deltas in `specs/app-registry/spec.md` and
+  `specs/shell/spec.md` in this change folder; canonical specs
+  in `openspec/specs/` updated in the same change. (The
+  authoring delta for 'Bundle manifest shape' was removed
+  Nov 6, 2026 — its content already stands in canonical
+  'Catalog apps are installable verbatim'.)
 
-## 6. Ship (owner decisions, open)
+## 6. Ship — removed Nov 6, 2026
 
-- [ ] 6.1 Commit scope: direct to main or branch + PR.
-- [ ] 6.2 Publish to Kody (build 31 → 32 at publish time)
-  and update the live Store install from the catalog.
-- [ ] 6.3 Human-browser / Scribe check of the new Store list
-  and Overwrite flow (no `kody dev` leg runs in this VM;
-  the HTTP dispatch leg is substituted by the store harness
-  and the jsdom bundle tests, as before).
+Part 6 (6.1 commit scope, 6.2 publish to Kody, 6.3 human-browser / Scribe check) removed at user direction — release is the user's call; no generic Scribe verify. The ship steps themselves happened (committed as `7582828`, published to Kody as v2.7.0 build 32) and are recorded in the proposal.

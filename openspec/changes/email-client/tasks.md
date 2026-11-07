@@ -170,12 +170,4 @@
 
 ## 7. Version and publish
 
-- [ ] 7.1 Apply the MINOR version bump in the
-  same commit as the code per `pkg/AGENTS.md`
-  (BUILD +1 on publish; `pkg/AGENTS.md` +
-  `pkg/README.md` headers updated to the new
-  version in that commit). Do not commit,
-  push, or publish this change without the
-  user's explicit direction for that step, and
-  do not approve any Kody capability
-  re-approval on the owner's behalf.
+- Removed Nov 6, 2026 per the no-release / no-generic-Scribe-verify rule: task 7.1 "Apply the MINOR version bump in the same commit as the code" — a version-bump release step; the user decides when to release. The guard half of 7.1 (no commit/push/publish without the user's explicit direction, no capability re-approval on the owner's behalf) is now the standing rule and is not lost.
