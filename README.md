@@ -1,20 +1,22 @@
 # kody-os
 
-A minimal OS shell shared by humans and agents, built with a Kindle Scribe in mind but working in most browsers. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly.
+A personal AI OS that runs on [Kody](https://kody.codes/?ref=hypercubed) — a homepage for your devices, built with the Kindle Scribe in mind but working in most browsers. One generic shell renders every app; apps are JSON definitions stored in the package, not code you have to write. Ask a Kody-connected agent to add an app — a clock, a feed, a game — and it shows up on all your devices, with no republish needed.
 
-Current package version: **v2.7.0** (build 32). See `pkg/package.json` for the authoritative version.
+Current package version: **v3.0.0** (build 33). See `pkg/package.json` for the authoritative version.
 
 ![Home dashboard](pkg/public/screenshots/home.png)
 ![All apps](pkg/public/screenshots/apps.png)
 
-## Two roots — read this first
+## Run it
 
-This repository has two different "roots", and they serve different audiences. Do not confuse them:
+You need a free Kody account, a fork of kody-os, and a publish. The full steps, with checks, are in the [Setup guide](pkg/docs/setup.md). The short version:
 
-- **This file, and `AGENTS.md` at the repository root, are for maintainers of this repository.** They describe the repo layout, how to change the shell, how to run the tests, how to write a spec, and how to publish.
-- **`pkg/` is the Kody package itself.** Its `pkg/README.md` and `pkg/AGENTS.md` are for users and agents *of the package* on Kody: how to set up a fork, unlock it, install apps, and write an app definition. Those files ship inside the package. The files at the repository root do not.
+1. **Sign up for Kody (free).** Create your account with [this referral link](https://kody.codes/signup?ref=hypercubed).
+2. **Fork kody-os.** If the Kody listing is public, install it from Kody in one click — that forks it into your account and publishes it. Otherwise, fork this repository on GitHub and publish the package from `pkg/` through a repo session; your Kody-connected agent can do the publish.
+3. **Unlock with a one-time code.** Ask your agent to mint a 4-digit code (`mint_otp`, valid 10 minutes, single use) and type it into the unlock form. It mints a 30-day session. On the Kindle Scribe, mint a fresh code at the start of each session — the Scribe drops cookies between sessions.
+4. **Install your first app.** A fresh install starts empty — no apps seeded, including no App Store. Install the App Store from the prompt on the empty Apps page (`install_from_catalog('app-store')`), or ask your agent to add an app (for example `counter`) with `add_app`. Adding an app never needs a republish.
 
-If you just want to use kody-os, or fork it and run your own copy, start with [`pkg/README.md`](pkg/README.md) and the setup guide in [`pkg/docs/setup.md`](pkg/docs/setup.md). The rest of this file is for people working on the code.
+If you cannot find a Kody listing for kody-os, the package is still private — that is a publisher-side step, not something you can do from your account.
 
 ## What it does
 
@@ -23,8 +25,18 @@ If you just want to use kody-os, or fork it and run your own copy, start with [`
 - **App pages** — description, live state, and one plain-form button per declared action. Actions work with JavaScript disabled (GET form + redirect) and enhance in place where scripting runs. The App Store itself is the exception: it is a data app and requires JavaScript.
 - **Feeds and proxy** — apps declare allowlisted HTTPS upstreams (`capabilities.feeds`, `capabilities.proxy`) read through the shell's same-origin feed/proxy routes with storage caching. No auth is forwarded upstream.
 - **Access** — the browser shell is locked by one-time codes (4 digits, single use, 10 minutes) minting a 30-day session, plus an owner-only Kody login bypass. Agents use MCP exports, which are never gated. There is no secret to configure.
+- **Help and About** — built-in shell pages, not apps. They can be hidden from the Settings app.
 
-The shipped catalog has 16 apps: about, app-store, arrow-game, calculator, calendar, cellular-playground, clock, counter, eight-ball, help, hoodie-weather, mac-puzzle, news, probe, three-bit-art, and xkcd. See [`pkg/catalog/README.md`](pkg/catalog/README.md) for what each one does and the catalog membership checklist.
+The shipped catalog has 18 apps: app-store, arrow-game, calculator, calendar, cellular-playground, clock, counter, daily-feed, eight-ball, generic-feed, hoodie-weather, link-drop, mac-puzzle, news, probe, settings, three-bit-art, and xkcd. See [`pkg/catalog/README.md`](pkg/catalog/README.md) for what each one does and the catalog membership checklist.
+
+## For maintainers — two roots
+
+This repository has two different "roots", and they serve different audiences. Do not confuse them:
+
+- **This file, and `AGENTS.md` at the repository root, are for maintainers of this repository.** They describe the repo layout, how to change the shell, how to run the tests, how to write a spec, and how to publish.
+- **`pkg/` is the Kody package itself.** Its `pkg/README.md` and `pkg/AGENTS.md` are for users and agents *of the package* on Kody: how to set up a fork, unlock it, install apps, and write an app definition. Those files ship inside the package. The files at the repository root do not.
+
+If you just want to use kody-os, start with the [Setup guide](pkg/docs/setup.md). The rest of this file is for people working on the code.
 
 ## Repository layout
 
@@ -32,7 +44,8 @@ The shipped catalog has 16 apps: about, app-store, arrow-game, calculator, calen
 pkg/                 The Kody package — the only directory that ships to Kody.
   src/               Shell source: app.ts (fetch handler), auth.ts, feeds.ts,
                      client/, bridge/, and apps/ (registry, catalog, forms, client).
-  catalog/           Shipped app dirs (definition.json + RECIPE.md), generated index, plus tests.
+  catalog/           Shipped app dirs (definition.json + RECIPE.md + index.html),
+                     generated index, plus tests.
   docs/              Package-user docs: setup, device-key,
                      scribe-limitations, style-guide.
   scripts/           kody dev helpers: mint-dev-otp, registry, catalog, add-app, clear-auth.
@@ -44,7 +57,7 @@ pkg/                 The Kody package — the only directory that ships to Kody.
 openspec/            Specs and change proposals (see "Working with specs" below).
   specs/             Canonical, current specs (shell, app-registry, authoring, …).
   changes/           Active change proposals: proposal.md, design.md, tasks.md, spec deltas.
-  changes/archive/   Closed changes, dated by close-out (e.g. 2026-11-03-…).
+  changes/archive/   Closed changes, dated by close-out (e.g. 2026-11-07-…).
 tests/               Repository-level harnesses (bun): catalog, store, agent-tools,
                      open-mode, owner-check, home-widget-counter, isolation-demo, …
 docs/                Repository-level docs: the 2026-10-27 security review.
@@ -113,18 +126,12 @@ Entire tracking was removed from this repository in November 2026 (checkpoints d
 
 ## Roadmap: the public catalog
 
-The next planned change, spec'd but not yet implemented, moves the catalog out of the package so the App Store can read it from this public repository instead of from the shipped bundle:
+The next change, spec'd and in progress, moves the catalog out of the package so the App Store can read it from this public repository instead of from the shipped bundle. It lands before the Kody listing goes public:
 
-- `catalog-out-of-pkg`: move the `pkg/catalog/<id>/` directories to `catalog/` at the repo root, with a generated `catalog/index.json`.
+- `catalog-out-of-pkg`: move the `pkg/catalog/<id>/` directories to `catalog/` at the repo root, with a generated `catalog/catalog.json`.
 - `public-pinned-catalog`: the Store reads the public catalog pinned to a release tag (never `main` HEAD by default).
-- `bootstrap-after-fork`: docs for bootstrapping About, Help, and Store from the pinned release after forking.
-
-The specs live in `openspec/changes/catalog-out-of-pkg/`, `openspec/changes/public-pinned-catalog/`, and `openspec/changes/bootstrap-after-fork/`. They are gated on this repository being public, and the catalog move must land in the same release window as the pinned-catalog change — not alone, or a published package would ship with no catalog.
-
-## Security
-
-See [`docs/security-review-2026-10-27.md`](docs/security-review-2026-10-27.md) for the full review. The headline: the shell's trust boundary is who can install or publish an app, not the bundle code itself. Bundle scripts run with session authority by design; the capability declarations in a bundle are installer disclosure plus a server-side allowlist for honest apps, not isolation. Never commit secrets, tokens, or credentials to this repo, and never paste one into a chat or file to "make something work" — use the secure entry flow for any credential that must be stored.
+- `bootstrap-after-fork`: docs for bootstrapping the App Store from the pinned release after forking (About and Help are built-in pages and need no install).
 
 ## License
 
-kody-os is licensed under the MIT License. See [`LICENSE`](LICENSE) at the repository root. An identical copy ships inside the package as [`pkg/LICENSE`](pkg/LICENSE), so forks and package users see the same license.
+kody-os is licensed under the MIT License. See [`LICENSE`](LICENSE) at the repository root. An identical copy ships inside the package at `pkg/LICENSE`.
