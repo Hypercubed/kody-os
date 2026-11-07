@@ -2,9 +2,9 @@
 
 ## 1. App definition and recipe
 
-- [ ] 1.1 Write `pkg/catalog/generic-rss-feed/definition.json`, modelled on `xkcd` (reader UI) and `generic-feed` (setup prompt): id `generic-rss-feed` (proposed, for review), label `Generic RSS Feed`, category `reading`, `schemaVersion` 5, `catalogVersion` 1, `installMode: recipe-or-json`, no capabilities, one state field `feedUrl` (string, maxLength 2048, initial `""`), one action `set_feed_url`, bundle within the 256 KiB cap, icon a single glyph (proposed `≣`, for review).
+- [ ] 1.1 Write `pkg/catalog/generic-rss-feed/definition.json`, modelled on `xkcd` (reader UI) and `generic-feed` (setup prompt): id `generic-rss-feed` (proposed, for review), label `Generic RSS Feed`, category `reading`, `schemaVersion` 5, `catalogVersion` 1, no `installMode` (absent = `json`), no capabilities, one state field `feedUrl` (string, maxLength 2048, initial `""`), one action `set_feed_url`, bundle within the 256 KiB cap, icon a single glyph (proposed `≣`, for review).
 - [ ] 1.2 Write `pkg/catalog/generic-rss-feed/RECIPE.md` following the `generic-feed` recipe shape (install, verify, ask the user for the RSS URL, set it with `set_feed_url`, verify the feed loads, do-not-touch-anything-else footer).
-- [ ] 1.3 Add the import entry to `catalog.ts` (alphabetical by id, after `generic-feed`); regenerate the index with `scripts/build-catalog-index.ts` and confirm the entry carries `installMode: recipe-or-json`, `definitionPath`, and `recipePath`; run the generator twice and confirm byte-identical output.
+- [ ] 1.3 Add the import entry to `catalog.ts` (alphabetical by id, after `generic-feed`); regenerate the index with `scripts/build-catalog-index.ts` and confirm the entry carries `definitionPath` and `recipePath` and no `installMode` field; run the generator twice and confirm byte-identical output.
 - [ ] 1.4 Verify: `bun tests/catalog-harness.ts` lists 19 apps and the new app validates and installs in a blank store with its initial state (`feedUrl` empty).
 
 ## 2. Shell mechanism: user-feed route
@@ -32,7 +32,7 @@
 ## 5. Docs and specs
 
 - [ ] 5.1 Verify `pkg/catalog/README.md` needs no change (it describes the layout, not the app list); update it only if it enumerates the apps.
-- [ ] 5.2 Sync the canonical specs by hand from this change's deltas at archive time (`openspec/specs/generic-rss-feed/spec.md`, `app-registry`, `authoring`), reconciling with `help-about-built-in` if it archived first (see design.md, Decision 7).
+- [ ] 5.2 Sync the canonical specs by hand from this change's deltas at archive time (`openspec/specs/generic-rss-feed/spec.md`, `app-registry`, `authoring`), reconciling with `help-about-built-in` if it archived first and with `store-recipe-prompt`'s `recipe-or-json` removal (see design.md, Decision 7).
 - [ ] 5.3 Run `npx --yes @fission-ai/openspec@latest validate generic-rss-feed --type change` — reports valid.
 
 ## 6. Verification and version

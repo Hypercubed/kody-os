@@ -3,8 +3,8 @@
 ## Context
 
 `catalog-restructure` landed the data: every catalog definition may
-carry `installMode` (`json` | `recipe-only` | `recipe-or-json`, absent
-means `json`, fingerprint-excluded like `catalogVersion`), the index
+carry `installMode` (`json` | `recipe-only`, absent means `json`,
+fingerprint-excluded like `catalogVersion`), the index
 carries it per entry, and the listing summaries carry it
 (`pkg/src/apps/catalog.ts:55,97,120`). The canonical
 `app-registry` requirement "Recipe install mode" already states the
@@ -34,15 +34,15 @@ Goals:
 
 - A not-installed `recipe-only` row shows the recipe prompt and no
   Add button.
-- `recipe-or-json` and `json` rows keep one-tap Add, with no prompt.
+- `json` rows keep one-tap Add, with no prompt.
 - The prompt follows the shell's agent-prompt pattern: selectable
   text, no copy button, no Clipboard API.
 - The change is testable without a live `recipe-only` app.
 
 Non-Goals:
 
-- `installMode` semantics (unchanged — defined by
-  `catalog-restructure`).
+- `installMode` semantics beyond Decision 6 (the rest of the model
+  is as defined by `catalog-restructure`).
 - Index/generator changes (none — the index already carries
   `installMode`; it only regenerates for the version bump).
 - Agent install path (unchanged).
@@ -111,8 +111,8 @@ persistent banner, and install already happened via the recipe.
 
 The jsdom tests construct rows by hand, so a `recipe-only` row is a
 test-only fixture, not a catalog app. The tests gain fixture rows for
-`recipe-only` (not-installed), `recipe-or-json` (not-installed),
-`json` (not-installed), and `recipe-only` (installed, up-to-date),
+`recipe-only` (not-installed), `json` (not-installed), and `recipe-only`
+(installed, up-to-date),
 and assert prompt presence/absence, button presence/absence, the
 selectable `<code>` element, and no copy button or Clipboard API use.
 The test file header comment is updated to document the new checks.
@@ -127,6 +127,10 @@ The App Store bundle changes (`store.js` + `store.css`), so its
 to that app's definition file). The index is regenerated with the
 generator; the App Store entry's new version and fingerprint follow
 from the bundle change, as expected.
+
+### Decision 6: remove `recipe-or-json` from the model
+
+`recipe-or-json` is removed entirely. It added nothing: it described the default behavior — any app can be installed using a recipe, and unattended install from the JSON alone was always available — so the value carried no information a reader or the Store could act on. The model is now two states: `installMode` absent (default `json`: unattended one-tap install available, recipe always usable) and `installMode: 'recipe-only'` (no one-tap install; the Store shows the recipe prompt). The archived `catalog-restructure` change mapped `daily-feed` and `generic-feed` to `recipe-or-json`; that mapping is superseded by this decision — the archive is a record and is not edited. The removal is done here, in this follow-on, because this is the change that consumes `installMode`: the type (`pkg/src/apps/types.ts:252`), the registry validation (`pkg/src/apps/registry.ts:600-603`), the two definitions that carry the value (`pkg/catalog/daily-feed/definition.json`, `pkg/catalog/generic-feed/definition.json`), and the generated index (see tasks, section 0). Removing the field needs no `catalogVersion` bump for either app, per the fingerprint carve-out — the fingerprint excludes `installMode`, so no installed app changes status. Nothing reads `installMode` at runtime today (the registry only validates and preserves it; `catalog.ts` carries it in listing summaries; the Store bundle never reads it), so the removal changes no runtime behavior. The canonical `Recipe install mode` requirement is updated to the two-state model by `generic-rss-feed`'s MODIFIED delta; the two changes archive in either order, with whoever archives second reconciling (see `generic-rss-feed` design.md, Decision 7).
 
 ## Open Questions
 

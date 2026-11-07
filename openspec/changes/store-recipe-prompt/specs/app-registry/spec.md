@@ -14,8 +14,8 @@ a row SHALL be treated as `json`. For a not-installed row whose
 the recipe prompt in place of the Add button: selectable text in a
 `<code>` element naming the app, its recipe file
 (`pkg/catalog/<id>/RECIPE.md`), and the verify step (`list_apps`),
-with no copy button and no Clipboard API use. `recipe-or-json` and
-`json` not-installed rows SHALL offer one-tap Add with no prompt.
+with no copy button and no Clipboard API use. `json`
+not-installed rows SHALL offer one-tap Add with no prompt.
 Installed rows SHALL keep their existing controls and never show
 the prompt.
 
@@ -26,12 +26,6 @@ the prompt.
 - **THEN** the row renders the recipe prompt (a `<code>` element
   naming the app, its recipe file, and the verify step) and offers
   no Add button.
-
-#### Scenario: Recipe-or-json not-installed row installs with one tap
-
-- **WHEN** a Store row is not installed and its `installMode` is
-  `recipe-or-json`
-- **THEN** the row offers one-tap Add and shows no prompt.
 
 #### Scenario: Json not-installed row installs with one tap
 
@@ -48,9 +42,9 @@ the prompt.
 
 #### Scenario: Rows carry installMode
 
-- **WHEN** the Store rows are built for a `recipe-or-json` app and
+- **WHEN** the Store rows are built for a `recipe-only` app and
   for a `json` app
-- **THEN** the first row reports install mode `recipe-or-json` and
+- **THEN** the first row reports install mode `recipe-only` and
   the second reports `json`.
 
 #### Scenario: Prompt is selectable text, no copy button, no Clipboard API

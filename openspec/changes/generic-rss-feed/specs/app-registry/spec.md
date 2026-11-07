@@ -38,7 +38,7 @@ The shell SHALL serve a user-supplied feed URL for one app at `GET /user-feed/<a
 
 ### Requirement: Recipe install mode
 
-A catalog definition MAY carry `installMode`: `"json"`, `"recipe-only"`, or `"recipe-or-json"`. Absent means `"json"` — unattended install from the JSON alone. `"recipe-only"` means the app MUST be installed via its recipe: it still appears in the App Store list, but the Store shows the recipe prompt (selectable text for the user to supply to their agent) in place of one-tap install. `"recipe-or-json"` means the app has a non-trivial recipe for full configuration AND can be installed unattended from JSON: in the Store it installs without the prompt message (one-tap install works); it lands unconfigured and the app's built-in empty-state prompt guides setup, while the recipe fully configures it at install time. Only an app with a non-trivial recipe SHALL carry `installMode`; most definitions SHALL carry no such property. A definition with `installMode` present SHALL fail validation unless the value is `"json"`, `"recipe-only"`, or `"recipe-or-json"`. The canonical stored definition SHALL preserve `installMode` through `add_app` normalization, and `installMode` SHALL be excluded from the definition fingerprint, exactly like `catalogVersion`, so adding it SHALL NOT change any installed app's fingerprint, snapshot, or update status.
+A catalog definition MAY carry `installMode`: `"json"` or `"recipe-only"`. Absent means `"json"` — unattended install from the JSON alone, and any app can also be installed using its recipe. `"recipe-only"` means the app MUST be installed via its recipe: it still appears in the App Store list, but the Store shows the recipe prompt (selectable text for the user to supply to their agent) in place of one-tap install. An app with a non-trivial recipe installs unattended from the JSON alone and lands unconfigured, with its built-in empty-state prompt guiding setup; the recipe fully configures it. Only an app that requires its recipe SHALL carry `installMode`; most definitions SHALL carry no such property. A definition with `installMode` present SHALL fail validation unless the value is `"json"` or `"recipe-only"`. The canonical stored definition SHALL preserve `installMode` through `add_app` normalization, and `installMode` SHALL be excluded from the definition fingerprint, exactly like `catalogVersion`, so adding it SHALL NOT change any installed app's fingerprint, snapshot, or update status.
 
 #### Scenario: Unattended install is the default
 
@@ -50,19 +50,19 @@ A catalog definition MAY carry `installMode`: `"json"`, `"recipe-only"`, or `"re
 - **WHEN** a catalog definition carries `"installMode": "recipe-only"`
 - **THEN** it validates, its stored definition preserves the field, its listing reports install mode `recipe-only`, and the Store lists it with the recipe prompt in place of one-tap install.
 
-#### Scenario: Recipe-or-json app declares its mode and installs unattended
+#### Scenario: App with a recipe installs unattended and lands unconfigured
 
-- **WHEN** a catalog definition carries `"installMode": "recipe-or-json"`
-- **THEN** it validates, its stored definition preserves the field, its listing reports install mode `recipe-or-json`, and it installs unattended from the JSON alone without the prompt message, landing unconfigured with its built-in empty-state prompt guiding setup.
+- **WHEN** a catalog definition carries no `installMode` and has a non-trivial recipe
+- **THEN** it installs unattended from the JSON alone without the prompt message, landing unconfigured with its built-in empty-state prompt guiding setup; the recipe fully configures it.
 
 #### Scenario: No app is recipe-only today
 
 - **WHEN** the catalog is listed
-- **THEN** no entry reports install mode `recipe-only`; `daily-feed`, `generic-feed`, and `generic-rss-feed` report `recipe-or-json` and the other 16 report `json`.
+- **THEN** no entry reports install mode `recipe-only`; all 19 entries report `json`.
 
 #### Scenario: Invalid install mode fails validation
 
-- **WHEN** a definition carries an `installMode` other than `"json"`, `"recipe-only"`, or `"recipe-or-json"`
+- **WHEN** a definition carries an `installMode` other than `"json"` or `"recipe-only"`
 - **THEN** validation rejects it.
 
 #### Scenario: installMode does not change fingerprints

@@ -44,7 +44,7 @@ Two options were evaluated.
 
 ## Decision 2: The app
 
-- Id `generic-rss-feed` (proposed; flagged for review — see Open questions). Label `Generic RSS Feed` (proposed). Category `reading` (same as `generic-feed`). `schemaVersion` 5, `catalogVersion` 1. `installMode: recipe-or-json`.
+- Id `generic-rss-feed` (proposed; flagged for review — see Open questions). Label `Generic RSS Feed` (proposed). Category `reading` (same as `generic-feed`). `schemaVersion` 5, `catalogVersion` 1. No `installMode` (absent = `json`).
 - No capabilities. The fetch goes through the user-feed route, not through a declared capability.
 - State schema: one field, `feedUrl`, string, maxLength 2048, initial `""`. One action, `set_feed_url`: sets the URL (validates bare HTTPS before writing; an invalid URL fails the action with no write, and the agent reports it and asks the user for a corrected URL — never guesses a corrected URL). Setting `""` clears the URL and returns the app to its empty state. No `refresh` action: the bundle's Refresh button re-fetches the route client-side (XKCD pattern); the route's server cache makes a refresh within the TTL cheap and harmless to the upstream. The action does not fetch — actions are state writes; fetching is the route's job.
 - Empty state (no URL set): a Help-style prompt modelled on `generic-feed`'s, naming the app id, the `set_feed_url` action, and a blank `RSS feed URL: [paste the RSS feed URL here]` for the user to fill in, plus the line "The app reads this feed live; changing the URL changes what it fetches." The `feedUrl` field is hidden in the reader view (XKCD hides its `feed` field); the viewer header shows the configured URL/host as plain text so the user can see what the app fetches.
@@ -65,7 +65,7 @@ Two options were evaluated.
 
 ## Decision 4: Catalog placement
 
-- Follows the catalog-restructure model: `pkg/catalog/generic-rss-feed/` with `definition.json` + `RECIPE.md`; the generator (`scripts/build-catalog-index.ts`) picks the app directory up; `catalog.ts` gains the import entry (alphabetical by id: `generic-feed`, then `generic-rss-feed`); the generated index entry carries id, label, catalogVersion 1, fingerprint, `installMode: recipe-or-json`, definitionPath, recipePath.
+- Follows the catalog-restructure model: `pkg/catalog/generic-rss-feed/` with `definition.json` + `RECIPE.md`; the generator (`scripts/build-catalog-index.ts`) picks the app directory up; `catalog.ts` gains the import entry (alphabetical by id: `generic-feed`, then `generic-rss-feed`); the generated index entry carries id, label, catalogVersion 1, fingerprint, definitionPath, recipePath (no `installMode` field — absent = `json`).
 - This change assumes the restructure layout (app directories + generated index). It does not depend on the restructure being committed — only on the layout being the one implemented — but the implementation commit should land after the restructure commit or fold into the same commit, so the app directory is created in its final shape (see Decision 7).
 
 ## Decision 5: Relationship to generic-feed (push) — unchanged
@@ -84,8 +84,9 @@ Two options were evaluated.
 
 - New catalog app: the implementation commit is expected to be a MINOR version bump (new catalog app, backwards compatible), decided at commit time per the version policy in `pkg/AGENTS.md`; the build increments by one on publish. This change does not decide the bump.
 - Sequencing with the catalog-restructure: settled - the restructure's task 8.3 committed as `b548aca` (MINOR 2.8.0). This change's implementation commit lands after it.
-- Sequencing with `help-about-built-in`: settled - committed in `c5d10d4`, Help and About are built-in shell pages (removed from the catalog) and `app-store`'s `installMode` is `json`. It touches the same canonical scenarios this change modifies (`Recipe install mode`). The settled outcome: 19 apps with this change; `daily-feed`, `generic-feed`, `generic-rss-feed` report `recipe-or-json`; the other 16 report `json`.
+- Sequencing with `help-about-built-in`: settled - committed in `c5d10d4`, Help and About are built-in shell pages (removed from the catalog) and `app-store`'s `installMode` is `json`. It touches the same canonical scenarios this change modifies (`Recipe install mode`). The settled outcome: 19 apps with this change; no app reports `recipe-only`, all 19 report `json`.
   - That change also recommends a MAJOR version bump (3.0.0); the version decision for this change is deferred to publish and is taken against that recommendation, not decided here.
+- Sequencing with `store-recipe-prompt`: that change removes `recipe-or-json` from the type and validation and from the `daily-feed`/`generic-feed` definitions (its Decision 6); this change's `Recipe install mode` delta is written against the simplified two-state model, so it archives after that removal lands (or the two land together) — whoever archives second reconciles the `Recipe install mode` requirement. The validator refuses a MODIFIED delta that drops a scenario the canonical spec still has, so this delta only validates once SRP's implementation-time canonical sync (SRP task 6.1) has dropped the `recipe-or-json` scenario from the canonical `Recipe install mode` requirement.
 
 ## Open questions
 

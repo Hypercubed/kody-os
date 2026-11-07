@@ -17,7 +17,7 @@ XKCD and News read live through the `feeds` capability: fixed URLs declared in t
 
 - New catalog app `generic-rss-feed` (id proposed; flagged for review), modelled on XKCD/News for the reader UI and on `generic-feed` for the setup prompt. One state field, `feedUrl`, set by the user or their agent through a `set_feed_url` action; empty state carries a Help-style prompt to supply the RSS URL. Viewer: newest first, Previous/Next, device-local dates, escape-first linkify — the existing feed-viewer pattern.
 - New shell route `GET /user-feed/<app>` (see design.md, Decision 1). It takes only the app id from the request and reads the feed URL from that app's stored state; it never takes a URL from the request. The URL is validated at write time and again at serve time (bare HTTPS, no credentials), fetched with the declared-feed machinery (8 s timeout, 64 KiB cap, 1 h TTL, server-side cache with stale fallback), and the app declares no `feeds`/`proxy` capability — so the Store discloses no publisher host. The trust decision is the user's own: they supplied the URL.
-- Catalog placement follows the catalog-restructure model: `pkg/catalog/generic-rss-feed/` with `definition.json` + `RECIPE.md`, generated index entry, `installMode: recipe-or-json` (it needs setup — the URL; the recipe fully configures it; unattended install lands unconfigured with the built-in prompt).
+- Catalog placement follows the catalog-restructure model: `pkg/catalog/generic-rss-feed/` with `definition.json` + `RECIPE.md`, generated index entry, no `installMode` (absent = `json`: it needs setup — the URL; the recipe fully configures it; unattended install lands unconfigured with the built-in prompt; any app can be installed via its recipe).
 - `generic-feed` (push) is unchanged. Its RSS-URL setup prompt stays as-is (recommendation; flagged as a decision for the user).
 
 ## Scope
@@ -31,7 +31,7 @@ Out of scope: changing `generic-feed` or `daily-feed`; changing the `feeds`/`pro
 - App id: `generic-rss-feed` (proposed) — alternatives `rss-feed`, `live-rss-feed`? Flagged for review.
 - Route name: `GET /user-feed/<app>` (proposed) — alternative `GET /feed/<app>/rss`. Flagged for review at implementation.
 - `generic-feed`'s RSS-URL setup prompt stays as-is (recommendation) or is simplified now that a live app exists — decision for the user.
-- Sequencing with the catalog-restructure commit (`b548aca`, MINOR 2.8.0) and with `help-about-built-in` (committed in `c5d10d4`; reverted `app-store` to `json` and removed Help/About from the catalog): both touch the same canonical scenarios this change modifies. Both have landed, so the counts and install-mode list are settled: 19 apps with this change; `daily-feed`, `generic-feed`, `generic-rss-feed` report `recipe-or-json`, the other 16 report `json`. See design.md, Decision 7.
+- Sequencing with the catalog-restructure commit (`b548aca`, MINOR 2.8.0) and with `help-about-built-in` (committed in `c5d10d4`; reverted `app-store` to `json` and removed Help/About from the catalog): both touch the same canonical scenarios this change modifies. Both have landed, so the counts and install-mode list are settled: 19 apps with this change; no app reports `recipe-only`, all 19 report `json`. See design.md, Decision 7.
 
 ## Risks
 
