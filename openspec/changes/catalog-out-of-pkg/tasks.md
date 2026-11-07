@@ -13,14 +13,18 @@ requires.
   is public on GitHub and its bundles are
   fetchable unauthenticated. If the gate is not
   met, stop; do not move the catalog.
-- [ ] 1.2 Move `pkg/catalog/<id>/definition.json`
-  and `pkg/catalog/<id>/RECIPE.md` to
-  `catalog/<id>/definition.json` and
-  `catalog/<id>/RECIPE.md` byte-identical (no
-  content change, no `catalogVersion` bump), move
-  the catalog README to `catalog/README.md`, and
-  move `pkg/catalog/tests/` to `catalog/tests/`
-  with definition paths updated. Delete the now-empty
+- [ ] 1.2 Move each per-app directory whole,
+  byte-identical (no content change, no
+  `catalogVersion` bump): `pkg/catalog/<id>/`
+  to `catalog/<id>/`, carrying the definition
+  (`definition.json`), the recipe (`RECIPE.md`),
+  and the manifest-listed bundle files
+  (`index.html` plus any `.js` / `.css` - today
+  only the App Store carries extra files,
+  `store.js` and `store.css`). Move the catalog
+  README to `catalog/README.md`, and move
+  `pkg/catalog/tests/` to `catalog/tests/` with
+  definition paths updated. Delete the now-empty
   `pkg/catalog/` directory.
 - [ ] 1.3 Relocate the existing manifest-generation
   script `scripts/build-catalog-index.ts`
@@ -29,11 +33,16 @@ requires.
   directories and writes `catalog/catalog.json`
   in id order with the fields from design.md
   Decision 2, computing fingerprints the same
-  way the install snapshot does. Run it once
-  and commit the generated manifest with the
-  move. Do not write a new generator: the
-  generator and the `catalog.json` shape already
-  exist; the move relocates them.
+  way the install snapshot does. After the move
+  the generator writes the manifest only: it no
+  longer emits the generated assembly module
+  `pkg/src/apps/catalog-bundles.generated.ts`
+  (see design.md Decision 7), which is retired
+  with the move. Run it once and commit the
+  generated manifest with the move. Do not write
+  a new generator: the generator and the
+  `catalog.json` shape already exist; the move
+  relocates them.
 
 ## 2. Update references and the harness
 
@@ -52,22 +61,24 @@ requires.
   every manifest entry has a definition
   directory (plus its `RECIPE.md`),
   `catalogVersion`, fingerprint, `installMode`,
-  and paths match the definition, entries are
-  in id order. The harness must pass on the moved
-  catalog with no other changes.
-- [ ] 2.3 Retire the static definition imports
-  in `pkg/src/apps/catalog.ts` as the runtime
-  install source, in coordination with
+  paths, and `bundleFiles` match the definition,
+  entries are in id order. The harness must pass
+  on the moved catalog with no other changes.
+- [ ] 2.3 Retire `pkg/src/apps/catalog.ts` as the
+  runtime install source, in coordination with
   `public-pinned-catalog` (which supplies the
   replacement source: fetching definitions on
-  demand from the public catalog). The import
-  list as the *listing* source is already
-  retired: listing is driven by the generated
-  index, and the imports remain only because
-  install needs the full definition. This task
-  MUST NOT be marked done while install still
-  depends on the static imports with no
-  replacement source.
+  demand from the public catalog). Since
+  `bundle-files`, the install source is the
+  generated assembly module
+  `pkg/src/apps/catalog-bundles.generated.ts`
+  imported by `catalog.ts`, not static
+  definition imports (see design.md Decision 7);
+  retiring `catalog.ts` retires the assembly
+  module with it, and the module file is
+  deleted. This task MUST NOT be marked done
+  while install still depends on the assembly
+  module with no replacement source.
 
 ## 3. Verify and sync specs
 

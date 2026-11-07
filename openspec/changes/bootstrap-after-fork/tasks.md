@@ -25,14 +25,17 @@ this change's implementation scope.
   unchanged.
 - [ ] 1.2 Write the bootstrap procedure per
   design.md: a copy-paste agent prompt that fetches the
-  Store bundle from the pinned release, validates
-  it before writing, installs via `add_app`, and
-  verifies with `list_apps` and by opening the
-  Store page, stopping and asking on any failed
-  check. State that the bootstrapped Store is an
-  ordinary install, removable via agent
-  `remove_app`, and that About and Help are
-  built-in pages needing no install.
+  Store bundle from the pinned release - the
+  definition plus its manifest-listed bundle
+  files (`index.html`, `store.js`, `store.css`),
+  assembled before install - validates it before
+  writing, installs via `add_app`, and verifies
+  with `list_apps` and by opening the Store page,
+  stopping and asking on any failed check. State
+  that the bootstrapped Store is an ordinary
+  install, removable via agent `remove_app`, and
+  that About and Help are built-in pages needing
+  no install.
 - [ ] 1.3 Confirm there is no separate Store-alone
   procedure to write: installing the Store IS
   the bootstrap procedure (1.2); About and Help

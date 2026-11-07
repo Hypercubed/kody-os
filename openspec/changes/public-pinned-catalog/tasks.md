@@ -21,9 +21,16 @@ as the coordinated landing with
   The manifest's `installMode` drives the Store
   row: a `recipe-only` row shows the agent prompt
   instead of one-tap install. Fetching is HTTPS
-  only, with timeout and size caps following the
-  feed proxy's discipline, and definition/recipe
-  paths are never taken from a request parameter.
+  only, with a timeout following the feed
+  proxy's discipline (8,000 ms) and size caps
+  set deliberately per payload: the manifest cap
+  stays small (the manifest is a few KiB), while
+  a definition fetch allows at least 256 KiB -
+  the bundle cap - because a legal definition
+  can be that large; the feed proxy's 64 KiB cap
+  MUST NOT be applied to definitions. Definition
+  and recipe paths are never taken from a request
+  parameter.
 - [ ] 1.2 Put the pin in one named constant in
   the shell source (default: upstream repo and
   release; tag display required, SHA pinning
@@ -37,6 +44,10 @@ as the coordinated landing with
   the remote catalog, with snapshot, fingerprint,
   and status-classification logic unchanged.
   MCP catalog tools keep their shapes.
+  `list_catalog` is synchronous today and the
+  remote version is necessarily async (fetch);
+  see design.md Decision 7 for the async
+  contract and its callers.
 
 ## 2. Failure behavior
 

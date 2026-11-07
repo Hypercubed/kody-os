@@ -123,6 +123,22 @@ storage caching, stale-on-error.
    automation in this change; automation is a
    follow-up if release cutting becomes frequent
    enough to hurt.
+7. **Catalog reads become async.**
+   `list_catalog()` and `get_catalog_definition(id)`
+   are synchronous today (`pkg/src/apps/catalog.ts:137`
+   and `:158`, reading the generated index and
+   assembly module in-process); the remote
+   versions must fetch the pinned manifest and
+   definitions over HTTPS, so they are
+   necessarily async. Every caller awaits the
+   remote read - today the only in-shell caller
+   of `list_catalog` is `get_store_rows` in
+   `pkg/src/apps/registry.ts:2257`, which already
+   runs inside a promise chain, so the await
+   slots into the existing flow. The MCP catalog
+   tools keep their shapes: the async boundary
+   stays inside the shell and the tool surface
+   gains no new parameter or return shape.
 
 ## Open Questions
 

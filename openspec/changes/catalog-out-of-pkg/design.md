@@ -55,9 +55,9 @@ the published package.
    stored definition, computed the same way
    the install snapshot computes it),
    `installMode` (`json` when absent from the
-   definition, otherwise `recipe-only` or
-   `recipe-or-json`; fingerprint-excluded like
-   `catalogVersion`), `definitionPath`
+   definition, otherwise `recipe-only`;
+   fingerprint-excluded like `catalogVersion`),
+   `definitionPath`
    (relative path within `catalog/`, e.g.
    `counter/definition.json`), and
    `recipePath` (e.g. `counter/RECIPE.md`).
@@ -111,6 +111,22 @@ the published package.
    catalog membership change is a separate commit
    and a separate review; bundling it into the
    move would make the move unverifiable by diff.
+7. **The generated assembly module is retired
+   with the move.** Since `bundle-files`, the
+   install source is the generated assembly
+   module `pkg/src/apps/catalog-bundles.generated.ts`
+   (emitted by `scripts/build-catalog-index.ts`,
+   imported by `pkg/src/apps/catalog.ts`),
+   which inlines each app's manifest-listed
+   bundle files; the static definition imports
+   it replaced are gone. When the catalog moves
+   out, the package ships empty and installs
+   fetch definitions on demand (see
+   `public-pinned-catalog`), so there is nothing
+   to bake into the package: the assembly module
+   is deleted, `catalog.ts` is replaced by the
+   remote-catalog module, and the generator
+   writes the manifest only (see task 1.3).
 
 ## Open Questions
 
