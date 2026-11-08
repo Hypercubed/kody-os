@@ -171,6 +171,48 @@ async function main() {
   await new Promise(function (r) { setTimeout(r, 50); });
   const doc2 = win2.document;
   check(doc2.querySelector(".store-update-all").hidden === true, "Update All is hidden when every out-of-date app needs Overwrite");
+  // Busy button: Add disables with "Adding…" while its install runs,
+  // a second click fires no second request, and a failed install
+  // re-enables it with its original label and shows the error.
+  const rowsBusy = [
+    { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
+  ];
+  const dom3 = new JSDOM(
+    '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
+    { url: "http://localhost/apps/app-store", runScripts: "outside-only" }
+  );
+  const win3 = dom3.window;
+  let installCalls = 0;
+  let installResolve = null;
+  win3.fetch = function (url) {
+    if (url.indexOf("/manage/rows") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rowsBusy }); } });
+    }
+    if (url.indexOf("/manage/install") !== -1) {
+      installCalls += 1;
+      return new Promise(function (resolve) {
+        installResolve = function (payload) {
+          resolve({ json: function () { return Promise.resolve(payload); } });
+        };
+      });
+    }
+    return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
+  };
+  win3.eval(js);
+  await new Promise(function (r) { setTimeout(r, 50); });
+  const doc3 = win3.document;
+  const addBtn = doc3.querySelector(".store-row button");
+  check(addBtn && addBtn.textContent === "Add", "busy test starts with an Add button");
+  addBtn.click();
+  check(addBtn.disabled === true, "Add button is disabled while its install runs");
+  check(addBtn.textContent === "Adding…", "Add button reads Adding… while its install runs");
+  addBtn.click();
+  check(installCalls === 1, "a second click while disabled fires no second install request");
+  installResolve({ ok: false, error: "Install failed." });
+  await new Promise(function (r) { setTimeout(r, 50); });
+  check(addBtn.disabled === false, "Add button is re-enabled after a failed install");
+  check(addBtn.textContent === "Add", "Add button label is restored after a failed install");
+  check(doc3.querySelector(".store-status").textContent === "Install failed.", "failed install shows its error in the status line");
   if (failures > 0) {
     console.error("\n" + failures + " check(s) FAILED");
     process.exit(1);

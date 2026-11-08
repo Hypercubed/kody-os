@@ -41,6 +41,29 @@ function storeButton(label, onClick) {
   btn.addEventListener('click', onClick);
   return btn;
 }
+function storeBusyButton(label, busyLabel, onClick) {
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = label;
+  btn.addEventListener('click', function () {
+    if (btn.disabled) { return; }
+    btn.disabled = true;
+    btn.textContent = busyLabel;
+    var done = function () {
+      btn.disabled = false;
+      btn.textContent = label;
+    };
+    try {
+      var result = onClick();
+      if (result && typeof result.then === 'function') { result.then(done, done); }
+      else { done(); }
+    } catch (e) {
+      done();
+      throw e;
+    }
+  });
+  return btn;
+}
 function storeCapsText(caps) {
   var parts = [];
   if (!caps) { return ''; }
@@ -79,6 +102,7 @@ function storeInit() {
   function updateAllNow() {
     var targets = safeUpdatable();
     if (targets.length === 0) { return; }
+    if (updateAllBtn) { updateAllBtn.disabled = true; updateAllBtn.textContent = 'Updating all…'; }
     setStatus('Working…');
     var index = 0;
     var updated = 0;
@@ -90,6 +114,7 @@ function storeInit() {
         if (skipped > 0) { summary += ' ' + skipped + ' skipped (needs confirmation).'; }
         if (failed > 0) { summary += ' ' + failed + ' failed.'; }
         afterLoadStatus = summary;
+        if (updateAllBtn) { updateAllBtn.disabled = false; updateAllBtn.textContent = 'Update All'; }
         load();
         return;
       }
@@ -125,11 +150,10 @@ function storeInit() {
       adds.textContent = 'This update also adds: ' + result.additions.join(', ') + '.';
       panel.appendChild(adds);
     }
-    var confirmBtn = storeButton('Confirm ' + (kind === 'restore' ? 'restore' : kind === 'remove' ? 'remove' : 'update'), function () {
-      clearConfirm();
+    var confirmBtn = storeBusyButton('Confirm ' + (kind === 'restore' ? 'restore' : kind === 'remove' ? 'remove' : 'update'), 'Confirming…', function () {
       setStatus('Working\u2026');
-      storeApi(kind, '&id=' + encodeURIComponent(row.id) + '&confirmed=1').then(function (res) {
-        if (res.ok) { load(); } else { setStatus(res.error || 'That change failed.'); }
+      return storeApi(kind, '&id=' + encodeURIComponent(row.id) + '&confirmed=1').then(function (res) {
+        if (res.ok) { clearConfirm(); load(); } else { clearConfirm(); setStatus(res.error || 'That change failed.'); }
       });
     });
     var cancelBtn = storeButton('Cancel', function () { clearConfirm(); setStatus(''); });
@@ -191,11 +215,11 @@ function storeInit() {
         li.appendChild(body);
         var controls = document.createElement('span');
         controls.className = 'store-controls';
-        function mutate(kind, labelText) {
-          controls.appendChild(storeButton(labelText, function () {
+        function mutate(kind, labelText, busyLabel) {
+          controls.appendChild(storeBusyButton(labelText, busyLabel, function () {
             clearConfirm();
             setStatus('Working…');
-            storeApi(kind, '&id=' + encodeURIComponent(row.id)).then(function (res) {
+            return storeApi(kind, '&id=' + encodeURIComponent(row.id)).then(function (res) {
               if (res.ok) { load(); }
               else if (res.needsConfirmation) { showConfirm(kind, row, res); setStatus(''); }
               else { setStatus(res.error || 'That change failed.'); }
@@ -225,11 +249,11 @@ function storeInit() {
           prompt.className = 'store-desc';
           prompt.textContent = 'Ask an agent to install via its recipe.';
           controls.appendChild(prompt);
-        } else if (!row.installed) { mutate('install', 'Add'); }
-        else if (row.status === 'behind-clean' || row.status === 'catalog-differing') { mutate('update', 'Update'); }
-        else if (row.status === 'behind-modified' || row.status === 'snapshot-less') { mutate('update', 'Overwrite'); }
-        else if (row.status === 'modified-current' || row.status === 'modified-ahead') { mutate('restore', 'Restore'); }
-        else if (row.status === 'up-to-date') { mutate('remove', 'Remove'); }
+        } else if (!row.installed) { mutate('install', 'Add', 'Adding…'); }
+        else if (row.status === 'behind-clean' || row.status === 'catalog-differing') { mutate('update', 'Update', 'Updating…'); }
+        else if (row.status === 'behind-modified' || row.status === 'snapshot-less') { mutate('update', 'Overwrite', 'Overwriting…'); }
+        else if (row.status === 'modified-current' || row.status === 'modified-ahead') { mutate('restore', 'Restore', 'Restoring…'); }
+        else if (row.status === 'up-to-date') { mutate('remove', 'Remove', 'Removing…'); }
         li.appendChild(controls);
         list.appendChild(li);
       })(rows[i]);

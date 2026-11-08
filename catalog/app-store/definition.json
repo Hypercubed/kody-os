@@ -3,7 +3,7 @@
   "name": "App Catalog",
   "label": "App Catalog",
   "schemaVersion": 5,
-  "catalogVersion": 19,
+  "catalogVersion": 20,
   "icon": "\u229e",
   "category": "utilities",
   "description": "Install and update apps from the catalog, right here in the browser \u2014 no agent needed.",
