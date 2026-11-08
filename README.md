@@ -4,8 +4,10 @@ A personal AI OS that runs on [Kody](https://kody.codes/?ref=hypercubed) — a h
 
 Current package version: **v4.1.3** (build 38). See `pkg/package.json` for the authoritative version.
 
-![Home dashboard](pkg/public/screenshots/home.png)
-![All apps](pkg/public/screenshots/apps.png)
+<img src="pkg/public/screenshots/home.png" alt="Home dashboard" width="400">
+<img src="pkg/public/screenshots/apps.png" alt="All apps" width="400">
+<img src="pkg/public/screenshots/help.png" alt="Help page" width="400">
+<img src="pkg/public/screenshots/about.png" alt="About page" width="400">
 
 ## Run it
 
