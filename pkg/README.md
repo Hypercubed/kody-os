@@ -28,13 +28,13 @@ Setting up a fork of kody-os (fork, publish, sign-in, first app) is covered star
 - An app page shows its description, live state fields, and one form button per declared action.
 - Submitting an action works without JavaScript and returns to the app page showing the new state.
 
-## Adding an app
+## Adding and removing apps
 
 An app is a JSON definition in package storage, not code. An agent calls MCP `add_app` and the app appears on the Apps page with no republish. The same definition works in the hosted OS and the local `kody dev` preview; the two stores are separate, so add it to each target.
 
 See [Adding an app](.agents/skills/adding-an-app/SKILL.md) for the definition contract, both paths, verification, homepage placement, export, and removal. See [Scribe limitations](docs/scribe-limitations.md) for the binding Kindle Scribe constraints.
 
-### Recommended prompt
+### Adding an app
 
 Copy this to your Kody-connected agent and fill in the bracketed parts:
 
@@ -43,9 +43,39 @@ Copy this to your Kody-connected agent and fill in the bracketed parts:
 > - Name: [display name]
 > - What it does: [describe what it should do]
 
-## Theme file
+### Removing an app
 
-Forks rebrand by editing `settings.json` (all fields optional): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph or a sanitized inline SVG; empty keeps the default Kody mark), `background` (`desk`, `paper`, or a custom 8×8 grid object `{ "grid": [r0..r7] }` of eight 0-255 row bytes, MSB left, drawn black on paper as a repeating tile). Invalid grids or SVG fall back to the stock look, as do a missing file, missing field, or broken JSON.
+Removing is agent-only: there is no Remove button in the browser for a custom app. Hiding an app in Apps Edit is not removing it — a hidden app is still installed. An agent calls MCP `remove_app`, which deletes the definition, its state, and every reference to it.
+
+Copy this to your Kody-connected agent and fill in the bracketed part:
+
+> Remove [app id] from my hosted kody-os app on Kody. Use the package's `remove_app` through the Kody MCP execute wrapper. Ask me before removing if any detail is missing or ambiguous.
+
+Catalog apps are the exception: once the App Catalog is installed, an up-to-date catalog app has a Remove button in the Store itself.
+
+## Adding the App Catalog
+
+A fresh shell starts empty — nothing is installed, including the App Catalog (the Store). Until it is installed there is no in-browser way to install catalog apps, so ask your agent to add it, the same way you would add any app:
+
+> Add the App Catalog to my kody-os shell. Follow the app-store recipe (https://github.com/Hypercubed/kody-os/blob/main/catalog/app-store/RECIPE.md).
+
+Once installed, the Store installs, updates, and restores catalog apps from the browser — no agent needed. Updates never run on their own. Pinning, hiding, and adding apps to Home still live in Apps Edit, not in the Store. (In local development, install it with `scripts/catalog.ts` — see `pkg/AGENTS.md`.)
+
+## Changing the shell settings
+
+The shell's settings — name, title, icon, background, and whether the Help and About pages show — have two layers. The file `settings.json` holds the defaults a fork ships with; changing those means editing the file and republishing. Everything else is a live override, stored in the shell's storage under `kody-os.shell.theme` and changed by your agent, with no file edit and no republish. Only the fields you name change; the rest keep their current values.
+
+Ask your agent what it can change, and what the settings are now:
+
+> What shell settings can you change on my kody-os, and what are they set to now? Use the package's `get_shell_theme` through the Kody MCP execute wrapper.
+
+Then just tell it what to change, in plain words — for example, "Change my kody-os background to paper and hide the About page." The agent changes it with `set_shell_theme`, and can undo one field with `reset_shell_theme`. A change that fails validation writes nothing, so a bad value cannot leave the settings half-changed. Removing an app never touches these settings.
+
+What can change: `name` (header brand), `title` (document-title prefix; blank falls back to the name), `icon` (a short glyph or a sanitized inline SVG; blank keeps the default Kody mark), `background` (`desk`, `paper`, or a custom 8×8 grid), and `showHelp` / `showAbout` (whether the built-in Help and About pages and their menu links show).
+
+Prefer buttons to words? Install the Settings app from the App Catalog. It shows each setting's current value and where it comes from (file default or override), with controls for background, name, title, and icon, plus per-field and reset-all buttons.
+
+For forks, the defaults live in `settings.json` (all fields optional): `name` (header brand + title suffix), `title` (document-title prefix override), `icon` (short glyph or a sanitized inline SVG; empty keeps the default Kody mark), `background` (`desk`, `paper`, or a custom 8×8 grid object `{ "grid": [r0..r7] }` of eight 0-255 row bytes, MSB left, drawn black on paper as a repeating tile). Invalid grids or SVG fall back to the stock look, as do a missing file, missing field, or broken JSON.
 
 Every shell page also links `public/favicon.png` (the official Kody mark, served at `<app>/_assets/favicon.png`) as its favicon, and the same file is the default upper-left header mark when `settings.json` sets no `icon`. The same file carries `showHelp` / `showAbout` (both default to shown) to hide the built-in Help and About pages and their menu links.
 
