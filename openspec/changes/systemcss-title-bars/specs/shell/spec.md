@@ -70,9 +70,13 @@ their current meanings and destinations.
 - **WHEN** no theme file is present
 - **THEN** title, brand, and background are byte-identical to the pre-change shell.
 
+#### Scenario: Footer carries no auth path
+- **WHEN** any page is fetched
+- **THEN** the footer shows status text, date, and time, and does NOT state an auth path — the strings `via kody` and `locked` SHALL NOT appear in any served page.
+
 #### Scenario: Footer names the auth path
 - **WHEN** any page is fetched
-- **THEN** the footer states which path authenticated the request (`via kody`, `via cookie`, `via key`, or `locked`).
+- **THEN** RETIRED by this change (see "Footer carries no auth path" above): the footer SHALL NOT state an auth path, because the shell performs no access check.
 
 #### Scenario: Close returns to the opener
 - **WHEN** an app opened from the Apps page is closed via the titlebar box

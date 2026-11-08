@@ -76,7 +76,7 @@ cd pkg
 bun run typecheck # tsc --noEmit over src/ (ES2019 + DOM libs, strict, erasableSyntaxOnly; pinned TypeScript 5.9.3). First run needs network (bunx fetches it); afterwards cached.
 ```
 
-As of 2026-11-08 this reports 15 pre-existing errors (union-narrowing corrections in `app.ts`, `apps/registry.ts`, `apps/definition.ts`, `shell-theme.ts`) — none introduced by the owner-gate removal, none blocking `bun` or `kody dev`. Fixing them is open work, not part of adding the config.
+As of 2026-11-08 this reports 19 pre-existing errors: union-narrowing corrections in `app.ts`, `apps/registry.ts`, `apps/definition.ts`, `shell-theme.ts`, plus 4 `process`-not-found errors in `apps/remote-catalog.ts` (missing @types/node — a config gap, not a code error). None introduced by the definition-compiler or owner-gate work (the base commit reported 20; the one fewer is `auth.ts` leaving with the gate). None blocking `bun` or `kody dev`. Fixing them is open work, not part of adding the config.
 
 ## Local dev (`kody dev`)
 
