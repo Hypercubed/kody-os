@@ -1,0 +1,22 @@
+{
+  // Typecheck only (noEmit). target/lib pin the Scribe ceiling: ES2019
+  // language + APIs, plus DOM for the shell/client sources. strict:true
+  // gives correct discriminated-union narrowing (strict:false reports
+  // extra false-positive .error accesses); allowImportingTsExtensions
+  // is required because sources import each other with .ts extensions.
+  // erasableSyntaxOnly bans enums, namespaces, and parameter properties so
+  // sources stay runnable under type-stripping runtimes (bun, node
+  // --strip-types) with zero transform semantics.
+  "compilerOptions": {
+    "target": "es2019",
+    "lib": ["es2019", "dom"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"]
+}

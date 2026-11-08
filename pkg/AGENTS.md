@@ -69,6 +69,15 @@ await remove_app('counter') // definition, state, and all reference lists gone
 
 `remove_app` is MCP-only (the UI exposes hide, never remove) and validates the id first; unknown ids return `{ ok:false }` and write nothing. Export v1 payloads import with id derived from name; v2 is id-keyed.
 
+## Typecheck
+
+```sh
+cd pkg
+bun run typecheck # tsc --noEmit over src/ (ES2019 + DOM libs, strict, erasableSyntaxOnly; pinned TypeScript 5.9.3). First run needs network (bunx fetches it); afterwards cached.
+```
+
+As of 2026-11-08 this reports 15 pre-existing errors (union-narrowing corrections in `app.ts`, `apps/registry.ts`, `apps/definition.ts`, `shell-theme.ts`) — none introduced by the owner-gate removal, none blocking `bun` or `kody dev`. Fixing them is open work, not part of adding the config.
+
 ## Local dev (`kody dev`)
 
 Run from `pkg/` only (repo root fails: missing `kody.app.entry`). Proxy bypass required on this host for every `kody dev` / `curl` call: `export NO_PROXY='*' no_proxy='*'; unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY`. Bare `kody dev` (no `--port`) so `fetch` can attach.

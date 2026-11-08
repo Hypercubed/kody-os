@@ -4,6 +4,9 @@
   "private": true,
   "build": 38,
   "type": "module",
+  "scripts": {
+    "typecheck": "bunx --package typescript@5.9.3 tsc --noEmit"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
