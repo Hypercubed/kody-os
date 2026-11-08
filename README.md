@@ -70,6 +70,20 @@ All shell work happens in `pkg/`. The repository root has no build step of its o
 
 ### Run the shell locally
 
+Preferred local-dev command (catalog + `kody dev`, LAN proxy only when asked):
+
+```sh
+./scripts/dev-local-catalog.sh          # catalog + kody dev, no LAN
+./scripts/dev-local-catalog.sh --lan    # catalog + kody dev + LAN proxy
+./scripts/dev-local-catalog.sh stop     # stop all three
+```
+
+LAN is opt-in and trusted-LAN only: the proxy exposes the whole dev server
+on `0.0.0.0:8080` in plain HTTP with no TLS. Never start `--lan` on public
+Wi-Fi or beyond the local network.
+
+Bare form (no local catalog, no LAN):
+
 ```sh
 cd pkg
 export NO_PROXY='*' no_proxy='*'

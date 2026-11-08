@@ -47,14 +47,21 @@ lsof -Pan -p <pid> -i
    or read the `kody dev` startup line. The port moves to the next free one
    (4302, 4303, ...) when the default is taken.
 2. Find the host LAN IP: `hostname -I` or `ip -4 addr`.
-3. Start the relay from the repo root:
+3. Start the relay from the repo root — preferred path:
+
+   ```sh
+   ./scripts/dev-local-catalog.sh --lan
+   # starts catalog + kody dev + LAN proxy; prints the http://<host-ip>:8080/ URL
+   ```
+
+   Fallback (proxy alone, when `kody dev` is already running):
 
    ```sh
    node .agents/skills/kody-lan-access/scripts/kody-lan-proxy.js
    # kody LAN proxy: http://<this-host>:8080 -> live dev port 4302
    ```
 
-   Detached:
+   Detached fallback:
 
    ```sh
    setsid nohup node .agents/skills/kody-lan-access/scripts/kody-lan-proxy.js \
