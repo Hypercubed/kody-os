@@ -6,6 +6,48 @@ import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
 import type { AuthPath } from './auth.ts'
 
+// Re-export the MCP surface so `import { add_app } from 'kody:@hypercubed/kody-os'`
+// works in Kody execute: the execute runtime resolves a `kody:` import to this
+// app entry (app.ts), not to the ESM `exports` entry (index.ts). Re-exporting
+// from the source module (apps/index.ts) avoids a cycle — index.ts imports
+// getTheme from here, and apps/index.ts does not import this file.
+export {
+	act,
+	actFromForm,
+	add_app,
+	backup,
+	clear_recent,
+	delete_backup,
+	export_app,
+	export_install,
+	get_app,
+	get_app_state,
+	get_catalog_definition,
+	get_hidden,
+	get_homepage,
+	get_launcher_state,
+	get_pinned,
+	get_recent,
+	get_store_catalog_info,
+	import_app,
+	import_install,
+	install_from_catalog,
+	list_apps,
+	list_backups,
+	list_catalog,
+	move_home,
+	remove_app,
+	restore,
+	set_hide,
+	set_hidden,
+	set_home,
+	set_homepage,
+	set_pin,
+	set_pinned,
+	update_from_catalog,
+	validateDefinition,
+} from './apps/index.ts'
+
 interface PackageContext {
 	appBasePath?: string
 	assetBasePath?: string
