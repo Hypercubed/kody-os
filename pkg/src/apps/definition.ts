@@ -848,9 +848,9 @@ export function validateDefinition(def: unknown): string | null {
 	}
 	var uiActions = ui['actions'] as Array<{ action: string }> | undefined
 	if (uiActions) {
-		for (var ui of uiActions) {
-			if (!(ui.action in actions)) {
-				return 'definition.ui.actions references unknown action "' + ui.action + '"'
+		for (var uiAction of uiActions) {
+			if (!(uiAction.action in actions)) {
+				return 'definition.ui.actions references unknown action "' + uiAction.action + '"'
 			}
 		}
 	}

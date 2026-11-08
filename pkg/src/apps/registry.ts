@@ -245,9 +245,9 @@ export function move_home(id: string, delta: number, store?: KeyStore): Promise<
 	return resolveStore(store).then(function (active: KeyStore) {
 		return readHomepage(active).then(function (ids: string[]): Promise<string[]> {
 			var at = ids.indexOf(id)
-			if (at === -1) return ids
+			if (at === -1) return Promise.resolve(ids)
 			var to = at + (delta < 0 ? -1 : 1)
-			if (to < 0 || to >= ids.length) return ids
+			if (to < 0 || to >= ids.length) return Promise.resolve(ids)
 			var next = ids.slice()
 			next.splice(at, 1)
 			next.splice(to, 0, id)
@@ -335,7 +335,7 @@ function pruneRetiredApps(store: KeyStore): Promise<string[]> {
 		for (var i = 0; i < ids.length; i++) {
 			if (RETIRED_APP_IDS.indexOf(ids[i]) !== -1) retired.push(ids[i])
 		}
-		if (retired.length === 0) return ids
+		if (retired.length === 0) return Promise.resolve(ids)
 		var kept = ids.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
 		var chain: Promise<unknown> = writeRegistry(store, kept)
 		for (var r = 0; r < retired.length; r++) {
@@ -511,8 +511,8 @@ export function act(
 					}
 					next[effect.field] = value as number | string | boolean
 				} else if (effect.op === 'append') {
-					var entry: unknown = effect.fromArg !== undefined ? resolved[effect.fromArg] : effect.value
-					if (entry === undefined) {
+					var entryValue: unknown = effect.fromArg !== undefined ? resolved[effect.fromArg] : effect.value
+					if (entryValue === undefined) {
 						applyError = 'append action "' + action + '" has no value'
 						break
 					}
@@ -521,14 +521,14 @@ export function act(
 						applyError = 'field "' + effect.field + '" is not an array'
 						break
 					}
-					if (typeof entry === 'string') {
+					if (typeof entryValue === 'string') {
 						var maxEntry = effect.maxEntryBytes !== undefined ? effect.maxEntryBytes : APPEND_MAX_ENTRY_BYTES
-						if (byteLength(entry) > maxEntry) {
+						if (byteLength(entryValue) > maxEntry) {
 							applyError = 'append entry exceeds ' + maxEntry + ' bytes'
 							break
 						}
 					}
-					var grown = (list as Array<number | string | boolean>).concat([entry as number | string | boolean])
+					var grown = (list as Array<number | string | boolean>).concat([entryValue as number | string | boolean])
 					var cap = effect.cap !== undefined ? effect.cap : APPEND_CAP
 					if (grown.length > cap) grown = grown.slice(grown.length - cap)
 					next[effect.field] = grown
@@ -1418,7 +1418,7 @@ function buildStoreRows(
 							var installedDef = triple[0]
 							var info = triple[1]
 							var fetchedDef = triple[2]
-							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string } | null = null
+							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string } | null = null
 							for (var cj = 0; cj < catalog.length; cj++) {
 								if (catalog[cj].id === want) catalogEntry = catalog[cj]
 							}
@@ -1597,7 +1597,7 @@ export function import_install(
 			;(function (one: unknown): void {
 				var prev = chain
 				chain = prev.then(function (blocked): Promise<{ ok: true; id: string } | { ok: false; error: string } | null> {
-					if (blocked && 'ok' in blocked && blocked.ok === false) return blocked
+					if (blocked && 'ok' in blocked && blocked.ok === false) return Promise.resolve(blocked)
 					return import_app(one, active, options).then(function (r) {
 						if (!r.ok) return r
 						ids.push(r.id)

@@ -3,6 +3,7 @@ import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
 import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
+import type { AppDefinition, AppState } from './apps/types.ts'
 
 // Re-export the MCP surface so `import { add_app } from 'kody:@hypercubed/kody-os'`
 // works in Kody execute: the execute runtime resolves a `kody:` import to this
@@ -159,7 +160,7 @@ function getPackageContext(): Promise<PackageContext> {
 		// @ts-ignore Kody supplies this virtual module only in the hosted Worker.
 		var req = import('kody:runtime')
 		return req.then(
-			function (runtime: { packageContext?: PackageContext }): PackageContext {
+			function (runtime: { packageContext?: PackageContext | null }): PackageContext {
 				if (runtime && runtime.packageContext) return runtime.packageContext
 				return {}
 			},
@@ -601,7 +602,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 				}
 
-				function renderAppPage(id: string, withError: string, definition: never, state: never, fromParam: string, menu?: { id: string, label: string }[]): Response {
+				function renderAppPage(id: string, withError: string, definition: AppDefinition, state: AppState, fromParam: string, menu?: { id: string, label: string }[]): Response {
 					var defName = (definition as unknown as { name: string }).name || id
 					var homePath = joinPath(appBasePath, '/')
 					var appsPath = joinPath(appBasePath, '/apps')

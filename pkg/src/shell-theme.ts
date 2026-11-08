@@ -233,15 +233,16 @@ export function set_shell_theme(
 ): Promise<{ ok: true; override: ShellThemeOverride; effective: ShellThemeValues } | { ok: false; error: string }> {
 	var checked = validateThemeSet(payload)
 	if (!checked.ok) return Promise.resolve({ ok: false as const, error: checked.error })
+	var cleaned = checked.cleaned
 	return resolveStore(store).then(function (active: KeyStore) {
 		return readThemeOverride(active).then(function (current: ShellThemeOverride) {
 			var next: ShellThemeOverride = {}
 			var fields = ['name', 'title', 'icon', 'background', 'showHelp', 'showAbout']
 			for (var i = 0; i < fields.length; i++) {
 				var field = fields[i]
-				if (field in checked.cleaned) {
-					if (checked.cleaned[field] !== null) {
-						;(next as Record<string, unknown>)[field] = checked.cleaned[field]
+				if (field in cleaned) {
+					if (cleaned[field] !== null) {
+						;(next as Record<string, unknown>)[field] = cleaned[field]
 					}
 				} else if ((current as Record<string, unknown>)[field] !== undefined) {
 					;(next as Record<string, unknown>)[field] = (current as Record<string, unknown>)[field]

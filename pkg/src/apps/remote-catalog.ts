@@ -136,8 +136,10 @@ function isSlug(value: unknown): value is string {
 export function devOverrideBase(): string | null {
   var overrideBase = ''
   try {
-    if (typeof process !== 'undefined' && process && (process as unknown as Record<string, unknown>)['env']) {
-      var env = (process as unknown as Record<string, Record<string, string | undefined>>)['env']
+    var procHolder = globalThis as unknown as Record<string, unknown>
+    var proc = procHolder['process'] as Record<string, unknown> | undefined
+    if (proc && proc['env']) {
+      var env = proc['env'] as Record<string, string | undefined>
       if (env && typeof env['KODY_CATALOG_BASE'] === 'string') overrideBase = env['KODY_CATALOG_BASE'] as string
     }
   } catch (err) {
