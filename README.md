@@ -2,7 +2,7 @@
 
 A personal AI OS that runs on [Kody](https://kody.codes/?ref=hypercubed) — a homepage for your devices, built with the Kindle Scribe in mind but working in most browsers. One generic shell renders every app; apps are JSON definitions stored in the package, not code you have to write. Ask a Kody-connected agent to add an app — a clock, a feed, a game — and it shows up on all your devices, with no republish needed.
 
-Current package version: **v4.1.5** (build 40). See `pkg/package.json` for the authoritative version.
+Current package version: **v4.1.6** (build 41). See `pkg/package.json` for the authoritative version.
 
 <img src="pkg/public/screenshots/home.png" alt="Home dashboard" width="400">
 <img src="pkg/public/screenshots/apps.png" alt="All apps" width="400">
