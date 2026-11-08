@@ -7,9 +7,9 @@ This file is for agents working **on this repository**. It is not shipped to Kod
 
 ## Repository layout
 
-- `pkg/` — the Kody package. The only directory that ships. Shell source in `pkg/src/`, catalog in `pkg/catalog/`, package-user docs in `pkg/docs/`, dev scripts in `pkg/scripts/`, theme and assets in `pkg/public/`.
+- `pkg/` — the Kody package. The only directory that ships. Shell source in `pkg/src/`, catalog in `catalog/`, package-user docs in `pkg/docs/`, dev scripts in `pkg/scripts/`, theme and assets in `pkg/public/`.
 - `openspec/` — canonical specs in `openspec/specs/`, active changes in `openspec/changes/`, closed changes in `openspec/changes/archive/<YYYY-MM-DD>-<slug>/`.
-- `tests/` — repository-level harnesses (bun). Catalog-bundle tests live in `pkg/catalog/tests/`.
+- `tests/` — repository-level harnesses (bun). Catalog-bundle tests live in `catalog/tests/`.
 - `docs/` — repository-level docs, currently the 2026-10-27 security review.
 - `.agents/skills/` — repository tooling skills. `.claude/settings.json` — Claude Code settings for this repo.
 
@@ -47,7 +47,7 @@ These come from the package and the Scribe ceiling, and they bind maintainer wor
 
 ## Catalog rules
 
-- A catalog app is one directory `pkg/catalog/<id>/` holding `definition.json` + `RECIPE.md`, plus one import line in `pkg/src/apps/catalog.ts` (alphabetical by id), plus one entry in `pkg/catalog/README.md`, plus a re-run of the catalog-index generator (`bun scripts/build-catalog-index.ts`), plus a harness pass (validate + install in a blank store + initial state + index/directory/import match).
+- A catalog app is one directory `catalog/<id>/` holding `definition.json` + `RECIPE.md`, plus one entry in `catalog/README.md`, plus a re-run of the catalog-index generator (`bun scripts/build-catalog-index.ts`), plus a harness pass (validate + install in a blank store + initial state + index/directory/manifest match).
 - `catalogVersion` starts at 1 on a definition's first versioned release and increments by exactly 1 on any change to that definition file — never for an unrelated app or a shell change, never reused, never decreased. It is distinct from `schemaVersion` and from the package version.
 - Install snapshots are written only by store install/update (including seeding), never by generic `add_app`/`import_app`, deleted by `remove_app`, and never included in exports. The Store never auto-updates.
 - Catalog bundles run with the visitor's authority. Shipping a definition in the catalog is trusting its bundle code, exactly as `add_app` trusts any definition. Review third-party bundles before adding one.
@@ -71,7 +71,7 @@ The shell's automatic App Store seed only fires on an empty registry, so install
 
 ## Tests
 
-- Run with bun from the repository root for repo harnesses (`bun tests/catalog-harness.ts`, `bun tests/store-harness.ts`) and for catalog-bundle tests (`bun pkg/catalog/tests/app-store-tests.cjs`). Other harnesses in `tests/` cover agent tools, open mode, owner checks, home-widget counters, and isolation; run the ones for the area you changed.
+- Run with bun from the repository root for repo harnesses (`bun tests/catalog-harness.ts`, `bun tests/store-harness.ts`) and for catalog-bundle tests (`bun catalog/tests/app-store-tests.cjs`). Other harnesses in `tests/` cover agent tools, open mode, owner checks, home-widget counters, and isolation; run the ones for the area you changed.
 - A failing harness is a real signal. If you believe a failure is pre-existing, verify it on a clean checkout of the base commit before saying so, and name the failing check — do not wave failures through as "probably pre-existing".
 - Do not mark a verification step done if it was not run. In particular, a `kody dev` check that could not run in this environment (no `kody` CLI here) must be recorded as substituted — by which harness, and why — not as done.
 

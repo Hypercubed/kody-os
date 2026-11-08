@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<!-- Reference implementation: bridge adapter in pkg/src/bridge/bridge.js. Pattern: read initial state from the JSON seed, render from bridge subscriptions, dispatch set_count with a delta rebase, claim the shell Reset form through the bridge. Verified by pkg/catalog/tests/counter-tests.cjs. -->
+<!-- Reference implementation: bridge adapter in pkg/src/bridge/bridge.js. Pattern: read initial state from the JSON seed, render from bridge subscriptions, dispatch set_count with a delta rebase, claim the shell Reset form through the bridge. Verified by catalog/tests/counter-tests.cjs. -->
 <div class="counter-wrap">
 <p class="counter-num">0</p>
 <p class="counter-row"><button type="button" class="counter-step" data-delta="1">+1</button><button type="button" class="counter-step" data-delta="-1">-1</button></p>
@@ -40,7 +40,7 @@
  * from the JSON seed the shell renders before this bundle, never from
  * scraping spans — spans are only the dual-channel fallback for old
  * bundles, and the bridge observes them for shell-form patches.
- * Verified by pkg/catalog/tests/counter-tests.cjs. Script style is
+ * Verified by catalog/tests/counter-tests.cjs. Script style is
  * ES2019, var/function only, no arrows, template literals, optional chaining, or nullish coalescing. */
 var counterScriptEl = null;
 try { counterScriptEl = document.currentScript; } catch (err) { counterScriptEl = null; }
