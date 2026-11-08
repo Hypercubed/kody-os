@@ -64,8 +64,9 @@ first; your agent can do the publish, but any approval Kody asks
 for in its UI is yours to give — never ask the agent to approve
 on your behalf.
 
-Check: the hosted app loads in a browser (the locked page counts
-as loading). If it does not load at all, the fork is not
+Check: the hosted app loads in a browser (even the 404
+"Not found." page counts as loading — it proves the shell is
+serving). If it does not load at all, the fork is not
 published yet.
 
 ### 2. Confirm the registry is empty
@@ -88,11 +89,24 @@ until something is installed. Once apps exist but none are
 on Home, Home prompts you to add some from Apps Edit's
 Add to home control instead.
 
-### 3. Sign in to Kody
+### 3. Sign in to Kody and grant access
 
-Login works one way: Kody login. A signed-in visitor with app
-access skips the device gate entirely, and there is no setup
-step for login: no credential to create, no value to configure.
+Login works one way: Kody login. The shell performs no
+access check of its own — access is granted and revoked in
+Kody itself, and there is no setup step for login: no
+credential to create, no value to configure.
+
+- **To let someone in:** grant them Use / `app:execute` on
+  the app in Kody. The owner is always admitted; a grantee
+  is served the same as the owner.
+- **To end access:** revoke the grant, or have the visitor
+  sign out of Kody. A revoked grantee is denied by the
+  platform before shell code runs — the shell renders no
+  denial page, because it never sees the request.
+- **Warning:** package visibility and `internet_visible` are
+  independent toggles. With no shell gate left, turning
+  `internet_visible` on exposes the app to anyone on the
+  internet. Do not turn it on for a private shell.
 
 On the device, open the app signed in to Kody. On a limited
 browser that cannot sign in directly (for example the Kindle
@@ -102,16 +116,14 @@ sign-in also offers a "sign in on another device" code flow
 for limited browsers. This is a platform path, not a kody-os
 path: there is no sign-in button inside kody-os itself.
 
-The page footer names the path that served the request
-(`via kody`, or `locked` when denied), so you can confirm
-how you got in.
-
 There are no sessions to manage: Kody login is verified per
 request, so signing out of Kody itself ends access. No device
 holds a session, and no Logout link is needed.
 
-Check: opening the app signed in to Kody loads the shell,
-and the footer reads `via kody`.
+Check: opening the app signed in to Kody loads the shell.
+Confirm a grantee is served, then revoke the grant and
+confirm they are denied — that round trip proves access is
+decided by Kody's permission system.
 
 ### 4. Install the first app
 
@@ -167,7 +179,7 @@ kody dev --target mock
 ```
 
 The mock target is login-free: under `kody dev --target mock`
-the device gate is skipped entirely, so no unlock step is
+there is no gate at all, so no credential step is
 needed. Add the `counter` fixture with
 the registry script, following the `kody execute --target mock`
 pattern in `pkg/README.md`:
@@ -196,10 +208,11 @@ returns 200, and acting on it changes its state. Useful checks:
   are in the wrong package. Check the
   package scope and the `list_apps` result before adding
   anything.
-- **Locked page.** The request carried no verified Kody
-  visitor: sign in to Kody and reload. (Under the mock target
-  the gate is skipped, so a locked page there means the preview
-  is not serving the mock target.)
+- **A request you expected to work is denied.** The platform
+  did not admit it: sign in to Kody and reload, and confirm
+  the visitor holds Use / `app:execute` on the app. A denial
+  happens before shell code runs, so the shell renders no
+  denial page of its own.
 - **An action fails after a fresh publish.** Confirm the fork
   is the published one and the app was added to the same target
   (hosted vs. local preview stores are separate).
@@ -210,8 +223,9 @@ Before calling the setup done, confirm all of these:
 
 - [ ] The fork is published and the hosted app loads.
 - [ ] `list_apps` was empty before the first app was added.
-- [ ] Kody login loads the shell with the footer reading
-      `via kody`; a signed-out request reads `locked`.
+- [ ] Kody login loads the shell; a grantee is served while
+      holding the grant and denied by the platform once it is
+      revoked.
 - [ ] The first app was added via `add_app`, appears on the
       Apps page, and an action changes its state.
 - [ ] No credential, code, or live value appears anywhere in

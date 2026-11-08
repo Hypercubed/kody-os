@@ -174,7 +174,7 @@ export default async function main(): Promise<{
  * pkg/src/shell-theme.ts. Each resolves the file defaults first via
  * getTheme(), so callers never pass defaults themselves. No validation
  * is reimplemented here; the module owns it. Like every other MCP
- * export, these are not routed through fetch()'s device gate.
+ * export, these are not routed through fetch() at all.
  */
 export async function get_shell_theme(): Promise<{ defaults: ShellThemeValues; override: ShellThemeOverride; effective: ShellThemeValues }> {
 	return themeGet(fileThemeToValues(await getTheme()))

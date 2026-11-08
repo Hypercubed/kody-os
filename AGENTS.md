@@ -2,7 +2,7 @@
 
 This file is for agents working **on this repository**. It is not shipped to Kody and it is not the package's agent guide.
 
-- **`pkg/AGENTS.md` is for agents using the published package on Kody**: MCP exports, `add_app`, the device gate, and the app-definition contract. Read it when the task is about using or extending the package from the outside.
+- **`pkg/AGENTS.md` is for agents using the published package on Kody**: MCP exports, `add_app`, the access model (Kody permissions decide; the shell performs no check), and the app-definition contract. Read it when the task is about using or extending the package from the outside.
 - **This file is for agents changing the repository itself**: shell code, catalog definitions, specs, tests, and publishing. When the two files disagree about a maintainer task, this file wins for repo work; when they disagree about package behavior, `pkg/AGENTS.md` wins, and the disagreement itself is worth flagging.
 
 ## Repository layout
@@ -67,11 +67,11 @@ kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}'
 
 **Mock writes need a stopped server.** `kody dev` reads its mock store once at startup and serves that snapshot from memory. A `kody execute` write made while the preview runs returns `{ ok: true }` and lands on disk, but the preview never shows it, and the preview's next write rewrites the file from its snapshot and silently deletes the CLI change. Stop the server, run the writes, start it again. "Write now, restart later" loses the write as soon as the running preview acts.
 
-The shell's automatic App Store seed only fires on an empty registry, so install `app-store` explicitly if any other app was seeded first. Full local-dev detail, including the login-free mock target and the device gate, is in `pkg/AGENTS.md` — read it before debugging auth, and do not duplicate its auth description here.
+The shell's automatic App Store seed only fires on an empty registry, so install `app-store` explicitly if any other app was seeded first. Full local-dev detail, including the login-free mock target (no gate at all) and the access model, is in `pkg/AGENTS.md` — read it before debugging access, and do not duplicate its access description here.
 
 ## Tests
 
-- Run with bun from the repository root for repo harnesses (`bun tests/catalog-harness.ts`, `bun tests/store-harness.ts`) and for catalog-bundle tests (`bun catalog/tests/app-store-tests.cjs`). Other harnesses in `tests/` cover agent tools, open mode, owner checks, home-widget counters, and isolation; run the ones for the area you changed.
+- Run with bun from the repository root for repo harnesses (`bun tests/catalog-harness.ts`, `bun tests/store-harness.ts`) and for catalog-bundle tests (`bun catalog/tests/app-store-tests.cjs`). Other harnesses in `tests/` cover agent tools, open mode, home-widget counters, and isolation; run the ones for the area you changed.
 - A failing harness is a real signal. If you believe a failure is pre-existing, verify it on a clean checkout of the base commit before saying so, and name the failing check — do not wave failures through as "probably pre-existing".
 - Do not mark a verification step done if it was not run. In particular, a `kody dev` check that could not run in this environment (no `kody` CLI here) must be recorded as substituted — by which harness, and why — not as done.
 

@@ -5,62 +5,6 @@ Remove the one-time code (OTP) entirely: Kody login is the only auth path, and t
 
 ## Requirements
 
-### Requirement: Footer reports the active auth path
-
-Every shell page footer SHALL include the active auth path (`via kody` or `locked`) so the login path is observable without devtools. The `via cookie` and `via key` paths SHALL NOT appear. There SHALL be no Logout link (it existed only for cookie-authenticated pages).
-
-#### Scenario: Owner reads the auth path off the page
-- **WHEN** any page is fetched
-- **THEN** the footer names `via kody` as the path that authenticated the request, or `locked` when denied.
-
-### Requirement: Exactly one login path
-
-The system SHALL authenticate a fetch request by exactly one path: a platform-verified Kody visitor. There SHALL be no second path and no legacy path, and the system SHALL NOT accept any credential carried in a URL, link, form, redirect, or header (including a derived code, a stored code hash, a code-hash cookie, a session cookie, or a one-time code). A request presenting only a retired credential SHALL be denied exactly like an unauthenticated request, with no fallback comparison of any kind. No secret is consulted at request time, and no secret need is declared.
-
-#### Scenario: Derived code is denied
-- **WHEN** a request presents a derived code (typed code, `?k=` form, or bookmark) with no verified Kody visitor
-- **THEN** it is denied (locked), storage is unchanged, and no cookie is set.
-
-#### Scenario: Stored-hash code is denied
-- **WHEN** a request presents a code matching the stale `kody-os.auth.code_hash` value (or a cookie carrying its hash) with no verified Kody visitor
-- **THEN** it is denied (locked), storage is unchanged, and no cookie is set.
-
-#### Scenario: Old code-hash cookie is denied
-- **WHEN** a request presents a pre-cutover code-hash cookie with no verified Kody visitor
-- **THEN** it is denied (locked) and no cookie is set.
-
-#### Scenario: Unauthenticated request is denied
-- **WHEN** a request carries no verified visitor identity
-- **THEN** it is denied (locked) and the response carries no app content.
-
-### Requirement: Mock target is login-free
-
-Under the local mock/dev target (`kody dev --target mock`) the device gate SHALL be skipped entirely: every request SHALL be served without any credential. The hosted gate SHALL still require verified visitor identity; the mock bypass SHALL NOT apply to the hosted package.
-
-#### Scenario: Mock serves without any credential
-- **WHEN** the shell runs under `kody dev --target mock` and a request arrives with no visitor identity and no cookie
-- **THEN** the request is served (not locked), with no unlock step.
-
-#### Scenario: Hosted still requires Kody login
-- **WHEN** a request arrives at the hosted package with no verified visitor identity
-- **THEN** it is denied (locked), even though the mock target would serve it.
-
-### Requirement: Kody-authenticated visitors skip the device gate
-
-A request carrying platform-verified visitor identity (`X-Kody-Visitor` header set by the platform, confirmed via `kody.metaGetCurrentUser({})`) for a user the platform grants app access to SHALL be served without any cookie. Requests without verified identity SHALL be denied (locked); there is no session-cookie gate to fall through to, and the gate SHALL never fail open. (Unchanged in substance; "device key" wording retired.)
-
-#### Scenario: Owner opens the app signed in
-- **WHEN** a Kody-signed-in user with app access opens the hosted app
-- **THEN** every page renders with no device gate and no credential in any URL, and the footer reads `via kody`.
-
-#### Scenario: Anonymous visitor still gated
-- **WHEN** a request carries no verified visitor identity
-- **THEN** it is denied (locked) and the response carries no app content.
-
-#### Scenario: Limited-browser Kody login counts as the Kody path, not a third path
-- **WHEN** a visitor on a limited browser signs in via Kody's package-app sign-in route (`/-/auth/login`, plain HTML / sign-in-on-another-device, kody-hq/kody#4666) and arrives with platform-verified visitor identity
-- **THEN** the request is served as a Kody visitor (`via kody`), with no derived code, no stored hash, and no device-key credential involved; this does not add a login path beyond the one named above.
-
 ### Requirement: No derived key exists; no secret is consulted
 
 There SHALL be no derived key, no UI-managed secret, and no secret-derived value anywhere in the package: no `access-key` need in `package.json`, no `credential()` call in the fetch path, no secret value in code, `packageStorage`, logs, or chat, and no `configured` state. The base spec's derived-key and key-management requirements are RETIRED in full. Key creation in the Kody UI is no longer part of this package's setup at all.
@@ -84,3 +28,47 @@ Because no secret exists, there is no rotation semantic and no rotation kill swi
 #### Scenario: Pre-cutover sessions stop at the v2.0.0 cutover
 - **WHEN** a session or OTP minted before v2.0.0 is presented after the cutover
 - **THEN** it no longer authenticates (the v1 registry keys are never read), and only Kody login restores access.
+
+### Requirement: No shell gate — platform permissions decide access
+
+The shell SHALL perform no access check in `fetch()`: no visitor check, no role check, and no `metaGetCurrentUser` call. Every request that reaches `fetch()` SHALL be served. Who reaches `fetch()` is decided before shell code runs by Kody's platform gate: with `internet_visible` off, only the owner and holders of an `app:execute` / Use grant on the app; with `internet_visible` on, anyone on the internet. The shell SHALL NOT re-implement, narrow, or widen that decision in code. There SHALL be no shell-side denial, no locked page, and no footer auth path.
+
+#### Scenario: Owner opens the app signed in
+- **WHEN** the owner opens the hosted app signed in to Kody
+- **THEN** the platform admits them and every page renders, with no shell check and no credential in any URL.
+
+#### Scenario: A grantee opens the app
+- **WHEN** a person holding an `app:execute` / Use grant on the app opens it signed in to Kody
+- **THEN** the platform admits them and the shell serves them — the shell's former owner-only restriction no longer blocks them.
+
+#### Scenario: A revoked grantee is denied by the platform, not the shell
+- **WHEN** a person's grant is revoked and they open the hosted app
+- **THEN** the platform denies them before shell code runs; the shell renders no denial page, because it never sees the request.
+
+#### Scenario: Limited-browser Kody login still admits the visitor
+- **WHEN** a visitor on a limited browser signs in via Kody's package-app sign-in route (`/-/auth/login`, plain HTML / sign-in-on-another-device, kody-hq/kody#4666) and arrives with platform-verified visitor identity
+- **THEN** the platform admits them and the shell serves them, with no derived code, no stored hash, and no shell-side check involved.
+
+#### Scenario: Internet-visible on means anyone can open the app
+- **WHEN** `internet_visible` is turned on for the package
+- **THEN** anyone on the internet can open the hosted app, with no shell gate left to stop them — so it SHALL NOT be turned on for a private shell.
+
+### Requirement: Access is granted and revoked in Kody, and the docs say so
+
+Access SHALL be granted by granting Use / `app:execute` on the app in Kody, and revoked by revoking that grant (or by the visitor signing out of Kody). The root `README.md`, `pkg/README.md`, `pkg/AGENTS.md`, `pkg/docs/setup.md`, and the repo-root `AGENTS.md` SHALL state this plainly, SHALL state that the shell performs no access check, SHALL state that package visibility and `internet_visible` are independent toggles, and SHALL carry the warning that turning `internet_visible` on exposes the app to anyone on the internet with no shell gate left. No doc SHALL claim the shell enforces owner-only access.
+
+#### Scenario: Docs name Kody as the authority
+- **WHEN** the readmes and setup guide are read
+- **THEN** they name Kody's permission system — not a shell gate — as what decides who can open the app, and they name the grant and revoke steps.
+
+#### Scenario: Docs warn about internet-visible
+- **WHEN** the readmes and setup guide are read
+- **THEN** they warn that `internet_visible` on exposes the app to anyone on the internet, with no shell gate left.
+
+### Requirement: MCP exports are governed by Kody, unchanged
+
+MCP exports SHALL NOT be routed through `fetch()`, as before, and who may call them SHALL be decided by Kody's `package:execute` / org access, not by the shell. Removing the fetch gate SHALL change nothing about MCP access: it neither opens nor closes that surface.
+
+#### Scenario: An agent calls an export while the browser shell has no gate
+- **WHEN** a Kody-connected agent calls `list_apps` or `act` via `execute`
+- **THEN** the call is governed by Kody's package access, with no shell gate involved — exactly as before this change.

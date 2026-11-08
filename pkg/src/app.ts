@@ -1,10 +1,8 @@
 import { SHELL_CSS } from './shell-css.ts'
-import { authPathFor, isKodyOwnerVisitor, isMockTarget } from './auth.ts'
 import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
 import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
-import type { AuthPath } from './auth.ts'
 
 // Re-export the MCP surface so `import { add_app } from 'kody:@hypercubed/kody-os'`
 // works in Kody execute: the execute runtime resolves a `kody:` import to this
@@ -61,7 +59,6 @@ interface Chrome {
 	assetBasePath: string
 	clientModuleUrl: string
 	theme: ResolvedTheme
-	authPath?: AuthPath
 	/** Effective page-visibility flags from the merged settings file + override. */
 	showHelp?: boolean
 	showAbout?: boolean
@@ -297,13 +294,12 @@ function shellChrome(opts: {
 	body: string
 	theme: ResolvedTheme
 	current?: string
-	authPath?: AuthPath
 	/** Validated close destination; defaults to Home when absent. */
 	closeHref?: string
 	closeLabel?: string
 	/** App pages opt into the page-mode expand/collapse controls. */
 	expandable?: boolean
-	/** Menu-bar entries, already filtered (hidden excluded) and sorted; built-in Help/About are appended. Omitted on locked, 404, and transient pages. */
+	/** Menu-bar entries, already filtered (hidden excluded) and sorted; built-in Help/About are appended. Omitted on 404 and transient pages. */
 	menuApps?: { id: string, label: string, builtin?: boolean }[]
 	/** Id of the menu app currently being viewed, for aria-current. */
 	currentApp?: string
@@ -355,8 +351,7 @@ function shellChrome(opts: {
 				'</a>\n'
 		}
 	}
-	var authLabel: AuthPath = opts.authPath ? opts.authPath : 'locked'
-	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">' + escapeAttribute(authLabel) + ' \u00b7 v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + '\t\t</footer>\n'
+	var footerPath = '\t\t<footer class="os-statusbar">\n' + '\t\t\t<p class="os-status-main">Private OS shell</p>\n' + '\t\t\t<p class="os-status-meta">v' + escapeAttribute((opts.theme && opts.theme.version) || '0.1.0') + (opts.theme && opts.theme.build ? ' ' + escapeAttribute(opts.theme.build) : '') + '</p>\n' + '\t\t</footer>\n'
 	return (
 		'<!doctype html>\n' +
 		'<html lang="en"\n' +
@@ -427,7 +422,7 @@ function shellChrome(opts: {
 }
 
 function notFoundPage(ctx: Chrome): Response {
-	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Not found', authPath: ctx.authPath ? ctx.authPath : 'locked', body: '\t\t<p>Not found.</p>' }), {
+	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Not found', body: '\t\t<p>Not found.</p>' }), {
 		status: 404,
 		headers: pageHeaders(),
 	})
@@ -462,28 +457,7 @@ function themeGridValue(raw: string): unknown {
 		grid.push(n)
 	}
 	return { grid: grid }
-}
-
-/**
- * The locked page is an honest 404: a stranger cannot tell a locked
- * shell from a missing page. No form, no script, no credential of any
- * kind: signing in happens in Kody itself, never here, and the response
- * carries no app content.
- */
-function lockedPage(ctx: Chrome): Response {
-	var body =
-		'\t\t\t<section class="app gate" aria-label="Locked">\n' +
-		'\t\t\t\t<div class="app-body">\n' +
-		'\t\t\t\t\t<p class="gate-lead">This OS is private.</p>\n' +			'\t\t\t\t\t<p class="gate-hint">Sign in to Kody to visit.</p>\n' +
-			'\t\t\t\t</div>\n' +
-			'\t\t\t</section>'
-	return new Response(shellChrome({ appBasePath: ctx.appBasePath, assetBasePath: ctx.assetBasePath, clientModuleUrl: ctx.clientModuleUrl, theme: ctx.theme, title: 'Locked', authPath: 'locked', body: body }), {
-		status: 404,
-		headers: pageHeaders(),
-	})
-}
-
-/**
+}/**
  * Only same-OS paths may be used as a safe `from` destination.
  * Rejects protocol-relative and absolute URLs, so this cannot become an open redirect.
  */
@@ -500,9 +474,8 @@ function safeNextPath(value: string, appBasePath: string): string {
 }
 
 /** Security headers for every served response. No credential is ever
- * stamped into a link, form, redirect, or header here: the request is
- * served only for a platform-verified Kody visitor (or the login-free
- * mock target), and nothing is set on the response. */
+ * stamped into a link, form, redirect, or header here, and nothing is
+ * set on the response. */
 function finishResponse(response: Response, request: Request): Promise<Response> {
 	var headers = new Headers(response.headers)
 	headers.set('Cache-Control', 'no-store')
@@ -523,8 +496,8 @@ function firstPathSegment(path: string, prefix: string): string {
 	}
 }
 
-/** Route dispatch for an authenticated request. */
-function dispatch(request: Request, chrome: Chrome, path: string, method: string, authPath: AuthPath): Promise<Response> {
+/** Route dispatch for a request the platform admitted. */
+function dispatch(request: Request, chrome: Chrome, path: string, method: string): Promise<Response> {
 	var appBasePath = chrome.appBasePath
 	return import('./apps/index.ts').then(function (m): Promise<Response> {			var actFromForm = m.actFromForm
 			var clear_recent = m.clear_recent
@@ -621,7 +594,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							var indented = ''
 							for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
 							return new Response(
-								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Home', current: 'home', authPath: authPath, menuApps: menu, body: indented }),
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Home', current: 'home', menuApps: menu, body: indented }),
 								{ status: widgetError ? 400 : 200, headers: pageHeaders() },
 							)
 						})
@@ -641,7 +614,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -653,7 +626,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, authPath: authPath, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}
@@ -720,7 +693,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								'\t\t\t\t</div>\n' +
 								'\t\t\t</section>'
 							return new Response(
-								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+								shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', menuApps: menu, body: body }),
 								{ status: 400, headers: pageHeaders() },
 							)
 						})
@@ -738,7 +711,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 									'\t\t\t\t</div>\n' +
 									'\t\t\t</section>'
 								return new Response(
-									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', authPath: authPath, menuApps: menu, body: body }),
+									shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'App Store', menuApps: menu, body: body }),
 									{ status: 200, headers: pageHeaders() },
 								)
 							})
@@ -841,7 +814,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					var helpBody = ''
 					for (var hli = 0; hli < helpLines.length; hli++) helpBody += '\t\t\t' + helpLines[hli] + '\n'
 					return new Response(
-						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Help', authPath: authPath, menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'help', body: helpBody }),
+						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Help', menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'help', body: helpBody }),
 						{ status: 200, headers: pageHeaders() },
 					)
 				})
@@ -856,7 +829,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					var aboutBody = ''
 					for (var ali = 0; ali < aboutLines.length; ali++) aboutBody += '\t\t\t' + aboutLines[ali] + '\n'
 					return new Response(
-						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'About', authPath: authPath, menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'about', body: aboutBody }),
+						shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'About', menuApps: menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout), currentApp: 'about', body: aboutBody }),
 						{ status: 200, headers: pageHeaders() },
 					)
 				})
@@ -929,7 +902,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						var helpIndented = ''
 						for (var hli = 0; hli < helpLines.length; hli++) helpIndented += '\t\t\t\t' + helpLines[hli] + '\n'
 						return Promise.resolve(new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds, chrome.showHelp, chrome.showAbout), body:
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', menuApps: menuAppsFor(apps, hiddenIds, chrome.showHelp, chrome.showAbout), body:
 							'\t\t\t<section class="category" id="apps" aria-label="Apps">\n' +
 							helpIndented +
 							'\t\t\t</section>' }),
@@ -1002,7 +975,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								var olines = overlays[oii].split('\n')
 								for (var lj = 0; lj < olines.length; lj++) indentedSections += '\t\t\t' + olines[lj] + '\n'
 							}							return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', authPath: authPath, menuApps: menuAppsFor(apps, hiddenIds, chrome.showHelp, chrome.showAbout), body: indentedSections }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: 'Apps', current: 'apps', menuApps: menuAppsFor(apps, hiddenIds, chrome.showHelp, chrome.showAbout), body: indentedSections }),
 								{ status: 200, headers: pageHeaders() },
 							)
 						})
@@ -1018,7 +991,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			// JSON so the bundle can render them, including
 			// needsConfirmation for modified apps and capability
 			// expansion. Placed after the /apps/ branches, inside
-			// dispatch, so the device gate has already run.
+			// dispatch.
 			if (method === 'GET' && path.indexOf('/manage/') !== -1) {
 				var manageQuery = new URL(request.url).searchParams
 				var actingId = manageQuery.get('app') || ''
@@ -1062,8 +1035,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 
 			// GET /proxy/:app/:name — generic proxy capability (see feeds.ts):
 			// allowlisted upstream fetch + storage cache, served same-origin.
-			// Inside dispatch, so the device gate in fetch() has already run.
-			// Placed after the /apps/ branches so an app id of "proxy"
+			// Inside dispatch. Placed after the /apps/ branches so an app
+			// id of "proxy"
 			// still renders its app page. Unknown apps/proxies are plain 404s.
 			if (method === 'GET') {
 				var proxyAt = path.indexOf('/proxy/')
@@ -1085,8 +1058,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 
 			// GET /feed/:app/:name — generic feed capability (see feeds.ts):
 			// allowlisted upstream fetch + storage cache, served same-origin.
-			// Inside dispatch, so the device gate in fetch() has already run.
-			// Placed after the /apps/ branches so an app id of "feed" still
+			// Inside dispatch. Placed after the /apps/ branches so an app
+			// id of "feed" still
 			// renders its app page. Unknown apps/feeds are plain 404s.
 			if (method === 'GET') {
 				var feedAt = path.indexOf('/feed/')
@@ -1108,8 +1081,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 
 			// GET /theme/:app — shell theme capability (see shell-theme.ts):
 			// read/set/reset through the app's declared capabilities.theme
-			// flags. Inside dispatch, so the device gate in fetch() has
-			// already run. Placed after /feed/, before the 404 fallthrough.
+			// flags. Inside dispatch. Placed after /feed/, before the
+			// 404 fallthrough.
 			// Unknown apps, undeclared callers, and view-only callers of
 			// set/reset are plain 404s with no theme detail; a gated app
 			// with an invalid value gets JSON { ok: false, error } (400)
@@ -1195,8 +1168,8 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
  * one act() handler, one state — UI and MCP see the same values.
  * Adding an app is a registry write; no OS republish.
  *
- * Every request passes the device gate first (see auth.ts). MCP exports are
- * not routed through fetch, so agents keep working while the browser is locked.
+ * Access is decided by Kody's platform gate before shell code runs
+ * (see pkg/docs/setup.md). MCP exports are not routed through fetch.
  *
  * ES2019 ceiling: no optional chaining and no nullish coalescing in this file (see the canonical ceiling in docs/scribe-limitations.md).
  */
@@ -1240,21 +1213,11 @@ var app = {
 		var appsAt = rawPath.indexOf('/apps/')
 		var path = appsAt === -1 ? rawPath : rawPath.slice(appsAt)
 		var method = String(request.method || '').toUpperCase()
-		// Kody login is the only auth path: a platform-verified visitor with
-		// role `owner` in the owning org is served. Under the local
-		// mock/dev target the device gate is skipped entirely (login-free
-		// local dev). Anything else is denied (locked), exactly like an
-		// unauthenticated request. The gate never fails open.
-		if (await isKodyOwnerVisitor(request)) {
-			chrome.authPath = authPathFor({ ok: true, viaKody: true })
-			return finishResponse(await dispatch(request, chrome, path, method, chrome.authPath), request)
-		}
-		if (isMockTarget(context)) {
-			chrome.authPath = authPathFor({ ok: true, viaKody: true })
-			return finishResponse(await dispatch(request, chrome, path, method, chrome.authPath), request)
-		}
-		chrome.authPath = 'locked'
-		return lockedPage(chrome)
+		// No shell gate: every request that reaches fetch() was already
+		// admitted by Kody's platform gate, so it is served. Access is
+		// granted and revoked in Kody itself (Use / `app:execute` on the
+		// app); the shell performs no access check of its own.
+		return finishResponse(await dispatch(request, chrome, path, method), request)
 	},
 }
 

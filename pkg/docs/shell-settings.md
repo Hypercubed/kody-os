@@ -50,14 +50,15 @@ Thin wrappers over `pkg/src/shell-theme.ts`, exported from
 - `reset_shell_theme(field?)` returns `{ ok: true, effective }`, or
   `{ ok: false, error }` for an unknown field.
 
-MCP exports are not routed through `fetch()`'s device gate (the
-existing MCP trust model).
+MCP exports are not routed through `fetch()` at all; who may call
+them is decided by Kody's `package:execute` / org access.
 
 ## Browser access (theme routes)
 
 GET-only routes in `pkg/src/app.ts`, dispatched after `/feed/` and
-before the 404 fallthrough, behind the device gate in `fetch()` and
-then the app's `capabilities.theme` flags:
+before the 404 fallthrough. Who reaches them is decided by Kody's
+platform gate before shell code runs; the app's
+`capabilities.theme` flags then decide read vs. set/reset:
 
 - `GET /theme/:app` — read. Requires `theme.view`. Returns
   `{ ok: true, defaults, override, effective }`, no-store.
@@ -73,11 +74,12 @@ then the app's `capabilities.theme` flags:
 - No POST route. Mutation URLs are never rendered as plain `<a href>`
   links.
 
-Gate failures (unknown app, malformed slug, no declaration, or a
-view-only caller of set/reset) are feed-style plain 404s with no theme
-detail. A gated app with an invalid value gets JSON
-`{ ok: false, error }` (400) and writes nothing. Unauthenticated
-requests get the locked page, never theme data.
+Capability-gate failures (unknown app, malformed slug, no
+declaration, or a view-only caller of set/reset) are feed-style
+plain 404s with no theme detail. A gated app with an invalid value
+gets JSON `{ ok: false, error }` (400) and writes nothing. There is
+no shell denial page: a request the platform does not admit never
+reaches these routes.
 
 ## Declaring theme access
 
@@ -108,7 +110,7 @@ link or form.
 
 - No grid or SVG editor in v1 (replace only, via desk/paper or
   glyph/stock/reset, or via file or agent).
-- No owner-only gate for set/reset yet (open question 1); no
+- No shell-side gate for set/reset yet (open question 1); no
   auto-install of Settings yet (open question 2).
 - No write-through cache for the override read (open question 3,
   answered no by the timing measurement above).

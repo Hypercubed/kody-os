@@ -81,11 +81,11 @@ The shell provides the bridge adapter, `window.KodyBridge` v1 (Phase 2 — see t
 
 ReKindle is existence proof that guarded vanilla JS can run in a Kindle browser. It is not proof of modern APIs, storage, sockets, or timers. So: enhance where present, never require.
 
-### Access transport (device latch)
+### Access transport
 
 Access is Kody login only: a platform-verified Kody visitor is served, verified per request — no code, no session, no cookie, no credential of any kind. The client enhancement's `fetch` (`format=json`) fast path and bundle bridge actions send same-origin requests (`credentials: 'same-origin'`) and attach no credential to the URL, falling back to native submit on any failure. Without JavaScript the plain GET still submits. No `?k=`, no hidden credential field, ever: a request presenting a retired credential is denied exactly like an unauthenticated request.
 
-The device gate is Kody login only: any browser signed in to Kody with app access is served. Under the local mock target the gate is skipped entirely, so local dev is login-free. See the [Setup guide](../../../docs/setup.md).
+Access is decided by Kody's permission system, not by the shell: any browser signed in to Kody with Use / `app:execute` on the app is served, and the shell performs no access check of its own. Local `kody dev --target mock` needs no credential because there is no gate at all. See the [Setup guide](../../../docs/setup.md).
 
 ### Bundle contract
 
@@ -295,7 +295,7 @@ Save this as `/tmp/preview-counter.json` (a scratch path outside the repo; the c
 
 ## Add to the hosted OS (real running app)
 
-The package is `@hypercubed/kody-os`; this install is hosted at `https://hypercubed.kody.run/kody-os`. MCP exports are not gated by the device gate.
+The package is `@hypercubed/kody-os`; this install is hosted at `https://hypercubed.kody.run/kody-os`. MCP exports are governed by Kody's `package:execute` / org access, not by the browser shell.
 
 1. Save the definition to `/tmp/preview-counter.json`.
 2. Add it through the Kody MCP `execute` tool (an agent does this) or the CLI:
@@ -457,7 +457,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - **`{ ok: false, error }` from `add_app`:** validation failed and nothing was written. Fix the named field and retry.
 - **App is on Apps but not the home dashboard:** add it with Apps Edit's **Add to home** control. New apps are not automatically homepage widgets.
 - **App added to hosted but not local (or the reverse):** the stores are separate. Run the same add against the other target; use `list_apps()` in the target you are checking.
-- **Local preview shows the locked 404:** the preview is not serving the mock target (the mock target skips the gate entirely). Restart as bare `kody dev --target mock` from `pkg/`.
+- **Local preview 404s everything:** the preview is not serving the mock target. Restart as bare `kody dev --target mock` from `pkg/`.
 - **Local add is missing in a running preview:** `kody dev` loaded the mock store at startup. Run the registry write before starting it, or stop and restart it. `kody dev fetch` attaches only to a server started without an explicit `--port`.
 - **`kody dev --target prod` throws `local:<kody.id>`:** it does not provide the hosted `packageStorage()`. Use the hosted MCP/execute path for the real app.
 - **`--invoke` with `add_app` fails:** this package exports only the root, so there is no `/add_app` subpath. Use the `--code`/`--file` wrappers shown here.
@@ -466,7 +466,7 @@ The hosted and local stores are independent. Adding to one does not add to the o
 - **`format` appears in a request:** the UI/server fast path uses `?format=json` to ask for `ActResult` JSON. It is stripped before `actFromForm`, so it never becomes an action arg.
 - **Re-adding reset the state:** it does not, by default. `add_app` on an existing id overwrites the definition and preserves state (declared fields carried forward, dropped fields reset to `initial`). Pass `resetState: true` to restore the legacy wipe, or `migrate: { oldField: newField }` to rename fields. Export before replacing if you need the old state regardless.
 - **No remove button in the UI:** removal is MCP-only by design. Use `remove_app`; use Hide for a reversible action.
-- **Locked page on the hosted app:** the browser is not signed in to Kody (or the sign-in lapsed). Sign in to Kody and reload; MCP exports are not gated. There is no code to mint and no `?k=` transport: a request presenting a retired credential is denied exactly like an unauthenticated request.
+- **Hosted app denies a request:** the visitor was not admitted by the platform — the browser is not signed in to Kody (or the sign-in lapsed), or the visitor holds no Use / `app:execute` grant on the app. Sign in to Kody and reload; MCP exports are governed by Kody's `package:execute` / org access. There is no code to mint and no `?k=` transport: a retired credential is simply ignored, and a request the platform does not admit never reaches shell code.
 
 ## See also
 

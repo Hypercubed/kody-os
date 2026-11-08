@@ -44,8 +44,10 @@ Rules for every current and future app:
 4. Do not add a mutating `<form method="POST">` or a `fetch(..., { method:
    'POST' })` to the app UI. POST is only for programmatic clients that can
    send a same-origin `Origin`; the server route remains for them.
-5. The locked page carries no form and no script: it is an honest 404
-   naming Kody sign-in, with no credential of any kind. Signing in
+5. There is no shell denial page: unknown routes return an honest 404
+   in the full chrome with plain "Not found." text and no home link
+   in the body. A request the platform does not admit never reaches
+   shell code, so the shell renders no denial of its own. Signing in
    happens in Kody itself, never in the shell.
 6. Keep credentials out of rendered output, storage, and logs. No
    renderer receives a credential; there are no auth registries at all

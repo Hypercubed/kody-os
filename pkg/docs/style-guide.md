@@ -355,7 +355,7 @@ Rules that follow from the table:
   reader cannot tell *why* it is disabled from the
   page (a count, a label, a position), add that
   explanation as text.
-- The shell footer ("PRIVATE OS SHELL / via kody ·
+- The shell footer ("PRIVATE OS SHELL /
   v0.1.4 b3") is debug text, not user-facing copy.
   It should not be used as a model for bundle text,
   and it is a known item to clean up in the shell,
