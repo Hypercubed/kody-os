@@ -480,7 +480,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.0.0 in this tree', running === '4.0.0', running)
+	check('running package version is 4.1.0 in this tree', running === '4.1.0', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min
@@ -495,7 +495,7 @@ function installSteps(text: string): string[] {
 	var tooNewErr = tooNew.ok === false ? (tooNew as { error: string }).error : ''
 	check('newer minPackageVersion refused naming app, minimum, and running', tooNew.ok === false && tooNewErr.indexOf('minapp') !== -1 && tooNewErr.indexOf('5.0.0') !== -1 && tooNewErr.indexOf(running) !== -1, tooNewErr)
 	check('newer min refusal writes nothing', (await list_apps(minStore)).length === 0)
-	var equalMin = await add_app(minDef('minapp', '4.0.0') as never, minStore)
+	var equalMin = await add_app(minDef('minapp', '4.1.0') as never, minStore)
 	check('equal minPackageVersion installs', equalMin.ok === true, JSON.stringify(equalMin))
 	var zeroMin = await add_app(minDef('zeroapp', '0.0.0') as never, minStore)
 	check('older minPackageVersion installs', zeroMin.ok === true, JSON.stringify(zeroMin))
