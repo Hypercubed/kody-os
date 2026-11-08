@@ -49,24 +49,22 @@ them.
 compileDefinition(def: unknown):
   | { ok: true; definition: AppDefinition; fingerprint: string }
   | { ok: false; error: string }
-```
-
-The pipeline is exactly the normalization `add_app` applies today,
+```The pipeline is exactly the normalization `add_app` applies today,
 in this order:
 
-1. `migrateDefinition` — v1 single-`effect` actions expand to
-   `effects[]`; non-objects pass through for the validator to
-   reject. (Today `migrateDefinition` has no internal callers:
-   `add_app` validates the raw definition and only
-   `canonicalizeDefinition` migrates actions per-action. The
-   compile step makes the migration explicit and first, so a v1
-   definition compiles the same way it stores.)
-2. `validateDefinition` — the migrated definition must validate;
-   on failure the error string is returned unchanged.
-3. `canonicalizeDefinition` — schema restamp to the current
-   version, effects migration, icon sanitization, open-mode
-   derivation, capability defaults, bundle stringification.
-4. `fingerprintDefinition` — run on the canonical form, so the
+1. `validateDefinition` — the submitted input must validate, exactly
+   as `add_app` validates today; on failure the error string is
+   returned unchanged. Validation deliberately runs on the input,
+   not on a pre-migrated copy: the validator version-branches on
+   `effect` vs `effects`, so pre-migrating would reject a valid v3
+   single-`effect` definition and accept an invalid v5 single-`effect`
+   one (verified during implementation). `migrateDefinition` /
+   `migrateAction` stay exported helpers (used by `canonicalizeDefinition`
+   and available to callers) but are not a separate compile step.
+2. `canonicalizeDefinition` — schema restamp to the current
+   version, per-action effects migration, icon sanitization,
+   open-mode derivation, capability defaults, bundle stringification.
+3. `fingerprintDefinition` — run on the canonical form, so the
    fingerprint in the result always matches the stored form.
 
 Callers get a typed `AppDefinition` or one error string, instead of
@@ -85,9 +83,11 @@ those two steps instead. The order around it is unchanged: the
 schema-floor gate and the `minPackageVersion` gate still run where
 they run today, and the new-id staleness check (a new id must carry
 the current schema version; re-adding restamps) still runs after
-compilation, on the compiled definition. Compilation does not
-decide installability; it only decides whether a definition is
-well-formed and what its canonical form is.
+compilation with its wording unchanged, reading the submitted
+definition's version — the compiled form is always restamped to
+current, so checking the compiled form would be vacuous.
+Compilation does not decide installability; it only decides whether
+a definition is well-formed and what its canonical form is.
 
 ### Decision 4: Re-exports keep every import path working
 

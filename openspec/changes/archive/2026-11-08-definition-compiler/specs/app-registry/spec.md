@@ -44,9 +44,15 @@ promise, so it is not pure.
 ### Requirement: `compileDefinition` is the typed compile entry point
 
 `compileDefinition(def: unknown)` SHALL compile one definition
-in this order: `migrateDefinition`, then `validateDefinition`,
-then `canonicalizeDefinition`, then `fingerprintDefinition` on
-the canonical form. It SHALL return
+in this order: `validateDefinition` on the submitted input (exactly
+as `add_app` validates today), then `canonicalizeDefinition`
+(which migrates single-`effect` actions to `effects[]` per-action,
+restamps the schema version, sanitizes the icon, derives the open
+mode, and applies capability defaults), then `fingerprintDefinition`
+on the canonical form. Validating the input — not a pre-migrated
+copy — preserves version-branching: a valid v3 single-`effect`
+definition keeps validating, and a v5 single-`effect` definition
+keeps failing, exactly as before. It SHALL return
 `{ ok: true, definition, fingerprint }` on success, where
 `definition` is the canonical stored form (schema restamped to
 the current version, actions in `effects[]` form, icon
@@ -89,9 +95,37 @@ decide installability: the schema-floor gate, the
 
 ### Requirement: App definition schema
 The canonical stored form of a definition SHALL be produced by
-`compileDefinition` in `pkg/src/apps/definition.ts` (migrate,
-validate, canonicalize, fingerprint), rather than by separate
-`validateDefinition` / `canonicalizeDefinition` calls inside
-`add_app`. The stored form itself is unchanged: same restamp,
-same migration, same sanitization, same fingerprint for the same
-input.
+`compileDefinition` in `pkg/src/apps/definition.ts` (validate,
+canonicalize — which migrates actions —, fingerprint), rather than
+by separate `validateDefinition` / `canonicalizeDefinition` calls
+inside `add_app`. The stored form itself is unchanged: same
+restamp, same migration, same sanitization, same fingerprint for
+the same input.
+
+#### Scenario: Invalid definition is rejected with a reason
+- **WHEN** `add_app` receives a definition with a bad id, bad bundle path, undeclared state field, or a UI action referencing no declared action
+- **THEN** it returns `{ ok: false, error }` naming the problem and writes nothing.
+
+#### Scenario: Unknown template still rejected with reason
+- **WHEN** `add_app` receives a definition with a template outside the closed set
+- **THEN** it returns `{ ok: false, error }` naming the template and writes nothing.
+
+#### Scenario: Stale version on a new id is rejected with the current version named
+- **WHEN** `add_app` receives a new id whose `schemaVersion` is missing or older than current
+- **THEN** it returns `{ ok: false, error }` naming the current version and writes nothing.
+
+#### Scenario: Overwrite restamps to current
+- **WHEN** `add_app` re-adds an existing id
+- **THEN** the stored definition carries the current `schemaVersion` regardless of what was submitted.
+
+#### Scenario: Unified app round-trips
+- **WHEN** a unified app is exported then imported into a blank install
+- **THEN** definition and state are deep-equal to the originals, including `schemaVersion`.
+
+#### Scenario: Pre-version installs backfill on read
+- **WHEN** an app installed before versioning is read back
+- **THEN** it reports the current version if it validates against the current shape, else the oldest known version — so stale apps are listable.
+
+#### Scenario: SVG icon accepted
+- **WHEN** `add_app` receives a definition with a sanitized inline-SVG icon
+- **THEN** it returns `{ ok: true, id }` and the icon renders as SVG on tiles.
