@@ -582,6 +582,8 @@ export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: bool
 		'<p>No apps installed yet. This shell starts empty \u2014 nothing is installed until you add it. Pick a path below. Copy a prompt into a Kody-connected agent.</p>\n' +
 		'<h3>Add your own apps</h3>\n' +
 		'<p class="gate-hint"><code>Add a new app to my hosted kody-os app on Kody. First open the published guide with Kody search entity package:kody-os#.agents/skills/adding-an-app/SKILL.md, then follow that definition contract. Use the package\'s `add_app` through the Kody MCP execute wrapper. Validate before writing, verify with `list_apps` and `get_app_state`, and do not publish or change the package source. Do not add it to the homepage unless I ask. Ask me before writing if any detail is missing or ambiguous.<br><br>\u2013 Name: [display name]<br>\u2013 What it does: [describe what it should do]</code></p>\n' +
+		'<h3>Remove an app</h3>\n' +
+		'<p class="gate-hint"><code>Remove [app id] from my hosted kody-os app on Kody. Use the package\'s `remove_app` through the Kody MCP execute wrapper. Ask me before removing if any detail is missing or ambiguous.</code></p>\n' +
 		'<h3>Install the App Catalog</h3>\n' +
 		'<p class="gate-hint"><code>Add the App Catalog to my kody-os shell. Follow the app-store recipe (https://github.com/Hypercubed/kody-os/blob/main/catalog/app-store/RECIPE.md).</code></p>\n'
 	if (opts && opts.omitClosing === true) return block

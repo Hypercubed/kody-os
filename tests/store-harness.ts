@@ -282,13 +282,13 @@ function installSteps(text: string): string[] {
 // Empty states + prompt sync (empty-install + mini-apps-user-facing).
 {
 	var help = renderEmptyHelp('')
-	check('empty help names the App Store prompt', help.indexOf('Add the App Store to my kody-os shell.') !== -1, '')
+	check('empty help names the App Catalog prompt', help.indexOf('Add the App Catalog to my kody-os shell.') !== -1, '')
 	var promptSteps = installSteps(help)
-	check('App Store prompt points at the app-store recipe', help.indexOf('catalog/app-store/RECIPE.md') !== -1, '')
-	check('App Store prompt stops at the recipe reference', help.indexOf('RECIPE.md).') !== -1 && promptSteps.length === 0, promptSteps.join(','))
-	check('App Store prompt names no collection recipe', help.indexOf('starter') === -1 && help.indexOf('collections/') === -1, '')
-	check('empty help has both prompts as gate-hint code', help.indexOf('<h3>Install the App Store</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('class="gate-hint"') !== -1, '')
-	check('empty help lists Add your own apps before Install the App Store', help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') < help.indexOf('<h3>Install the App Store</h3>'), '')
+	check('App Catalog prompt points at the app-store recipe', help.indexOf('catalog/app-store/RECIPE.md') !== -1, '')
+	check('App Catalog prompt stops at the recipe reference', help.indexOf('RECIPE.md).') !== -1 && promptSteps.length === 0, promptSteps.join(','))
+	check('App Catalog prompt names no collection recipe', help.indexOf('starter') === -1 && help.indexOf('collections/') === -1, '')
+	check('empty help has all three prompts as gate-hint code', help.indexOf('<h3>Install the App Catalog</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Remove an app</h3>') !== -1 && help.indexOf('class="gate-hint"') !== -1, '')
+	check('empty help lists Add, Remove, then Install the App Catalog', help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') < help.indexOf('<h3>Remove an app</h3>') && help.indexOf('<h3>Remove an app</h3>') < help.indexOf('<h3>Install the App Catalog</h3>'), '')
 	check('empty help has no copy button or Clipboard API', help.indexOf('navigator.clipboard') === -1 && help.indexOf('<button') === -1, '')
 	var helpPageBlock = renderEmptyHelp('', { omitClosing: true })
 	check('Help page omits the empty-state closing line', helpPageBlock.indexOf('Once an app is installed') === -1, '')
@@ -297,10 +297,10 @@ function installSteps(text: string): string[] {
 	check('Help and About are not catalog apps any more', await get_catalog_definition('help', BASE) === null && await get_catalog_definition('about', BASE) === null)
 	check('empty help prompt 2 asks no App id', help.indexOf('Add a new app to my hosted kody-os app on Kody.') !== -1 && help.indexOf('Name: [display name]') !== -1 && help.indexOf('App id: [slug]') === -1, '')
 	var dashNoApps = renderDashboard([], '', false)
-	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Add the App Store') !== -1, '')
+	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Add the App Catalog') !== -1, '')
 	check('Home and Apps render the same help block', dashNoApps.indexOf(help) !== -1, '')
 	var dashHasApps = renderDashboard([], '', true)
-	check('Home with apps but none on Home prompts Add to home', dashHasApps.indexOf('No widgets yet') === -1 && dashHasApps.indexOf('You have apps installed') === -1 && dashHasApps.indexOf('Add some to Home from the Apps page.') !== -1 && dashHasApps.indexOf('Add the App Store') === -1, '')
+	check('Home with apps but none on Home prompts Add to home', dashHasApps.indexOf('No widgets yet') === -1 && dashHasApps.indexOf('You have apps installed') === -1 && dashHasApps.indexOf('Add some to Home from the Apps page.') !== -1 && dashHasApps.indexOf('Add the App Catalog') === -1, '')
 	var dashWidgets = renderDashboard(['<section class="widget">x</section>'], '', true)
 	check('Home with widgets renders the widgets', dashWidgets.indexOf('widget') !== -1 && dashWidgets.indexOf('No widgets yet') === -1, '')
 	var homeTiles = renderHomeTiles([], '')
@@ -480,7 +480,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.1.1 in this tree', running === '4.1.1', running)
+	check('running package version is 4.1.2 in this tree', running === '4.1.2', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min
@@ -495,7 +495,7 @@ function installSteps(text: string): string[] {
 	var tooNewErr = tooNew.ok === false ? (tooNew as { error: string }).error : ''
 	check('newer minPackageVersion refused naming app, minimum, and running', tooNew.ok === false && tooNewErr.indexOf('minapp') !== -1 && tooNewErr.indexOf('5.0.0') !== -1 && tooNewErr.indexOf(running) !== -1, tooNewErr)
 	check('newer min refusal writes nothing', (await list_apps(minStore)).length === 0)
-	var equalMin = await add_app(minDef('minapp', '4.1.1') as never, minStore)
+	var equalMin = await add_app(minDef('minapp', '4.1.2') as never, minStore)
 	check('equal minPackageVersion installs', equalMin.ok === true, JSON.stringify(equalMin))
 	var zeroMin = await add_app(minDef('zeroapp', '0.0.0') as never, minStore)
 	check('older minPackageVersion installs', zeroMin.ok === true, JSON.stringify(zeroMin))
