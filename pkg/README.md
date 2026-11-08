@@ -2,16 +2,12 @@
 
 Minimal OS shell shared by humans and agents. Apps are JSON definitions in package storage — rendered by one generic shell, acted on through one shared handler, identically via the human UI and via MCP. Browser-first, high-contrast, e-ink-friendly. Kindle Scribe compatibility is a hard constraint: ES2019 only, no external stylesheets, no emojis.
 
-Current: **v4.1.3 (build 38)** — Apps Edit mode, a data-only App Store through a management API, bundle capabilities (`manageApps`, `proxy`), alphabetical Apps launcher with matching Clear/Edit header buttons and Edit rows with a tile-sized icon/title block, the app description in the middle, and Pin/Hidden/Home state toggles on the right, catalog-sourced store descriptions with each row’s controls at the top right, data-driven apps, homepage widgets, server-side feed proxy, hardened response headers, bridge adapter (`window.KodyBridge` v1), JSON state seed, schemaVersion 5, home widget sections carry `data-app-id`, modal panels open at 25vh with an open-full-page box, default open mode (`ui.openAs`), agent catalog/pin/home/hide tools, owner-only Kody login bypass, the official Kody mark as favicon and default header mark, and a page-mode expand control that fills the browser window edge-to-edge, with single-frame app pages and a full-viewport white fullscreen view, and a Kody-login-only device gate (OTP removed; mock target login-free), and a Daily Feed catalog app (generic agent-pushed feed viewer, page only), a Link Drop catalog app (bookmarklet + agent-prompt link saver), and an updated Probe catalog app (clipboard test plus Phase 2, BigInt, and Wasm items), and a catalog-only App Store that offers a confirmed Overwrite for modified or snapshot-less installs, and an empty fresh install (no apps seeded, including no App Store) with Apps/Home empty-state help, and Help and About as built-in shell pages (not catalog apps) with Settings options to hide each, settings stored in settings.json (formerly os-theme.json), a restructured catalog (per-app directories with a RECIPE.md each and a generated index), a Settings app with theme controls, and an App Store with Update All, Remove on up-to-date rows, and Add instead of Install.
-
 ## Screenshots
 
-Files live in `public/screenshots/` (served at `<app>/_assets/screenshots/`).
-
-![Home dashboard](public/screenshots/home.png)
-![All apps](public/screenshots/apps.png)
-![Counter app](public/screenshots/counter.png)
-![Puzzle app](public/screenshots/puzzle.png)
+<img src="public/screenshots/home.png" alt="Home dashboard" width="400">
+<img src="public/screenshots/apps.png" alt="All apps" width="400">
+<img src="public/screenshots/help.png" alt="Help page" width="400">
+<img src="public/screenshots/about.png" alt="About page" width="400">
 
 ## What it does
 
@@ -46,40 +42,6 @@ Copy this to your Kody-connected agent and fill in the bracketed parts:
 >
 > - Name: [display name]
 > - What it does: [describe what it should do]
-
-## Local development (`kody dev`)
-
-Run the real shell locally from `pkg/` with bundled build, persistent mock storage, and live-reload. Stop the server before any write below: a running preview keeps its mock state in memory and rewrites the store from that snapshot on its next action, so a write made while it is running shows up nowhere and is then silently overwritten.
-
-```sh
-cd pkg
-# proxy bypass required on this host
-export NO_PROXY='*' no_proxy='*'
-unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY
-```
-
-Install the `app-store` catalog app (one-time per fresh mock store). Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No Python step is needed any more: `scripts/catalog.ts` installs straight from the repo-root catalog (`catalog/`) by id, and re-installing preserves state. The mock target is login-free, so no unlock step is needed.
-
-```sh
-kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}'
-```
-
-To install your own definition file instead of (or in addition to) a catalog app, use `scripts/add-app.ts` — its params *are* the definition, with no op wrapper (that wrapper belongs to `scripts/registry.ts`):
-
-```sh
-kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)"
-```
-
-Then start the server:
-
-```sh
-kody dev --target mock
-# → App ready at http://127.0.0.1:4302/
-```
-
-Open `http://127.0.0.1:4302/` (VSCode port-forward 4302 to reach it remotely). No unlock step: the mock target serves login-free. The Apps page lists the **App Store**. Verify actions in the browser instead of scripting authenticated fetches.
-
-Useful checks: `kody dev check --target mock --offline`, `curl http://127.0.0.1:4302/__kody/dev/status`. Persistent server across sessions: `systemctl --user enable --now kody-os-dev.service`. No `job`/`webhook`/`emit` handlers are declared, so those subcommands correctly report `(none)`.
 
 ## Theme file
 
