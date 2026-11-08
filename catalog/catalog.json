@@ -173,8 +173,8 @@
     {
       "id": "probe",
       "label": "Probe",
-      "catalogVersion": 7,
-      "fingerprint": "fnv:3881983678-258110534-30282",
+      "catalogVersion": 8,
+      "fingerprint": "fnv:1295119190-3967920081-31267",
       "installMode": "json",
       "definitionPath": "probe/definition.json",
       "recipePath": "probe/RECIPE.md",

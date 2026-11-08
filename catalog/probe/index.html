@@ -88,14 +88,14 @@ function beaconRow(name, value) {
   fireUrl(actUrl("row:" + name, "row:" + name + "=" + String(value)));
 }
 function sendAll() {
-  var keys = ["json","fetch","xhr","fetchWorks","xhrWorks","timer5000","event-click","cssGrid","localStorage","cookie","customElements","customElementDefine","customElementUpgrade","websocket","websocketConnect","blob","objectURL","fileReader","serviceWorker","syncManager","periodicSync","notification","rAF","rAFFired","mutationObserver","intersectionObserver","resizeObserver","customEvent","historyPush","clipboard","clipboardWrite","clipboardRead","clipboardMatch","geolocation","matchMediaMono","hardwareConcurrency","deviceMemory","onLine","proxy","proxyTrap","replaceAllExists","replaceAllExec","constructableStylesheet","adoptedStyleSheets","cssStyleSheetReplaceSync","customElementClassDefine","customElementLightDOM","jsonSeedAtScript","jsonSeedAtDOMContentLoaded","stateSpanAtScript","stateSpanAtDOMContentLoaded","domContentLoadedMs","reRenderLoopMs","paintAfterUpdateMs","bigintExists","bigintType","bigintPrecision","bigintFact100","bigintFact100Len","bigintDivTrunc","bigintModSign","bigintMixThrows","bigintStringifyThrows","wasmExists","wasmValidate","wasmInstantiate","wasmAdd","wasmMemory"];
+  var keys = ["json","fetch","xhr","fetchWorks","xhrWorks","timer5000","event-click","cssGrid","localStorage","cookie","customElements","customElementDefine","customElementUpgrade","websocket","websocketConnect","blob","objectURL","fileReader","serviceWorker","syncManager","periodicSync","notification","rAF","rAFFired","mutationObserver","intersectionObserver","resizeObserver","customEvent","historyPush","clipboard","clipboardWrite","clipboardRead","clipboardMatch","geolocation","matchMediaMono","hardwareConcurrency","deviceMemory","onLine","proxy","proxyTrap","replaceAllExists","replaceAllExec","structuredClone","structuredCloneExec","whereSelector","constructableStylesheet","adoptedStyleSheets","cssStyleSheetReplaceSync","customElementClassDefine","customElementLightDOM","jsonSeedAtScript","jsonSeedAtDOMContentLoaded","stateSpanAtScript","stateSpanAtDOMContentLoaded","domContentLoadedMs","reRenderLoopMs","paintAfterUpdateMs","bigintExists","bigintType","bigintPrecision","bigintFact100","bigintFact100Len","bigintDivTrunc","bigintModSign","bigintMixThrows","bigintStringifyThrows","wasmExists","wasmValidate","wasmInstantiate","wasmAdd","wasmMemory"];
   var n = 0;
   for (var i = 0; i < keys.length; i++) { if (results[keys[i]] !== undefined) { beaconRow(keys[i], results[keys[i]]); n++; } }
   beacon("manual");
   setStatus("Sent " + n + " beacons.");
 }
 function navSend() {
-  var keys = ["json","fetch","xhr","fetchWorks","xhrWorks","timer5000","event-click","cssGrid","localStorage","cookie","customElements","customElementDefine","customElementUpgrade","websocket","websocketConnect","blob","objectURL","fileReader","serviceWorker","syncManager","periodicSync","notification","rAF","rAFFired","mutationObserver","intersectionObserver","resizeObserver","customEvent","historyPush","clipboard","geolocation","matchMediaMono","hardwareConcurrency","deviceMemory","onLine","sessionStorage","viewport","proxy","proxyTrap","replaceAllExists","replaceAllExec","constructableStylesheet","adoptedStyleSheets","cssStyleSheetReplaceSync","customElementClassDefine","customElementLightDOM","jsonSeedAtScript","jsonSeedAtDOMContentLoaded","stateSpanAtScript","stateSpanAtDOMContentLoaded","domContentLoadedMs","reRenderLoopMs","paintAfterUpdateMs","bigintExists","bigintType","bigintPrecision","bigintFact100","bigintFact100Len","bigintDivTrunc","bigintModSign","bigintMixThrows","bigintStringifyThrows","wasmExists","wasmValidate","wasmInstantiate","wasmAdd","wasmMemory"];
+  var keys = ["json","fetch","xhr","fetchWorks","xhrWorks","timer5000","event-click","cssGrid","localStorage","cookie","customElements","customElementDefine","customElementUpgrade","websocket","websocketConnect","blob","objectURL","fileReader","serviceWorker","syncManager","periodicSync","notification","rAF","rAFFired","mutationObserver","intersectionObserver","resizeObserver","customEvent","historyPush","clipboard","geolocation","matchMediaMono","hardwareConcurrency","deviceMemory","onLine","sessionStorage","viewport","proxy","proxyTrap","replaceAllExists","replaceAllExec","structuredClone","structuredCloneExec","whereSelector","constructableStylesheet","adoptedStyleSheets","cssStyleSheetReplaceSync","customElementClassDefine","customElementLightDOM","jsonSeedAtScript","jsonSeedAtDOMContentLoaded","stateSpanAtScript","stateSpanAtDOMContentLoaded","domContentLoadedMs","reRenderLoopMs","paintAfterUpdateMs","bigintExists","bigintType","bigintPrecision","bigintFact100","bigintFact100Len","bigintDivTrunc","bigintModSign","bigintMixThrows","bigintStringifyThrows","wasmExists","wasmValidate","wasmInstantiate","wasmAdd","wasmMemory"];
   var parts = [];
   for (var j = 0; j < keys.length; j++) parts.push(keys[j] + "=" + (results[keys[j]] === undefined ? "Q" : results[keys[j]]));
   setStatus("Navigating with summary - use Back to return.");
@@ -234,6 +234,23 @@ try {
     catch (e4) { row("replaceAllExec", "threw"); }
   } else { row("replaceAllExec", "n/a"); }
 } catch (e5) { row("replaceAllExists", "ERROR"); row("replaceAllExec", "ERROR"); }
+/* --- Svelte probe items (added Nov 8, 2026) --- */
+try {
+  row("structuredClone", (typeof structuredClone === "function"));
+  if (typeof structuredClone === "function") {
+    try {
+      var scOrig = {a: {b: 1}};
+      var scCopy = structuredClone(scOrig);
+      row("structuredCloneExec", (scCopy.a.b === 1 && scCopy.a !== scOrig.a) ? "yes" : "mismatch");
+    } catch (eSC1) { row("structuredCloneExec", "threw"); }
+  } else { row("structuredCloneExec", "n/a"); }
+} catch (eSC0) { row("structuredClone", "ERROR"); row("structuredCloneExec", "ERROR"); }
+try {
+  var whereOk = false;
+  try { whereOk = (document.querySelector(":where(body)") !== null); } catch (eW0) { whereOk = false; }
+  row("whereSelector", whereOk);
+} catch (eW1) { row("whereSelector", "ERROR"); }
+/* --- end Svelte probe items --- */
 try {
   var csOk = (typeof CSSStyleSheet !== "undefined");
   row("constructableStylesheet", csOk);
