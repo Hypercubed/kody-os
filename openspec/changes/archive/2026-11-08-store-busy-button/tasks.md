@@ -29,3 +29,15 @@
 ## Verification note
 
 - 4.4 was verified via the jsdom app-store bundle harness (`catalog/tests/app-store-tests.cjs`, mocked management API), which is the established mock Store page test — not a live `kody dev` browser, which cannot run in this VM (no kody CLI here). The new busy-button checks in that harness assert the button state on a mock Store page directly.
+
+## Close-out note (Nov 8, 2026)
+
+Synced and archived Nov 8, 2026. Implementation shipped in `ceeb326` (package PATCH 4.1.2 → 4.1.3, build 37 → 38; app-store `catalogVersion` 19 → 20), committed and pushed to GitHub main Nov 8. NOT published to Kody.
+
+What was verified: all 11 tasks checked in this change. At archive time (after the sync below) `bun tests/catalog-harness.ts` ALL PASSED (18 apps), `bun tests/store-harness.ts` ALL PASSED, `bun catalog/tests/app-store-tests.cjs` ALL PASSED (including the 7 new busy-button checks: disabled + "Adding…", no second request on re-click, re-enabled + label restored + error shown on failed install), and `openspec validate store-busy-button --type change` is valid (one pre-existing `.openspec.yaml` key warning only). The implementation commit's own verification (catalog + store harnesses, `bun build` OK, `openspec validate` passes) stands.
+
+Sync correction: task 3.1 was checked in this change, but the canonical shell spec had not actually been updated — it had no busy-button rule or scenario. This archive applied the delta to `openspec/specs/shell/spec.md` (busy-button sentence on the "App Store page is a data app" requirement, plus the "A row action button is busy while its request runs" scenario) and verified the delta text now appears in the canonical spec.
+
+Substitution: task 4.4's mock Store page check was the jsdom harness, not a live `kody dev` browser (no `kody` CLI in this VM) — recorded as substituted, not as a live-browser check.
+
+Left open: none for this change.
