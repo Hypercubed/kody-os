@@ -61,7 +61,7 @@ openspec/            Specs and change proposals (see "Working with specs" below)
   changes/archive/   Closed changes, dated by close-out (e.g. 2026-11-07-…).                     tests/               Repository-level harnesses (bun): catalog, store, agent-tools,
                      open-mode, home-widget-counter, isolation-demo, …
 docs/                Repository-level docs: the 2026-10-27 security review.
-.agents/skills/      Repository tooling skills (e.g. kody-lan-access).
+.agents/skills/      Repository tooling skills (none at the moment).
 .claude/             Claude Code settings for this repo.
 ```
 
@@ -71,17 +71,17 @@ All shell work happens in `pkg/`. The repository root has no build step of its o
 
 ### Run the shell locally
 
-Preferred local-dev command (catalog + `kody dev`, LAN proxy only when asked):
+Preferred local-dev command (catalog + `kody dev`, LAN only when asked):
 
 ```sh
 ./scripts/dev-local-catalog.sh          # catalog + kody dev, no LAN
-./scripts/dev-local-catalog.sh --lan    # catalog + kody dev + LAN proxy
-./scripts/dev-local-catalog.sh stop     # stop all three
+./scripts/dev-local-catalog.sh --lan    # catalog + kody dev on 0.0.0.0:4302
+./scripts/dev-local-catalog.sh stop     # stop both
 ```
 
-LAN is opt-in and trusted-LAN only: the proxy exposes the whole dev server
-on `0.0.0.0:8080` in plain HTTP with no TLS. Never start `--lan` on public
-Wi-Fi or beyond the local network.
+LAN is opt-in and trusted-LAN only: `--lan` runs `kody dev --host 0.0.0.0`
+directly, exposing the whole dev server on port 4302 in plain HTTP with no
+TLS. Never start `--lan` on public Wi-Fi or beyond the local network.
 
 Bare form (no local catalog, no LAN):
 
@@ -97,6 +97,17 @@ Full local-dev instructions, including installing the App Store, are in `pkg/REA
 
 - **Run `kody dev` from `pkg/` only.** The repository root fails (missing `kody.app.entry`).
 - **Stop the preview before any mock-store write.** A running preview serves its startup snapshot from memory; a `kody execute` write made while it runs lands on disk and is then silently overwritten by the preview's next action. Stop, write, restart.
+
+Two device gotchas when opening the preview from a phone, tablet, or Kindle:
+
+- **Missing images on a Kindle is usually the browser setting, not the app.**
+  Kindle browser: three-dot menu → Browser Settings → **Disable Images**. When
+  on, every `<img>` fails, including ordinary HTTP PNGs and `data:` URIs,
+  while inline SVG still renders. The hosted app fails the same way, which is
+  the tell.
+- **Device times out while the host works: Wi-Fi client isolation.** Guest/IoT
+  SSIDs (or a host firewall on the port) block device-to-host traffic. Put both
+  on the same SSID, or open the port.
 
 ### Run the tests
 
