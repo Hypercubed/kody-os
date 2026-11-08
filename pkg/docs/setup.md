@@ -82,7 +82,7 @@ out which package you are in before continuing.
 
 In the browser, the Apps page shows help instead of a list:
 two copy-paste prompts — one to install the App Store
-(ask your agent to run `install_from_catalog` for `app-store`),
+(ask your agent to run `install_from_catalog` for `app-store` with the catalog base `https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`),
 one to add your own apps — and Home shows the same help
 until something is installed. Once apps exist but none are
 on Home, Home prompts you to add some from Apps Edit's
@@ -116,8 +116,8 @@ and the footer reads `via kody`.
 ### 4. Install the first app
 
 Add your first app through your agent with the package's
-`add_app` export, using one of the bundled example definitions
-in `pkg/catalog/` (for example `counter`). The agent validates
+`add_app` export, using one of the example definitions
+in `catalog/` (for example `counter`). The agent validates
 the definition before writing, and the app appears on the Apps
 page with no republish. See [Adding an app](../.agents/skills/adding-an-app/SKILL.md)
 for the definition contract, verification, homepage placement,
@@ -128,10 +128,10 @@ initial state, the Apps page shows its tile, and acting on it
 from its app page changes its state. That round trip — add,
 open, act, state changes — is the proof the setup worked.
 
-A built-in App Store (install catalog apps from the browser,
+The App Store (a catalog app for installing catalog apps from the browser,
 without an agent) is available once it is installed: install it with
 the App Store prompt on the empty Apps page, or ask your
-agent to install it with `install_from_catalog('app-store')`. Until
+agent to install it with `install_from_catalog` (id `app-store`, catalog base `https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`). Until
 it is installed, adding apps goes through your agent exactly as
 above.
 
@@ -145,7 +145,7 @@ target where you want it.
 
 ## Catalog and trust
 
-The bundled example definitions in `pkg/catalog/` are the
+The example definitions in `catalog/` are the
 catalog today. Installing an app means trusting its code: bundle
 scripts run same-origin with the visitor's full authority, so review
 third-party definitions before importing them. The trust rule and
@@ -230,7 +230,7 @@ and let it follow this guide:
 > as the guide describes. If the fork is still inert, publish it
 > through a repo session. Sign in to Kody as the
 > guide describes, add the first app with `add_app` from the
-> bundled examples, and verify the add/open/act round trip. Do
+> example apps, and verify the add/open/act round trip. Do
 > not publish or change the package source beyond the publish
 > step, and ask me before approving anything in the Kody UI.
 > Report each verification result; stop and ask if any check

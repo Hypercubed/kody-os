@@ -1,0 +1,222 @@
+{
+  "apps": [
+    {
+      "id": "app-store",
+      "label": "App Catalog",
+      "catalogVersion": 18,
+      "fingerprint": "fnv:1499004410-2620459559-16641",
+      "installMode": "json",
+      "definitionPath": "app-store/definition.json",
+      "recipePath": "app-store/RECIPE.md",
+      "bundleFiles": [
+        "index.html",
+        "store.css",
+        "store.js"
+      ]
+    },
+    {
+      "id": "arrow-game",
+      "label": "Arrow Game",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:433625581-1746312783-16010",
+      "installMode": "json",
+      "definitionPath": "arrow-game/definition.json",
+      "recipePath": "arrow-game/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "calculator",
+      "label": "Calculator",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:3124691263-342541594-6075",
+      "installMode": "json",
+      "definitionPath": "calculator/definition.json",
+      "recipePath": "calculator/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "calendar",
+      "label": "Calendar",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:9853402-3766713770-4474",
+      "installMode": "json",
+      "definitionPath": "calendar/definition.json",
+      "recipePath": "calendar/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "cellular-playground",
+      "label": "Cellular Playground",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:2125561215-2416806857-18786",
+      "installMode": "json",
+      "definitionPath": "cellular-playground/definition.json",
+      "recipePath": "cellular-playground/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "clock",
+      "label": "Clock",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:433473223-3408256014-2743",
+      "installMode": "json",
+      "definitionPath": "clock/definition.json",
+      "recipePath": "clock/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "counter",
+      "label": "Counter",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:3364533401-1204250391-6374",
+      "installMode": "json",
+      "definitionPath": "counter/definition.json",
+      "recipePath": "counter/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "daily-feed",
+      "label": "Daily Feed",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:2968920884-3654776355-13295",
+      "installMode": "json",
+      "definitionPath": "daily-feed/definition.json",
+      "recipePath": "daily-feed/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "eight-ball",
+      "label": "Eight Ball",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:4157599228-4250843866-3124",
+      "installMode": "json",
+      "definitionPath": "eight-ball/definition.json",
+      "recipePath": "eight-ball/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "generic-feed",
+      "label": "Generic Feed",
+      "catalogVersion": 1,
+      "fingerprint": "fnv:3909410942-1916491356-12836",
+      "installMode": "json",
+      "definitionPath": "generic-feed/definition.json",
+      "recipePath": "generic-feed/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "hoodie-weather",
+      "label": "Hoodie Weather",
+      "catalogVersion": 10,
+      "fingerprint": "fnv:1863430420-1457542044-43490",
+      "installMode": "json",
+      "definitionPath": "hoodie-weather/definition.json",
+      "recipePath": "hoodie-weather/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "link-drop",
+      "label": "Link Drop",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:3353256188-3681484168-11534",
+      "installMode": "json",
+      "definitionPath": "link-drop/definition.json",
+      "recipePath": "link-drop/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "mac-puzzle",
+      "label": "Puzzle",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:604030178-4084625838-11462",
+      "installMode": "json",
+      "definitionPath": "mac-puzzle/definition.json",
+      "recipePath": "mac-puzzle/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "news",
+      "label": "News",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:3254392620-4180387642-17868",
+      "installMode": "json",
+      "definitionPath": "news/definition.json",
+      "recipePath": "news/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "probe",
+      "label": "Probe",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:3881983678-258110534-30282",
+      "installMode": "json",
+      "definitionPath": "probe/definition.json",
+      "recipePath": "probe/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "catalogVersion": 9,
+      "fingerprint": "fnv:1045509417-4227340790-18853",
+      "installMode": "json",
+      "definitionPath": "settings/definition.json",
+      "recipePath": "settings/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "three-bit-art",
+      "label": "3-Bit Art",
+      "catalogVersion": 19,
+      "fingerprint": "fnv:270898149-3019694919-27778",
+      "installMode": "json",
+      "definitionPath": "three-bit-art/definition.json",
+      "recipePath": "three-bit-art/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
+      "id": "xkcd",
+      "label": "xkcd",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:3951821674-1475230663-21949",
+      "installMode": "json",
+      "definitionPath": "xkcd/definition.json",
+      "recipePath": "xkcd/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    }
+  ]
+}

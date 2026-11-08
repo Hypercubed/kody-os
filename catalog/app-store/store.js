@@ -1,0 +1,282 @@
+function storeRoot() {
+  var root = document.querySelector('section[data-app-id="app-store"]');
+  if (root) { return root; }
+  return document;
+}
+function storeManageBase() {
+  var root = storeRoot();
+  var el = root.querySelector('[data-action-base]');
+  var actionBase = el ? el.getAttribute('data-action-base') : '';
+  if (actionBase && actionBase.indexOf('/apps/app-store') !== -1) {
+    return actionBase.slice(0, actionBase.indexOf('/apps/app-store'));
+  }
+  var path = window.location.pathname || '';
+  var idx = path.indexOf('/apps/');
+  if (idx !== -1) { return path.slice(0, idx); }
+  return '';
+}
+function storeBadge(status) {
+  if (status === 'not-installed') { return 'Not installed'; }
+  if (status === 'up-to-date') { return 'Up to date'; }
+  if (status === 'behind-clean') { return 'Update available'; }
+  if (status === 'catalog-differing') { return 'Update available'; }
+  if (status === 'behind-modified') { return 'Modified \u00b7 update available'; }
+  if (status === 'modified-current') { return 'Modified'; }
+  if (status === 'modified-ahead') { return 'Ahead of catalog'; }
+  if (status === 'snapshot-less') { return 'Installed'; }
+  if (status === 'storage-only') { return 'Storage only'; }
+  if (status === 'storage-only-formerly') { return 'Storage only \u00b7 formerly in catalog'; }
+  return 'Installed';
+}
+function storeApi(action, params, root) {
+  var url = storeManageBase() + '/manage/' + action + '?app=app-store' + (params || '');
+  return fetch(url, { credentials: 'same-origin' }).then(function (res) {
+    return res.json().catch(function () { return { ok: false, error: 'App Catalog could not read the catalog.' }; });
+  }).catch(function () { return { ok: false, error: 'App Catalog could not reach the shell.' }; });
+}
+function storeButton(label, onClick) {
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = label;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+function storeCapsText(caps) {
+  var parts = [];
+  if (!caps) { return ''; }
+  if (caps.manageApps) { parts.push('Can manage other apps.'); }
+  if (caps.feedHosts && caps.feedHosts.length > 0) { parts.push('Feeds: ' + caps.feedHosts.join(', ') + '.'); }
+  if (caps.proxyHosts && caps.proxyHosts.length > 0) { parts.push('Proxy: ' + caps.proxyHosts.join(', ') + '.'); }
+  if (caps.themeView && caps.themeSet) { parts.push('Can view and change the shell theme.'); }
+  else if (caps.themeView) { parts.push('Can view the shell theme.'); }
+  else if (caps.themeSet) { parts.push('Can change the shell theme.'); }
+  return parts.join(' ');
+}
+function storeInit() {
+  var root = storeRoot();
+  var wrap = root.querySelector('.store-wrap');
+  if (!wrap) { return; }
+  var nojs = wrap.querySelector('.store-nojs');
+  if (nojs) { nojs.style.display = 'none'; }
+  var status = wrap.querySelector('.store-status');
+  var list = wrap.querySelector('.store-list');
+  var confirmBox = wrap.querySelector('.store-confirm');
+  var retry = wrap.querySelector('.store-retry');
+  var updateAll = wrap.querySelector('.store-update-all');
+  var updateAllBtn = updateAll ? updateAll.querySelector('button') : null;
+  if (updateAllBtn) { updateAllBtn.addEventListener('click', updateAllNow); }
+  var rows = [];
+  var afterLoadStatus = '';
+  function setStatus(text) { if (status) { status.textContent = text; } }
+  function safeUpdatable() {
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].needsNewerShell || rows[i].needsNewerSchema) { continue; }
+      if (rows[i].installed && (rows[i].status === 'behind-clean' || rows[i].status === 'catalog-differing')) { out.push(rows[i]); }
+    }
+    return out;
+  }
+  function updateAllNow() {
+    var targets = safeUpdatable();
+    if (targets.length === 0) { return; }
+    setStatus('Working…');
+    var index = 0;
+    var updated = 0;
+    var skipped = 0;
+    var failed = 0;
+    function step() {
+      if (index >= targets.length) {
+        var summary = 'Updated ' + updated + (updated === 1 ? ' app.' : ' apps.');
+        if (skipped > 0) { summary += ' ' + skipped + ' skipped (needs confirmation).'; }
+        if (failed > 0) { summary += ' ' + failed + ' failed.'; }
+        afterLoadStatus = summary;
+        load();
+        return;
+      }
+      var row = targets[index];
+      index += 1;
+      storeApi('update', '&id=' + encodeURIComponent(row.id)).then(function (res) {
+        if (res.ok) { updated += 1; }
+        else if (res.needsConfirmation) { skipped += 1; }
+        else { failed += 1; }
+        step();
+      });
+    }
+    step();
+  }
+  function clearConfirm() { if (confirmBox) { confirmBox.innerHTML = ''; confirmBox.style.display = 'none'; } var old = document.querySelector('.store-dialog'); if (old && old.parentNode) { old.parentNode.removeChild(old); } }
+  function showConfirm(kind, row, result) {
+    clearConfirm();
+    var overlay = document.createElement('div');
+    overlay.className = 'store-dialog';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    var panel = document.createElement('div');
+    panel.className = 'store-dialog-panel';
+    var title = document.createElement('h3');
+    title.textContent = 'Confirm ' + (kind === 'restore' ? 'restore' : kind === 'remove' ? 'remove' : 'update') + ': ' + row.label;
+    panel.appendChild(title);
+    var loss = document.createElement('p');
+    loss.textContent = 'This will replace this app\u2019s definition \u2014 bundle files, stateSchema, actions, capabilities, and metadata \u2014 with the catalog copy. Your custom definition changes will be lost and cannot be recovered afterwards unless you exported the app first. State is preserved for fields still declared in the new definition, while dropped fields reset to their initial values. Pins, hidden flags, homepage placement, and recency are untouched.';
+    if (kind === 'remove') { loss.textContent = 'This will remove this app: its definition and its saved state will be deleted, and it will disappear from the home screen, pins, and recency. This cannot be recovered afterwards unless you exported the app first.'; }
+    panel.appendChild(loss);
+    if (result && result.additions && result.additions.length > 0) {
+      var adds = document.createElement('p');
+      adds.textContent = 'This update also adds: ' + result.additions.join(', ') + '.';
+      panel.appendChild(adds);
+    }
+    var confirmBtn = storeButton('Confirm ' + (kind === 'restore' ? 'restore' : kind === 'remove' ? 'remove' : 'update'), function () {
+      clearConfirm();
+      setStatus('Working\u2026');
+      storeApi(kind, '&id=' + encodeURIComponent(row.id) + '&confirmed=1').then(function (res) {
+        if (res.ok) { load(); } else { setStatus(res.error || 'That change failed.'); }
+      });
+    });
+    var cancelBtn = storeButton('Cancel', function () { clearConfirm(); setStatus(''); });
+    panel.appendChild(confirmBtn);
+    panel.appendChild(cancelBtn);
+    overlay.appendChild(panel);
+    overlay.addEventListener('click', function (ev) { if (ev.target === overlay) { clearConfirm(); setStatus(''); } });
+    var host = document.body || root;
+    host.appendChild(overlay);
+    if (confirmBtn.focus) { confirmBtn.focus(); }
+  }
+
+  function render() {
+    if (!list) { return; }
+    list.innerHTML = '';
+    if (updateAll) { updateAll.hidden = safeUpdatable().length === 0; }
+    for (var i = 0; i < rows.length; i++) {
+      (function (row) {
+        var li = document.createElement('li');
+        li.className = 'store-row';
+        var main = document.createElement('span');
+        main.className = 'store-main';
+        var iconSpan = document.createElement('span');
+        iconSpan.className = 'store-icon';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        if (row.icon && row.icon.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0) {
+          iconSpan.innerHTML = row.icon;
+        } else {
+          iconSpan.textContent = row.icon || '#';
+        }
+        main.appendChild(iconSpan);
+        var label = document.createElement('span');
+        label.className = 'store-label';
+        label.textContent = row.label;
+        main.appendChild(label);
+        li.appendChild(main);
+        var body = document.createElement('span');
+        body.className = 'store-body';
+        var badgeText = storeBadge(row.status);
+        if (badgeText !== 'Installed' && badgeText !== 'Not installed' && badgeText !== 'Up to date') {
+          var badge = document.createElement('span');
+          badge.className = 'store-badge';
+          badge.textContent = badgeText;
+          body.appendChild(badge);
+        }
+        if (row.description) {
+          var desc = document.createElement('span');
+          desc.className = 'store-desc';
+          desc.textContent = row.description;
+          body.appendChild(desc);
+        }
+        var caps = storeCapsText(row.capabilities);
+        if (caps !== '') {
+          var capsEl = document.createElement('span');
+          capsEl.className = 'store-caps';
+          capsEl.textContent = caps;
+          body.appendChild(capsEl);
+        }
+        li.appendChild(body);
+        var controls = document.createElement('span');
+        controls.className = 'store-controls';
+        function mutate(kind, labelText) {
+          controls.appendChild(storeButton(labelText, function () {
+            clearConfirm();
+            setStatus('Working…');
+            storeApi(kind, '&id=' + encodeURIComponent(row.id)).then(function (res) {
+              if (res.ok) { load(); }
+              else if (res.needsConfirmation) { showConfirm(kind, row, res); setStatus(''); }
+              else { setStatus(res.error || 'That change failed.'); }
+            });
+          }));
+        }
+        if (row.needsNewerSchema) {
+          var schemaNeed = document.createElement('span');
+          schemaNeed.className = 'store-desc';
+          var schemaHave = (row.schemaVersion !== undefined && row.schemaVersion !== null) ? String(row.schemaVersion) : 'unknown';
+          var schemaFloor = (row.schemaFloor !== undefined && row.schemaFloor !== null) ? String(row.schemaFloor) : 'unknown';
+          schemaNeed.textContent = 'Requires schema v' + schemaFloor + ' (app has v' + schemaHave + ').';
+          controls.appendChild(schemaNeed);
+        }
+        if (row.needsNewerShell) {
+          var need = document.createElement('span');
+          need.className = 'store-desc';
+          var want = row.minPackageVersion ? String(row.minPackageVersion) : 'newer';
+          var have = row.shellVersion ? String(row.shellVersion) : 'unknown';
+          need.textContent = 'Requires shell v' + want + ' (running v' + have + ').';
+          controls.appendChild(need);
+        }
+        if (row.needsNewerSchema || row.needsNewerShell) {
+          /* requirement shown instead of any install control */
+        } else if (!row.installed && row.installMode === 'recipe-only') {
+          var prompt = document.createElement('span');
+          prompt.className = 'store-desc';
+          prompt.textContent = 'Ask an agent to install via its recipe.';
+          controls.appendChild(prompt);
+        } else if (!row.installed) { mutate('install', 'Add'); }
+        else if (row.status === 'behind-clean' || row.status === 'catalog-differing') { mutate('update', 'Update'); }
+        else if (row.status === 'behind-modified' || row.status === 'snapshot-less') { mutate('update', 'Overwrite'); }
+        else if (row.status === 'modified-current' || row.status === 'modified-ahead') { mutate('restore', 'Restore'); }
+        else if (row.status === 'up-to-date') { mutate('remove', 'Remove'); }
+        li.appendChild(controls);
+        list.appendChild(li);
+      })(rows[i]);
+    }
+  }
+  var catalogRelease = '';
+  var catalogCached = false;
+  function releaseText() {
+    if (!catalogRelease) { return ''; }
+    return 'Catalog ' + catalogRelease + (catalogCached ? ' (cached)' : '');
+  }
+  function load() {
+    setStatus('Loading apps…');
+    if (retry) { retry.hidden = true; }
+    clearConfirm();
+    storeApi('rows', '').then(function (res) {
+      if (res.ok && res.rows) {
+        rows = res.rows;
+        if (res.catalogRelease) { catalogRelease = res.catalogRelease; }
+        catalogCached = !!res.catalogCached;
+        var base = afterLoadStatus || '';
+        afterLoadStatus = '';
+        var err = res.catalogError || '';
+        var rel = releaseText();
+        var msg = base;
+        if (err) { msg = msg ? msg + ' ' + err : err; }
+        if (rel) { msg = msg ? msg + ' ' + rel : rel; }
+        setStatus(msg);
+        render();
+        if (err && retry) {
+          retry.hidden = false;
+          retry.onclick = function () { load(); };
+        }
+      } else {
+        afterLoadStatus = '';
+        setStatus(res.error || 'Could not load apps.');
+        if (retry) {
+          retry.hidden = false;
+          retry.onclick = function () { load(); };
+        }
+      }
+    });
+  }
+  load();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', storeInit);
+} else {
+  storeInit();
+}

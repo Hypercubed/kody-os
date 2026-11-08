@@ -18,7 +18,7 @@
  *
  * const info = await main()
  * console.log(info.package) // @hypercubed/kody-os
- * // counter comes from pkg/catalog/counter/definition.json via add_app
+ * // counter comes from catalog/counter/definition.json via add_app
  */
 import { getTheme } from './app.ts'
 import { fileThemeToValues, get_shell_theme as themeGet, reset_shell_theme as themeReset, set_shell_theme as themeSet } from './shell-theme.ts'
@@ -62,19 +62,19 @@ export default async function main(): Promise<{
 			},
 			{
 				name: 'list_catalog',
-				useWhen: 'List the shipped catalog (id, label, category, description) — the apps an agent can install without authoring a definition.',
+				useWhen: 'List the shipped catalog (id, label, category, description) — the apps an agent can install without authoring a definition. Takes the catalog base URL; without one it uses the installed App Store\'s declared base (dev override applies).',
 			},
 			{
 				name: 'get_catalog_definition',
-				useWhen: 'Read one shipped catalog definition in full, or null for an unknown id.',
+				useWhen: 'Read one shipped catalog definition in full, or null for an unknown id. Takes the id first, then the catalog base URL (same fallback as list_catalog).',
 			},
 			{
 				name: 'install_from_catalog',
-				useWhen: 'Install a shipped catalog app by id; idempotent, state preserved on re-install, never wipes state.',
+				useWhen: 'Install a shipped catalog app by id; idempotent, state preserved on re-install, never wipes state. Takes an optional catalogBase: without one it uses the installed App Store\'s declared base, and with neither it refuses.',
 			},
 			{
 				name: 'update_from_catalog',
-				useWhen: 'Bring an already-installed app up to its shipped catalog definition, preserving state; refuses to install new apps.',
+				useWhen: 'Bring an already-installed app up to its shipped catalog definition, preserving state; refuses to install new apps. Uses the installed App Store\'s declared base, and refuses when no catalog source exists.',
 			},
 			{
 				name: 'get_pinned',
@@ -202,6 +202,7 @@ export {
 	get_hidden,
 	get_homepage,
 	get_launcher_state,
+	get_store_catalog_info,
 	get_pinned,
 	get_recent,
 	import_app,

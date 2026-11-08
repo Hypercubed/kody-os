@@ -1,5 +1,5 @@
 'use strict';
-// jsdom grid proofs for pkg/catalog/calendar/definition.json (spec task 2.1).
+// jsdom grid proofs for catalog/calendar/definition.json (spec task 2.1).
 // Runs outside pkg/; jsdom lives in /tmp/jsdom-test (or JSDOM_PATH).
 // The bundle script uses the window's Date, so each case installs a
 // FakeDate in beforeParse: no-arg construction returns the mocked

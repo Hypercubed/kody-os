@@ -9,7 +9,7 @@ The app layer in `src/apps/` is wired into `src/app.ts` and verified live
 - `src/apps/storage.ts` — `packageStorage()` with shared in-memory fallback; `createMemoryStore()` for isolated/fresh stores.
 - `src/apps/registry.ts` — `list_apps`, `get_app`, `get_app_state`, `act`, `add_app`, `remove_app`, `export_app`, `import_app`, `validateDefinition`.
 - `src/apps/forms.ts` — `actFromForm(id, entries)` — the UI path; funnels into the same `act()` MCP uses.
-- `src/apps/client.ts` — browser-safe (zero runtime imports) HTML builders: `renderHomeTiles`, `renderAppSection(def, state, appBasePath, fromPath?)`. Counter comes from `pkg/catalog/counter/definition.json` via `add_app` (no in-code harness).
+- `src/apps/client.ts` — browser-safe (zero runtime imports) HTML builders: `renderHomeTiles`, `renderAppSection(def, state, appBasePath, fromPath?)`. Counter comes from `catalog/counter/definition.json` via `add_app` (no in-code harness).
 
 ## Edge rule: app actions are GET, never POST
 

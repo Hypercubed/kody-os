@@ -1,5 +1,5 @@
 'use strict';
-// jsdom proofs for pkg/catalog/news/definition.json (news-app spec task 2.3).
+// jsdom proofs for catalog/news/definition.json (news-app spec task 2.3).
 // Runs outside pkg/; jsdom lives in /tmp/jsdom-test (or JSDOM_PATH).
 //
 //   bun tests/news-list.cjs

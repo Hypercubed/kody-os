@@ -34,7 +34,7 @@ import type {
 	ProxyDecl,
 	StateFieldDef,
 } from './types.ts'
-import { get_catalog_definition, list_catalog } from './catalog.ts'
+import { devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source } from './remote-catalog.ts'
 import {
 	RECENT_CAP,
 	createMemoryStore,
@@ -670,6 +670,76 @@ export function capabilityAdditions(oldDef: AppDefinition | null | undefined, ne
 /** Supported definition versions: 3 = legacy single-`effect` shape, 4 = v2 `effects[]` sequence, 5 = bridge era (nested/object values). */
 export var SUPPORTED_SCHEMA_VERSIONS: number[] = [3, 4, 5]
 
+/** Minimum supported definition version: derived from `SUPPORTED_SCHEMA_VERSIONS` (its minimum).
+ * `add_app` refuses an app below this floor (too old for the shell), alongside
+ * the `minPackageVersion` gate (shell too old for the app). Raised as a MAJOR
+ * change when the shell drops an old schema. ES2019: no ?. and no ??. */
+export var MIN_SUPPORTED_SCHEMA_VERSION = Math.min.apply(null, SUPPORTED_SCHEMA_VERSIONS)
+
+/**
+ * Parse a `MAJOR.MINOR.PATCH` version string (numeric parts only, no
+ * pre-release or build metadata). Returns the numeric triple, or null
+ * when malformed. ES2019: no ?. and no ??.
+ */
+export function parsePackageVersion(value: unknown): [number, number, number] | null {
+	if (typeof value !== 'string') return null
+	if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(value)) return null
+	var parts = value.split('.')
+	var major = Number(parts[0])
+	var minor = Number(parts[1])
+	var patch = Number(parts[2])
+	if (!Number.isSafeInteger(major) || !Number.isSafeInteger(minor) || !Number.isSafeInteger(patch)) return null
+	if (major < 0 || minor < 0 || patch < 0) return null
+	return [major, minor, patch]
+}
+
+/**
+ * Compare two parsed versions numerically: -1 when a < b, 0 when
+ * equal, 1 when a > b. MAJOR, then MINOR, then PATCH.
+ */
+export function comparePackageVersions(a: [number, number, number], b: [number, number, number]): number {
+	if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1
+	if (a[1] !== b[1]) return a[1] < b[1] ? -1 : 1
+	if (a[2] !== b[2]) return a[2] < b[2] ? -1 : 1
+	return 0
+}
+
+var runningPackageVersionPromise: Promise<string> | null = null
+/**
+ * Running shell (package) version: read from `pkg/package.json` via a
+ * dynamic JSON import (the bundler inlines it when present), the same
+ * source the status bar reads via `getPackageMeta()` in `src/app.ts`.
+ * Falls back to `0.1.0` when the manifest is absent. `build` is ignored:
+ * only `version` (`MAJOR.MINOR.PATCH`) is a compatibility signal.
+ */
+export function getRunningPackageVersion(): Promise<string> {
+	if (runningPackageVersionPromise !== null) return runningPackageVersionPromise
+	try {
+		// @ts-ignore optional manifest; the bundler inlines it when present.
+		var req = import('../../package.json', { with: { type: 'json' } })
+		runningPackageVersionPromise = req.then(
+			function (m: unknown): string {
+				try {
+					var rec = m as { default?: unknown } | null
+					var body = rec && typeof rec === 'object' && 'default' in rec ? rec.default : m
+					if (body && typeof body === 'object') {
+						var v = (body as { version?: unknown }).version
+						if (typeof v === 'string' && parsePackageVersion(v) !== null) return v
+					}
+				} catch (err) {
+				}
+				return '0.1.0'
+			},
+			function (): string {
+				return '0.1.0'
+			}
+		)
+	} catch (err) {
+		runningPackageVersionPromise = Promise.resolve('0.1.0')
+	}
+	return runningPackageVersionPromise
+}
+
 /**
  * Normalize one action to the canonical `effects[]` shape for validation/storage.
  * Single-`effect` v1 actions expand to a one-entry `effects[]`; v2 actions
@@ -757,6 +827,11 @@ export function validateDefinition(def: unknown): string | null {
 		var installMode = def['installMode']
 		if (installMode !== 'json' && installMode !== 'recipe-only') {
 			return 'definition.installMode must be "json" or "recipe-only"'
+		}
+	}
+	if (def['minPackageVersion'] !== undefined) {
+		if (parsePackageVersion(def['minPackageVersion']) === null) {
+			return 'definition.minPackageVersion must be MAJOR.MINOR.PATCH (numeric parts, no pre-release or build metadata)'
 		}
 	}
 	if (def['icon'] !== undefined) {
@@ -930,6 +1005,7 @@ export function canonicalizeDefinition(definition: AppDefinition): AppDefinition
 	}
 	if (definition.catalogVersion !== undefined) def.catalogVersion = definition.catalogVersion
 	if (definition.installMode !== undefined) def.installMode = definition.installMode
+	if (definition.minPackageVersion !== undefined) def.minPackageVersion = definition.minPackageVersion
 	return def
 }
 
@@ -1711,9 +1787,20 @@ export function add_app(
 	} else if (store && typeof store === 'object') {
 		options = store as AddAppOptions
 	}
+	if (typeof definition.schemaVersion === 'number' && definition.schemaVersion < MIN_SUPPORTED_SCHEMA_VERSION) {
+		return Promise.resolve({ ok: false as const, error: 'App "' + definition.id + '" requires schema version ' + MIN_SUPPORTED_SCHEMA_VERSION + ' (has ' + definition.schemaVersion + ')' })
+	}
 	var problem = validateDefinition(definition)
 	if (problem) return Promise.resolve({ ok: false as const, error: problem })
-	return resolveStore(activeStore).then(function (active: KeyStore) {
+	return getRunningPackageVersion().then(function (running: string) {
+		if (definition.minPackageVersion !== undefined) {
+			var min = parsePackageVersion(definition.minPackageVersion)
+			var run = parsePackageVersion(running)
+			if (min !== null && run !== null && comparePackageVersions(run, min) < 0) {
+				return { ok: false as const, error: 'App "' + definition.id + '" requires package version ' + definition.minPackageVersion + ' (running ' + running + ')' }
+			}
+		}
+		return resolveStore(activeStore).then(function (active: KeyStore) {
 		return Promise.all([
 			readJson<AppDefinition>(active, defKey(definition.id)),
 			readJson<AppState>(active, stateKey(definition.id)),
@@ -1799,6 +1886,7 @@ export function add_app(
 						})
 					})
 			})
+		})
 	})
 }
 
@@ -1839,20 +1927,131 @@ export function remove_app(
 }
 
 /**
+ * The catalog base a Store declares in its own definition: the `proxy`
+ * entry named `catalog`. The shell fetches that Store's catalog only
+ * from the declared base. Returns null when the definition declares
+ * no `catalog` entry or the entry has no usable URL.
+ */
+export function declaredCatalogBase(def: AppDefinition | null | undefined): string | null {
+	if (!def || !def.capabilities || !Array.isArray(def.capabilities.proxy)) return null
+	var entries = def.capabilities.proxy
+	for (var i = 0; i < entries.length; i++) {
+		var entry = entries[i]
+		if (entry && entry.name === 'catalog' && typeof entry.url === 'string' && entry.url !== '') return entry.url
+	}
+	return null
+}
+
+/** Catalog base declared by one installed app (the Store driving the
+ * call), or null when it declares none. Stored declarations were
+ * HTTPS-validated at install; a stored base that no longer validates
+ * is treated as no source rather than fetched. */
+function actingCatalogBase(active: KeyStore, actingId: string): Promise<string | null> {
+	return readJson<AppDefinition>(active, defKey(actingId)).then(function (def) {
+		var declared = declaredCatalogBase(def !== undefined ? def : null)
+		if (declared === null) return null
+		try {
+		normalizeCatalogBase(declared)
+	} catch (err) {
+		return null
+	}
+		return declared
+	})
+}
+
+/** Catalog base declared by the installed App Store, or null when no
+ * Store is installed or it declares none. */
+function installedStoreCatalogBase(active: KeyStore): Promise<string | null> {
+	return actingCatalogBase(active, 'app-store')
+}
+
+/**
+ * Resolve the base for a browser management call: the dev override when
+ * set (local verification replaces the acting Store's declared base),
+ * else the acting Store's declared base. Null means the acting Store
+ * declares no source. The management API takes no explicit base
+ * parameter, so the override is the only thing that beats a
+ * declaration; agent calls with an explicit base parameter keep
+ * winning over the override via `resolveAgentCatalogBase`. The
+ * resolved base is passed on as an explicit base, which the fetch
+ * layer then uses as-is without re-applying the override.
+ */
+function resolveManagedBase(active: KeyStore, actingId: string): Promise<string | null> {
+	var override: string | null = null
+	try {
+		override = devOverrideBase()
+	} catch (err) {
+		override = null
+	}
+	if (override !== null) return Promise.resolve(override)
+	return actingCatalogBase(active, actingId)
+}
+
+function noCatalogSourceError(caller: string, id: string): string {
+	return caller + ': no catalog source for "' + id + '" (supply catalogBase or install the App Store)'
+}/** Resolve the base for an agent catalog call: the explicit parameter
+ * when supplied (validated — a refused base is an `{ ok: false }`
+ * with no write), else the dev override when set (kept as-is: the
+ * override replaces the installed-Store base), else the installed App
+ * Store's declared base. Null means no source: refuse, write nothing.
+ * The resolved base is passed explicitly to the fetch layer, where an
+ * explicitly passed base always wins over the override — so the
+ * precedence here holds end to end. */
+function resolveAgentCatalogBase(active: KeyStore, catalogBase: string | undefined): Promise<string | null> {
+	if (catalogBase !== undefined) {
+		try {
+			return Promise.resolve(normalizeCatalogBase(catalogBase))
+		} catch (err) {
+			return Promise.reject(err)
+		}
+	}
+	var override: string | null = null
+	try {
+		override = devOverrideBase()
+	} catch (err) {
+		override = null
+	}
+	if (override !== null) return Promise.resolve(override)
+	return installedStoreCatalogBase(active)
+}
+
+function installFromCatalogBase(
+	id: string,
+	active: KeyStore,
+	base: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	return get_catalog_definition(id, base).then(function (def) {
+		if (def === null) return { ok: false as const, error: 'unknown catalog app "' + id + '"' }
+		return add_app(def, active)
+	})
+}
+
+/**
  * Install a shipped catalog app by id, through the validated `add_app`
  * path. Idempotent: re-installing an already-installed app preserves
  * its state and restamps it to the catalog definition (same as a
  * re-add). Unknown catalog ids return `{ ok: false }` naming the id
  * and write nothing. Never passes `resetState`, so state is never
  * wiped by an install.
+ *
+ * The catalog source is caller-supplied: an explicit `catalogBase`
+ * when given, else the installed App Store's declared base. With
+ * neither, the call is refused naming that no catalog source was
+ * given, and nothing is written.
  */
 export function install_from_catalog(
 	id: string,
 	store?: KeyStore,
+	catalogBase?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-	var def = get_catalog_definition(id)
-	if (def === null) return Promise.resolve({ ok: false as const, error: 'unknown catalog app "' + id + '"' })
-	return add_app(def, store)
+	return resolveStore(store).then(function (active: KeyStore) {
+		return resolveAgentCatalogBase(active, catalogBase).then(function (base) {
+			if (base === null) return { ok: false as const, error: noCatalogSourceError('install_from_catalog', id) }
+			return installFromCatalogBase(id, active, base)
+		}, function (err) {
+			return { ok: false as const, error: 'install_from_catalog: catalog base refused for "' + id + '": ' + (err instanceof Error ? err.message : String(err)) }
+		})
+	})
 }
 
 /**
@@ -1864,17 +2063,31 @@ export function install_from_catalog(
  * returns `{ ok: false }` naming the id. Nothing is written on
  * either failure.
  */
+function updateFromCatalogBase(
+	id: string,
+	active: KeyStore,
+	base: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	return get_catalog_definition(id, base).then(function (def) {
+		if (def === null) return { ok: false as const, error: 'unknown catalog app "' + id + '"' }
+		return get_app(id, active).then(function (entry) {
+			if ('error' in entry) {
+				return { ok: false as const, error: 'app "' + id + '" is not installed (use install_from_catalog to install it)' }
+			}
+			return add_app(def as AppDefinition, active)
+		})
+	})
+}
+
 export function update_from_catalog(
 	id: string,
 	store?: KeyStore,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-	var def = get_catalog_definition(id)
-	if (def === null) return Promise.resolve({ ok: false as const, error: 'unknown catalog app "' + id + '"' })
-	return get_app(id, store).then(function (entry) {
-		if ('error' in entry) {
-			return { ok: false as const, error: 'app "' + id + '" is not installed (use install_from_catalog to install it)' }
-		}
-		return add_app(def as AppDefinition, store)
+	return resolveStore(store).then(function (active: KeyStore) {
+		return installedStoreCatalogBase(active).then(function (base) {
+			if (base === null) return { ok: false as const, error: noCatalogSourceError('update_from_catalog', id) }
+			return updateFromCatalogBase(id, active, base)
+		})
 	})
 }
 
@@ -1931,14 +2144,20 @@ function recordInstallSnapshot(store: KeyStore, id: string): Promise<{ ok: true 
 export function store_install_from_catalog(
 	id: string,
 	store?: KeyStore,
+	catalogBase?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return install_from_catalog(id, active).then(function (result) {
-			if (!result.ok) return result
-			return recordInstallSnapshot(active, id).then(function (snap) {
-				if (!snap.ok) return snap
-				return result
+		return resolveAgentCatalogBase(active, catalogBase).then(function (base) {
+			if (base === null) return { ok: false as const, error: noCatalogSourceError('store_install_from_catalog', id) }
+			return installFromCatalogBase(id, active, base).then(function (result) {
+				if (!result.ok) return result
+				return recordInstallSnapshot(active, id).then(function (snap) {
+					if (!snap.ok) return snap
+					return result
+				})
 			})
+		}, function (err) {
+			return { ok: false as const, error: 'store_install_from_catalog: catalog base refused for "' + id + '": ' + (err instanceof Error ? err.message : String(err)) }
 		})
 	})
 }
@@ -1953,14 +2172,20 @@ export function store_install_from_catalog(
 export function store_update_from_catalog(
 	id: string,
 	store?: KeyStore,
+	catalogBase?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return update_from_catalog(id, active).then(function (result) {
-			if (!result.ok) return result
-			return recordInstallSnapshot(active, id).then(function (snap) {
-				if (!snap.ok) return snap
-				return result
+		return resolveAgentCatalogBase(active, catalogBase).then(function (base) {
+			if (base === null) return { ok: false as const, error: noCatalogSourceError('store_update_from_catalog', id) }
+			return updateFromCatalogBase(id, active, base).then(function (result) {
+				if (!result.ok) return result
+				return recordInstallSnapshot(active, id).then(function (snap) {
+					if (!snap.ok) return snap
+					return result
+				})
 			})
+		}, function (err) {
+			return { ok: false as const, error: 'store_update_from_catalog: catalog base refused for "' + id + '": ' + (err instanceof Error ? err.message : String(err)) }
 		})
 	})
 }
@@ -1979,23 +2204,53 @@ export function store_update_from_catalog(
  * error text so the bundle can render them.
  */
 export type ManageResult =
-	| { ok: true; id?: string; rows?: StoreRow[] }
-	| { ok: false; error: string; needsConfirmation?: boolean; additions?: string[]; permissionDenied?: boolean }
+	| { ok: true; id?: string; rows?: StoreRow[]; catalogRelease?: string; catalogCached?: boolean; catalogError?: string }
+	| { ok: false; error: string; needsConfirmation?: boolean; additions?: string[]; permissionDenied?: boolean; catalogRelease?: string; catalogCached?: boolean }
 
 function checkManagePermission(active: KeyStore, actingId: string): Promise<boolean> {
 	return readJson<AppDefinition>(active, defKey(actingId)).then(function (def) {
 		return def !== null && def !== undefined && def.capabilities !== undefined && def.capabilities.manageApps === true
 	})
-}
-
-export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageResult> {
+}export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageResult> {
 	return resolveStore(store).then(function (active: KeyStore) {
 		return checkManagePermission(active, actingId).then(function (allowed) {
 			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
-			return get_store_rows(active).then(function (rows) {
-				return { ok: true as const, rows: rows }
+			return resolveManagedBase(active, actingId).then(function (base) {
+				return get_store_rows(active, base !== null ? base : undefined).then(function (rows) {
+					if (base === null) {
+						return { ok: true as const, rows: rows, catalogRelease: '', catalogCached: false, catalogError: 'This Store declares no catalog source. Showing installed apps.' }
+					}
+					return readCatalogManifest(base).then(function (manifest) {
+						return { ok: true as const, rows: rows, catalogRelease: manifest.releaseLabel, catalogCached: manifest.cached }
+					}, function () {
+						var src = get_catalog_source(base)
+						return { ok: true as const, rows: rows, catalogRelease: src.releaseLabel, catalogCached: true, catalogError: 'Catalog could not be refreshed. Showing installed apps. Retry to refresh.' }
+					})
+				})
 			})
 		})
+	})
+}
+
+export function get_store_catalog_info(store?: KeyStore, catalogBase?: string): Promise<{ releaseLabel: string; cached: boolean; error?: string }> {
+	void store
+	var base: string | null = null
+	if (catalogBase !== undefined) {
+		try {
+			base = normalizeCatalogBase(catalogBase)
+		} catch (err) {
+			var msg0 = err instanceof Error ? err.message : String(err)
+			return Promise.resolve({ releaseLabel: '', cached: true, error: msg0 })
+		}
+	} else {
+		return Promise.resolve({ releaseLabel: '', cached: true, error: 'no catalog source given' })
+	}
+	return readCatalogManifest(base).then(function (manifest) {
+		return { releaseLabel: manifest.releaseLabel, cached: manifest.cached }
+	}, function (err) {
+		var src = get_catalog_source(base as string)
+		var msg = err instanceof Error ? err.message : String(err)
+		return { releaseLabel: src.releaseLabel, cached: true, error: msg }
 	})
 }
 
@@ -2003,11 +2258,14 @@ export function manage_install(actingId: string, targetId: string, store?: KeySt
 	return resolveStore(store).then(function (active: KeyStore) {
 		return checkManagePermission(active, actingId).then(function (allowed) {
 			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
-			return get_app_status(targetId, active).then(function (info) {
-				if (info.installed) return { ok: false as const, error: 'App "' + targetId + '" is already installed.' }
-				return store_install_from_catalog(targetId, active).then(function (result) {
-					if (!result.ok) return result
-					return { ok: true as const, id: targetId }
+			return resolveManagedBase(active, actingId).then(function (base) {
+				return get_app_status(targetId, active, base !== null ? base : undefined).then(function (info) {
+					if (info.installed) return { ok: false as const, error: 'App "' + targetId + '" is already installed.' }
+					if (base === null) return { ok: false as const, error: 'manage_install: no catalog source for "' + targetId + '" (the calling Store declares no catalog)' }
+					return store_install_from_catalog(targetId, active, base).then(function (result) {
+						if (!result.ok) return result
+						return { ok: true as const, id: targetId }
+					})
 				})
 			})
 		})
@@ -2024,7 +2282,9 @@ function manage_update_with_status(
 	return resolveStore(store).then(function (active: KeyStore) {
 		return checkManagePermission(active, actingId).then(function (allowed) {
 			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
-			return get_app_status(targetId, active).then(function (info) {
+			return resolveManagedBase(active, actingId).then(function (base) {
+				var useBase = base !== null ? base : undefined
+				return get_app_status(targetId, active, useBase).then(function (info) {
 				if (!info.installed || !info.inCatalog) {
 					return { ok: false as const, error: 'App "' + targetId + '" cannot be ' + kind + 'd: it is not an installed catalog app.' }
 				}
@@ -2042,7 +2302,7 @@ function manage_update_with_status(
 				}
 				return Promise.all([
 					readJson<AppDefinition>(active, defKey(targetId)),
-					Promise.resolve(get_catalog_definition(targetId)),
+					useBase !== undefined ? get_catalog_definition(targetId, useBase) : Promise.resolve(null),
 				]).then(function (pair) {
 					var installedDef = pair[0]
 					var catalogDef = pair[1]
@@ -2057,11 +2317,15 @@ function manage_update_with_status(
 							additions: additions,
 						}
 					}
-					return store_update_from_catalog(targetId, active).then(function (result) {
+					if (useBase === undefined) {
+						return { ok: false as const, error: 'manage_' + kind + ': no catalog source for "' + targetId + '" (the calling Store declares no catalog)' }
+					}
+					return store_update_from_catalog(targetId, active, useBase).then(function (result) {
 						if (!result.ok) return result
 						return { ok: true as const, id: targetId }
 					})
 				})
+			})
 			})
 		})
 	})
@@ -2147,15 +2411,18 @@ export interface AppStoreStatusInfo {
 export function get_app_status(
 	id: string,
 	store?: KeyStore,
+	catalogBase?: string,
 ): Promise<AppStoreStatusInfo> {
 	return resolveStore(store).then(function (active: KeyStore) {
 		return Promise.all([
 			readJson<AppDefinition>(active, defKey(id)),
 			readInstallSnapshot(active, id),
+			catalogBase !== undefined ? get_catalog_entry(id, catalogBase) : Promise.resolve(null),
 		]).then(function (parts) {
 			var installed = parts[0]
 			var snapshot = parts[1]
-			var catalogDef = get_catalog_definition(id)
+			var catalogEntry = parts[2]
+			var catalogDef: { catalogVersion?: number } | null = catalogEntry
 			if (!installed) {
 				return {
 					status: 'not-installed' as const,
@@ -2186,9 +2453,9 @@ export function get_app_status(
 				}
 			}
 			var installedFingerprint = fingerprintDefinition(installed)
-			var catalogFingerprint = fingerprintDefinition(catalogDef)
+			var catalogFingerprint = catalogEntry !== null ? catalogEntry.fingerprint : ''
 			var iv = typeof installed.catalogVersion === 'number' ? installed.catalogVersion : 0
-			var cv = typeof catalogDef.catalogVersion === 'number' ? catalogDef.catalogVersion : 0
+			var cv = catalogEntry !== null && typeof catalogEntry.catalogVersion === 'number' ? catalogEntry.catalogVersion : 0
 			var modified = installedFingerprint !== snapshot.fingerprint
 			var status: AppStoreStatus
 			if (installedFingerprint === catalogFingerprint) {
@@ -2224,6 +2491,7 @@ export interface StoreRow {
 	icon?: string
 	category?: string
 	description?: string
+	installMode: string
 	installed: boolean
 	inCatalog: boolean
 	status: AppStoreStatus
@@ -2234,6 +2502,18 @@ export interface StoreRow {
 	/** Declared capabilities of the catalog definition when present,
 	 * else of the installed definition, for Store disclosure. */
 	capabilities: CapabilitySummary
+	/** Minimum shell version the catalog definition requires, when declared. */
+	minPackageVersion?: string
+	/** Running shell version the incompatibility was computed against. */
+	shellVersion?: string
+	/** True when the catalog definition's minimum is newer than the running shell: the Store shows the requirement instead of an install/update control. */
+	needsNewerShell?: boolean
+	/** Definition schema the catalog definition carries, when known. */
+	schemaVersion?: number
+	/** Shell's minimum supported schema version the floor check was computed against. */
+	schemaFloor?: number
+	/** True when the catalog definition's schema is below the shell's floor: the Store shows the schema requirement instead of an install/update control. */
+	needsNewerSchema?: boolean
 }
 
 /**
@@ -2244,17 +2524,48 @@ export interface StoreRow {
  * apps are included (the list is unfiltered); Hide affects launcher
  * tiles only.
  */
-export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
+export function get_store_rows(store?: KeyStore, catalogBase?: string): Promise<StoreRow[]> {
 	return resolveStore(store).then(function (active: KeyStore) {
 		return Promise.all([
 			readPinned(active),
 			readHidden(active),
 			readHomepage(active),
+			readRegistry(active),
+			getRunningPackageVersion(),
 		]).then(function (parts) {
 			var pinned = parts[0]
 			var hidden = parts[1]
 			var homepage = parts[2]
-			var catalog = list_catalog()
+			var installedIds = parts[3]
+			var running = parts[4]
+			if (catalogBase === undefined) {
+				return buildStoreRowsFromInstalled(active, pinned, hidden, homepage, installedIds, running)
+			}
+			return list_catalog(catalogBase).then(function (catalog) {
+				return buildStoreRows(active, pinned, hidden, homepage, catalog, running, catalogBase)
+			}, function () {
+				return buildStoreRowsFromInstalled(active, pinned, hidden, homepage, installedIds, running)
+			})
+		})
+	})
+}
+
+function rowNeedsNewerShell(min: unknown, running: string): boolean {
+	var parsedMin = parsePackageVersion(min)
+	var parsedRun = parsePackageVersion(running)
+	if (parsedMin === null || parsedRun === null) return false
+	return comparePackageVersions(parsedRun, parsedMin) < 0
+}
+
+function buildStoreRows(
+	active: KeyStore,
+	pinned: string[],
+	hidden: string[],
+	homepage: string[],
+	catalog: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; minPackageVersion?: string; schemaVersion?: number }[],
+	running: string,
+	catalogBase: string,
+): Promise<StoreRow[]> {
 			var idSet: Record<string, boolean> = {}
 			var ids: string[] = []
 			for (var ci = 0; ci < catalog.length; ci++) {
@@ -2271,17 +2582,23 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 					chain = chain.then(function (): Promise<void> {
 						return Promise.all([
 							readJson<AppDefinition>(active, defKey(want)),
-							get_app_status(want, active),
-						]).then(function (pair): void {
-							var installedDef = pair[0]
-							var info = pair[1]
+							get_app_status(want, active, catalogBase),
+							get_catalog_definition_meta(want, catalogBase),
+						]).then(function (triple): void {
+							var installedDef = triple[0]
+							var info = triple[1]
+							var fetchedDef = triple[2]
 							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string } | null = null
 							for (var cj = 0; cj < catalog.length; cj++) {
 								if (catalog[cj].id === want) catalogEntry = catalog[cj]
 							}
 							var label = installedDef ? (installedDef.label || installedDef.name) : (catalogEntry ? catalogEntry.label : want)
 							var name = installedDef ? installedDef.name : (catalogEntry ? catalogEntry.name : want)
-							var catalogDef = get_catalog_definition(want)
+							var catalogDef = fetchedDef
+							var catalogMin = fetchedDef && (fetchedDef as unknown as Record<string, unknown>)['minPackageVersion'] !== undefined ? String((fetchedDef as unknown as Record<string, unknown>)['minPackageVersion']) : undefined
+							var incompatible = catalogMin !== undefined ? rowNeedsNewerShell(catalogMin, running) : false
+							var catalogSchema = fetchedDef && typeof (fetchedDef as unknown as Record<string, unknown>)['schemaVersion'] === 'number' ? (fetchedDef as unknown as Record<string, unknown>)['schemaVersion'] as number : undefined
+							var belowFloor = catalogSchema !== undefined ? catalogSchema < MIN_SUPPORTED_SCHEMA_VERSION : false
 							rows.push({
 								id: want,
 								label: label,
@@ -2289,6 +2606,7 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 								icon: installedDef ? installedDef.icon : (catalogEntry ? catalogEntry.icon : undefined),
 								category: installedDef ? installedDef.category : (catalogEntry ? catalogEntry.category : undefined),
 								description: catalogEntry && catalogEntry.description !== undefined ? catalogEntry.description : (installedDef ? installedDef.description : undefined),
+								installMode: catalogEntry && catalogEntry.installMode !== undefined ? catalogEntry.installMode : (fetchedDef && (fetchedDef as unknown as Record<string, unknown>)['installMode'] === 'recipe-only' ? 'recipe-only' : 'json'),
 								installed: info.installed,
 								inCatalog: info.inCatalog,
 								status: info.status,
@@ -2297,6 +2615,12 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 								hidden: hidden.indexOf(want) !== -1,
 								homepage: homepage.indexOf(want) !== -1,
 								capabilities: summarizeCapabilities(catalogDef !== null ? catalogDef : installedDef),
+								minPackageVersion: catalogMin,
+								shellVersion: running,
+								needsNewerShell: incompatible,
+								schemaVersion: catalogSchema,
+								schemaFloor: MIN_SUPPORTED_SCHEMA_VERSION,
+								needsNewerSchema: belowFloor,
 							})
 						})
 					})
@@ -2305,7 +2629,58 @@ export function get_store_rows(store?: KeyStore): Promise<StoreRow[]> {
 			return chain.then(function (): StoreRow[] {
 				return rows
 			})
-		})
+}
+
+function buildStoreRowsFromInstalled(
+	active: KeyStore,
+	pinned: string[],
+	hidden: string[],
+	homepage: string[],
+	installedIds: string[],
+	running: string,
+): Promise<StoreRow[]> {
+	var ids = installedIds.slice().sort()
+	var rows: StoreRow[] = []
+	var chain = Promise.resolve()
+	for (var ii = 0; ii < ids.length; ii++) {
+		;(function (want: string): void {
+			chain = chain.then(function (): Promise<void> {
+				return Promise.all([
+					readJson<AppDefinition>(active, defKey(want)),
+					get_app_status(want, active),
+				]).then(function (pair): void {
+					var installedDef = pair[0]
+					var info = pair[1]
+					if (!installedDef) return
+					rows.push({
+						id: want,
+						label: installedDef.label || installedDef.name,
+						name: installedDef.name,
+						icon: installedDef.icon,
+						category: installedDef.category,
+						description: installedDef.description,
+						installMode: (installedDef as unknown as Record<string, unknown>)['installMode'] === 'recipe-only' ? 'recipe-only' : 'json',
+						installed: info.installed,
+						inCatalog: info.inCatalog,
+						status: info.status,
+						modified: info.modified,
+						pinned: pinned.indexOf(want) !== -1,
+						hidden: hidden.indexOf(want) !== -1,
+						homepage: homepage.indexOf(want) !== -1,
+						capabilities: summarizeCapabilities(installedDef),
+						minPackageVersion: (installedDef as unknown as Record<string, unknown>)['minPackageVersion'] !== undefined ? String((installedDef as unknown as Record<string, unknown>)['minPackageVersion']) : undefined,
+						shellVersion: running,
+						needsNewerShell: (installedDef as unknown as Record<string, unknown>)['minPackageVersion'] !== undefined ? rowNeedsNewerShell((installedDef as unknown as Record<string, unknown>)['minPackageVersion'], running) : false,
+						schemaVersion: typeof installedDef.schemaVersion === 'number' ? installedDef.schemaVersion : undefined,
+						schemaFloor: MIN_SUPPORTED_SCHEMA_VERSION,
+						needsNewerSchema: typeof installedDef.schemaVersion === 'number' ? installedDef.schemaVersion < MIN_SUPPORTED_SCHEMA_VERSION : false,
+					})
+				})
+			})
+		})(ids[ii])
+	}
+	return chain.then(function (): StoreRow[] {
+		return rows
 	})
 }
 

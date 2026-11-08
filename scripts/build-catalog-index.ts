@@ -1,13 +1,11 @@
 /**
- * Build the generated catalog index at `pkg/catalog/catalog.json` plus the
- * generated bundle assembly module at
- * `pkg/src/apps/catalog-bundles.generated.ts`.
+ * Build the generated catalog index at `catalog/catalog.json`.
  *
  * Run with bun from the repo root:
  *
  *   bun scripts/build-catalog-index.ts
  *
- * For each `pkg/catalog/<id>/`, it reads `definition.json` (metadata plus a
+ * For each `catalog/<id>/`, it reads `definition.json` (metadata plus a
  * bundle manifest: `{ entry: "index.html", files: [...] }`, or the legacy
  * inline files map), reads each bundle file from disk, assembles the
  * runtime files map with the package's own `assembleBundleFiles`, validates
@@ -15,29 +13,23 @@
  * cap, and the entry reference contract), computes the fingerprint with the
  * existing `fingerprintDefinition`, and requires the sibling `RECIPE.md`.
  * Each index entry records `bundleFiles` (sorted, relative to the app
- * directory). The assembly module maps each app id to its files map so
- * `pkg/src/apps/catalog.ts` can serve the assembled definitions at
- * runtime without text imports (the Kody bundler rejects
- * `with { type: "text" }`; see bundle-files Decision 4). Output is
- * deterministic (sorted by id, sorted file keys, two-space JSON + newline,
- * stable module text): running it twice over unchanged inputs is
+ * directory). Output is deterministic (sorted by id, sorted file keys,
+ * two-space JSON + newline): running it twice over unchanged inputs is
  * byte-identical.
  *
  * There are no collection recipes: a recipe installs only its own app. A
- * stray `pkg/catalog/collections/` directory is an error, not quietly
+ * stray `catalog/collections/` directory is an error, not quietly
  * indexed, so a leftover from the retired starter collection fails here
  * instead of shipping an index the shell no longer understands.
  *
- * Never hand-write `catalog.json` or the assembly module: editing an app
- * requires re-running this generator, and `tests/catalog-harness.ts` fails
- * on a stale index.
+ * Never hand-write `catalog.json`: editing an app requires re-running
+ * this generator, and `tests/catalog-harness.ts` fails on a stale index.
  *
  * `fingerprintDefinition`, `assembleBundleFiles`, and
  * `validateCatalogDefinition` are imported from `registry.ts` (the source
  * that `apps/index.ts` re-exports) rather than from `apps/index.ts`:
- * index.ts imports `catalog.ts`, which imports the generated `catalog.json`,
- * so importing index.ts here would make the first generation (no index yet)
- * impossible.
+ * index.ts imports the remote catalog module, so importing index.ts here
+ * would couple the generator to the network source.
  */
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -47,59 +39,48 @@ import type { AppDefinition } from '../pkg/src/apps/types.ts'
 type InstallMode = 'json' | 'recipe-only'
 
 interface IndexEntry {
-	id: string
-	label: string
-	catalogVersion: number
-	fingerprint: string
-	installMode: InstallMode
-	definitionPath: string
-	recipePath: string
-	bundleFiles: string[]
+  id: string
+  label: string
+  catalogVersion: number
+  fingerprint: string
+  installMode: InstallMode
+  definitionPath: string
+  recipePath: string
+  bundleFiles: string[]
 }
 
 var root = join(dirname(fileURLToPath(import.meta.url)), '..')
-var catalogDir = join(root, 'pkg', 'catalog')
-var generatedPath = join(root, 'pkg', 'src', 'apps', 'catalog-bundles.generated.ts')
+var catalogDir = join(root, 'catalog')
 
 function fail(message: string): never {
-	console.error('build-catalog-index: ' + message)
-	process.exit(1)
+  console.error('build-catalog-index: ' + message)
+  process.exit(1)
 }
 
 function subdirectories(dir: string): string[] {
-	return readdirSync(dir).filter(function (name: string): boolean {
-		return statSync(join(dir, name)).isDirectory()
-	}).sort()
+  return readdirSync(dir).filter(function (name: string): boolean {
+    return statSync(join(dir, name)).isDirectory()
+  }).sort()
 }
 
 function readRecipe(path: string): string {
-	try {
-		return readFileSync(path, 'utf8')
-	} catch (error) {
-		return fail('missing recipe ' + path + ' (' + String(error) + ')')
-	}
+  try {
+    return readFileSync(path, 'utf8')
+  } catch (error) {
+    return fail('missing recipe ' + path + ' (' + String(error) + ')')
+  }
 }
 
 if (statSync(join(catalogDir, 'collections'), { throwIfNoEntry: false }) !== undefined) {
-	fail('pkg/catalog/collections/ is no longer supported: a recipe installs only its own app, so delete the directory')
+  fail('catalog/collections/ is no longer supported: a recipe installs only its own app, so delete the directory')
 }
 
-// registry.ts (and therefore catalog.ts) imports the generated index and the
-// generated assembly module, so on a first generation neither exists for
-// the module graph to resolve. Seed empty ones before importing; the real
-// ones are written below. (catalog.ts assembles from the seeded empty
-// module without throwing as long as every imported manifest is still the
-// inline map form — true on a first generation — or already has an entry.)
 var indexPath = join(catalogDir, 'catalog.json')
 if (!existsSync(indexPath)) writeFileSync(indexPath, '{"apps":[]}\n', 'utf8')
-var generatedPathSeed = join(root, 'pkg', 'src', 'apps', 'catalog-bundles.generated.ts')
-if (!existsSync(generatedPathSeed)) {
-	writeFileSync(generatedPathSeed, '// GENERATED by scripts/build-catalog-index.ts — do not hand-edit.\n' + 'export var CATALOG_BUNDLE_FILES: Record<string, Record<string, string>> = {};\n', 'utf8')
-}
 var registry = await import('../pkg/src/apps/registry.ts')
 var assembleBundleFiles = registry.assembleBundleFiles as (
-	bundle: unknown,
-	readFile: (path: string) => string | undefined,
+  bundle: unknown,
+  readFile: (path: string) => string | undefined,
 ) => { ok: true; files: Record<string, string> } | { ok: false; error: string }
 var fingerprintDefinition = registry.fingerprintDefinition as (definition: AppDefinition) => string
 var validateCatalogDefinition = registry.validateCatalogDefinition as (definition: unknown) => string | null
@@ -107,82 +88,61 @@ var validateCatalogDefinition = registry.validateCatalogDefinition as (definitio
 // App directories hold a definition or a recipe; `tests/` holds bundle
 // harnesses, not apps.
 function isAppDirectory(id: string): boolean {
-	return id !== 'tests' &&
-		(statSync(join(catalogDir, id, 'definition.json'), { throwIfNoEntry: false }) !== undefined ||
-			statSync(join(catalogDir, id, 'RECIPE.md'), { throwIfNoEntry: false }) !== undefined)
+  return id !== 'tests' &&
+    (statSync(join(catalogDir, id, 'definition.json'), { throwIfNoEntry: false }) !== undefined ||
+      statSync(join(catalogDir, id, 'RECIPE.md'), { throwIfNoEntry: false }) !== undefined)
 }
 
 var appIds = subdirectories(catalogDir).filter(isAppDirectory)
 var apps: IndexEntry[] = []
-var assembledById: Record<string, Record<string, string>> = {}
 for (var id of appIds) {
-	var definitionPath = id + '/definition.json'
-	var recipePath = id + '/RECIPE.md'
-	var definition = JSON.parse(readFileSync(join(catalogDir, definitionPath), 'utf8')) as AppDefinition
-	if (definition.id !== id) fail('directory ' + id + ' holds a definition whose id is ' + String(definition.id))
-	var catalogVersion = definition.catalogVersion
-	if (typeof catalogVersion !== 'number' || !Number.isSafeInteger(catalogVersion) || catalogVersion < 1) {
-		fail('definition ' + definitionPath + ' has no valid catalogVersion')
-	}
-	readRecipe(join(catalogDir, recipePath))
-	var readFile = (function (appId: string): (path: string) => string | undefined {
-		return function (path: string): string | undefined {
-			var full = join(catalogDir, appId, path)
-			try {
-				if (!statSync(full).isFile()) return undefined
-			} catch (error) {
-				return undefined
-			}
-			return readFileSync(full, 'utf8')
-		}
-	})(id)
-	var bundle = (definition as unknown as Record<string, unknown>)['bundle']
-	var assembled = assembleBundleFiles(bundle, readFile)
-	if (!assembled.ok) fail('app ' + id + ': ' + (assembled as { ok: false; error: string }).error)
-	var files = (assembled as { ok: true; files: Record<string, string> }).files
-	var assembledDef = JSON.parse(JSON.stringify(definition)) as AppDefinition
-	;(assembledDef as unknown as Record<string, unknown>)['bundle'] = { entry: 'index.html', files: files }
-	var problem = validateCatalogDefinition(assembledDef)
-	if (problem !== null) fail('app ' + id + ' assembled definition invalid: ' + problem)
-	var bundleFiles = Object.keys(files).sort()
-	var isManifestList = Array.isArray((definition as unknown as Record<string, unknown>)['bundle'] !== undefined ? ((definition as unknown as Record<string, unknown>)['bundle'] as Record<string, unknown>)['files'] : undefined)
-	if (isManifestList) {
-		for (var bi = 0; bi < bundleFiles.length; bi++) {
-			if (readFile(bundleFiles[bi]) === undefined) fail('app ' + id + ' bundle file missing on disk: ' + bundleFiles[bi])
-		}
-	}
-	assembledById[id] = files
-	apps.push({
-		id: id,
-		label: definition.label !== undefined ? definition.label : definition.name,
-		catalogVersion: catalogVersion,
-		fingerprint: fingerprintDefinition(assembledDef),
-		installMode: definition.installMode !== undefined ? definition.installMode : 'json',
-		definitionPath: definitionPath,
-		recipePath: recipePath,
-		bundleFiles: bundleFiles,
-	})
+  var definitionPath = id + '/definition.json'
+  var recipePath = id + '/RECIPE.md'
+  var definition = JSON.parse(readFileSync(join(catalogDir, definitionPath), 'utf8')) as AppDefinition
+  if (definition.id !== id) fail('directory ' + id + ' holds a definition whose id is ' + String(definition.id))
+  var catalogVersion = definition.catalogVersion
+  if (typeof catalogVersion !== 'number' || !Number.isSafeInteger(catalogVersion) || catalogVersion < 1) {
+    fail('definition ' + definitionPath + ' has no valid catalogVersion')
+  }
+  readRecipe(join(catalogDir, recipePath))
+  var readFile = (function (appId: string): (path: string) => string | undefined {
+    return function (path: string): string | undefined {
+      var full = join(catalogDir, appId, path)
+      try {
+        if (!statSync(full).isFile()) return undefined
+      } catch (error) {
+        return undefined
+      }
+      return readFileSync(full, 'utf8')
+    }
+  })(id)
+  var bundle = (definition as unknown as Record<string, unknown>)['bundle']
+  var assembled = assembleBundleFiles(bundle, readFile)
+  if (!assembled.ok) fail('app ' + id + ': ' + (assembled as { ok: false; error: string }).error)
+  var files = (assembled as { ok: true; files: Record<string, string> }).files
+  var assembledDef = JSON.parse(JSON.stringify(definition)) as AppDefinition
+  ;(assembledDef as unknown as Record<string, unknown>)['bundle'] = { entry: 'index.html', files: files }
+  var problem = validateCatalogDefinition(assembledDef)
+  if (problem !== null) fail('app ' + id + ' assembled definition invalid: ' + problem)
+  var bundleFiles = Object.keys(files).sort()
+  var isManifestList = Array.isArray((definition as unknown as Record<string, unknown>)['bundle'] !== undefined ? ((definition as unknown as Record<string, unknown>)['bundle'] as Record<string, unknown>)['files'] : undefined)
+  if (isManifestList) {
+    for (var bi = 0; bi < bundleFiles.length; bi++) {
+      if (readFile(bundleFiles[bi]) === undefined) fail('app ' + id + ' bundle file missing on disk: ' + bundleFiles[bi])
+    }
+  }
+  apps.push({
+    id: id,
+    label: definition.label !== undefined ? definition.label : definition.name,
+    catalogVersion: catalogVersion,
+    fingerprint: fingerprintDefinition(assembledDef),
+    installMode: definition.installMode !== undefined ? definition.installMode : 'json',
+    definitionPath: definitionPath,
+    recipePath: recipePath,
+    bundleFiles: bundleFiles,
+  })
 }
 
 var output = JSON.stringify({ apps: apps }, null, 2) + '\n'
 writeFileSync(indexPath, output, 'utf8')
-
-var sortedIds = Object.keys(assembledById).sort()
-var sortedBundles: Record<string, Record<string, string>> = {}
-for (var si = 0; si < sortedIds.length; si++) {
-	var appFiles = assembledById[sortedIds[si]]
-	var sortedFiles: Record<string, string> = {}
-	for (var fk of Object.keys(appFiles).sort()) sortedFiles[fk] = appFiles[fk]
-	sortedBundles[sortedIds[si]] = sortedFiles
-}
-var moduleText =
-	'// GENERATED by scripts/build-catalog-index.ts — do not hand-edit.\n' +
-	'// App id to assembled bundle files map (path to content). The on-disk\n' +
-	'// files next to each definition.json stay the single source of truth;\n' +
-	'// re-run the generator after any bundle edit.\n' +
-	'export var CATALOG_BUNDLE_FILES: Record<string, Record<string, string>> = ' +
-	JSON.stringify(sortedBundles) +
-	';\n'
-writeFileSync(generatedPath, moduleText, 'utf8')
-console.log('wrote pkg/catalog/catalog.json (' + apps.length + ' apps)')
-console.log('wrote pkg/src/apps/catalog-bundles.generated.ts (' + sortedIds.length + ' apps)')
+console.log('wrote catalog/catalog.json (' + apps.length + ' apps)')

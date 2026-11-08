@@ -193,37 +193,51 @@ definition, like any other `ui` field.
 
 ### Requirement: Shipped catalog
 
-The package SHALL ship a catalog: every
-`pkg/catalog/<id>/definition.json` file is an app definition the user can
-install from the browser, and every `pkg/catalog/<id>/` directory also
-carries a `RECIPE.md` (see App recipe), an `index.html` entry file, and
-any optional `.js` / `.css` bundle files (see Bundle files on disk).
-The catalog SHALL be enumerated by an explicit import list in package
-code (alphabetical by id), not by runtime directory listing; a directory
-in `pkg/catalog/` without an import entry SHALL NOT be listed. The
-listing summaries SHALL be driven by the generated index at
-`pkg/catalog/catalog.json` (see Catalog index); the full definitions
-SHALL still be statically imported for install; the loader assembles
-each definition's bundle files from the generated assembly module at
-bundle time (see Bundle files on disk).
-Every catalog definition SHALL validate through `validateDefinition` and
-install through `add_app`, satisfying the bundle manifest shape (entry
-`index.html`, relative `.html`/`.js`/`.css` only, within the 256 KiB cap)
-and the 16 MiB storage budget. Catalog definitions are publisher-shipped
-and trusted like any `add_app` definition: installing one trusts its
-bundle code, which runs same-origin with session authority.
+The Store's catalog SHALL be the manifest (`catalog/catalog.json`)
+and definitions fetched server-side from a catalog source declared
+by the calling Store, not from definitions shipped in `pkg/`, and not from a catalog source hardcoded
+in the shell. The shell SHALL hold no catalog source of its own: no
+repo, release, or base URL is a constant in the shell source. The
+Store SHALL display the declared catalog source it is reading. The
+manifest's `installMode` SHALL drive the Store row: a `recipe-only`
+row shows the agent prompt instead of one-tap install. Fetching
+SHALL be HTTPS-only with an 8,000 ms timeout; the definition fetch
+SHALL allow at least 256 KiB; definition and recipe paths SHALL come
+from the manifest entry only, never from a request parameter.
+Install snapshots SHALL continue to record install-time
+`catalogVersion` plus a content-only fingerprint, and Store status
+classification SHALL continue to compare installed definitions and
+snapshots against the remote definitions with no change to the status
+set or its rules. If the catalog manifest fetch fails, the Store
+SHALL show installed apps with their known status plus an honest
+catalog error with retry, and SHALL NOT show a blank Store; any
+cached manifest used as fallback SHALL be labeled as cached with its
+source. `list_catalog` and `get_catalog_definition` are async (the
+remote fetch is necessarily async); MCP catalog tools keep their
+shapes.
+
+#### Scenario: Declared catalog source is used
+- **WHEN** the calling Store declares a catalog base of
+  `https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`
+- **THEN** the manifest and definitions are fetched from under that
+  base.
+
+#### Scenario: No hardcoded catalog source
+- **WHEN** the shell source is searched for a catalog repo, release,
+  or base URL constant
+- **THEN** none is found.
 
 #### Scenario: Every catalog file validates and installs
-- **WHEN** each `definition.json` in `pkg/catalog/<id>/` is submitted to `add_app` in a blank store
+- **WHEN** each `definition.json` in `catalog/<id>/` is submitted to `add_app` in a blank store
 - **THEN** each returns `{ ok: true, id }` and appears in `list_apps()`.
 
 #### Scenario: Unimported file is not listed
-- **WHEN** an app directory exists in `pkg/catalog/` with no import-list entry
-- **THEN** the App Store listing omits it.
+- **WHEN** an app directory exists in `catalog/` with no manifest entry
+- **THEN** the App Store listing omits it and the catalog harness fails.
 
 #### Scenario: Catalog listing order is deterministic
 - **WHEN** the catalog is listed
-- **THEN** entries appear in import-list order (alphabetical by id).
+- **THEN** entries appear in manifest order (alphabetical by id).
 
 #### Scenario: On-disk layout
 - **WHEN** an agent opens a catalog app directory
@@ -232,10 +246,9 @@ bundle code, which runs same-origin with session authority.
 #### Scenario: Assembled definition installs
 - **WHEN** a catalog definition with on-disk bundle files is submitted to `add_app` in a blank store
 - **THEN** it returns `{ ok: true, id }` and the bundle renders with its referenced files inlined.
-
 ### Requirement: Bundle files on disk
 
-A catalog app's bundle files SHALL live on disk as real files in the app directory: `index.html` (required, the entry) plus zero or more `.js` / `.css` files, flat next to `definition.json` and `RECIPE.md`. `definition.json`'s `bundle` SHALL be a manifest `{ entry: "index.html", files: [...] }` listing the file paths; the loader SHALL assemble the runtime files map from the generated assembly module (the Kody bundler rejects text imports, so the generator emits the module — see bundle-files Decision 4). The inline form (`files` as a map of contents) SHALL stay valid for `add_app` transport and stored definitions; a definition carrying both forms is an error. The fingerprint SHALL hash the assembled canonical form, unchanged.
+A catalog app's bundle files SHALL live on disk as real files in the app directory: `index.html` (required, the entry) plus zero or more `.js` / `.css` files, flat next to `definition.json` and `RECIPE.md`. `definition.json`'s `bundle` SHALL be a manifest `{ entry: "index.html", files: [...] }` listing the file paths; the loader SHALL assemble the runtime files map from the on-disk files (via the catalog-index generator for the manifest, and via remote bundle-file fetches for install). The inline form (`files` as a map of contents) SHALL stay valid for `add_app` transport and stored definitions; a definition carrying both forms is an error. The fingerprint SHALL hash the assembled canonical form, unchanged.
 
 #### Scenario: Manifest assembles to the runtime map
 - **WHEN** a definition carries a manifest listing `index.html` and `app.js`
@@ -283,11 +296,11 @@ The entry HTML SHALL reference its JS/CSS files explicitly by relative path (`<s
 
 ### Requirement: Catalog index
 
-The package SHALL ship a generated catalog index at `pkg/catalog/catalog.json`, listing every catalog app sorted by id. Each entry SHALL carry: id, label, catalogVersion, fingerprint, installMode, definitionPath, recipePath, bundleFiles (the bundle file paths, sorted, relative to the app directory). definitionPath and recipePath are relative to `pkg/catalog/` (for example `app-store/definition.json`, `app-store/RECIPE.md`). The index SHALL be generated by `scripts/build-catalog-index.ts` from the app directories, never hand-written; the generator SHALL assemble each definition's bundle files from disk before fingerprinting (failing on a missing or unresolvable bundle file), compute each fingerprint with the existing `fingerprintDefinition`, and SHALL read installMode from the definition (absent means `json`). Regenerating the index from unchanged definitions SHALL produce byte-identical output. The catalog harness SHALL fail if the index does not match the directories and the definitions (ids, alphabetical order, catalogVersions, fingerprints, install modes, bundle files).
+The repo SHALL carry a generated catalog index at `catalog/catalog.json`, listing every catalog app sorted by id. Each entry SHALL carry: id, label, catalogVersion, fingerprint, installMode, definitionPath, recipePath, bundleFiles (the bundle file paths, sorted, relative to the app directory). definitionPath and recipePath are relative to `catalog/` (for example `app-store/definition.json`, `app-store/RECIPE.md`). The index SHALL be generated by `scripts/build-catalog-index.ts` from the app directories, never hand-written; the generator SHALL assemble each definition's bundle files from disk before fingerprinting (failing on a missing or unresolvable bundle file), compute each fingerprint with the existing `fingerprintDefinition`, and SHALL read installMode from the definition (absent means `json`). Regenerating the index from unchanged definitions SHALL produce byte-identical output. The catalog harness SHALL fail if the index does not match the directories and the definitions (ids, alphabetical order, catalogVersions, fingerprints, install modes, bundle files).
 
 #### Scenario: Index lists every app once, sorted
 - **WHEN** the generator runs over the app directories
-- **THEN** `pkg/catalog/catalog.json` has one entry per app directory, sorted by id, each with id, label, catalogVersion, fingerprint, installMode, definitionPath, recipePath, and bundleFiles.
+- **THEN** `catalog/catalog.json` has one entry per app directory, sorted by id, each with id, label, catalogVersion, fingerprint, installMode, definitionPath, recipePath, and bundleFiles.
 
 #### Scenario: Generator is idempotent
 - **WHEN** the generator runs twice over unchanged definitions
@@ -307,11 +320,11 @@ The package SHALL ship a generated catalog index at `pkg/catalog/catalog.json`, 
 
 #### Scenario: Index lists collection recipes
 - **WHEN** the generator runs over the app directories
-- **THEN** `pkg/catalog/catalog.json` has no `collections` section and lists no collection recipes — collection recipes no longer exist.
+- **THEN** `catalog/catalog.json` has no `collections` section and lists no collection recipes — collection recipes no longer exist.
 
 ### Requirement: App recipe
 
-Each catalog app SHALL ship a `RECIPE.md` beside its `definition.json` in `pkg/catalog/<id>/`. A recipe is a procedure made of steps: each install step names exactly one app, and a recipe installs only its own app: one install step, naming the sibling definition. Steps after install MAY ask the user for input, fetch data, or set app state. The default recipe is trivial: install the sibling `definition.json` via `install_from_catalog('<id>')`, then verify with `list_apps`. A non-trivial recipe SHALL exist only where the app genuinely needs setup beyond install. An app's own recipe covers that app alone: the App Store recipe installs `app-store` and verifies it with `list_apps`. Help and About are not catalog apps: they are built-in shell pages with no definition and no recipe (see Help is a built-in shell page). A recipe SHALL NOT install any app other than its own; there is no collection recipe.
+Each catalog app SHALL ship a `RECIPE.md` beside its `definition.json` in `catalog/<id>/`. A recipe is a procedure made of steps: each install step names exactly one app, and a recipe installs only its own app: one install step, naming the sibling definition. Steps after install MAY ask the user for input, fetch data, or set app state. The default recipe is trivial: install the sibling `definition.json` via `install_from_catalog('<id>')`, then verify with `list_apps`. A non-trivial recipe SHALL exist only where the app genuinely needs setup beyond install. An app's own recipe covers that app alone: the App Store recipe installs `app-store` and verifies it with `list_apps`. Help and About are not catalog apps: they are built-in shell pages with no definition and no recipe (see Help is a built-in shell page). A recipe SHALL NOT install any app other than its own; there is no collection recipe.
 
 #### Scenario: Every app directory has a recipe
 - **WHEN** the catalog directories are listed
@@ -327,7 +340,7 @@ Each catalog app SHALL ship a `RECIPE.md` beside its `definition.json` in `pkg/c
 
 ### Requirement: Recipe install mode
 
-A catalog definition MAY carry `installMode`: `"json"`, `"recipe-only"`, or `"recipe-or-json"`. Absent means `"json"` — unattended install from the JSON alone. `"recipe-only"` means the app MUST be installed via its recipe: it still appears in the App Store list, but the Store shows the recipe prompt (selectable text for the user to supply to their agent) in place of one-tap install. `"recipe-or-json"` means the app has a non-trivial recipe for full configuration AND can be installed unattended from JSON: in the Store it installs without the prompt message (one-tap install works); it lands unconfigured and the app's built-in empty-state prompt guides setup, while the recipe fully configures it at install time. Only an app with a non-trivial recipe SHALL carry `installMode`; most definitions SHALL carry no such property. A definition with `installMode` present SHALL fail validation unless the value is `"json"`, `"recipe-only"`, or `"recipe-or-json"`. The canonical stored definition SHALL preserve `installMode` through `add_app` normalization, and `installMode` SHALL be excluded from the definition fingerprint, exactly like `catalogVersion`, so adding it SHALL NOT change any installed app's fingerprint, snapshot, or update status.
+A catalog definition MAY carry `installMode`: `"json"` or `"recipe-only"`. Absent means `"json"` — unattended install from the JSON alone. `"recipe-only"` means the app MUST be installed via its recipe: it still appears in the App Store list, but the Store shows the recipe prompt (selectable text for the user to supply to their agent) in place of one-tap install. Only an app with a non-trivial recipe SHALL carry `installMode`; most definitions SHALL carry no such property. A definition with `installMode` present SHALL fail validation unless the value is `"json"` or `"recipe-only"`. The canonical stored definition SHALL preserve `installMode` through `add_app` normalization, and `installMode` SHALL be excluded from the definition fingerprint, exactly like `catalogVersion`, so adding it SHALL NOT change any installed app's fingerprint, snapshot, or update status.
 
 #### Scenario: Unattended install is the default
 - **WHEN** a catalog definition carries no `installMode`
@@ -337,16 +350,12 @@ A catalog definition MAY carry `installMode`: `"json"`, `"recipe-only"`, or `"re
 - **WHEN** a catalog definition carries `"installMode": "recipe-only"`
 - **THEN** it validates, its stored definition preserves the field, its listing reports install mode `recipe-only`, and the Store lists it with the recipe prompt in place of one-tap install.
 
-#### Scenario: Recipe-or-json app declares its mode and installs unattended
-- **WHEN** a catalog definition carries `"installMode": "recipe-or-json"`
-- **THEN** it validates, its stored definition preserves the field, its listing reports install mode `recipe-or-json`, and it installs unattended from the JSON alone without the prompt message, landing unconfigured with its built-in empty-state prompt guiding setup.
-
 #### Scenario: No app is recipe-only today
 - **WHEN** the catalog is listed
-- **THEN** no entry reports install mode `recipe-only`; `daily-feed` and `generic-feed` report `recipe-or-json` and the other 16 report `json`.
+- **THEN** no entry reports install mode `recipe-only`; all 18 report `json`.
 
 #### Scenario: Invalid install mode fails validation
-- **WHEN** a definition carries an `installMode` other than `"json"`, `"recipe-only"`, or `"recipe-or-json"`
+- **WHEN** a definition carries an `installMode` other than `"json"` or `"recipe-only"`
 - **THEN** validation rejects it.
 
 #### Scenario: installMode does not change fingerprints
@@ -651,3 +660,188 @@ The package SHALL expose `clear_recent()` through the package root and list it i
 #### Scenario: Agent clears recency from the package root
 - **WHEN** an agent imports `clear_recent` from `kody:@hypercubed/kody-os` via `execute` and calls it on a store with a known recent list
 - **THEN** the call resolves, `get_recent()` afterwards returns `[]`, and `get_pinned()`, `get_hidden()`, and `get_homepage()` return the same lists as before the call.
+
+### Requirement: App definition may declare a minimum shell version
+
+An app definition MAY carry an optional top-level
+`minPackageVersion`: a string `MAJOR.MINOR.PATCH` (numeric parts, no
+pre-release, no build metadata) declaring the minimum kody-os
+package (shell) version the app requires. Absent means no minimum —
+the app installs on any shell version, as today. A present but
+malformed value SHALL fail definition validation, and nothing is
+installed. `minPackageVersion` is fingerprinted definition content
+(unlike `installMode`, which is fingerprint-excluded): adding it to
+a definition, or changing it, is a definition change and requires a
+`catalogVersion` +1 by the existing rule.
+
+#### Scenario: Absent minimum installs on any shell
+- **WHEN** `add_app` receives a definition with no `minPackageVersion`
+- **THEN** the minimum-version check does not apply, and the install proceeds as today.
+
+#### Scenario: Malformed minimum fails validation
+- **WHEN** `add_app` receives a definition whose `minPackageVersion` is not numeric `MAJOR.MINOR.PATCH`
+- **THEN** it returns `{ ok: false, error }` naming the problem and writes nothing.
+
+#### Scenario: Adding a minimum is a definition change
+- **WHEN** `minPackageVersion` is added to a catalog definition with no other change
+- **THEN** its `catalogVersion` is incremented by exactly 1 and its fingerprint changes, so installed copies are marked as needing an update.
+
+### Requirement: Install refuses an app the shell is too old for
+
+`add_app` SHALL compare the running shell version against an app's
+`minPackageVersion` (when present) before installing. The running
+version is read from `pkg/package.json` via `getPackageMeta()` — the
+same source the status bar reads — and the comparison uses `version`
+only (`MAJOR.MINOR.PATCH`, numeric, in order); the integer `build`
+is ignored. When the running shell version is older than the app's
+minimum, `add_app` SHALL return `{ ok: false, error }` naming the
+app, the required minimum, and the running shell version, and SHALL
+write nothing. Equal to the minimum, or newer than it, is
+compatible. This check is the single enforcement point: the Store's
+install/update and the agent's `install_from_catalog` both funnel
+through `add_app`, so it binds both paths. An update is an install
+of a newer definition, so the same check applies to updates. The
+check runs at install/update time only; an already-installed app
+keeps running even if the shell is later older than its minimum. The
+Store SHALL NOT offer a one-tap install or update for an app whose
+minimum is newer than the running shell; it shows the requirement
+and the running shell version instead.
+
+#### Scenario: Too-old shell is refused with both versions named
+- **WHEN** `add_app` receives an app whose `minPackageVersion` is newer than the running shell
+- **THEN** it returns `{ ok: false, error }` naming the app, the required minimum, and the running shell version, and writes nothing.
+
+#### Scenario: Equal version installs
+- **WHEN** `add_app` receives an app whose `minPackageVersion` equals the running shell version
+- **THEN** it returns `{ ok: true, id }` and the app installs.
+
+#### Scenario: Newer shell installs
+- **WHEN** `add_app` receives an app whose `minPackageVersion` is older than the running shell
+- **THEN** it returns `{ ok: true, id }` and the app installs.
+
+#### Scenario: Update that raises the minimum is refused
+- **WHEN** a store update is attempted to a definition whose `minPackageVersion` is newer than the running shell
+- **THEN** the update is refused with the required minimum and the running shell version named, and the installed definition is unchanged.
+
+#### Scenario: Store does not offer an incompatible install
+- **WHEN** the Store lists an app whose `minPackageVersion` is newer than the running shell
+- **THEN** its row shows the requirement and the running shell version instead of a one-tap install control.
+
+### Requirement: Catalog source is declared by the caller
+
+The catalog fetch functions SHALL take the catalog base URL as a
+parameter: the base URL of the catalog directory (the directory
+containing `catalog.json`). The manifest SHALL be fetched at
+`<base>catalog.json`, a definition at `<base><id>/definition.json`,
+a bundle file at `<base><id>/<file>`, and a recipe at
+`<base><id>/RECIPE.md`. The base SHALL be validated on every use:
+HTTPS-only, or loopback `http` for local dev (the `KODY_CATALOG_BASE`
+override, kept as-is). A non-HTTPS, non-loopback base SHALL be
+refused before any fetch. The in-memory manifest cache SHALL be
+keyed by base, so different callers with different catalogs do not
+share a cache entry. `get_catalog_source` SHALL take the base and
+report it (plus a label derived from it) for the Store display.
+
+#### Scenario: Base parameter drives the fetch
+- **WHEN** the catalog is fetched with base
+  `https://example.com/catalog/`
+- **THEN** the manifest is requested at
+  `https://example.com/catalog/catalog.json`.
+
+#### Scenario: Non-HTTPS base is refused
+- **WHEN** the catalog is fetched with base
+  `http://example.com/catalog/`
+- **THEN** the fetch is refused before any network request.
+
+#### Scenario: Cache is keyed by base
+- **WHEN** two different bases are fetched
+- **THEN** each has its own manifest cache entry.
+
+### Requirement: Agent install supplies its catalog source
+
+`install_from_catalog` SHALL accept an optional `catalogBase`
+parameter. When the agent supplies it, that base SHALL be used.
+When omitted, the registry SHALL use the installed App Store's
+declared base if an App Store is installed. When neither a parameter
+nor an installed Store base exists, the call SHALL be refused with a
+clear error naming that no catalog source was given, and nothing
+SHALL be written. The refusal SHALL name the app id.
+
+#### Scenario: Explicit base is used
+- **WHEN** `install_from_catalog` is called with a `catalogBase`
+  pointing at a catalog containing the app
+- **THEN** the app installs from that catalog.
+
+#### Scenario: No source is refused
+- **WHEN** `install_from_catalog` is called with no `catalogBase`
+  and no App Store is installed
+- **THEN** it returns `{ ok: false }` with an error naming that no
+  catalog source was given, and nothing is written.
+
+### Requirement: Store follows the latest catalog
+
+The App Store's declared catalog base SHALL be the `main` branch
+catalog base
+(`https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`),
+so the Store follows the latest catalog (the latest commit) and can
+discover its own updates. A fixed release tag SHALL NOT be the
+Store's declared base: a Store pinned to a tag only ever sees that
+tag's catalog, where the Store is itself, and can never discover a
+newer catalog or a newer Store. The Store's own update SHALL be
+gated by `minPackageVersion`: when the new Store version requires a
+newer shell than the one running, the update SHALL be refused, the
+same as any other app.
+
+#### Scenario: Store sees its own update
+- **WHEN** the catalog at `main` holds a Store definition newer
+  than the installed Store, and the running shell meets that
+  definition's `minPackageVersion`
+- **THEN** the Store offers its own update.
+
+#### Scenario: Store update refused when shell is too old
+- **WHEN** the catalog at `main` holds a Store definition whose
+  `minPackageVersion` is above the running shell
+- **THEN** the Store update is refused with the required and running
+  versions named.
+
+#### Scenario: Fixed tag does not freeze the Store
+- **WHEN** the App Store's declared catalog base is read
+- **THEN** it is the `main` branch base, not a fixed release tag.
+
+### Requirement: Install refuses an app whose schema is below the shell floor
+
+The shell SHALL name its minimum supported schema version as
+`MIN_SUPPORTED_SCHEMA_VERSION` (currently 3, the minimum of
+`SUPPORTED_SCHEMA_VERSIONS`). `add_app` SHALL refuse an app whose
+`definition.schemaVersion` is below that floor, returning
+`{ ok: false, error }` naming the app, its schema version, and the
+minimum supported schema version, and writing nothing. The gate
+SHALL cover install and update, Store and agent, since all funnel
+through `add_app`. An app whose schema version equals the floor
+SHALL install. This gate is in addition to `validateDefinition`'s
+supported-list check: validation ensures the definition is
+well-formed, and this gate is the compatibility check alongside
+`minPackageVersion`, with a consistent error shape.
+
+#### Scenario: Below-floor schema is refused
+- **WHEN** an app with `schemaVersion` 2 is submitted to `add_app`
+  and the floor is 3
+- **THEN** it returns `{ ok: false }` with an error naming the app,
+  schema 2, and the floor 3, and nothing is written.
+
+#### Scenario: At-floor schema installs
+- **WHEN** an app with `schemaVersion` equal to the floor is
+  submitted to `add_app`
+- **THEN** it returns `{ ok: true, id }`.
+
+#### Scenario: Update to a below-floor schema is refused
+- **WHEN** an installed app is re-added with a definition whose
+  `schemaVersion` is below the floor
+- **THEN** the update is refused and the installed definition is
+  unchanged.
+
+#### Scenario: Store hides install below the floor
+- **WHEN** a Store row is for an app whose `schemaVersion` is below
+  the shell's floor
+- **THEN** the row shows the schema requirement instead of any
+  install control.

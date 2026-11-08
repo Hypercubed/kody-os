@@ -1,0 +1,38 @@
+{
+  "id": "app-store",
+  "name": "App Catalog",
+  "label": "App Catalog",
+  "schemaVersion": 5,
+  "catalogVersion": 18,
+  "icon": "\u229e",
+  "category": "utilities",
+  "description": "Install and update apps from the catalog, right here in the browser \u2014 no agent needed.",
+  "capabilities": {
+    "manageApps": true,
+    "proxy": [
+      {
+        "name": "catalog",
+        "url": "https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/"
+      }
+    ]
+  },
+  "bundle": {
+    "entry": "index.html",
+    "files": [
+      "index.html",
+      "store.css",
+      "store.js"
+    ]
+  },
+  "ui": {
+    "title": "App Catalog",
+    "openAs": "page",
+    "actions": []
+  },
+  "stateSchema": {
+    "type": "object",
+    "initial": {},
+    "fields": {}
+  },
+  "actions": {}
+}

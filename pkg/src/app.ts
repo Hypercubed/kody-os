@@ -502,7 +502,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			var set_hide = m.set_hide
 			var set_home = m.set_home
 			var set_pin = m.set_pin
-			var store_install_from_catalog = m.store_install_from_catalog
 		return import('./apps/client.ts').then(function (c): Promise<Response> {				var isModalApp = c.isModalApp
 				var renderAppPanel = c.renderAppPanel
 				var renderDashboard = c.renderDashboard
@@ -658,16 +657,15 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				if (!gid) return Promise.resolve(notFoundPage(chrome))
 					var query = new URL(request.url).searchParams
 					// App Store is a data app now: /apps/app-store is its
-					// generic app page, not a shell special case. Three
+					// generic app page, not a shell special case. Two
 					// shell-owned exceptions remain, all without rows:
 					// (1) old Store launcher URLs (?pin/?hide/?home=)
 					// render an inline error pointing at Apps Edit and
 					// change nothing; (2) a removed Store renders a
-					// short fallback with its own install path; (3)
-					// ?install-store=1 installs only the Store itself
-					// (the management API cannot self-install, because
-					// it requires a stored manageApps declaration the
-					// removed Store does not have).
+					// short fallback pointing at the agent install path
+					// (the shell holds no catalog source of its own, so
+					// only an agent supplying a catalog base can install
+					// the Store: see catalog/app-store/RECIPE.md).
 					if (gid === 'app-store' && (query.get('pin') !== null || query.get('hide') !== null || query.get('home') !== null)) {
 						return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
 							var menu = menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout)
@@ -685,12 +683,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							)
 						})
 					}
-					if (gid === 'app-store' && query.get('install-store') === '1') {
-						return store_install_from_catalog('app-store').then(function (result) {
-							if (!result.ok) return Promise.resolve(notFoundPage(chrome))
-							return Promise.resolve(new Response(null, { status: 303, headers: { Location: appBasePath + '/apps/app-store' } }))
-						})
-					}
 					if (gid === 'app-store' && !query.get('action')) {
 						return get_app('app-store').then(function (entry): Promise<Response> | Response {
 							if (!('error' in entry)) return appBody(gid, '', query.get('from') || '')
@@ -700,11 +692,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 									'\t\t\t<section class="app" aria-label="App Store">\n' +
 									'\t\t\t\t<div class="app-body">\n' +
 									'\t\t\t\t\t<p>The App Store app is not installed.</p>\n' +
-									'\t\t\t\t\t<form method="GET" action="' + escapeAttribute(appBasePath + '/apps/app-store') + '">\n' +
-									'\t\t\t\t\t\t<input type="hidden" name="install-store" value="1" />\n' +
-									'\t\t\t\t\t\t<button type="submit">Install App Store</button>\n' +
-									'\t\t\t\t\t</form>\n' +
-									'\t\t\t\t\t<p>Or ask an agent to install it with install_from_catalog.</p>\n' +
+									'\t\t\t\t\t<p>Ask an agent to install it: follow catalog/app-store/RECIPE.md (the agent supplies the catalog source).</p>\n' +
 									'\t\t\t\t</div>\n' +
 									'\t\t\t</section>'
 								return new Response(

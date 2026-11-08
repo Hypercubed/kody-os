@@ -155,3 +155,7 @@ storage caching, stale-on-error.
   naming scheme are not invented here: they
   are filled in at implementation time from
   the actual public repo, once it exists.
+
+## Release naming (handoff 09 decision)
+
+The first catalog release tag is the package version tag `v4.1.0`. The pin names `Hypercubed/kody-os` + tag `v4.1.0`. The tag itself is NOT cut in this handoff — it is cut after this work lands and is pushed (next handoff). Version decision for the coordinated Store-source change: MINOR, build +1 on publish. No `pkg/package.json` change in this handoff.

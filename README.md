@@ -14,7 +14,7 @@ You need a free [Kody](https://kody.codes/?ref=hypercubed) account, a fork of ko
 1. **Sign up for Kody (free).** Create your account with [this referral link](https://kody.codes/signup?ref=hypercubed).
 2. **Fork kody-os.** Install it from [the kody-os listing on Kody](https://kody.codes/@hypercubed/kody-os) in one click — that forks it into your account and publishes it. Otherwise, fork this repository on GitHub and publish the package from `pkg/` through a repo session; your Kody-connected agent can do the publish.
 3. **Sign in with Kody.** Open the app while signed in to your Kody account and you skip the device gate entirely — that is the only way in, including on the Kindle Scribe.
-4. **Install your first app.** A fresh install starts empty — no apps seeded, including no App Store. Install the App Store from the prompt on the empty Apps page (`install_from_catalog('app-store')`), or ask your agent to add an app (for example `counter`) with `add_app`. Adding an app never needs a republish.
+4. **Install your first app.** A fresh install starts empty — no apps seeded, including no App Store. Install the App Store from the prompt on the empty Apps page (`install_from_catalog` with id `app-store` and the catalog base `https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`), or ask your agent to add an app (for example `counter`) with `add_app`. Adding an app never needs a republish.
 
 
 ## What it does
@@ -26,7 +26,7 @@ You need a free [Kody](https://kody.codes/?ref=hypercubed) account, a fork of ko
 - **Access** — sign in with your Kody account to skip the device gate entirely (the only way in, including on the Kindle Scribe). The local mock target used for development skips the gate entirely. Agents use MCP exports, which are never gated. There is no secret to configure.
 - **Help and About** — built-in shell pages, not apps. They can be hidden from the Settings app.
 
-The shipped catalog has 18 apps: app-store, arrow-game, calculator, calendar, cellular-playground, clock, counter, daily-feed, eight-ball, generic-feed, hoodie-weather, link-drop, mac-puzzle, news, probe, settings, three-bit-art, and xkcd. See [`pkg/catalog/README.md`](pkg/catalog/README.md) for what each one does and the catalog membership checklist.
+The shipped catalog has 18 apps: app-store, arrow-game, calculator, calendar, cellular-playground, clock, counter, daily-feed, eight-ball, generic-feed, hoodie-weather, link-drop, mac-puzzle, news, probe, settings, three-bit-art, and xkcd. See [`catalog/README.md`](catalog/README.md) for what each one does and the catalog membership checklist.
 
 ## For maintainers — two roots
 
@@ -43,8 +43,6 @@ If you just want to use kody-os, start with the [Setup guide](pkg/docs/setup.md)
 pkg/                 The Kody package — the only directory that ships to Kody.
   src/               Shell source: app.ts (fetch handler), auth.ts, feeds.ts,
                      client/, bridge/, and apps/ (registry, catalog, forms, client).
-  catalog/           Shipped app dirs (definition.json + RECIPE.md + index.html),
-                     generated index, plus tests.
   docs/              Package-user docs: setup,
                      scribe-limitations, style-guide.
   scripts/           kody dev helpers: registry, catalog, add-app.
@@ -53,6 +51,8 @@ pkg/                 The Kody package — the only directory that ships to Kody.
   README.md          Package-user README (ships with the package).
   AGENTS.md          Package-user agent guide (ships with the package).
   .agents/skills/    Agent skills shipped with the package (adding-an-app).
+catalog/             Shipped app dirs (definition.json + RECIPE.md + index.html),
+                     generated index, plus tests.
 openspec/            Specs and change proposals (see "Working with specs" below).
   specs/             Canonical, current specs (shell, app-registry, authoring, …).
   changes/           Active change proposals: proposal.md, design.md, tasks.md, spec deltas.
@@ -88,7 +88,7 @@ Full local-dev instructions, including installing the App Store, are in `pkg/REA
 ```sh
 bun tests/catalog-harness.ts
 bun tests/store-harness.ts
-bun pkg/catalog/tests/app-store-tests.cjs
+bun catalog/tests/app-store-tests.cjs
 ```
 
 Run the harness for the area you changed, plus the catalog harness whenever a catalog definition changes. A harness failure is a real signal unless you have verified it is pre-existing on a clean checkout — say so explicitly in that case instead of waving it through.
@@ -121,15 +121,7 @@ Git and Kody publishing are separate steps, and neither implies the other:
 - **Kody:** publishing the package from `pkg/` increments `build` by exactly 1, even when `version` is unchanged. Never reset or skip a build number, and never reuse a `version` + `build` pair.
 - **Before any commit, push, or publish, name the exact scope and wait for direction.** A publish in particular is never implied by "the code is ready".
 
-Entire tracking was removed from this repository in November 2026 (checkpoints deleted, tracking disabled, Entire files removed from the tree). Do not re-add Entire integration without an explicit decision to do so, and never push with `--mirror` or `--all` — that is how unrelated refs (including old checkpoint refs on other remotes) get copied into a public repo.
-
-## Roadmap: the public catalog
-
-The next change, spec'd and in progress, moves the catalog out of the package so the App Store can read it from this public repository instead of from the shipped bundle. It lands before the Kody listing goes public:
-
-- `catalog-out-of-pkg`: move the `pkg/catalog/<id>/` directories to `catalog/` at the repo root, with a generated `catalog/catalog.json`.
-- `public-pinned-catalog`: the Store reads the public catalog pinned to a release tag (never `main` HEAD by default).
-- `bootstrap-after-fork`: docs for bootstrapping the App Store from the pinned release after forking (About and Help are built-in pages and need no install).
+Never push with `--mirror` or `--all` — that is how unrelated refs get copied into a public repo.
 
 ## License
 

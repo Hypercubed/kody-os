@@ -14,7 +14,7 @@ The Scribe capability findings SHALL live at `pkg/docs/scribe-limitations.md` (n
 
 ### Requirement: Catalog apps are installable verbatim
 
-`pkg/catalog/` SHALL contain the shipped app definitions (one per-app
+`catalog/` SHALL contain the shipped app definitions (one per-app
 directory `<id>/`, including the App Store itself), each holding
 `definition.json`, `index.html`, and any optional `.js` / `.css` bundle
 files, plus a `RECIPE.md` stating the install steps, plus a README
@@ -29,8 +29,8 @@ Each catalog definition SHALL carry `catalogVersion` under the rule in the
 app-registry spec delta (positive integer, starting at 1 on the app's
 first versioned release, incremented by exactly 1 on any change to that
 app's definition file). A catalog app joins the store listing only when
-its file is added to the catalog import list (see app-registry); the
-README SHALL state the file + import + harness checklist (including the
+its manifest entry agrees with its directory (see app-registry); the
+README SHALL state the file + manifest + harness checklist (including the
 `catalogVersion` bump rule and the install-snapshot rule), and the trust
 rule that installing a catalog app trusts its bundle code. An installed
 app that is not a catalog definition carries no `catalogVersion`
@@ -93,3 +93,69 @@ App definitions SHALL support `capabilities.theme: { view: boolean, set: boolean
 
 - **WHEN** an app acts on its own state
 - **THEN** the theme override is unchanged, and the theme routes still report the previous override.
+
+### Requirement: Catalog definitions may declare a minimum shell version
+
+A catalog definition MAY carry `minPackageVersion` (see
+app-registry, App definition may declare a minimum shell version):
+an optional `MAJOR.MINOR.PATCH` string declaring the minimum
+kody-os package (shell) version the app requires. Absent means no
+minimum. Adding or changing it is a definition change and requires
+a `catalogVersion` +1 by the existing rule. The adding-an-app skill
+SHALL document the field and its rule.
+
+#### Scenario: Catalog app declares a minimum
+- **WHEN** a catalog definition carries a valid `minPackageVersion`
+- **THEN** it validates, and the shell refuses to install it on a shell older than that minimum (see app-registry, Install refuses an app the shell is too old for).
+
+### Requirement: A Store declares its catalog source
+
+A Store app SHALL declare its catalog source in its own definition
+as a `capabilities.proxy` entry named `catalog` whose `url` is the
+catalog base URL (the directory containing `catalog.json`). The
+shell SHALL fetch that Store's catalog only from the declared base.
+A different Store SHALL declare a different base to read a different
+catalog. The `catalog` proxy entry is a declaration of the base; the
+shell's catalog fetch derives the manifest, definition, bundle, and
+recipe URLs under it. Adding or changing the `catalog` entry is a
+definition change and SHALL bump the Store's `catalogVersion` by 1
+under the existing rule.
+
+#### Scenario: Store declares its catalog base
+- **WHEN** the App Store's definition carries a `proxy` entry named
+  `catalog` with url
+  `https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`
+- **THEN** the Store's catalog is fetched from under that base.
+
+#### Scenario: Different Store, different catalog
+- **WHEN** a second Store declares a `proxy` entry named `catalog`
+  with a different base URL
+- **THEN** that Store's catalog is fetched from its own base, and
+  the first Store's catalog is unaffected.
+
+#### Scenario: No catalog entry means no catalog
+- **WHEN** a Store's definition declares no `proxy` entry named
+  `catalog`
+- **THEN** that Store shows installed apps only, never a blank Store.
+
+### Requirement: A Store's catalog base tracks the latest commit
+
+A Store SHALL declare its catalog base as the `main` branch URL,
+not a fixed release tag, so the Store follows the latest catalog
+and can discover its own updates. The `catalog` proxy entry's `url`
+SHALL be the `main` branch catalog base
+(`https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`
+for the shipped App Store). Changing the base URL is a definition
+change and SHALL bump the Store's `catalogVersion` by 1 under the
+existing rule. The agent path is unaffected: an agent supplies its
+own base and may point at a specific tag for a stable snapshot.
+
+#### Scenario: Store base is the main branch
+- **WHEN** the App Store's definition is read
+- **THEN** its `catalog` proxy entry url is the `main` branch
+  catalog base.
+
+#### Scenario: Base change bumps the version
+- **WHEN** the Store's `catalog` proxy entry url changes from a
+  fixed tag to the `main` branch base
+- **THEN** the Store's `catalogVersion` increments by exactly 1.

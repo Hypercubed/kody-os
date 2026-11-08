@@ -6,7 +6,7 @@
  * @example
  * import { add_app, list_apps, act } from './src/apps/index.ts'
  *
- * await add_app(counterBundle) // parsed pkg/catalog/counter/definition.json
+ * await add_app(counterBundle) // parsed catalog/counter/definition.json
  * await act('counter', 'set_count', { value: 1 })
  */
 export type {
@@ -61,6 +61,7 @@ export {
 	get_launcher_state,
 	get_pinned,
 	get_recent,
+	get_store_catalog_info,
 	get_store_rows,
 	import_app,
 	import_install,
@@ -88,8 +89,12 @@ export {
 	store_install_from_catalog,
 	store_update_from_catalog,
 	summarizeCapabilities,
+	MIN_SUPPORTED_SCHEMA_VERSION,
 	SUPPORTED_SCHEMA_VERSIONS,
 	update_from_catalog,
+	comparePackageVersions,
+	getRunningPackageVersion,
+	parsePackageVersion,
 	validateBundleReferences,
 	validateCatalogDefinition,
 	validateDefinition,
@@ -97,6 +102,6 @@ export {
 } from './registry.ts'
 export type { AppStoreStatus, AppStoreStatusInfo, BackupEntry, BackupSummary, CapabilitySummary, InstallSnapshot, ManageResult, StoreRow } from './registry.ts'
 export { actFromForm } from './forms.ts'
-export { get_catalog_definition, list_catalog } from './catalog.ts'
-export type { CatalogSummary } from './catalog.ts'
+export { catalogLabelForBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, get_catalog_recipe, get_catalog_source, list_catalog, normalizeCatalogBase, readCatalogManifest } from './remote-catalog.ts'
+export type { CatalogSummary } from './remote-catalog.ts'
 export { editAppsLink, escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'

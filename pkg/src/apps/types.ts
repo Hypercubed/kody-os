@@ -260,6 +260,15 @@ export interface AppDefinition {
 	 */
 	installMode?: 'json' | 'recipe-only'
 	/**
+	 * Minimum shell (package) version this app requires: an optional
+	 * `MAJOR.MINOR.PATCH` string (numeric parts, no pre-release, no
+	 * build metadata). Absent means no minimum. A present but malformed
+	 * value fails definition validation and nothing is installed.
+	 * Fingerprinted definition content (unlike `installMode`): adding
+	 * or changing it requires a `catalogVersion` +1 by the existing rule.
+	 */
+	minPackageVersion?: string
+	/**
 	 * Tile icon: a plain-text glyph or short mark (system fonts only, never
 	 * emoji), OR an inline SVG starting with `<svg`. SVG is sanitized at
 	 * validation time: allowlisted shapes (`svg, path, circle, rect, line,
