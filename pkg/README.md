@@ -4,10 +4,10 @@ Minimal OS shell shared by humans and agents. Apps are JSON definitions in packa
 
 ## Screenshots
 
-![Home dashboard](https://raw.githubusercontent.com/Hypercubed/kody-os/main/pkg/public/screenshots/home.png)
-![All apps](https://raw.githubusercontent.com/Hypercubed/kody-os/main/pkg/public/screenshots/apps.png)
-![Help page](https://raw.githubusercontent.com/Hypercubed/kody-os/main/pkg/public/screenshots/help.png)
-![About page](https://raw.githubusercontent.com/Hypercubed/kody-os/main/pkg/public/screenshots/about.png)
+![Home dashboard](./public/screenshots/home.png)
+![All apps](./public/screenshots/apps.png)
+![Help page](./public/screenshots/help.png)
+![About page](./public/screenshots/about.png)
 
 ## What it does
 
