@@ -1,8 +1,8 @@
 {
   "name": "@hypercubed/kody-os",
-  "version": "4.1.8",
+  "version": "4.1.9",
   "private": true,
-  "build": 43,
+  "build": 44,
   "type": "module",
   "scripts": {
     "typecheck": "bunx --package typescript@5.9.3 tsc --noEmit"
