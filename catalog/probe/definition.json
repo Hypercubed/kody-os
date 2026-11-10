@@ -3,7 +3,7 @@
   "name": "Scribe Probe",
   "label": "Probe",
   "schemaVersion": 5,
-  "catalogVersion": 8,
+  "catalogVersion": 9,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>",
   "category": "diagnostics",
   "description": "Check this browser's JavaScript, storage, and display features, and send the results back.",
@@ -31,13 +31,13 @@
       "reports": {
         "type": "array",
         "items": "string",
-        "maxItems": 500
+        "maxItems": 1000
       }
     }
   },
   "actions": {
     "append_report": {
-      "description": "Append one probe report to reports. Send tag with the report tag and d with the full entry text (the in-page bridge sends d as tag=value). Oldest entries drop past 500; entries cap at 2048 bytes.",
+      "description": "Append one probe report to reports. Send tag with the report tag and d with the full entry text (the in-page bridge sends d as tag=value). Oldest entries drop past 1000; entries cap at 2048 bytes.",
       "args": {
         "tag": {
           "type": "string"
@@ -51,7 +51,7 @@
           "op": "append",
           "field": "reports",
           "fromArg": "d",
-          "cap": 500,
+          "cap": 1000,
           "maxEntryBytes": 2048
         }
       ]

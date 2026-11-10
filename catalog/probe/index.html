@@ -7,6 +7,10 @@
 <style>
 #results { border-collapse: collapse; width: 100%; }
 #results td, #results th { border: 1px solid #000; padding: 8px 12px; text-align: left; font-size: 16px; }
+#perftable { border-collapse: collapse; width: 100%; }
+#perftable td, #perftable th { border: 1px solid #000; padding: 6px 10px; text-align: left; font-size: 15px; }
+#perfout { white-space: pre-wrap; word-break: break-all; font-size: 13px; }
+button { min-height: 48px; min-width: 48px; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -17,6 +21,13 @@
 <p>Step 2: tap TAP ME once (event tests).</p>
 <p>Step 3: tap SEND RESULTS (fires every result home), or SEND (navigate) as a fallback.</p>
 <p>Step 4: tap TEST CLIPBOARD (this replaces the Scribe clipboard with a test string), then SEND RESULTS.</p>
+<p>Perf: runs by itself 0.3 seconds after load. Tap RUN PERF to run it again (warm). The PERF line is stored in this app's reports, so an agent can read it without copying text off this screen.</p>
+<h2>Perf</h2>
+<button id="perfbtn" type="button">RUN PERF</button>
+<p id="perfstatus">not run yet</p>
+<table id="perftable"><tr><th>Metric</th><th>Value</th></tr></table>
+<pre id="perfout"></pre>
+<h2>Feature results</h2>
 <button id="tapbtn" type="button">TAP ME</button>
 <button id="sendbtn" type="button">SEND RESULTS</button>
 <button id="navbtn" type="button">SEND (navigate)</button>
@@ -58,6 +69,30 @@ function pingUrl() {
 }
 function actUrl(tag, d) {
   return actBase() + "?action=append_report&tag=" + encodeURIComponent(tag) + "&d=" + encodeURIComponent(String(d)).slice(0, 160) + "&format=json" + codeSuffix();
+}
+/* Un-sliced report URL for the perf line: the cached-shortener actUrl() caps
+ * at 160 characters, and the PERF entry needs a little more than that. */
+function reportUrl(tag, d) {
+  return actBase() + "?action=append_report&tag=" + encodeURIComponent(tag) + "&d=" + encodeURIComponent(String(d)) + "&format=json" + codeSuffix();
+}
+/* One append per report (fetch only): the triple fireUrl() beacon would store
+ * the same PERF line three times. */
+function sendReport(tag, d) {
+  var url = reportUrl(tag, d);
+  try {
+    if (typeof fetch === "function") {
+      fetch(url, { headers: { "Accept": "application/json" } }).then(function () {}, function () {});
+      return;
+    }
+  } catch (e1) {}
+  try {
+    var im = new Image(1, 1);
+    im.setAttribute("width", "1");
+    im.setAttribute("height", "1");
+    im.setAttribute("aria-hidden", "true");
+    im.src = url;
+    if (document.body && document.body.appendChild) document.body.appendChild(im);
+  } catch (e2) {}
 }
 function fireUrl(url) {
   try {
@@ -425,7 +460,7 @@ try {
 } catch (e) { row("timerScheduled", "ERROR"); }
 try {
   var btn = document.getElementById("tapbtn");
-  function tapped(ev) { row("event-" + ev, "fired"); beacon("tap"); }
+  function tapped(ev) { row("event-" + ev, "fired"); if (ev === "click") pTapPaint(); beacon("tap"); }
   if (btn.addEventListener) {
     btn.addEventListener("click", function () { tapped("click"); });
     btn.addEventListener("touchstart", function () { tapped("touchstart"); });
@@ -504,6 +539,264 @@ try {
 function setStatus(msg) {
   try { var st = document.getElementById("sendstatus"); if (st) st.textContent = msg; } catch (e) {}
 }
+
+/* --- Perf suite (added Nov 9, 2026) ---
+ * This same bundle runs in the original shell and in the Lit SPA POC, so the
+ * code below measures both UIs identically on one device. The report is one
+ * PERF: line with ; separators and no commas: the shell renders an array
+ * state field as comma-joined text, so a comma-free entry can be read back
+ * from the page (and from get_app_state) without any copy/paste on the Scribe. */
+var perfScriptStart = (function () { try { if (window.performance && typeof window.performance.now === "function") return window.performance.now(); } catch (e0) {} return Date.now(); })();
+var perf = { running: false, runs: 0, loadMs: -1, tapMs: -1 };
+function pNow() {
+  try { if (window.performance && typeof window.performance.now === "function") return window.performance.now(); } catch (e) {}
+  return Date.now();
+}
+function pRound(v) {
+  if (typeof v !== "number" || isNaN(v)) return -1;
+  return Math.round(v * 10) / 10;
+}
+function pMedian(list) {
+  if (!list || list.length === 0) return -1;
+  var s = list.slice().sort(function (a, b) { return a - b; });
+  var mid = s.length % 2 === 1 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+  return pRound(mid);
+}
+function pMax(list) {
+  if (!list || list.length === 0) return -1;
+  var m = list[0];
+  for (var i = 1; i < list.length; i++) { if (list[i] > m) m = list[i]; }
+  return pRound(m);
+}
+function pNav() {
+  var out = { type: -1, ttfb: -1, dcl: -1, load: -1, docKB: -1 };
+  try {
+    var entries = (window.performance && typeof window.performance.getEntriesByType === "function") ? window.performance.getEntriesByType("navigation") : [];
+    if (entries && entries.length > 0) {
+      var n = entries[0];
+      out.type = typeof n.type === "number" ? n.type : -1;
+      if (typeof n.requestStart === "number" && n.requestStart > 0 && typeof n.responseStart === "number") out.ttfb = pRound(Math.max(0, n.responseStart - n.requestStart));
+      if (typeof n.domContentLoadedEventEnd === "number" && n.domContentLoadedEventEnd > 0) out.dcl = pRound(n.domContentLoadedEventEnd);
+      if (typeof n.loadEventEnd === "number" && n.loadEventEnd > 0) out.load = pRound(n.loadEventEnd);
+      if (typeof n.transferSize === "number" && n.transferSize > 0) out.docKB = Math.round(n.transferSize / 1024);
+      return out;
+    }
+    var t = window.performance ? window.performance.timing : null;
+    if (t && typeof t.responseStart === "number" && t.responseStart > 0) {
+      out.ttfb = pRound(Math.max(0, t.responseStart - t.requestStart));
+      out.dcl = pRound(Math.max(0, t.domContentLoadedEventEnd - t.navigationStart));
+      if (t.loadEventEnd > 0) out.load = pRound(t.loadEventEnd - t.navigationStart);
+      if (typeof t.transferSize === "number" && t.transferSize > 0) out.docKB = Math.round(t.transferSize / 1024);
+    }
+  } catch (e) {}
+  return out;
+}
+/* 120-row build plus a forced layout, five times; median in ms. Pure engine +
+ * layout cost, identical markup in both UIs (e-ink refresh is the device's part). */
+function pRenderCost() {
+  var times = [];
+  var table = document.createElement("table");
+  table.style.position = "absolute";
+  table.style.left = "-9999px";
+  table.style.top = "0";
+  document.body.appendChild(table);
+  for (var run = 0; run < 5; run++) {
+    while (table.firstChild) table.removeChild(table.firstChild);
+    var t0 = pNow();
+    for (var i = 0; i < 120; i++) {
+      var tr = document.createElement("tr");
+      var a = document.createElement("td"); a.textContent = "row " + i;
+      var b = document.createElement("td"); b.textContent = String(i * 7);
+      tr.appendChild(a); tr.appendChild(b); table.appendChild(tr);
+    }
+    table.offsetHeight;
+    times.push(pNow() - t0);
+  }
+  document.body.removeChild(table);
+  return times;
+}
+/* 120 text updates plus a forced layout, five times; median in ms. */
+function pUpdateCost() {
+  var box = document.createElement("div");
+  box.style.position = "absolute";
+  box.style.left = "-9999px";
+  box.style.top = "0";
+  document.body.appendChild(box);
+  var cells = [];
+  for (var i = 0; i < 120; i++) {
+    var d = document.createElement("div");
+    d.textContent = "0";
+    box.appendChild(d);
+    cells.push(d);
+  }
+  box.offsetHeight;
+  var times = [];
+  for (var run = 0; run < 5; run++) {
+    var t0 = pNow();
+    for (var k = 0; k < cells.length; k++) { cells[k].textContent = String(run * 1000 + k); }
+    box.offsetHeight;
+    times.push(pNow() - t0);
+  }
+  document.body.removeChild(box);
+  return times;
+}
+/* 30 animation frames; median and worst gap in ms (jank/throttling signal). */
+function pFrames() {
+  return new Promise(function (resolve) {
+    if (typeof requestAnimationFrame !== "function") { resolve({ med: -1, max: -1 }); return; }
+    var gaps = [];
+    var last = -1;
+    var left = 30;
+    function step() {
+      var t = pNow();
+      if (last >= 0) gaps.push(t - last);
+      last = t;
+      left--;
+      if (left > 0) { requestAnimationFrame(step); return; }
+      resolve({ med: pMedian(gaps), max: pMax(gaps) });
+    }
+    requestAnimationFrame(step);
+  });
+}
+/* One same-origin GET of this app page, through completion; ms. */
+function pNetMs() {
+  return new Promise(function (resolve) {
+    var url = pingUrl();
+    var t0 = pNow();
+    function done() { resolve(pRound(pNow() - t0)); }
+    try {
+      if (typeof fetch === "function") {
+        fetch(url, { headers: { "Accept": "text/html" } }).then(function (r) {
+          if (r && typeof r.text === "function") {
+            r.text().then(function () { done(); }, function () { done(); });
+            return;
+          }
+          done();
+        }, function () { resolve(-1); });
+        return;
+      }
+      if (typeof XMLHttpRequest !== "undefined") {
+        var x = new XMLHttpRequest();
+        x.open("GET", url, true);
+        x.onload = function () { done(); };
+        x.onerror = function () { resolve(-1); };
+        x.send();
+        return;
+      }
+    } catch (e) {}
+    resolve(-1);
+  });
+}
+/* Tap-to-next-frame latency, measured from the click handler (see tapped()). */
+function pTapPaint() {
+  var t0 = pNow();
+  function rec() { perf.tapMs = pRound(pNow() - t0); }
+  try {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(function () { requestAnimationFrame(rec); });
+      return;
+    }
+  } catch (e) {}
+  setTimeout(rec, 50);
+}
+function pSetStatus(msg) {
+  try { var st = document.getElementById("perfstatus"); if (st) st.textContent = msg; } catch (e) {}
+}
+function pShow(parts) {
+  try {
+    var t = document.getElementById("perftable");
+    if (t) {
+      while (t.rows.length > 1) t.deleteRow(1);
+      for (var i = 0; i < parts.length; i++) {
+        var eq = parts[i].indexOf("=");
+        var tr = t.insertRow(-1);
+        var a = tr.insertCell(-1); a.textContent = parts[i].slice(0, eq);
+        var b = tr.insertCell(-1); b.textContent = parts[i].slice(eq + 1);
+      }
+    }
+  } catch (e) {}
+}
+function runPerf() {
+  if (perf.running) return;
+  perf.running = true;
+  perf.runs++;
+  if (perf.loadMs < 0) perf.loadMs = pRound(pNow() - perfScriptStart);
+  pSetStatus("Perf running, run " + perf.runs + "...");
+  var nav = pNav();
+  var render = pRenderCost();
+  var update = pUpdateCost();
+  pFrames().then(function (frames) {
+    return pNetMs().then(function (net) { return { frames: frames, net: net }; });
+  }).then(function (later) {
+    var nodes = -1;
+    var scripts = -1;
+    var res = -1;
+    var resKB = -1;
+    var heap = -1;
+    try { nodes = document.getElementsByTagName("*").length; } catch (e1) {}
+    try { if (document.scripts) scripts = document.scripts.length; } catch (e2) {}
+    try {
+      var rs = (window.performance && typeof window.performance.getEntriesByType === "function") ? window.performance.getEntriesByType("resource") : [];
+      if (rs) {
+        res = rs.length;
+        var sum = 0;
+        for (var i = 0; i < rs.length; i++) { if (typeof rs[i].transferSize === "number" && rs[i].transferSize > 0) sum += rs[i].transferSize; }
+        resKB = Math.round(sum / 1024);
+      }
+    } catch (e3) {}
+    try {
+      if (window.performance && window.performance.memory && typeof window.performance.memory.usedJSHeapSize === "number") {
+        heap = Math.round((window.performance.memory.usedJSHeapSize / 1048576) * 10) / 10;
+      }
+    } catch (e4) {}
+    var ui = "shell";
+    try { if (typeof window.__SPA_CONFIG !== "undefined") ui = "spa"; } catch (e5) {}
+    var parts = [
+      "pb=perf1",
+      "ui=" + ui,
+      "run=" + perf.runs,
+      "nav=" + nav.type,
+      "ttfb=" + nav.ttfb,
+      "dcl=" + nav.dcl,
+      "load=" + nav.load,
+      "s2load=" + perf.loadMs,
+      "docKB=" + nav.docKB,
+      "res=" + res,
+      "resKB=" + resKB,
+      "nodes=" + nodes,
+      "scripts=" + scripts,
+      "heap=" + heap,
+      "render120=" + pMedian(render),
+      "update120=" + pMedian(update),
+      "frameMed=" + later.frames.med,
+      "frameMax=" + later.frames.max,
+      "net=" + later.net,
+      "tap=" + perf.tapMs
+    ];
+    var line = "PERF:" + parts.join(";");
+    pShow(parts);
+    try { var out = document.getElementById("perfout"); if (out) out.textContent = line; } catch (e6) {}
+    pSetStatus("Perf done, run " + perf.runs + ". Stored in reports.");
+    sendReport("perf", line);
+    perf.running = false;
+  }).catch(function (err) {
+    pSetStatus("Perf error: " + String((err && err.message) || err));
+    perf.running = false;
+  });
+}
+try {
+  var perfBtn = document.getElementById("perfbtn");
+  if (perfBtn) {
+    if (perfBtn.addEventListener) perfBtn.addEventListener("click", function () { runPerf(); });
+    else if (perfBtn.attachEvent) perfBtn.attachEvent("onclick", function () { runPerf(); });
+  }
+} catch (e7) {}
+try {
+  if (document.readyState === "complete") { setTimeout(runPerf, 300); }
+  else if (window.addEventListener) { window.addEventListener("load", function () { setTimeout(runPerf, 300); }); }
+  else if (window.attachEvent) { window.attachEvent("onload", function () { setTimeout(runPerf, 300); }); }
+} catch (e8) {}
+/* --- end perf suite --- */
 </script>
 </body>
 </html>
