@@ -1680,6 +1680,40 @@ button:active {
 	border-color: var(--os-grey);
 }
 
+/* Bare checkboxes in every bundle: classic-Mac X, the look prototyped
+   per app in Habit Tracker and Pushup Tracker. appearance: none, since
+   ::before does not work reliably on an input (replaced element); the X
+   is an inline-SVG background, not a gradient. */
+.bundle input[type="checkbox"] {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 22px;
+	height: 22px;
+	min-width: 22px;
+	min-height: 22px;
+	margin: 0;
+	padding: 0;
+	border: 2px solid var(--os-ink);
+	border-radius: 0;
+	background: var(--os-paper);
+	cursor: pointer;
+	display: inline-block;
+	vertical-align: middle;
+}
+
+.bundle input[type="checkbox"]:checked {
+	background-color: var(--os-paper);
+	background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2020%2020%27%3E%3Cpath%20d%3D%27M4%204L16%2016M16%204L4%2016%27%20stroke%3D%27black%27%20stroke-width%3D%272.5%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
+	background-size: 16px 16px;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+.bundle input[type="checkbox"]:focus {
+	outline: 2px solid var(--os-ink);
+	outline-offset: 2px;
+}
+
 /* The shared dark variant on a bare button: .bundle button:hover would
    otherwise outrank .os-btn--dark:hover and wash it back to paper. */
 .bundle button.os-btn--dark {
