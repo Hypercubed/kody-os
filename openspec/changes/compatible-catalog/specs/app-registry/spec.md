@@ -13,18 +13,26 @@ Store's declared base: a Store pinned to a tag only ever sees that
 tag's catalog, where the Store is itself, and can never discover a
 newer catalog or a newer Store.
 
-**Amendment (compatible-catalog):** the declared base is now the
-*discovery* base, not necessarily the listing/install base. When
-a catalog-resolver plugin is installed (see the shell delta for
+**Amendment (compatible-catalog, Phase 1):** the declared base is now the
+*discovery* base, not necessarily the listing/install base. The
+Store declares a second proxy entry, `catalog-apps`, whose URL
+is the *listing* base: a pinned tag
+(`https://raw.githubusercontent.com/Hypercubed/kody-os/<tag>/
+catalog/`). The Store's rows and installs come from that
+listing base when the installed Store declares one, and from
+the declared (`main`) base when it declares none. The Store's
+own update comes from the discovery base and SHALL be gated
+by `minPackageVersion`: when the new Store version requires
+a newer shell than the one running, the update SHALL be
+refused, the same as any other app.
+
+**Amendment (compatible-catalog, Phase 2):** when a
+catalog-resolver plugin is installed (see the shell delta for
 the plugin interface, gated behind the plugins spec), the
 Store's rows and installs come from the *resolved* catalog
-snapshot (see "Compatible catalog resolution" below), and the
-Store displays the resolved snapshot instead of the `main` URL.
-When no resolver plugin is installed, rows and installs come
-from the declared (`main`) base exactly as before. The Store's
-own update SHALL be gated by `minPackageVersion`: when the new
-Store version requires a newer shell than the one running, the
-update SHALL be refused, the same as any other app.
+snapshot (see "Compatible catalog resolution" below) instead
+of the pinned listing base, and the Store displays the
+resolved snapshot instead of the pinned tag.
 
 #### Scenario: Store sees its own update
 - **WHEN** the catalog at `main` holds a Store definition newer
@@ -42,20 +50,56 @@ update SHALL be refused, the same as any other app.
 - **WHEN** the App Store's declared catalog base is read
 - **THEN** it is the `main` branch base, not a fixed release tag.
 
+#### Scenario: Pinned listing base is the listing base in Phase 1
+- **WHEN** the installed Store declares a `catalog-apps` entry
+  pinned to tag `v4.1.9`
+- **THEN** the Store lists and installs apps other than itself
+  from the `v4.1.9` snapshot's base, and its own update comes
+  from `main`.
+
 #### Scenario: Resolved snapshot is the listing base when the plugin is installed
 - **WHEN** a resolver plugin is installed and resolves snapshot
   `v4.1.9` for a shell running `4.1.9`
 - **THEN** the Store lists and installs from the `v4.1.9`
-  snapshot's base, not from `main`, and displays that snapshot.
+  snapshot's base, not from the pinned listing base, and displays that snapshot.
 
-#### Scenario: No plugin means main, as before
-- **WHEN** no resolver plugin is installed
+#### Scenario: No listing entry means main, as before
+- **WHEN** the installed Store declares no `catalog-apps` entry
+  and no resolver plugin is installed
 - **THEN** the Store lists and installs from the declared
   (`main`) base, and displays it, exactly as before this change.
 
 ## ADDED Requirements
 
-### Requirement: Releases index
+### Requirement: Pinned listing base (Phase 1, no plugin)
+
+A Store definition MAY carry a second proxy entry named
+`catalog-apps` declaring the listing base: a pinned tag
+base (`https://raw.githubusercontent.com/<owner>/<repo>/
+<tag>/catalog/`). The shell SHALL route management calls
+by target: a Store self-update uses the discovery base
+(`catalog` entry, `main`); every other app's rows,
+install, and update use the listing base when present,
+falling back to the discovery base when absent. An
+explicit `catalogBase` supplied to the agent exports
+SHALL still win over both. Changing either proxy URL
+SHALL bump the Store's `catalogVersion` by 1 under the
+existing rule. This requirement is Phase 1 and is NOT
+gated behind the plugins spec.
+
+#### Scenario: Listing base pins app installs
+- **WHEN** the installed Store declares `catalog-apps`
+  pinned to `v4.1.9`
+- **THEN** installing an app other than `app-store`
+  fetches its definition from the `v4.1.9` base.
+
+#### Scenario: Store self-update uses the discovery base
+- **WHEN** the installed Store declares `catalog-apps`
+  pinned to `v4.1.9`
+- **THEN** updating `app-store` itself fetches its
+  definition from `main`, not from `v4.1.9`.
+
+### Requirement: Releases index (Phase 2, plugin-gated)
 
 `catalog/releases.json` SHALL list the catalog snapshots, one
 entry per release tag: `{ version, tag, sha, shellVersion }`,
@@ -89,7 +133,7 @@ ordering. Tags SHALL NOT be moved after cutting.
   an entry's SHA does not match its tag
 - **THEN** the catalog harness fails.
 
-### Requirement: Compatible catalog resolution
+### Requirement: Compatible catalog resolution (Phase 2, plugin-gated)
 
 When a catalog-resolver plugin is installed, the resolver
 SHALL read `catalog/releases.json` from `main` (HTTPS-only,
@@ -133,7 +177,7 @@ resolved snapshot.
   its Store row shows the requirement instead of an
   install control.
 
-### Requirement: Durable last-good snapshot of the resolved catalog
+### Requirement: Durable last-good snapshot of the resolved catalog (Phase 2, plugin-gated)
 
 The resolver SHALL keep one durable snapshot of the
 resolved catalog in `packageStorage`, under the key the
