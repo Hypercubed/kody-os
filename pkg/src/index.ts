@@ -77,6 +77,10 @@ export default async function main(): Promise<{
 				useWhen: 'Bring an already-installed app up to its shipped catalog definition, preserving state; refuses to install new apps. Uses the installed App Store\'s declared base, and refuses when no catalog source exists.',
 			},
 			{
+				name: 'absorb_from_catalog',
+				useWhen: 'Install an agent-merged definition for a modified catalog app, keeping local customizations and recording it as the new baseline; refuses unless the app is modified against a newer catalog copy.',
+			},
+			{
 				name: 'get_pinned',
 				useWhen: 'Read the pinned app ids in pin order.',
 			},
@@ -189,6 +193,7 @@ export async function reset_shell_theme(field?: string): Promise<{ ok: true; eff
 }
 
 export {
+	absorb_from_catalog,
 	act,
 	add_app,
 	backup,

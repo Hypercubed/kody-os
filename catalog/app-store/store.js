@@ -15,6 +15,16 @@ function storeManageBase() {
   if (idx !== -1) { return path.slice(0, idx); }
   return '';
 }
+function storePackageSlug() {
+  var base = storeManageBase();
+  if (base) {
+    var slug = base.charAt(0) === '/' ? base.slice(1) : base;
+    var slash = slug.indexOf('/');
+    if (slash !== -1) { slug = slug.slice(0, slash); }
+    if (slug) { return slug; }
+  }
+  return 'kody-os';
+}
 function storeBadge(status) {
   if (status === 'not-installed') { return 'Not installed'; }
   if (status === 'up-to-date') { return 'Up to date'; }
@@ -24,6 +34,8 @@ function storeBadge(status) {
   if (status === 'modified-current') { return 'Modified'; }
   if (status === 'modified-ahead') { return 'Ahead of catalog'; }
   if (status === 'snapshot-less') { return 'Installed'; }
+  if (status === 'absorbed') { return 'Absorbed'; }
+  if (status === 'absorbed-behind') { return 'Absorbed \u00b7 update available'; }
   if (status === 'storage-only') { return 'Storage only'; }
   if (status === 'storage-only-formerly') { return 'Storage only \u00b7 formerly in catalog'; }
   return 'Installed';
@@ -74,6 +86,31 @@ function storeCapsText(caps) {
   else if (caps.themeView) { parts.push('Can view the shell theme.'); }
   else if (caps.themeSet) { parts.push('Can change the shell theme.'); }
   return parts.join(' ');
+}
+function storeAgentPrompt(row) {
+  var ops = 'Read package:' + storePackageSlug() + '#OPERATIONS.md';
+  if (row.needsNewerShell || row.needsNewerSchema) { return null; }
+  if (!row.installed) {
+    if (!row.folderUrl) { return null; }
+    return { summary: 'Install with an agent', prompt: ops + ', then install this app: ' + row.folderUrl };
+  }
+  if (!row.folderUrl) { return null; }
+  if (row.status === 'behind-clean' || row.status === 'catalog-differing') {
+    return { summary: 'Update with an agent', prompt: ops + ', then update this app to the latest catalog version: ' + row.folderUrl };
+  }
+  if (row.status === 'behind-modified' || row.status === 'modified-current' || row.status === 'absorbed-behind') {
+    return { summary: 'Absorb with an agent', prompt: ops + ', then absorb the catalog changes into this app, keeping my local customizations: ' + row.folderUrl };
+  }
+  if (row.status === 'modified-ahead') {
+    return { summary: 'Restore with an agent', prompt: ops + ', then restore this app to the catalog copy: ' + row.folderUrl };
+  }
+  if (row.status === 'snapshot-less') {
+    return { summary: 'Overwrite with an agent', prompt: ops + ', then overwrite this app with the catalog copy: ' + row.folderUrl };
+  }
+  if (row.status === 'up-to-date' || row.status === 'absorbed') {
+    return { summary: 'Remove with an agent', prompt: ops + ', then remove this app: ' + row.folderUrl };
+  }
+  return null;
 }
 function storeInit() {
   var root = storeRoot();
@@ -192,13 +229,6 @@ function storeInit() {
         li.appendChild(main);
         var body = document.createElement('span');
         body.className = 'store-body';
-        var badgeText = storeBadge(row.status);
-        if (badgeText !== 'Installed' && badgeText !== 'Not installed' && badgeText !== 'Up to date') {
-          var badge = document.createElement('span');
-          badge.className = 'store-badge';
-          badge.textContent = badgeText;
-          body.appendChild(badge);
-        }
         if (row.description) {
           var desc = document.createElement('span');
           desc.className = 'store-desc';
@@ -211,6 +241,24 @@ function storeInit() {
           capsEl.className = 'store-caps';
           capsEl.textContent = caps;
           body.appendChild(capsEl);
+        }
+        var badgeText = storeBadge(row.status);
+        if (badgeText !== 'Installed' && badgeText !== 'Not installed' && badgeText !== 'Up to date') {
+          var badge = document.createElement('span');
+          badge.className = 'store-badge';
+          badge.textContent = badgeText;
+          body.appendChild(badge);
+        }
+        var agentPrompt = storeAgentPrompt(row);
+        if (agentPrompt) {
+          var details = document.createElement('details');
+          details.className = 'store-details';
+          var summary = document.createElement('summary');
+          summary.textContent = agentPrompt.summary;
+          details.appendChild(summary);
+          var code = document.createElement('code');
+          code.textContent = agentPrompt.prompt;
+          details.appendChild(code);
         }
         li.appendChild(body);
         var controls = document.createElement('span');
@@ -251,10 +299,11 @@ function storeInit() {
           controls.appendChild(prompt);
         } else if (!row.installed) { mutate('install', 'Add', 'Adding…'); }
         else if (row.status === 'behind-clean' || row.status === 'catalog-differing') { mutate('update', 'Update', 'Updating…'); }
-        else if (row.status === 'behind-modified' || row.status === 'snapshot-less') { mutate('update', 'Overwrite', 'Overwriting…'); }
+        else if (row.status === 'behind-modified' || row.status === 'absorbed-behind' || row.status === 'snapshot-less') { mutate('update', 'Overwrite', 'Overwriting…'); }
         else if (row.status === 'modified-current' || row.status === 'modified-ahead') { mutate('restore', 'Restore', 'Restoring…'); }
-        else if (row.status === 'up-to-date') { mutate('remove', 'Remove', 'Removing…'); }
+        else if (row.status === 'up-to-date' || row.status === 'absorbed') { mutate('remove', 'Remove', 'Removing…'); }
         li.appendChild(controls);
+        if (agentPrompt) { li.appendChild(details); }
         list.appendChild(li);
       })(rows[i]);
     }

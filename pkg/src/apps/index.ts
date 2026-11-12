@@ -34,11 +34,12 @@ export type {
 	UiDef,
 	ProxyDecl,
 } from './types.ts'
-export { createMemoryStore, resolveStore } from './storage.ts'
+export { createMemoryStore, normalizeListResult, resolveStore } from './storage.ts'
 export type { AddAppOptions, ListAppsOptions, InstallExport } from './registry.ts'
 export type { KeyStore } from './storage.ts'
 export { isBundleDefinition } from './types.ts'
 export {
+	absorb_from_catalog,
 	act,
 	add_app,
 	assembleBundleFiles,
@@ -68,6 +69,7 @@ export {
 	install_from_catalog,
 	list_apps,
 	list_backups,
+	listInstalledIds,
 	manage_install,
 	manage_remove,
 	manage_restore,

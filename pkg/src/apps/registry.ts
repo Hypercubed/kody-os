@@ -7,7 +7,7 @@
  *   list_apps() -> AppSummary[]
  *   get_app_state(id) -> AppState
  *   act(id, action, args?) -> { ok, state? | error? }
- *   add_app(definition) -> registry write only, no republish
+ *   add_app(definition) -> definition/state write only, no republish
  *   remove_app(id) -> uninstall definition + state + all reference lists
  *   export_app(id) -> complete AppExport JSON
  *   plus: get_app(id), import_app(json) — blank-install import without code changes
@@ -34,7 +34,7 @@ import type {
 	ProxyDecl,
 	StateFieldDef,
 } from './types.ts'
-import { devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source } from './remote-catalog.ts'
+import { devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
 import {
 	RECENT_CAP,
 	createMemoryStore,
@@ -45,7 +45,6 @@ import {
 	readJson,
 	readPinned,
 	readRecent,
-	readRegistry,
 	resolveStore,
 	stateKey,
 	writeHidden,
@@ -53,7 +52,6 @@ import {
 	writeJson,
 	writePinned,
 	writeRecent,
-	writeRegistry,
 	type KeyStore,
 } from './storage.ts'
 import { DEFINITION_SCHEMA_VERSION } from './types.ts'
@@ -109,9 +107,10 @@ var EXPORT_FORMAT_V1 = 'kody-os-app/1'
 /**
  * Catalog apps retired into built-in shell pages. An upgraded store that
  * still has one of these rows must not show a stale app beside the shell
- * page, so the row is pruned the next time the registry is read.
+ * page, so the row is pruned the next time the installed list is derived.
  */
 var RETIRED_APP_IDS = ['help', 'about']
+var DEF_PREFIX = 'kody-os.apps.def.'
 var runningPackageVersionPromise: Promise<string> | null = null
 /**
  * Running shell (package) version: read from `pkg/package.json` via a
@@ -211,9 +210,11 @@ export function get_homepage(store?: KeyStore): Promise<string[]> {
  */
 export function get_launcher_state(store?: KeyStore): Promise<{ pinned: string[]; hidden: string[]; recent: string[]; homepage: string[] }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return pruneRetiredApps(active).then(function (): Promise<{ pinned: string[]; hidden: string[]; recent: string[]; homepage: string[] }> {
-			return Promise.all([readPinned(active), readHidden(active), readRecent(active), readHomepage(active)]).then(function (parts) {
-				return { pinned: parts[0], hidden: parts[1], recent: parts[2], homepage: parts[3] }
+		return listInstalledIds(active).then(function (derived: string[]): Promise<{ pinned: string[]; hidden: string[]; recent: string[]; homepage: string[] }> {
+			return pruneRetiredApps(derived, active).then(function (): Promise<{ pinned: string[]; hidden: string[]; recent: string[]; homepage: string[] }> {
+				return Promise.all([readPinned(active), readHidden(active), readRecent(active), readHomepage(active)]).then(function (parts) {
+					return { pinned: parts[0], hidden: parts[1], recent: parts[2], homepage: parts[3] }
+				})
 			})
 		})
 	})
@@ -324,44 +325,71 @@ export function set_hide(id: string, want: boolean, store?: KeyStore): Promise<s
 }
 
 /**
- * Drop retired-app rows (and their state, snapshot, and launcher entries)
- * left installed before Help/About became shell pages. Returns the surviving
- * registry ids. A clean store is read-only: no write happens when no retired
- * id is present.
+ * Installed ids, derived from definition keys: paginate
+ * `list({ prefix: 'kody-os.apps.def.' })` to completion and return
+ * the id suffix of each key, in key order (alphabetical by id).
+ * A store without `list()` throws a clear error naming the store
+ * instead of silently reporting an empty install. `pageSize` is
+ * test-only; production uses the Kody default (250).
  */
-function pruneRetiredApps(store: KeyStore): Promise<string[]> {
-	return readRegistry(store).then(function (ids: string[]): Promise<string[]> {
-		var retired: string[] = []
-		for (var i = 0; i < ids.length; i++) {
-			if (RETIRED_APP_IDS.indexOf(ids[i]) !== -1) retired.push(ids[i])
-		}
-		if (retired.length === 0) return Promise.resolve(ids)
-		var kept = ids.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
-		var chain: Promise<unknown> = writeRegistry(store, kept)
-		for (var r = 0; r < retired.length; r++) {
-			;(function (id: string): void {
-				chain = chain
-					.then(function (): Promise<void> { return deleteKey(store, defKey(id)) })
-					.then(function (): Promise<void> { return deleteKey(store, stateKey(id)) })
-					.then(function (): Promise<void> { return deleteInstallSnapshot(store, id) })
-			})(retired[r])
-		}
-		return chain.then(function (): Promise<string[]> {
-			function clean(list: string[]): string[] {
-				return list.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
+export function listInstalledIds(store: KeyStore, pageSize?: number): Promise<string[]> {
+	if (typeof store.list !== 'function') return Promise.reject(new Error('listInstalledIds: this store has no list() method, so installed apps cannot be enumerated from definition keys'))
+	var size = pageSize !== undefined ? pageSize : 250
+	var ids: string[] = []
+	function page(startAfter?: string): Promise<string[]> {
+		var options: { prefix: string; pageSize?: number; startAfter?: string } = { prefix: DEF_PREFIX, pageSize: size }
+		if (startAfter !== undefined) options.startAfter = startAfter
+		return Promise.resolve(store.list(options)).then(function (result) {
+			for (var i = 0; i < result.entries.length; i++) {
+				ids.push(result.entries[i].key.slice(DEF_PREFIX.length))
 			}
-			return Promise.all([readPinned(store), readHidden(store), readRecent(store), readHomepage(store)]).then(function (lists): Promise<string[]> {
-				return writePinned(store, clean(lists[0]))
-					.then(function () { return writeHidden(store, clean(lists[1])) })
-					.then(function () { return writeRecent(store, clean(lists[2])) })
-					.then(function () { return writeHomepage(store, clean(lists[3])) })
-					.then(function (): string[] { return kept })
-			})
+			if (result.truncated) {
+				if (result.nextStartAfter === null) return Promise.reject(new Error('listInstalledIds: truncated page without nextStartAfter'))
+				return page(result.nextStartAfter)
+			}
+			return ids
+		})
+	}
+	return page()
+}
+
+/**
+ * Drop retired-app rows (and their state, snapshot, and launcher entries)
+ * left installed before Help/About became shell pages. Filters the
+ * derived installed ids, returning the survivors. A clean store is
+ * read-only: no write happens when no retired id is present.
+ */
+function pruneRetiredApps(ids: string[], store: KeyStore): Promise<string[]> {
+	var retired: string[] = []
+	for (var i = 0; i < ids.length; i++) {
+		if (RETIRED_APP_IDS.indexOf(ids[i]) !== -1) retired.push(ids[i])
+	}
+	if (retired.length === 0) return Promise.resolve(ids)
+	var kept = ids.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
+	var chain: Promise<unknown> = Promise.resolve()
+	for (var r = 0; r < retired.length; r++) {
+		;(function (id: string): void {
+			chain = chain
+				.then(function (): Promise<void> { return deleteKey(store, defKey(id)) })
+				.then(function (): Promise<void> { return deleteKey(store, stateKey(id)) })
+				.then(function (): Promise<void> { return deleteInstallSnapshot(store, id) })
+		})(retired[r])
+	}
+	return chain.then(function (): Promise<string[]> {
+		function clean(list: string[]): string[] {
+			return list.filter(function (one: string): boolean { return RETIRED_APP_IDS.indexOf(one) === -1 })
+		}
+		return Promise.all([readPinned(store), readHidden(store), readRecent(store), readHomepage(store)]).then(function (lists): Promise<string[]> {
+			return writePinned(store, clean(lists[0]))
+				.then(function () { return writeHidden(store, clean(lists[1])) })
+				.then(function () { return writeRecent(store, clean(lists[2])) })
+				.then(function () { return writeHomepage(store, clean(lists[3])) })
+				.then(function (): string[] { return kept })
 		})
 	})
 }
 
-/** List every installed app. Registry-read-only apart from retiring stale rows. */
+/** List every installed app, in alphabetical-by-id (key) order. Read-only apart from retiring stale rows. */
 export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<AppSummary[]> {
 	var activeStore: KeyStore | undefined = store
 	var options: ListAppsOptions | undefined = opts
@@ -372,33 +400,35 @@ export function list_apps(store?: KeyStore, opts?: ListAppsOptions): Promise<App
 	return resolveStore(activeStore).then(function (active: KeyStore): Promise<AppSummary[]> {
 		var hiddenP: Promise<string[]> = options && options.includeHidden === false ? readHidden(active) : Promise.resolve([] as string[])
 		return hiddenP.then(function (hidden: string[]): Promise<AppSummary[]> {
-			return pruneRetiredApps(active).then(function (ids: string[]): Promise<AppSummary[]> {
-			var out: AppSummary[] = []
-			var chain = Promise.resolve()
-			for (var id of ids) {
-				;(function (want: string): void {
-					chain = chain.then(function (): Promise<void> {
-						if (hidden.indexOf(want) !== -1) return Promise.resolve()
-						return readJson<AppDefinition>(active, defKey(want)).then(function (raw): void {
-							if (!raw) return
-							var def = backfillDefinition(raw)
-							out.push({
-								id: def.id,
-								name: def.name,
-								label: def.label || def.name,
-								schemaVersion: def.schemaVersion,
-								icon: def.icon,
-								category: def.category,
-								description: def.description,
-								openAs: deriveOpenAs(def.ui),
-								menuBar: def.ui.menuBar === true,
+			return listInstalledIds(active).then(function (derived: string[]): Promise<AppSummary[]> {
+				return pruneRetiredApps(derived, active).then(function (ids: string[]): Promise<AppSummary[]> {
+					var out: AppSummary[] = []
+					var chain = Promise.resolve()
+					for (var id of ids) {
+						;(function (want: string): void {
+							chain = chain.then(function (): Promise<void> {
+								if (hidden.indexOf(want) !== -1) return Promise.resolve()
+								return readJson<AppDefinition>(active, defKey(want)).then(function (raw): void {
+									if (!raw) return
+									var def = backfillDefinition(raw)
+									out.push({
+										id: def.id,
+										name: def.name,
+										label: def.label || def.name,
+										schemaVersion: def.schemaVersion,
+										icon: def.icon,
+										category: def.category,
+										description: def.description,
+										openAs: deriveOpenAs(def.ui),
+										menuBar: def.ui.menuBar === true,
+									})
+								})
 							})
-						})
+						})(id)
+					}
+					return chain.then(function (): AppSummary[] {
+						return out
 					})
-				})(id)
-			}
-				return chain.then(function (): AppSummary[] {
-					return out
 				})
 			})
 		})
@@ -594,12 +624,12 @@ export interface AddAppOptions {
 }
 
 /**
- * Install a unified app definition. Validate-all-first, then a single
- * registry write followed by a single state write. A failed call writes
+ * Install a unified app definition. Validate-all-first, then a definition
+ * write followed by a state write. A failed call writes
  * nothing: storage is byte-identical to before the call.
  *
  * Same-id overwrite preserves state by default (declared fields carried
- * forward, dropped fields reset to `initial`) and leaves registry order,
+ * forward, dropped fields reset to `initial`) and leaves
  * pins, hidden flags, homepage placement, and recent entries untouched.
  * `resetState: true` restores the legacy wipe; `migrate` maps old field
  * names to new ones with validator-checked values (unmappable aborts).
@@ -635,11 +665,9 @@ export function add_app(
 		return Promise.all([
 			readJson<AppDefinition>(active, defKey(definition.id)),
 			readJson<AppState>(active, stateKey(definition.id)),
-			readRegistry(active),
-		]).then(function (triple): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-			var existing = triple[0]
-			var existingState = triple[1]
-			var ids = triple[2]
+		]).then(function (pair): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+			var existing = pair[0]
+			var existingState = pair[1]
 			if (options.resetState === true && options.migrate !== undefined) {
 				return Promise.resolve({ ok: false as const, error: 'add_app options resetState and migrate are mutually exclusive' })
 			}
@@ -703,17 +731,12 @@ export function add_app(
 					return Promise.resolve({ ok: false as const, error: 'candidate state invalid: ' + cerr })
 				}
 			}
-				var isNew = ids.indexOf(def.id) === -1
 				return writeJson(active, defKey(def.id), def)
 					.then(function () {
 						return writeJson(active, stateKey(def.id), candidate)
 					})
-					.then(function (): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-						if (!isNew) return Promise.resolve({ ok: true as const, id: def.id })
-						ids.push(def.id)
-						return writeRegistry(active, ids).then(function () {
-							return { ok: true as const, id: def.id }
-						})
+					.then(function (): { ok: true; id: string } {
+						return { ok: true as const, id: def.id }
 					})
 			})
 		})
@@ -722,7 +745,7 @@ export function add_app(
 
 /**
  * Uninstall an app: delete its definition and state and scrub every reference
- * list (registry, pinned, hidden, recent). Validation runs before any write:
+ * list (pinned, hidden, recent, homepage). Validation runs before any write:
  * an unknown id returns { ok:false } and storage is untouched.
  */
 export function remove_app(
@@ -730,8 +753,8 @@ export function remove_app(
 	store?: KeyStore,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return readRegistry(active).then(function (ids: string[]) {
-			if (ids.indexOf(id) === -1) {
+		return readJson<AppDefinition>(active, defKey(id)).then(function (def) {
+			if (!def) {
 				return { ok: false as const, error: 'unknown app "' + id + '"' }
 			}
 			return Promise.all([readPinned(active), readHidden(active), readRecent(active), readHomepage(active)]).then(function (lists) {
@@ -739,9 +762,7 @@ export function remove_app(
 				var hidden = lists[1].filter(function (one: string): boolean { return one !== id })
 				var recent = lists[2].filter(function (one: string): boolean { return one !== id })
 				var homepage = lists[3].filter(function (one: string): boolean { return one !== id })
-				var registry = ids.filter(function (one: string): boolean { return one !== id })
-				return writeRegistry(active, registry)
-					.then(function () { return writePinned(active, pinned) })
+				return writePinned(active, pinned)
 					.then(function () { return writeHidden(active, hidden) })
 					.then(function () { return writeRecent(active, recent) })
 					.then(function () { return writeHomepage(active, homepage) })
@@ -922,16 +943,81 @@ export function update_from_catalog(
 }
 
 /**
+ * Absorb an agent-merged definition for a modified catalog app,
+ * keeping local customizations and recording the merged definition
+ * as the new baseline. The merge itself is the agent's job (the
+ * absorb prompt: backup first, compare export_app against
+ * get_catalog_definition, show the merge plan, ask before
+ * writing); this export is the thin "install this merged
+ * definition and make it the baseline" primitive. Validates and
+ * writes through add_app, then records a new snapshot at the
+ * catalog version carrying the catalog fingerprint absorbed from.
+ * Refuses with no write unless the app is installed, is in the
+ * catalog, and its status is behind-modified, modified-current,
+ * or absorbed-behind, and unless the merged definition's
+ * catalogVersion equals the catalog's. Refuses when the merged
+ * definition's id does not match the requested id.
+ *
+ * Signature mirrors install_from_catalog with the merged
+ * definition inserted: (id, definition, store?, catalogBase?).
+ * The third parameter also accepts a base URL string, so an MCP
+ * caller passing (id, definition, catalogBase) works positionally.
+ */
+export function absorb_from_catalog(
+	id: string,
+	definition: AppDefinition,
+	store?: KeyStore | string,
+	catalogBase?: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	var activeStore: KeyStore | undefined = undefined
+	var baseArg: string | undefined = catalogBase
+	if (typeof store === 'string') {
+		baseArg = store
+	} else if (store) {
+		activeStore = store
+	}
+	return resolveStore(activeStore).then(function (active: KeyStore) {
+		return resolveAgentCatalogBase(active, baseArg).then(function (base) {
+			if (base === null) return { ok: false as const, error: noCatalogSourceError('absorb_from_catalog', id) }
+			return get_catalog_entry(id, base).then(function (entry) {
+				if (entry === null) return { ok: false as const, error: 'absorb_from_catalog: unknown catalog app "' + id + '"' }
+				return get_app_status(id, active, base).then(function (info) {
+					if (!info.installed) return { ok: false as const, error: 'absorb_from_catalog: app "' + id + '" is not installed' }
+					if (info.status !== 'behind-modified' && info.status !== 'modified-current' && info.status !== 'absorbed-behind') {
+						return { ok: false as const, error: 'absorb_from_catalog: app "' + id + '" cannot be absorbed: status is "' + info.status + '"' }
+					}
+					if (definition.id !== id) return { ok: false as const, error: 'absorb_from_catalog: definition id "' + definition.id + '" does not match "' + id + '"' }
+					if (definition.catalogVersion !== entry.catalogVersion) return { ok: false as const, error: 'absorb_from_catalog: merged definition catalogVersion ' + String(definition.catalogVersion) + ' does not match catalog version ' + String(entry.catalogVersion) }
+					return add_app(definition, active).then(function (added) {
+						if (!added.ok) return added
+						return recordAbsorbSnapshot(active, id, entry.fingerprint).then(function (snap) {
+							if (!snap.ok) return snap
+							return { ok: true as const, id: id }
+						})
+					})
+				})
+			})
+		}, function (err) {
+			return { ok: false as const, error: 'absorb_from_catalog: catalog base refused for "' + id + '": ' + (err instanceof Error ? err.message : String(err)) }
+		})
+	})
+}
+
+/**
  * Install snapshot (app-store Decisions 8-11): recorded only by a store
  * install or store update, separate from the definition, holding the
  * catalogVersion at install time and the fingerprint of the definition
  * as actually stored (after add_app normalization). Generic add_app and
  * import_app never write it; remove_app deletes it; it is never part
- * of an export. Storage key: kody-os.apps.snapshot.<id>.
+ * of an export. A snapshot MAY also carry `catalogFingerprint`, the
+ * fingerprint of the catalog definition absorbed from, set only by
+ * `absorb_from_catalog`. Storage key: kody-os.apps.snapshot.<id>.
  */
 export interface InstallSnapshot {
 	catalogVersion: number
 	fingerprint: string
+	/** Fingerprint of the catalog definition absorbed from; set only by absorb_from_catalog. */
+	catalogFingerprint?: string
 }
 
 var SNAPSHOT_PREFIX = 'kody-os.apps.snapshot.'
@@ -960,6 +1046,16 @@ function recordInstallSnapshot(store: KeyStore, id: string): Promise<{ ok: true 
 		if (!def) return Promise.resolve({ ok: false as const, error: 'app "' + id + '" is not installed' })
 		if (typeof def.catalogVersion !== 'number') return Promise.resolve({ ok: false as const, error: 'app "' + id + '" has no catalogVersion to snapshot' })
 		return writeInstallSnapshot(store, id, { catalogVersion: def.catalogVersion, fingerprint: fingerprintDefinition(def) }).then(function (): { ok: true } {
+			return { ok: true as const }
+		})
+	})
+}
+
+function recordAbsorbSnapshot(store: KeyStore, id: string, catalogFingerprint: string): Promise<{ ok: true } | { ok: false; error: string }> {
+	return readJson<AppDefinition>(store, defKey(id)).then(function (def): Promise<{ ok: true } | { ok: false; error: string }> {
+		if (!def) return Promise.resolve({ ok: false as const, error: 'app "' + id + '" is not installed' })
+		if (typeof def.catalogVersion !== 'number') return Promise.resolve({ ok: false as const, error: 'app "' + id + '" has no catalogVersion to snapshot' })
+		return writeInstallSnapshot(store, id, { catalogVersion: def.catalogVersion, fingerprint: fingerprintDefinition(def), catalogFingerprint: catalogFingerprint }).then(function (): { ok: true } {
 			return { ok: true as const }
 		})
 	})
@@ -1122,7 +1218,7 @@ function manage_update_with_status(
 					if (info.status === 'modified-current' || info.status === 'modified-ahead') {
 						return { ok: false as const, error: 'App "' + targetId + '" is modified: use Restore, not Overwrite.' }
 					}
-					if (info.status !== 'behind-clean' && info.status !== 'catalog-differing' && info.status !== 'behind-modified' && info.status !== 'snapshot-less') {
+					if (info.status !== 'behind-clean' && info.status !== 'catalog-differing' && info.status !== 'behind-modified' && info.status !== 'absorbed-behind' && info.status !== 'snapshot-less') {
 						return { ok: false as const, error: 'App "' + targetId + '" has no update available.' }
 					}
 				} else {
@@ -1137,7 +1233,7 @@ function manage_update_with_status(
 					var installedDef = pair[0]
 					var catalogDef = pair[1]
 					var additions = capabilityAdditions(installedDef, catalogDef)
-					var needsConfirm = info.status === 'behind-modified' || info.status === 'snapshot-less' || additions.length > 0
+					var needsConfirm = info.status === 'behind-modified' || info.status === 'absorbed-behind' || info.status === 'snapshot-less' || additions.length > 0
 					if (kind === 'restore') needsConfirm = true
 					if (needsConfirm && !confirmed) {
 						return {
@@ -1213,6 +1309,8 @@ export type AppStoreStatus =
 	| 'modified-current'
 	| 'modified-ahead'
 	| 'snapshot-less'
+	| 'absorbed'
+	| 'absorbed-behind'
 	| 'storage-only'
 	| 'storage-only-formerly'
 
@@ -1237,6 +1335,9 @@ export interface AppStoreStatusInfo {
  * catalog copy is classified modified-ahead for control purposes
  * (Restore, confirmed, never Update) with modified=false, since the
  * user changed nothing but the catalog copy is not the installed one.
+ * When the snapshot carries `catalogFingerprint`, the absorbed cases
+ * take precedence: I == S and the field equals C yields `absorbed`;
+ * I == S and it differs yields `absorbed-behind`.
  */
 export function get_app_status(
 	id: string,
@@ -1288,7 +1389,9 @@ export function get_app_status(
 			var cv = catalogEntry !== null && typeof catalogEntry.catalogVersion === 'number' ? catalogEntry.catalogVersion : 0
 			var modified = installedFingerprint !== snapshot.fingerprint
 			var status: AppStoreStatus
-			if (installedFingerprint === catalogFingerprint) {
+			if (!modified && snapshot.catalogFingerprint !== undefined) {
+				status = snapshot.catalogFingerprint === catalogFingerprint ? 'absorbed' : 'absorbed-behind'
+			} else if (installedFingerprint === catalogFingerprint) {
 				status = 'up-to-date'
 			} else if (!modified && iv < cv) {
 				status = 'behind-clean'
@@ -1322,6 +1425,8 @@ export interface StoreRow {
 	category?: string
 	description?: string
 	installMode: string
+	/** Full URL of the app's catalog folder in GitHub tree form, set when the row came from a catalog entry. */
+	folderUrl?: string
 	installed: boolean
 	inCatalog: boolean
 	status: AppStoreStatus
@@ -1360,7 +1465,7 @@ export function get_store_rows(store?: KeyStore, catalogBase?: string): Promise<
 			readPinned(active),
 			readHidden(active),
 			readHomepage(active),
-			readRegistry(active),
+			listInstalledIds(active),
 			getRunningPackageVersion(),
 		]).then(function (parts) {
 			var pinned = parts[0]
@@ -1392,7 +1497,7 @@ function buildStoreRows(
 	pinned: string[],
 	hidden: string[],
 	homepage: string[],
-	catalog: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; minPackageVersion?: string; schemaVersion?: number }[],
+	catalog: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; recipePath?: string; minPackageVersion?: string; schemaVersion?: number }[],
 	running: string,
 	catalogBase: string,
 ): Promise<StoreRow[]> {
@@ -1418,7 +1523,7 @@ function buildStoreRows(
 							var installedDef = triple[0]
 							var info = triple[1]
 							var fetchedDef = triple[2]
-							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string } | null = null
+							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; recipePath?: string } | null = null
 							for (var cj = 0; cj < catalog.length; cj++) {
 								if (catalog[cj].id === want) catalogEntry = catalog[cj]
 							}
@@ -1437,6 +1542,7 @@ function buildStoreRows(
 								category: installedDef ? installedDef.category : (catalogEntry ? catalogEntry.category : undefined),
 								description: catalogEntry && catalogEntry.description !== undefined ? catalogEntry.description : (installedDef ? installedDef.description : undefined),
 								installMode: catalogEntry && catalogEntry.installMode !== undefined ? catalogEntry.installMode : (fetchedDef && (fetchedDef as unknown as Record<string, unknown>)['installMode'] === 'recipe-only' ? 'recipe-only' : 'json'),
+								folderUrl: catalogEntry ? folderUrlForBase(catalogBase, catalogEntry.id) : undefined,
 								installed: info.installed,
 								inCatalog: info.inCatalog,
 								status: info.status,
@@ -1544,7 +1650,7 @@ export interface InstallExport {
 /** Export the whole install: every app plus pinned/hidden prefs. Recency stays local. */
 export function export_install(store?: KeyStore): Promise<InstallExport> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return Promise.all([readRegistry(active), readPinned(active), readHidden(active), readHomepage(active)]).then(function (parts) {
+		return Promise.all([listInstalledIds(active), readPinned(active), readHidden(active), readHomepage(active)]).then(function (parts) {
 			var ids = parts[0]
 			var pinned = parts[1]
 			var hidden = parts[2]
@@ -1608,7 +1714,7 @@ export function import_install(
 		}
 		return chain.then(function (failed): Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
 			if (failed && 'ok' in failed && failed.ok === false) return Promise.resolve(failed as { ok: false; error: string })
-			return readRegistry(active).then(function (installed: string[]) {
+			return listInstalledIds(active).then(function (installed: string[]) {
 				var pinnedRaw = Array.isArray(rec['pinned']) ? (rec['pinned'] as unknown[]) : []
 				var hiddenRaw = Array.isArray(rec['hidden']) ? (rec['hidden'] as unknown[]) : []
 				var homepageRaw = Array.isArray(rec['homepage']) ? (rec['homepage'] as unknown[]) : []
@@ -1662,7 +1768,7 @@ function migrateImportPayload(payload: unknown): { def?: AppDefinition; error?: 
 
 /**
  * Import an export_app payload (v2, v1, or a bare definition) into this
- * install. Registry-write-only like add_app; no code changes, no republish.
+ * install. Definition-and-state-write-only like add_app; no code changes, no republish.
  */
 export function import_app(
 	payload: unknown,
@@ -1897,7 +2003,7 @@ export function restore(
 							install: current,
 						}
 						return writeBackupEntry(active, currentEntry).then(function () {
-							return readRegistry(active).then(function (ids: string[]) {
+							return listInstalledIds(active).then(function (ids: string[]) {
 								var chain: Promise<void> = Promise.resolve()
 								for (var i = 0; i < ids.length; i++) {
 									;(function (want: string): void {
@@ -1912,8 +2018,7 @@ export function restore(
 								}
 								return chain.then(function () {
 									return Promise.all([
-										writeRegistry(active, []),
-										writePinned(active, []),
+																				writePinned(active, []),
 										writeHidden(active, []),
 										writeRecent(active, []),
 										writeHomepage(active, []),

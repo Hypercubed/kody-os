@@ -14,7 +14,7 @@ no `catalogVersion` bump in this change.
 
 ## 1. `KeyStore.list()`
 
-- [ ] 1.1 In `pkg/src/apps/storage.ts`, add `list(options: {
+- [x] 1.1 In `pkg/src/apps/storage.ts`, add `list(options: {
   prefix, pageSize?, startAfter? })` to the `KeyStore` interface
   with exactly Kody's documented result shape (`{ entries: [{
   key, value }], estimatedBytes, truncated, nextStartAfter,
@@ -47,13 +47,13 @@ no `catalogVersion` bump in this change.
 
 ## 2. Derive the installed list
 
-- [ ] 2.1 `list_apps()` enumerates via `listInstalledIds`
+- [x] 2.1 `list_apps()` enumerates via `listInstalledIds`
   instead of the registry, then reads each definition exactly
   as today (skipping ids with no definition). Order is key
   order (alphabetical by id), not install order. Verify: the
   7-app demo state plus the 2 orphaned definitions lists all 9
   apps; order is alphabetical by id.
-- [ ] 2.2 `get_store_rows()` takes its installed ids from
+- [x] 2.2 `get_store_rows()` takes its installed ids from
   `listInstalledIds`. `export_install()` enumerates via it.
   `import_install()` filters its restored pinned / hidden /
   homepage lists against it instead of the registry.
@@ -61,13 +61,13 @@ no `catalogVersion` bump in this change.
   definition, state, and snapshot before importing. Verify:
   Store rows, export, import, and backup-restore all see the
   same installed set as `list_apps()`.
-- [ ] 2.3 `pruneRetiredApps` becomes a pure filter over the
+- [x] 2.3 `pruneRetiredApps` becomes a pure filter over the
   derived ids: it returns them minus `RETIRED_APP_IDS`
   (`help`, `about`) and deletes the retired definitions and
   state, with no registry read or rewrite. Verify: a store
   containing retired `help` / `about` definitions lists without
   them and their keys are deleted.
-- [ ] 2.4 Any empty-install check (empty Apps help, App Store
+- [x] 2.4 Any empty-install check (empty Apps help, App Store
   seed condition) reads emptiness from the derived list, not
   from the registry key. Verify: a blank store shows the
   empty-install help; a store with one app does not.
@@ -83,14 +83,14 @@ no `catalogVersion` bump in this change.
   keys (plus the snapshot on a Store install) and appears in
   `list_apps()`; re-adding an existing id preserves state for
   fields still declared.
-- [ ] 3.2 `remove_app` decides "unknown app" from the definition
+- [x] 3.2 `remove_app` decides "unknown app" from the definition
   key instead of the registry, then deletes definition, state,
   and snapshot and scrubs pinned / hidden / recent / homepage
   references. Its docstring drops "registry" from the scrubbed
   lists. Verify: removing an installed app deletes its keys
   and scrubs its references; removing an unknown id returns
   `{ ok: false }` and writes nothing.
-- [ ] 3.3 `manage_install`, `manage_update`, `manage_restore`,
+- [x] 3.3 `manage_install`, `manage_update`, `manage_restore`,
   and `manage_remove` need no change beyond 3.1–3.2 and 2.2;
   confirm each reads no registry key. `get_app_status` is
   unchanged (it already defines installed as "the definition
@@ -99,7 +99,7 @@ no `catalogVersion` bump in this change.
   `storage.ts`'s deleted helpers — and `readRegistry` /
   `writeRegistry` are deleted from `storage.ts` so no future
   caller can reintroduce the shared list.
-- [ ] 3.4 The stale registry key (`kody-os.apps.registry`) is
+- [x] 3.4 The stale registry key (`kody-os.apps.registry`) is
   left in place, unread and unwritten; no migration step, no
   deletion on a read path. Verify: a store that still carries a
   stale registry key lists correctly from the derived list, and
@@ -107,13 +107,13 @@ no `catalogVersion` bump in this change.
 
 ## 4. Concurrency and orphans
 
-- [ ] 4.1 Verify the original bug is gone structurally: two
+- [x] 4.1 Verify the original bug is gone structurally: two
   concurrent installs for different ids, started from the same
   state, both land in `list_apps()` with definitions and state
   intact — with no Store serialization and no re-read/verify
   loop in `add_app`. Verify: the same for an agent install
   racing a Store install.
-- [ ] 4.2 Verify orphan self-healing: a store with a definition
+- [x] 4.2 Verify orphan self-healing: a store with a definition
   and state but no registry entry (the demo's Calendar state)
   lists the app with no repair step, and the Store row shows it
   installed with its correct update status.
@@ -125,7 +125,7 @@ no `catalogVersion` bump in this change.
 
 ## 5. Tests, version, and spec sync
 
-- [ ] 5.1 Add harness coverage: the store harness gains checks
+- [x] 5.1 Add harness coverage: the store harness gains checks
   for `list()` pagination and prefix filtering on the memory
   store, derived enumeration (including an orphaned definition
   and a retired id), concurrent different-id installs, and the
@@ -141,9 +141,51 @@ no `catalogVersion` bump in this change.
   export shape change; Apps list order change points at MINOR;
   no `catalogVersion` bump — no catalog definition or bundle
   changes).
-- [ ] 5.4 Archive with a close-out note recording what was
+- [x] 5.4 Archive with a close-out note recording what was
   verified, what was substituted, and what was left open
   (including the remaining shared-array race in pinned / hidden
   / homepage / recent, and the downgrade note: old code reading
   a store written by new code sees a stale registry missing
   apps installed after the change).
+
+## Sync notes — 2026-11-11
+
+Boxes checked in this sync for work actually completed and verified in
+this session; the rest stay unchecked with the reason. Verification
+figures are the ones in close-out.md (store harness 145 PASS / 1
+pre-existing FAIL at race time; branch-final run 187 PASS / 1
+pre-existing FAIL).
+
+- 1.2 (unchecked): list() is implemented in createMemoryStore() and
+  verified by the harness (prefix filter, key order, page boundary).
+  The 'mock store used by kody dev' half was NOT done: the mock store
+  is platform-provided by the Kody CLI, not in-repo code, so there is
+  nothing in this repo to implement it in.
+- 1.3 (unchecked): the hosted packageStorage() handle's list() was
+  never verified live from this environment (no Kody handle is
+  reachable here). The task itself says not to mark it done in that
+  case. The memory store implements the documented shape and the
+  harness covers it.
+- 1.4 (unchecked): multi-page enumeration is verified (harness
+  multi-page listInstalledIds). The 'store without list() fails
+  loudly' half has no harness check: the throw exists in the code
+  (registry.ts, listInstalledIds) but was never asserted by a check
+  or a live probe.
+- 3.1 (unchecked): add_app writes only the definition + state keys
+  in the code (no registry write; no REGISTRY_KEY, readRegistry, or
+  writeRegistry reference remains in pkg/src, tests, catalog, or
+  scripts) and installs appear in list_apps() with state preserved
+  (harness). The exact two-key write count is not asserted by a
+  harness check.
+- 4.3 (unchecked): same-id last-write-wins follows from add_app's
+  write-only shape (no read-modify-write), but no harness check
+  exercises two concurrent same-id installs; the double-click
+  busy-state guard was not click-tested.
+- 5.2 (unchecked): bun build succeeded (247,261 bytes, per
+  close-out.md) but the ES2019 scan has no run recorded for this
+  change.
+- 5.3 (unchecked): the canonical spec sync is done (the change's 4
+  delta requirements are in openspec/specs/app-registry/spec.md).
+  The package version decision (MINOR, no catalogVersion bump) is
+  recorded in close-out.md, not in an implementation commit, because
+  no commit was made — the user directed this work stays uncommitted.

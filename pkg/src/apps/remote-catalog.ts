@@ -87,6 +87,8 @@ export interface CatalogSummary {
   category?: string
   description?: string
   installMode: CatalogInstallMode
+  /** Manifest-relative path of the app recipe, e.g. app-store/RECIPE.md. */
+  recipePath: string
   /** Minimum shell version the entry's definition.json declares, when present. */
   minPackageVersion?: string
   /** Definition schema the entry's definition.json carries, when known. */
@@ -181,6 +183,62 @@ export function catalogLabelForBase(base: string): string {
   var lower = base.toLowerCase()
   if (lower.indexOf('http://') === 0) return 'local:' + base
   return base.replace(/\/$/, '')
+}
+
+/**
+ * Shared GitHub-raw base parsing: a normalized catalog base of the
+ * form https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<tail>
+ * (tail is the path after the ref, e.g. catalog/) yields its parts;
+ * any other base yields null.
+ */
+function parseGitHubRawBase(base: string): { owner: string; repo: string; ref: string; tail: string } | null {
+  var rawPrefix = 'https://raw.githubusercontent.com/'
+  if (base.indexOf(rawPrefix) !== 0) { return null }
+  var rest = base.slice(rawPrefix.length)
+  var firstSlash = rest.indexOf('/')
+  if (firstSlash === -1) { return null }
+  var owner = rest.slice(0, firstSlash)
+  var rest2 = rest.slice(firstSlash + 1)
+  var secondSlash = rest2.indexOf('/')
+  if (secondSlash === -1) { return null }
+  var repo = rest2.slice(0, secondSlash)
+  var rest3 = rest2.slice(secondSlash + 1)
+  var thirdSlash = rest3.indexOf('/')
+  if (thirdSlash === -1) { return null }
+  return { owner: owner, repo: repo, ref: rest3.slice(0, thirdSlash), tail: rest3.slice(thirdSlash + 1) }
+}
+
+
+/**
+ * Full URL of an app install recipe for an agent to follow: the Help
+ * page blob form for GitHub raw bases, so a pinned tag or branch
+ * shows in the URL instead of always reading main; the raw URL itself
+ * for any other base (loopback dev bases included), which an agent can
+ * fetch directly. base is a normalized catalog base (trailing slash);
+ * recipePath is the manifest-relative recipe path, e.g.
+ * app-store/RECIPE.md.
+ */
+export function recipeUrlForBase(base: string, recipePath: string): string {
+  var parsed = parseGitHubRawBase(base)
+  if (parsed) {
+    return 'https://github.com/' + parsed.owner + '/' + parsed.repo + '/blob/' + parsed.ref + '/' + parsed.tail + recipePath
+  }
+  return base + recipePath
+}
+
+/**
+ * Full URL of an app's catalog folder in GitHub tree form, built from
+ * the resolved catalog base the same way recipeUrlForBase builds the
+ * recipe URL (same ref — a pinned tag lands in it instead of main).
+ * For any other base, the base plus the app id plus a trailing slash
+ * (a loopback folder URL is not a browsable listing).
+ */
+export function folderUrlForBase(base: string, id: string): string {
+  var parsed = parseGitHubRawBase(base)
+  if (parsed) {
+    return 'https://github.com/' + parsed.owner + '/' + parsed.repo + '/tree/' + parsed.ref + '/' + parsed.tail + id
+  }
+  return base + id + '/'
 }
 
 export function get_catalog_source(base?: string): { baseUrl: string; releaseLabel: string } {
@@ -377,6 +435,7 @@ export async function list_catalog(base?: string): Promise<CatalogSummary[]> {
         category: (def as AppDefinition).category,
         description: (def as AppDefinition).description,
         installMode: entry.installMode,
+        recipePath: entry.recipePath,
         minPackageVersion: typeof minRaw === 'string' ? minRaw : undefined,
         schemaVersion: typeof schemaRaw === 'number' ? schemaRaw as number : undefined,
       })
@@ -389,6 +448,7 @@ export async function list_catalog(base?: string): Promise<CatalogSummary[]> {
         category: undefined,
         description: undefined,
         installMode: entry.installMode,
+        recipePath: entry.recipePath,
       })
     }
   }

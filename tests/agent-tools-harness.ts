@@ -1,6 +1,12 @@
 /**
  * Agent-tools harness (catalog + pin tools, added 2026-10-30 before a
- * pause in the app-store work). Run with bun from the repo root:
+ * pause in the app-store work). Modernized 2026-11-11: the catalog calls
+ * are async and go through a loopback server (KODY_CATALOG_BASE override);
+ * the update block installs a Store fixture whose declared base is that
+ * server, because update_from_catalog reads only the installed Store's
+ * declared base. The '16 apps' count below is stale (the catalog now
+ * ships 18) and the check is left as-is as the known pre-existing
+ * failure. Run with bun from the repo root:
  *
  *   bun tests/agent-tools-harness.ts
  *
@@ -32,6 +38,9 @@
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
 import { act, add_app, createMemoryStore, get_app, get_app_state, get_catalog_definition, get_hidden, get_homepage, get_pinned, install_from_catalog, list_apps, list_catalog, move_home, set_hidden, set_hide, set_home, set_homepage, set_pin, set_pinned, update_from_catalog } from '../pkg/src/apps/index.ts'
+import { readFileSync, statSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 var failures: string[] = []
 
@@ -44,18 +53,42 @@ function clone<T>(v: T): T {
 	return JSON.parse(JSON.stringify(v)) as T
 }
 
+// Local catalog override for the remote module: serve the working-tree
+// catalog/ over loopback http so the fetch code path is identical to
+// production and only the base URL differs.
+var __root = join(dirname(fileURLToPath(import.meta.url)), '..')
+var __catalogDir = join(__root, 'catalog')
+var __http = await import('node:http')
+var __server = __http.createServer(function (req, res) {
+	try {
+		var url = new URL(req.url || '/', 'http://127.0.0.1')
+		var pathname = decodeURIComponent(url.pathname)
+		if (pathname.indexOf('..') !== -1) { res.statusCode = 404; res.end('not found'); return }
+		var rel = pathname.replace(/^\//, '')
+		var full = join(__catalogDir, rel)
+		if (!statSync(full, { throwIfNoEntry: false }) || !statSync(full).isFile()) { res.statusCode = 404; res.end('not found'); return }
+		res.statusCode = 200
+		res.end(readFileSync(full, 'utf8'))
+	} catch (err) { res.statusCode = 500; res.end('error') }
+})
+await new Promise<void>(function (resolve) { __server.listen(0, '127.0.0.1', function () { resolve() }) })
+var __addr = __server.address() as unknown as { port: number }
+var BASE = 'http://127.0.0.1:' + String(__addr.port) + '/'
+;(globalThis as unknown as Record<string, unknown>)['KODY_CATALOG_BASE'] = BASE
+try { (__server as unknown as { unref?: () => void }).unref?.() } catch (err) {}
+
 // Catalog reads (no store needed).
 {
-	var listed = list_catalog()
+	var listed = await list_catalog(BASE)
 	check('list_catalog returns 16 apps', listed.length === 16, 'got ' + listed.length)
 	var ids = listed.map(function (s): string { return s.id })
 	check('list_catalog is alphabetical', JSON.stringify(ids) === JSON.stringify(ids.slice().sort()), ids.join(','))
 	check('list_catalog entries carry label/category/description', listed.every(function (s): boolean {
 		return typeof s.label === 'string' && typeof s.category === 'string' && typeof s.description === 'string'
 	}))
-	var counterDef = get_catalog_definition('counter')
+	var counterDef = await get_catalog_definition('counter', BASE)
 	check('get_catalog_definition known id returns definition', counterDef !== null && counterDef.id === 'counter')
-	check('get_catalog_definition unknown id returns null', get_catalog_definition('no-such-app') === null)
+	check('get_catalog_definition unknown id returns null', (await get_catalog_definition('no-such-app', BASE)) === null)
 }
 
 // install_from_catalog.
@@ -86,13 +119,21 @@ function clone<T>(v: T): T {
 // update_from_catalog.
 {
 	var store = createMemoryStore()
+	// update_from_catalog reads only the installed Store's declared base,
+	// and a loopback http base cannot be installed through add_app
+	// (definition validation requires proxy URLs to use https), so seed
+	// the Store's definition key directly, pointing its catalog at the
+	// loopback base.
+	var storeDef = clone(await get_catalog_definition('app-store', BASE)) as { capabilities: { proxy: { name: string; url: string }[] } }
+	storeDef.capabilities.proxy = [{ name: 'catalog', url: BASE }]
+	await store.set('kody-os.apps.def.app-store', JSON.stringify(storeDef))
 	var notInstalled = await update_from_catalog('counter', store)
 	check('update uninstalled id rejected', notInstalled.ok === false)
 	if (notInstalled.ok === false) check('update uninstalled id error points to install', (notInstalled as { error: string }).error.indexOf('install_from_catalog') !== -1, (notInstalled as { error: string }).error)
 	var bad = await update_from_catalog('no-such-app', store)
 	check('update unknown catalog id rejected', bad.ok === false)
 	// Install a tampered counter (changed description), set state, then update.
-	var tampered = clone(get_catalog_definition('counter')) as unknown as Record<string, unknown>
+	var tampered = clone(await get_catalog_definition('counter', BASE)) as unknown as Record<string, unknown>
 	tampered.description = 'tampered description'
 	var added = await add_app(tampered as never, store)
 	check('tampered counter installs', added.ok === true)
@@ -103,7 +144,7 @@ function clone<T>(v: T): T {
 	if (updated.ok === true) {
 		var entry = await get_app('counter', store)
 		if ('definition' in entry) {
-			var catalogDef = get_catalog_definition('counter')
+			var catalogDef = await get_catalog_definition('counter', BASE)
 			check('update restores catalog definition', entry.definition.description === (catalogDef !== null ? catalogDef.description : null), entry.definition.description)
 		} else {
 			check('update restores catalog definition', false, 'get_app failed')

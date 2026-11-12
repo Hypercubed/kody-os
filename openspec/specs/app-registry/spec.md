@@ -80,15 +80,181 @@ State SHALL live only in storage. Every action SHALL be validated (args coerced 
 - **THEN** pins, hidden flags, and homepage order match, and Recent starts empty.
 
 ### Requirement: Storage layout and budget
-Registry and state SHALL live under `packageStorage()` keys `kody-os.apps.registry` (id list), `kody-os.apps.def.<id>`, and `kody-os.apps.state.<id>`, within the 16 MiB durable-storage budget (definitions stay small JSON). Outside Kody (local runs, tests) the same code SHALL fall back to a shared in-memory store; `createMemoryStore()` SHALL provide isolated blank installs for round-trip tests.
+Definitions and state SHALL live under `packageStorage()` keys `kody-os.apps.def.<id>` and `kody-os.apps.state.<id>`, within the 16 MiB durable-storage budget (definitions stay small JSON). The installed list is derived from the definition keys, not stored: no code SHALL read or write a `kody-os.apps.registry` id list, and a stale key of that name SHALL be left in place, unread and unwritten, when present. Outside Kody (local runs, tests) the same code SHALL fall back to a shared in-memory store; `createMemoryStore()` SHALL provide isolated blank installs for round-trip tests.
 
 #### Scenario: Keys are namespaced and portable
 - **WHEN** two apps are installed and the storage keys are listed
 - **THEN** every key starts with `kody-os.apps.` and the definitions remain small plain JSON with no code strings.
 
+### Requirement: Installed apps are derived from definition keys
+
+The installed list SHALL be derived, not stored: `list_apps()` and
+every other installed-enumeration SHALL obtain installed ids by
+paginating `list({ prefix: 'kody-os.apps.def.' })` and taking the id
+suffix of each key, in key order (alphabetical by id). No shared
+registry list SHALL be read or written: `kody-os.apps.registry`
+SHALL be left in place, unread and unwritten, when present. A
+definition whose key exists SHALL be installed, whether or not any
+registry entry ever named it. Pagination SHALL run to completion
+(`truncated` / `nextStartAfter`) and SHALL never assume one page
+holds every app.
+
+#### Scenario: Concurrent installs for different apps both land
+
+- **WHEN** two installs for different ids run concurrently, with
+  no Store serialization and no re-read/verify loop in `add_app`
+- **THEN** both apps appear in `list_apps()` afterwards, with
+  definitions and state intact.
+
+#### Scenario: An orphaned definition is installed
+
+- **WHEN** a definition and state exist but no registry entry
+  names the id
+- **THEN** the app appears in `list_apps()` and on the Apps page
+  with no repair step, and its Store row shows it installed with
+  its correct update status.
+
+#### Scenario: The Apps list is alphabetical by id
+
+- **WHEN** the derived list is rendered
+- **THEN** apps appear in alphabetical-by-id order, not install
+  order, matching the Store's catalog-only list order.
+
+#### Scenario: Pagination covers the whole install
+
+- **WHEN** the install holds more apps than one `list()` page
+- **THEN** enumeration returns every installed app.
+
+### Requirement: `KeyStore` lists keys by prefix
+
+`KeyStore` SHALL expose `list(options: { prefix: string;
+pageSize?: number; startAfter?: string })`, resolving to
+`{ entries: [{ key, value }], estimatedBytes, truncated,
+nextStartAfter, pageSize }` with `pageSize` defaulting to 250 and
+capped at 1000, entries in key order. The hosted
+`packageStorage()` handle SHALL back it directly; the memory
+store and the mock store SHALL implement the same shape over
+their keys. A store without `list()` SHALL fail loudly with an
+error naming the store, never silently return an empty list.
+
+`resolveStore()` SHALL normalize a `list()` result that arrives
+as a bare array of `{ key, value }` pairs (the shape the mock
+handle returns: the whole namespace, prefix ignored) into the
+documented envelope before any caller sees it: keep only entries
+whose key starts with the requested prefix, sort by key, and
+derive pagination from `pageSize` / `startAfter` exactly as
+`createMemoryStore()` does (`estimatedBytes` over the returned
+page, `truncated` / `nextStartAfter` from the filtered set). A
+result that is already the documented envelope SHALL pass
+through untouched. A result that is neither a bare array nor an
+envelope SHALL reject with an error naming the shape, never
+return an empty list.
+
+#### Scenario: Prefix filtering and paging
+
+- **WHEN** `list()` is called with a prefix over keys under two
+  prefixes, with a page size smaller than the result
+- **THEN** it returns only the requested prefix's keys, in key
+  order, with `truncated: true` and a `nextStartAfter` that
+  yields the remainder on the next call.
+
+#### Scenario: A store without `list()` fails loudly
+
+- **WHEN** installed enumeration runs against a store with no
+  `list()` method
+- **THEN** it throws an error naming the store instead of
+  reporting an empty install.
+
+#### Scenario: A bare-array list() result enumerates as the envelope
+
+- **WHEN** `list({ prefix: 'kody-os.apps.def.' })` is called
+  against a store whose handle returns a bare array holding keys
+  under several prefixes, with a page size smaller than the
+  filtered result
+- **THEN** it returns only the requested prefix's keys, in key
+  order, with `truncated: true` and a `nextStartAfter` that
+  yields the remainder on the next call, and `estimatedBytes`
+  covers only the returned page.
+
+#### Scenario: A documented-envelope list() result passes through untouched
+
+- **WHEN** `list()` is called against a store whose handle
+  returns the documented envelope
+- **THEN** the returned entries, order, `estimatedBytes`,
+  `truncated`, `nextStartAfter`, and `pageSize` are exactly the
+  handle's own values, with no re-filtering or re-sorting.
+
+#### Scenario: An unrecognized list() result fails loudly
+
+- **WHEN** `list()` returns neither a bare array nor an object
+  with an `entries` array
+- **THEN** enumeration rejects with an error naming the shape
+  instead of reporting an empty install.
+
+#### Scenario: The homepage lists installed apps from a bare-array store
+
+- **WHEN** the install's definition keys are enumerated through
+  a bare-array `list()` result
+- **THEN** `list_apps()` returns every installed id and the
+  homepage and Apps page list them, with no re-seed or reinstall.
+
+### Requirement: `add_app` and `remove_app` write per-id keys only
+
+`add_app` SHALL write only the definition key and the state key
+for its own id (plus the install snapshot on a Store install,
+which is itself a per-id key). It SHALL NOT read or write any
+shared registry list. The state-preservation rule is unchanged.
+`remove_app` SHALL decide "unknown app" from the definition key,
+then delete the definition, state, and snapshot keys and scrub
+the pinned / hidden / recent / homepage references, and SHALL
+NOT read or write any shared registry list. Two concurrent
+writers for the same id SHALL resolve to the last `set` for that
+one key, with no cross-app loss and no orphan.
+
+#### Scenario: A single install writes only its own keys
+
+- **WHEN** one app is installed
+- **THEN** exactly its definition and state keys are written
+  (plus the snapshot on a Store install), it appears in
+  `list_apps()`, and no shared key is touched.
+
+#### Scenario: Re-adding preserves state
+
+- **WHEN** an installed app is re-added
+- **THEN** its state is preserved for fields still declared,
+  exactly as before.
+
+#### Scenario: Removing an app deletes only its keys
+
+- **WHEN** an installed app is removed
+- **THEN** its definition, state, and snapshot keys are deleted
+  and its pinned / hidden / recent / homepage references are
+  scrubbed, and no other app's keys change.
+
+#### Scenario: Removing an unknown app writes nothing
+
+- **WHEN** `remove_app` is called with an id that has no
+  definition key
+- **THEN** it returns `{ ok: false }` with a naming error and
+  writes nothing.
+
+### Requirement: Retired apps are filtered at read time
+
+Retired ids (`help`, `about`) SHALL be filtered out of the
+derived installed list at read time, and their definition and
+state keys SHALL be deleted. No registry read or rewrite SHALL
+take part in retiring an app.
+
+#### Scenario: A retired definition is not listed
+
+- **WHEN** the store contains retired `help` / `about`
+  definitions
+- **THEN** they do not appear in `list_apps()`, and their
+  definition and state keys are deleted.
+
 ### Requirement: Pinned, hidden, and recency lists
 
-The registry SHALL store three lists beside the app registry in `packageStorage()`: pinned app ids (user order), hidden app ids, and recent app ids (most recent first, capped at a fixed count). All three SHALL default to empty on a fresh install and SHALL live under the same `kody-os.apps.*` key namespace and 16 MiB budget as the registry.
+The shell SHALL store three lists beside the installed apps in `packageStorage()`: pinned app ids (user order), hidden app ids, and recent app ids (most recent first, capped at a fixed count). All three SHALL default to empty on a fresh install and SHALL live under the same `kody-os.apps.*` key namespace and 16 MiB budget as the definitions.
 
 #### Scenario: Fresh install has empty lists
 - **WHEN** the lists are read before any pin, hide, or use
@@ -96,7 +262,7 @@ The registry SHALL store three lists beside the app registry in `packageStorage(
 
 ### Requirement: Homepage order list
 
-The registry SHALL store a homepage order list of app ids under `kody-os.apps.homepage`, defaulting to empty. Reordering SHALL persist the new order with a single write. Removing an app from the homepage list (without uninstalling) SHALL keep its pin, hidden state, definition, and state untouched.
+The shell SHALL store a homepage order list of app ids under `kody-os.apps.homepage`, defaulting to empty. Reordering SHALL persist the new order with a single write. Removing an app from the homepage list (without uninstalling) SHALL keep its pin, hidden state, definition, and state untouched.
 
 #### Scenario: Order persists across loads
 - **WHEN** homepage widgets are moved up and down and the page is reloaded
@@ -130,7 +296,7 @@ App definitions SHALL contain data only. The shell and registry SHALL never stor
 - **THEN** it returns `{ ok: false }` naming the id and writes nothing.
 
 ### Requirement: Same-id overwrite preserves references
-Re-adding an existing id via `add_app` SHALL overwrite the definition, preserve state by default (declared fields carried forward, dropped fields reset to `initial`), and leave registry order, pins, hidden flags, homepage placement, and recent entries untouched (only `remove_app` scrubs reference lists). Passing `resetState: true` SHALL reset state to `initial` instead. Passing `migrate` SHALL map old field names to new ones with validator-checked values: an unmappable field aborts the whole re-add with `{ ok: false }` and no state change.
+Re-adding an existing id via `add_app` SHALL overwrite the definition, preserve state by default (declared fields carried forward, dropped fields reset to `initial`), and leave pins, hidden flags, homepage placement, and recent entries untouched (only `remove_app` scrubs reference lists). Passing `resetState: true` SHALL reset state to `initial` instead. Passing `migrate` SHALL map old field names to new ones with validator-checked values: an unmappable field aborts the whole re-add with `{ ok: false }` and no state change.
 
 #### Scenario: Re-added app keeps its route and pins
 - **WHEN** an installed app (pinned, on homepage) is re-added under the same id
@@ -431,6 +597,15 @@ SHALL NOT be part of an exported definition. `remove_app` SHALL delete
 the snapshot with the app. A store update SHALL replace the snapshot
 with the new version and fingerprint after a successful update.
 
+A snapshot MAY also carry an optional `catalogFingerprint`: the
+fingerprint of the catalog definition absorbed from, set only by
+`absorb_from_catalog` (see "Absorb a modified catalog app"). A
+successful absorb SHALL replace the snapshot with the catalog
+version, the fingerprint of the merged definition as actually
+stored, and the catalog fingerprint absorbed from. Snapshots
+without the field behave exactly as before; no migration is
+required.
+
 #### Scenario: Store install records a snapshot
 - **WHEN** a catalog app is installed from the store
 - **THEN** a snapshot exists recording its `catalogVersion` and the fingerprint of its stored definition.
@@ -442,6 +617,10 @@ with the new version and fingerprint after a successful update.
 #### Scenario: Export does not carry the snapshot
 - **WHEN** an installed catalog app is exported
 - **THEN** the export contains its definition and state, but no snapshot, and importing it does not create a snapshot.
+
+#### Scenario: Absorb records a snapshot with the catalog fingerprint
+- **WHEN** an absorb succeeds
+- **THEN** the snapshot records the catalog version, the fingerprint of the merged definition as stored, and the fingerprint of the catalog definition absorbed from.
 
 ### Requirement: Update status and confirmed updates
 
@@ -467,6 +646,16 @@ the catalog `catalogVersion` (Cv):
   catalog copy only after an explicit user confirmation, and a
   successful overwrite records a snapshot, so the app becomes managed
   afterwards.
+
+When the snapshot carries a `catalogFingerprint` (set only by an
+absorb), the absorbed cases take precedence over the branches
+above: I == S and the snapshot's catalog fingerprint equals C
+yields `absorbed` (Remove only, never Update, Overwrite, or
+Restore); I == S and the snapshot's catalog fingerprint differs
+from C yields `absorbed-behind` (Absorb again, or a confirmed
+Overwrite, never a plain Update). I != S falls through to the
+modified branches above, so an app edited after absorbing is
+treated as modified again.
 
 Updating a modified app SHALL replace its definition with the catalog
 copy only after an explicit user confirmation (see the shell spec delta
@@ -494,11 +683,161 @@ auto-update an installed app.
 
 #### Scenario: Snapshot-less app offers a confirmed Overwrite
 - **WHEN** an installed catalog app has no snapshot
-- **THEN** the store offers Overwrite, and confirming replaces its definition with the catalog copy, preserves state for surviving fields, and records a snapshot, so the app is managed afterwards.
+- **THEN** the store offers Overwrite, and confirming replaces its definition with the catalog copy, preserves state for surviving fields, and records a snapshot, so the app becomes managed afterwards.
 
 #### Scenario: Update never runs on its own
 - **WHEN** a republish ships a newer catalog definition
 - **THEN** installed apps keep their stored definitions until the user chooses an update (or restore) from the store.
+
+#### Scenario: Absorbed app reads absorbed, not catalog-differing
+- **WHEN** an installed catalog app matches its snapshot at the catalog version, differs from the catalog copy, and its snapshot's catalog fingerprint equals the current catalog fingerprint
+- **THEN** the store reads it as `absorbed`, offers Remove only, and never offers Update.
+
+#### Scenario: Absorbed app with a moved catalog reads absorbed-behind
+- **WHEN** an absorbed app's catalog definition changes
+- **THEN** the store reads it as `absorbed-behind`, offers Absorb again and a confirmed Overwrite, and never offers a plain Update.
+
+#### Scenario: App edited after absorbing reads modified again
+- **WHEN** an absorbed app's installed definition is edited so it differs from its snapshot
+- **THEN** the store derives its status from the modified branches, not from the absorbed cases.
+
+### Requirement: Store row agent-prompt details
+
+Every App Store row SHALL carry a copyable agent prompt for the action that row is about, inside a collapsed `<details class="store-details">` element at the bottom of the row's description (after badge, description, and capabilities), holding a `<summary>` naming the action and a `<code>` element with the prompt text. The prompt SHALL be plain selectable text, set via `textContent` (never `innerHTML` for text built from a row id or label), with no copy button and no Clipboard API use. The one-tap buttons stay as they are; the details element is an additional path, never a replacement.
+
+The prompt is a one-liner naming the operations file and the app's catalog folder; the procedure lives in the file, not in the prompt. With `<ops>` the reference `Read package:<slug>#OPERATIONS.md` (the slug derived at render time from the running package's own mount, falling back to `kody-os`) and `<folder>` the row's `folderUrl`, the prompt per row status SHALL be:
+
+- Not installed: `Read <ops>, then install this app: <folder>`.
+- Behind-clean or catalog-differing: `Read <ops>, then update this app to the latest catalog version: <folder>`.
+- Behind-modified, modified-current, or absorbed-behind: `Read <ops>, then absorb the catalog changes into this app, keeping my local customizations: <folder>` (see "Absorb a modified catalog app").
+- Modified-ahead: `Read <ops>, then restore this app to the catalog copy: <folder>`.
+- Snapshot-less: `Read <ops>, then overwrite this app with the catalog copy: <folder>`.
+- Up-to-date or absorbed: `Read <ops>, then remove this app: <folder>`.
+
+No prompt SHALL name a label, an id, or an MCP call. A row without a `folderUrl` (no catalog entry) SHALL show no Install details.
+
+No details element SHALL appear on a row blocked by a requirement (`needsNewerShell` / `needsNewerSchema`, which show the requirement instead of any control) or on a `storage-only` / `storage-only-formerly` row. A not-installed `recipe-only` row SHALL show the Install details like any other not-installed row (the recipe prompt is the Install one-liner; the controls span explaining that there is no Add button stays).
+
+#### Scenario: Not-installed row shows the install one-liner
+
+- **WHEN** a Store row is not installed
+- **THEN** the row offers one-tap Add (or, when `recipe-only`, the recipe span in place of Add) and also shows a collapsed details element whose prompt is `Read package:<slug>#OPERATIONS.md, then install this app: <folder>`, with no label, id, or MCP call named.
+
+#### Scenario: Behind-clean row shows the update one-liner
+
+- **WHEN** a Store row is behind-clean
+- **THEN** the row offers Update and also shows a collapsed details element whose prompt is the update one-liner, with no MCP call named.
+
+#### Scenario: Behind-modified row shows the absorb one-liner, not an overwrite prompt
+
+- **WHEN** a Store row is behind-modified
+- **THEN** the row offers confirmed Overwrite and shows a collapsed details element whose prompt is the absorb one-liner, and shows no overwrite prompt.
+
+#### Scenario: Up-to-date row shows the remove one-liner
+
+- **WHEN** a Store row is up-to-date
+- **THEN** the row offers Remove and also shows a collapsed details element whose prompt is `Read package:<slug>#OPERATIONS.md, then remove this app: <folder>`.
+
+#### Scenario: Requirement-blocked row shows no details element
+
+- **WHEN** a Store row needs a newer shell or schema
+- **THEN** the row shows the requirement instead of any control and shows no details element.
+
+#### Scenario: Recipe-only not-installed row shows the Install details
+
+- **WHEN** a Store row is not installed and its `installMode` is `recipe-only`
+- **THEN** the row shows the recipe span in place of Add and also shows a collapsed details element with the Install one-liner.
+
+#### Scenario: Prompt is selectable text, no copy button, no Clipboard API
+
+- **WHEN** a Store row renders its details prompt
+- **THEN** the prompt is selectable text in a `<code>` element, the row has no copy button for it, and the bundle uses no Clipboard API for it.
+
+### Requirement: Absorb a modified catalog app
+
+An installed catalog app modified in both places (its installed
+definition differs from its snapshot, and the catalog has moved)
+SHALL be absorbable by an agent: the agent merges the catalog
+changes into the installed definition, keeping the user's local
+customizations, and finishes with the new MCP export
+`absorb_from_catalog`. The absorb is a two-way merge — the stored
+snapshot holds only a fingerprint, never the base definition, so
+there is no base to diff against — and the agent SHALL work from
+the installed definition (`export_app`) and the catalog definition
+(`get_catalog_definition`), following the procedure in
+`pkg/OPERATIONS.md` (backup first, field-by-field compare, merge
+plan, ask before writing, verify by re-exporting). The prompt
+itself SHALL be the Absorb one-liner; the procedure SHALL NOT be
+inlined in the prompt.
+
+`absorb_from_catalog(id, definition, catalogBase?)` SHALL validate
+the agent-supplied merged definition through the `add_app` path,
+write it through `add_app` (state preserved by the existing rule;
+pins, hidden flags, homepage placement, and recency untouched),
+and record a new install snapshot at the catalog version carrying
+the catalog fingerprint absorbed from. It SHALL refuse with no
+write unless the app is installed, is in the catalog, and its
+status is `behind-modified`, `modified-current`, or
+`absorbed-behind`, and unless the merged definition's
+`catalogVersion` equals the catalog's. It SHALL resolve the
+catalog base the same way `install_from_catalog` does, and refuse
+with a no-source error when no catalog source exists. It SHALL be
+an MCP export (name + `useWhen` in the package export list).
+
+After a successful absorb the row SHALL read `absorbed`, never
+still-modified and never `catalog-differing`, and a plain Update
+SHALL never be offered for it. A later catalog change SHALL move
+the row to `absorbed-behind`, where Absorb is offered again (or a
+confirmed Overwrite), never a plain Update.
+
+#### Scenario: Behind-modified app absorbs and reads absorbed
+
+- **WHEN** an agent merges a behind-modified app's installed definition with its catalog definition, keeping a local field change and taking a catalog field change, and calls `absorb_from_catalog` with the merged definition at the catalog version
+- **THEN** the stored definition is the merged one, state is preserved for surviving fields, the snapshot records the catalog version and the merged fingerprint, and the row reads `absorbed` with Remove as its only control.
+
+#### Scenario: Absorb refuses a non-absorbable status
+
+- **WHEN** `absorb_from_catalog` is called for an up-to-date app
+- **THEN** it returns `{ ok: false }` naming the status and writes nothing.
+
+#### Scenario: Absorb refuses a mismatched catalog version
+
+- **WHEN** `absorb_from_catalog` is called with a merged definition whose `catalogVersion` is not the catalog's
+- **THEN** it returns `{ ok: false }` and writes nothing.
+
+#### Scenario: Absorbed app is not offered an update
+
+- **WHEN** an absorbed app's row renders
+- **THEN** it offers Remove only, and Update All skips it.
+
+#### Scenario: Catalog moves after absorb
+
+- **WHEN** the catalog changes after an absorb
+- **THEN** the row reads `absorbed-behind`, offers Absorb again (and a confirmed Overwrite), and never offers a plain Update.
+
+#### Scenario: Absorb asks before writing
+
+- **WHEN** the absorb prompt is followed
+- **THEN** the agent takes a backup first, shows the merge plan, and asks the user before writing anything, and asks which value to keep for any field in conflict, per `pkg/OPERATIONS.md`.
+
+### Requirement: Store row folder URL
+
+`StoreRow` SHALL carry `folderUrl?: string`: the full URL of the app's catalog folder in GitHub tree form (`https://github.com/<owner>/<repo>/tree/<ref>/catalog/<id>`), set when the row came from a catalog entry. `CatalogSummary` SHALL carry `recipePath: string`, the manifest-relative recipe path (for example `app-store/RECIPE.md`); the manifest SHALL require it (a missing or unsafe `recipePath` drops the entry). `folderUrlForBase(base, id)` SHALL derive the folder URL from the resolved catalog base the same way `recipeUrlForBase` derives the recipe URL: a GitHub raw base converts to the tree form with the same ref (a pinned tag lands in it instead of `main`); any other base yields `base + id + '/'`. `buildStoreRows` SHALL set `folderUrl: catalogEntry ? folderUrlForBase(catalogBase, catalogEntry.id) : undefined`. `recipeUrlForBase` SHALL keep its exact behavior. The previous `StoreRow.recipeUrl` field is removed; it was never documented in this spec.
+
+#### Scenario: Row carries the folder URL
+
+- **WHEN** a Store row is built from a catalog entry resolved against a GitHub raw base
+- **THEN** its `folderUrl` is the tree URL for that app's folder at the base's ref.
+
+#### Scenario: Pinned tag lands in the folder URL
+
+- **WHEN** a Store row is built against a catalog base pinned to a tag
+- **THEN** its `folderUrl` names that tag, not `main`.
+
+#### Scenario: Non-GitHub base yields the base folder path
+
+- **WHEN** a Store row is built against a loopback base
+- **THEN** its `folderUrl` is the base plus the app id plus a trailing slash.
 
 ### Requirement: Catalog-only list
 
@@ -565,7 +904,7 @@ the installer that surfaces capabilities before calling them.
 
 #### Scenario: An undeclared app is refused
 - **WHEN** an app without declared `manageApps` calls the management API
-- **THEN** the response is a plain 404, and no registry write occurs.
+- **THEN** the response is a plain 404, and no definition or state write occurs.
 
 #### Scenario: A modified update waits for confirmation
 - **WHEN** the Store requests an update for a behind-modified app
@@ -601,7 +940,7 @@ capability or changing only TTL/size parameters SHALL NOT.
 
 ### Requirement: Empty registry stays empty
 
-A shell request against an empty registry SHALL NOT install any app. Removing the last installed app SHALL leave the registry empty on the next shell request; no seeding, flag, or explicit-removal state SHALL re-install anything.
+A shell request against an empty registry SHALL NOT install any app. Removing the last installed app SHALL leave the registry empty on the next shell request; no seeding, flag, or explicit-removal state SHALL re-install anything. Empty means no `kody-os.apps.def.*` key exists: a stale `kody-os.apps.registry` key, when present, is never consulted.
 
 #### Scenario: Fresh install stays empty
 - **WHEN** a blank store receives its first authenticated shell request
@@ -609,7 +948,7 @@ A shell request against an empty registry SHALL NOT install any app. Removing th
 
 #### Scenario: Removing the last app stays empty
 - **WHEN** every app including the App Store has been removed and a shell request arrives
-- **THEN** the registry is still empty and no catalog app is installed.
+- **THEN** the installed list is still empty and no catalog app is installed.
 
 ### Requirement: Display name is app
 

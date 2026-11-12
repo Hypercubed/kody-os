@@ -2,7 +2,7 @@
  * Phase 2 app-layer contract: the data-driven app definition schema.
  *
  * Every future app in kody-os is DATA matching these types, stored in
- * packageStorage() — never code. Adding an app is a registry write; it needs
+ * packageStorage() — never code. Adding an app writes its definition and state keys; it needs
  * no republish of the OS package and zero additional Kody packages.
  *
  * Identity follows the ReKindle registry pattern: `id` is the stable slug

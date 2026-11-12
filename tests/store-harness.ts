@@ -6,7 +6,7 @@
  * Proves, against fresh in-memory stores, the parts of the data-only
  * App Store change that do not need a live shell fetch (kody dev /
  * hosted):
- *   Empty registry (empty-install): a blank store installs nothing
+ *   Empty installed list (empty-install): a blank store installs nothing
  *     on its own; removing the last app leaves it empty, no re-seed.
  *     The Store appears only through an explicit install.
  *   Empty states (empty-install + mini-apps-user-facing): the shared
@@ -40,6 +40,15 @@
  *   Management remove: an undeclared caller is permission-denied;
  *     removal requires confirmation and then deletes the definition,
  *     state, and snapshot and scrubs pins.
+ *   List shape (store-list-shape): a bare-array list() result normalizes to the documented envelope (prefix filter, key order, client-side pagination, envelope pass-through, unrecognized shape fails loudly); listInstalledIds enumerates the same ids through either shape.
+ *   Absorb (store-row-agent-prompts): a modified-current or
+ *     behind-modified app absorbs through absorb_from_catalog and
+ *     then reads absorbed with its snapshot carrying the catalog
+ *     fingerprint; a moved catalog reads absorbed-behind and absorbs
+ *     again; plain Update and Restore are refused for absorbed rows;
+ *     refusals (up-to-date, mismatched catalogVersion, snapshot-less)
+ *     write nothing. Throwaway catalog copies B and C serve the moved
+ *     catalogs on fresh loopback bases.
  *   Edit render: Apps Edit lists every installed app including
  *     hidden ones, with Pin/Hide/Home as plain GET forms only —
  *     no Open link to an app page, no app-action class, no POST form.
@@ -55,10 +64,11 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { act, add_app, capabilityAdditions, createMemoryStore, fingerprintDefinition, get_app, get_app_status, get_catalog_definition, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS } from '../pkg/src/apps/index.ts'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { tmpdir } from 'node:os'
 
 // Local catalog override for the remote module: serve the working-tree
 // catalog/ over loopback http so the fetch code path is identical to
@@ -105,9 +115,9 @@ function installSteps(text: string): string[] {
 	return steps
 }
 
-// Empty registry stays empty (empty-install): a blank store installs
+// Empty installed list stays empty (empty-install): a blank store installs
 // nothing on its own; the Store appears only through an explicit
-// install; removing the last app leaves the registry empty, no re-seed.
+// install; removing the last app leaves the installed list empty, no re-seed.
 {
 	var store = createMemoryStore()
 	var blankApps = await list_apps(store)
@@ -127,7 +137,7 @@ function installSteps(text: string): string[] {
 	check('a non-empty store is untouched without an install call', nonEmptyApps.length === 1 && nonEmptyApps[0].id === 'counter', nonEmptyApps.map(function (a) { return a.id }).join(','))
 	await remove_app('app-store', store)
 	var afterRemove = await list_apps(store)
-	check('removing the last app leaves the registry empty', afterRemove.length === 0, afterRemove.map(function (a) { return a.id }).join(','))
+	check('removing the last app leaves the installed list empty', afterRemove.length === 0, afterRemove.map(function (a) { return a.id }).join(','))
 	var snapAfterRemove = await readInstallSnapshot(store, 'app-store')
 	check('removing the last app deletes its snapshot', snapAfterRemove === null, JSON.stringify(snapAfterRemove))
 	// Same, via the Store management API with confirmation (tasks 3.1).
@@ -135,7 +145,7 @@ function installSteps(text: string): string[] {
 	var mgmtRemoved = await manage_remove('app-store', 'app-store', true, store)
 	check('management remove of the last app applies on confirm', mgmtRemoved.ok === true, JSON.stringify(mgmtRemoved))
 	var afterMgmtRemove = await list_apps(store)
-	check('management remove of the last app leaves the registry empty', afterMgmtRemove.length === 0, afterMgmtRemove.map(function (a) { return a.id }).join(','))
+	check('management remove of the last app leaves the installed list empty', afterMgmtRemove.length === 0, afterMgmtRemove.map(function (a) { return a.id }).join(','))
 }
 
 // Store install: unknown fails clean, clean install snapshots, no launcher side effects.
@@ -266,7 +276,7 @@ function installSteps(text: string): string[] {
 	var removed = await manage_remove('app-store', 'counter', true, store)
 	check('management remove applies on confirm', removed.ok === true, JSON.stringify(removed))
 	var afterRemove = await list_apps(store)
-	check('removed app leaves the registry', afterRemove.length === 1 && afterRemove[0].id === 'app-store', afterRemove.map(function (a) { return a.id }).join(','))
+	check('removed app leaves the installed list', afterRemove.length === 1 && afterRemove[0].id === 'app-store', afterRemove.map(function (a) { return a.id }).join(','))
 	var removedStatus = await get_app_status('counter', store, BASE)
 	check('removed app is not-installed', removedStatus.status === 'not-installed', removedStatus.status)
 	var removedSnap = await readInstallSnapshot(store, 'counter')
@@ -282,10 +292,10 @@ function installSteps(text: string): string[] {
 // Empty states + prompt sync (empty-install + mini-apps-user-facing).
 {
 	var help = renderEmptyHelp('')
-	check('empty help names the App Catalog prompt', help.indexOf('Add the App Catalog to my kody-os shell.') !== -1, '')
+	check('empty help names the App Catalog prompt', help.indexOf('Read package:kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/app-store') !== -1, '')
 	var promptSteps = installSteps(help)
-	check('App Catalog prompt points at the app-store recipe', help.indexOf('catalog/app-store/RECIPE.md') !== -1, '')
-	check('App Catalog prompt stops at the recipe reference', help.indexOf('RECIPE.md).') !== -1 && promptSteps.length === 0, promptSteps.join(','))
+	check('App Catalog prompt points at the app-store folder', help.indexOf('https://github.com/Hypercubed/kody-os/tree/main/catalog/app-store') !== -1 && help.indexOf('RECIPE.md') === -1, '')
+	check('App Catalog prompt stops at the folder reference', help.indexOf('catalog/app-store</code>') !== -1 && promptSteps.length === 0, promptSteps.join(','))
 	check('App Catalog prompt names no collection recipe', help.indexOf('starter') === -1 && help.indexOf('collections/') === -1, '')
 	check('empty help has all three prompts as gate-hint code', help.indexOf('<h3>Install the App Catalog</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Remove an app</h3>') !== -1 && help.indexOf('class="gate-hint"') !== -1, '')
 	check('empty help lists Add, Remove, then Install the App Catalog', help.indexOf('<h3>Add your own apps</h3>') !== -1 && help.indexOf('<h3>Add your own apps</h3>') < help.indexOf('<h3>Remove an app</h3>') && help.indexOf('<h3>Remove an app</h3>') < help.indexOf('<h3>Install the App Catalog</h3>'), '')
@@ -295,9 +305,9 @@ function installSteps(text: string): string[] {
 	check('empty Home/Apps keep the closing line', help.indexOf('Once an app is installed') !== -1, '')
 	check('Help page block differs only by the closing line', help.indexOf(helpPageBlock) === 0, '')
 	check('Help and About are not catalog apps any more', await get_catalog_definition('help', BASE) === null && await get_catalog_definition('about', BASE) === null)
-	check('empty help prompt 2 asks no App id', help.indexOf('Add a new app to my hosted kody-os app on Kody.') !== -1 && help.indexOf('Name: [display name]') !== -1 && help.indexOf('App id: [slug]') === -1, '')
+	check('empty help Add prompt references the operations file', help.indexOf('Read package:kody-os#OPERATIONS.md, then add a new app: Name: [display name]; What it does: [describe what it should do]') !== -1 && help.indexOf('App id: [slug]') === -1, '')
 	var dashNoApps = renderDashboard([], '', false)
-	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Add the App Catalog') !== -1, '')
+	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Install the App Catalog') !== -1, '')
 	check('Home and Apps render the same help block', dashNoApps.indexOf(help) !== -1, '')
 	var dashHasApps = renderDashboard([], '', true)
 	check('Home with apps but none on Home prompts Add to home', dashHasApps.indexOf('No widgets yet') === -1 && dashHasApps.indexOf('You have apps installed') === -1 && dashHasApps.indexOf('Add some to Home from the Apps page.') !== -1 && dashHasApps.indexOf('Add the App Catalog') === -1, '')
@@ -305,6 +315,341 @@ function installSteps(text: string): string[] {
 	check('Home with widgets renders the widgets', dashWidgets.indexOf('widget') !== -1 && dashWidgets.indexOf('No widgets yet') === -1, '')
 	var homeTiles = renderHomeTiles([], '')
 	check('home tiles say no apps yet', homeTiles.indexOf('No apps yet.') !== -1, '')
+}
+
+// install-registry-race: KeyStore.list() enumerates by prefix, paginated,
+// in key order; listInstalledIds derives installed ids from definition keys.
+{
+	var seeded = createMemoryStore({
+		'kody-os.apps.def.counter': '{"id":"counter"}',
+		'kody-os.apps.def.xkcd': '{"id":"xkcd"}',
+		'kody-os.apps.def.settings': '{"id":"settings"}',
+		'kody-os.apps.state.counter': '{"count":0}',
+		'other.key': 'x',
+	})
+	var first = await seeded.list({ prefix: 'kody-os.apps.def.', pageSize: 2 })
+	check('list() filters by prefix', first.entries.length === 2 && first.entries.every(function (e) { return e.key.indexOf('kody-os.apps.def.') === 0 }), JSON.stringify(first.entries.map(function (e) { return e.key })))
+	check('list() returns keys in sorted order', first.entries[0].key === 'kody-os.apps.def.counter' && first.entries[1].key === 'kody-os.apps.def.settings', JSON.stringify(first.entries.map(function (e) { return e.key })))
+	check('list() truncates a full page', first.truncated === true && first.nextStartAfter === 'kody-os.apps.def.settings', JSON.stringify({ truncated: first.truncated, nextStartAfter: first.nextStartAfter }))
+	var rest = await seeded.list({ prefix: 'kody-os.apps.def.', pageSize: 2, startAfter: first.nextStartAfter as string })
+	check('list() continues after startAfter', rest.entries.length === 1 && rest.entries[0].key === 'kody-os.apps.def.xkcd', JSON.stringify(rest.entries.map(function (e) { return e.key })))
+	check('list() ends untruncated', rest.truncated === false && rest.nextStartAfter === null, JSON.stringify({ truncated: rest.truncated, nextStartAfter: rest.nextStartAfter }))
+	var all = await seeded.list({ prefix: 'kody-os.apps.def.' })
+	check('list() defaults to the full page', all.entries.length === 3 && all.truncated === false, String(all.entries.length))
+	var derivedIds = await listInstalledIds(seeded)
+	check('listInstalledIds returns id suffixes in key order', JSON.stringify(derivedIds) === JSON.stringify(['counter', 'settings', 'xkcd']), derivedIds.join(','))
+	var derivedPaged = await listInstalledIds(seeded, 2)
+	check('listInstalledIds paginates to completion', JSON.stringify(derivedPaged) === JSON.stringify(['counter', 'settings', 'xkcd']), derivedPaged.join(','))
+}
+
+// store-list-shape: a bare-array list() result normalizes to the
+// documented envelope (prefix filter, key order, client-side
+// pagination, envelope pass-through, unrecognized shape fails loudly);
+// listInstalledIds enumerates the same ids through either shape.
+{
+	var bareIds = ['app-store', 'calculator', 'calendar', 'clock', 'counter', 'daily-feed', 'hoodie-weather', 'link-drop', 'news', 'probe', 'settings', 'three-bit-art', 'xkcd']
+	var bare: Array<{ key: string; value: unknown }> = []
+	// Deliberately unsorted: states, defs, and snapshots interleaved,
+	// so the sorted-output check is meaningful.
+	for (var bi = 0; bi < bareIds.length; bi++) {
+		bare.push({ key: 'kody-os.apps.state.' + bareIds[bi], value: '{}' })
+		bare.push({ key: 'kody-os.apps.def.' + bareIds[bi], value: '{"id":"' + bareIds[bi] + '"}' })
+		bare.push({ key: 'kody-os.apps.snapshot.' + bareIds[bi], value: '{"catalogVersion":1}' })
+	}
+	var bareMisc = ['kody-os.apps.pinned', 'kody-os.apps.hidden', 'kody-os.apps.recent', 'kody-os.apps.homepage', 'kody-os.apps.registry', 'kody-os.apps.auth.otp.v2', 'kody-os.apps.auth.sessions.v2', 'kody-os.apps.theme', 'kody-os.apps.locale', 'kody-os.apps.version', 'kody-os.apps.a', 'kody-os.apps.b', 'kody-os.apps.c', 'kody-os.apps.d', 'kody-os.apps.e', 'kody-os.apps.f']
+	for (var mi = 0; mi < bareMisc.length; mi++) bare.push({ key: bareMisc[mi], value: 'x' })
+	check('bare array has 55 entries', bare.length === 55, String(bare.length))
+	var barePage = normalizeListResult(bare, { prefix: 'kody-os.apps.def.' })
+	check('bare array filters to the def prefix', barePage.entries.length === 13 && barePage.entries.every(function (e) { return e.key.indexOf('kody-os.apps.def.') === 0 }), JSON.stringify(barePage.entries.map(function (e) { return e.key })))
+	check('bare array returns keys sorted despite unsorted input', JSON.stringify(barePage.entries.map(function (e) { return e.key })) === JSON.stringify(bareIds.map(function (id) { return 'kody-os.apps.def.' + id })), barePage.entries.map(function (e) { return e.key }).join(','))
+	// Pagination: pageSize 2 over 13 def keys is 7 pages, ids
+	// alphabetical, truncated / nextStartAfter chaining, last page
+	// untruncated with nextStartAfter null.
+	var pagedIds: string[] = []
+	var pages = 0
+	var startAfter: string | undefined = undefined
+	var lastTruncated = true
+	var lastNext: string | null = null
+	while (lastTruncated) {
+		var p = normalizeListResult(bare, startAfter === undefined ? { prefix: 'kody-os.apps.def.', pageSize: 2 } : { prefix: 'kody-os.apps.def.', pageSize: 2, startAfter: startAfter })
+		pages += 1
+		for (var pi = 0; pi < p.entries.length; pi++) pagedIds.push(p.entries[pi].key.slice('kody-os.apps.def.'.length))
+		lastTruncated = p.truncated
+		lastNext = p.nextStartAfter
+		if (p.truncated) startAfter = p.nextStartAfter as string
+		if (pages > 10) break
+	}
+	check('bare array paginates 13 def keys across 7 pages', pages === 7 && JSON.stringify(pagedIds) === JSON.stringify(bareIds), pages + ' pages: ' + pagedIds.join(','))
+	check('bare array last page ends untruncated with nextStartAfter null', lastTruncated === false && lastNext === null, JSON.stringify({ truncated: lastTruncated, nextStartAfter: lastNext }))
+	var firstTwo = normalizeListResult(bare, { prefix: 'kody-os.apps.def.', pageSize: 2 })
+	var nextTwo = normalizeListResult(bare, { prefix: 'kody-os.apps.def.', pageSize: 2, startAfter: firstTwo.nextStartAfter as string })
+	check('bare array startAfter continues exactly after it', firstTwo.entries.length === 2 && nextTwo.entries.length === 2 && nextTwo.entries[0].key === 'kody-os.apps.def.calendar' && nextTwo.entries[1].key === 'kody-os.apps.def.clock', JSON.stringify(nextTwo.entries.map(function (e) { return e.key })))
+	// estimatedBytes covers only the returned page, by the
+	// createMemoryStore() formula (key length + string value length).
+	var expectedBytes = 0
+	for (var ei = 0; ei < firstTwo.entries.length; ei++) expectedBytes += firstTwo.entries[ei].key.length + (firstTwo.entries[ei].value as string).length
+	check('bare array estimatedBytes covers only the returned page', firstTwo.estimatedBytes === expectedBytes, String(firstTwo.estimatedBytes) + ' !== ' + String(expectedBytes))
+	var pastEnd = normalizeListResult(bare, { prefix: 'kody-os.apps.def.', startAfter: 'kody-os.apps.def.zzz' })
+	check('bare array startAfter past the last key returns an empty page', pastEnd.entries.length === 0 && pastEnd.truncated === false && pastEnd.nextStartAfter === null, JSON.stringify(pastEnd))
+	// Malformed entries are skipped, the rest still enumerate.
+	var bareWithBad: Array<unknown> = bare.slice()
+	bareWithBad.push({ key: 42, value: 'x' })
+	bareWithBad.push({ value: 'no-key' })
+	bareWithBad.push({ key: null, value: 'x' })
+	bareWithBad.push(null)
+	bareWithBad.push('a-string-entry')
+	var badPage = normalizeListResult(bareWithBad, { prefix: 'kody-os.apps.def.' })
+	check('bare array skips entries without a string key', badPage.entries.length === 13 && JSON.stringify(badPage.entries.map(function (e) { return e.key })) === JSON.stringify(bareIds.map(function (id) { return 'kody-os.apps.def.' + id })), String(badPage.entries.length))
+	// Envelope pass-through: returned exactly as given.
+	var envelope = { entries: [{ key: 'kody-os.apps.def.b', value: '2' }, { key: 'kody-os.apps.def.a', value: '1' }], estimatedBytes: 999, truncated: true, nextStartAfter: 'kody-os.apps.def.b', pageSize: 2 }
+	var passed = normalizeListResult(envelope, { prefix: 'kody-os.apps.def.' })
+	check('envelope passes through untouched', passed === envelope, JSON.stringify(passed))
+	// Unrecognized shapes reject naming the shape.
+	function shapeError(result: unknown): string {
+		try {
+			normalizeListResult(result, { prefix: 'kody-os.apps.def.' })
+		} catch (err) {
+			return String((err as { message?: unknown }).message || err)
+		}
+		return ''
+	}
+	check('null list() result rejects naming the shape', shapeError(null).indexOf('unrecognized shape: null') !== -1, shapeError(null))
+	check('undefined list() result rejects naming the shape', shapeError(undefined).indexOf('unrecognized shape: undefined') !== -1, shapeError(undefined))
+	check('object without entries rejects naming the shape', shapeError({ keys: [] }).indexOf('unrecognized shape: object without an entries array') !== -1, shapeError({ keys: [] }))
+	// End-to-end through listInstalledIds: a store whose list()
+	// returns the bare array (routed through the normalizer, as the
+	// resolveStore() adapter does) yields the same ids as the memory
+	// store seeded with the same keys.
+	var bareStore = {
+		get: function (key: string): unknown { return undefined },
+		set: function (key: string, value: string): void {},
+		list: function (options: { prefix: string; pageSize?: number; startAfter?: string }): Promise<{ entries: Array<{ key: string; value: unknown }>; estimatedBytes: number; truncated: boolean; nextStartAfter: string | null; pageSize: number }> {
+			return Promise.resolve(normalizeListResult(bare, options))
+		},
+	}
+	var memSeed: Record<string, string> = {}
+	for (var si = 0; si < bareIds.length; si++) memSeed['kody-os.apps.def.' + bareIds[si]] = '{"id":"' + bareIds[si] + '"}'
+	for (var sj = 0; sj < bareIds.length; sj++) memSeed['kody-os.apps.state.' + bareIds[sj]] = '{}'
+	var memStore = createMemoryStore(memSeed)
+	var bareIdsOut = await listInstalledIds(bareStore)
+	var memIdsOut = await listInstalledIds(memStore)
+	check('listInstalledIds through a bare-array list() matches the memory store', JSON.stringify(bareIdsOut) === JSON.stringify(memIdsOut) && JSON.stringify(bareIdsOut) === JSON.stringify(bareIds), bareIdsOut.join(','))
+	var bareIdsPaged = await listInstalledIds(bareStore, 2)
+	check('listInstalledIds through a bare-array list() paginates to completion', JSON.stringify(bareIdsPaged) === JSON.stringify(bareIds), bareIdsPaged.join(','))
+}
+
+// install-registry-race: the installed list is derived from definition keys,
+// so an orphaned definition lists and retired ids are filtered at read time.
+{
+	var derived = createMemoryStore()
+	await add_app(clone(await get_catalog_definition('counter', BASE)) as never, derived)
+	await add_app(clone(await get_catalog_definition('xkcd', BASE)) as never, derived)
+	var orphanDef = { id: 'orphan-note', name: 'Orphan', schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>o</div>' } }, ui: { title: 'Orphan', openAs: 'page', actions: [] }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, capabilities: {} }
+	var helpDef = { id: 'help', name: 'Help', schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>h</div>' } }, ui: { title: 'Help', openAs: 'page', actions: [] }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, capabilities: {} }
+	var aboutDef = { id: 'about', name: 'About', schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>a</div>' } }, ui: { title: 'About', openAs: 'page', actions: [] }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, capabilities: {} }
+	await derived.set('kody-os.apps.def.orphan-note', JSON.stringify(orphanDef))
+	await derived.set('kody-os.apps.state.orphan-note', '{}')
+	await derived.set('kody-os.apps.def.help', JSON.stringify(helpDef))
+	await derived.set('kody-os.apps.state.help', '{}')
+	await derived.set('kody-os.apps.def.about', JSON.stringify(aboutDef))
+	await derived.set('kody-os.apps.state.about', '{}')
+	var derivedApps = await list_apps(derived)
+	var derivedGot = derivedApps.map(function (a) { return a.id })
+	check('orphaned definition lists', derivedGot.indexOf('orphan-note') !== -1, derivedGot.join(','))
+	check('retired apps are filtered at read time', derivedGot.indexOf('help') === -1 && derivedGot.indexOf('about') === -1, derivedGot.join(','))
+	check('retired definition keys are deleted', (await derived.get('kody-os.apps.def.help')) === undefined && (await derived.get('kody-os.apps.def.about')) === undefined, '')
+	check('retired state keys are deleted', (await derived.get('kody-os.apps.state.help')) === undefined && (await derived.get('kody-os.apps.state.about')) === undefined, '')
+}
+
+// install-registry-race: concurrent installs of different apps both land
+// (no shared registry list to race on), and a stale registry key is ignored.
+{
+	var race = createMemoryStore()
+	await Promise.all([
+		add_app(clone(await get_catalog_definition('counter', BASE)) as never, race),
+		add_app(clone(await get_catalog_definition('xkcd', BASE)) as never, race),
+	])
+	var raced = await list_apps(race)
+	check('concurrent installs both land', raced.length === 2, raced.map(function (a) { return a.id }).join(','))
+	var stale = createMemoryStore({ 'kody-os.apps.registry': JSON.stringify(['counter']) })
+	await add_app(clone(await get_catalog_definition('counter', BASE)) as never, stale)
+	await add_app(clone(await get_catalog_definition('xkcd', BASE)) as never, stale)
+	var staleListed = await list_apps(stale)
+	check('stale registry key does not hide apps', staleListed.length === 2, staleListed.map(function (a) { return a.id }).join(','))
+	check('stale registry key is left unread and unwritten', (await stale.get('kody-os.apps.registry')) === JSON.stringify(['counter']), String(await stale.get('kody-os.apps.registry')))
+}
+
+// store-row-agent-prompts 6.3: absorb a modified catalog app.
+// Two throwaway catalog copies (B: counter +1, xkcd +1; C: counter +2)
+// served on fresh loopback bases, so no 30s manifest-cache entry is shared.
+{
+	function buildCatalogCopy(edits: Record<string, { catalogVersion: number; description: string }>): string {
+		var dir = join(tmpdir(), 'kody-os-catalog-' + String(Date.now()) + '-' + String(Math.floor(Math.random() * 1000000000)))
+		cpSync(__catalogDir, dir, { recursive: true })
+		for (var appId of Object.keys(edits)) {
+			var defPath = join(dir, appId, 'definition.json')
+			var def = JSON.parse(readFileSync(defPath, 'utf8')) as { catalogVersion: number; description: string }
+			def.catalogVersion = edits[appId].catalogVersion
+			def.description = edits[appId].description
+			writeFileSync(defPath, JSON.stringify(def, null, 2) + '\n', 'utf8')
+		}
+		// Rebuild the index exactly like scripts/build-catalog-index.ts
+		// (same assembly + fingerprint calls), so the tmp manifest agrees
+		// with the tmp definitions it serves.
+		var entries: { id: string; label: string; catalogVersion: number; fingerprint: string; installMode: string; definitionPath: string; recipePath: string; bundleFiles: string[] }[] = []
+		var ids = readdirSync(dir).filter(function (name: string): boolean {
+			return name !== 'tests' && statSync(join(dir, name)).isDirectory()
+		}).sort()
+		for (var ii = 0; ii < ids.length; ii++) {
+			var one = ids[ii]
+			var oneDefPath = join(dir, one, 'definition.json')
+			if (!statSync(oneDefPath, { throwIfNoEntry: false })) continue
+			var oneDef = JSON.parse(readFileSync(oneDefPath, 'utf8')) as { id: string; label?: string; name: string; catalogVersion: number; installMode?: string; bundle: unknown }
+			if (oneDef.id !== one) throw new Error('tmp catalog: directory ' + one + ' holds id ' + String(oneDef.id))
+			var readOne = (function (appId: string): (path: string) => string | undefined {
+				return function (path: string): string | undefined {
+					var full = join(dir, appId, path)
+					try { if (!statSync(full).isFile()) return undefined } catch (e) { return undefined }
+					return readFileSync(full, 'utf8')
+				}
+			})(one)
+			var assembled = assembleBundleFiles(oneDef.bundle, readOne)
+			if (!assembled.ok) throw new Error('tmp catalog: app ' + one + ': ' + (assembled as { ok: false; error: string }).error)
+			var files = (assembled as { ok: true; files: Record<string, string> }).files
+			var assembledDef = JSON.parse(JSON.stringify(oneDef)) as Record<string, unknown>
+			assembledDef['bundle'] = { entry: 'index.html', files: files }
+			var problem = validateCatalogDefinition(assembledDef)
+			if (problem !== null) throw new Error('tmp catalog: app ' + one + ' invalid: ' + problem)
+			entries.push({ id: one, label: oneDef.label !== undefined ? oneDef.label : oneDef.name, catalogVersion: oneDef.catalogVersion, fingerprint: fingerprintDefinition(assembledDef as never), installMode: oneDef.installMode !== undefined ? oneDef.installMode : 'json', definitionPath: one + '/definition.json', recipePath: one + '/RECIPE.md', bundleFiles: Object.keys(files).sort() })
+		}
+		writeFileSync(join(dir, 'catalog.json'), JSON.stringify({ apps: entries }, null, 2) + '\n', 'utf8')
+		return dir
+	}
+	async function serveCatalogDir(dir: string): Promise<string> {
+		var server = __http.createServer(function (req, res) {
+			try {
+				var url = new URL(req.url || '/', 'http://127.0.0.1')
+				var pathname = decodeURIComponent(url.pathname)
+				if (pathname.indexOf('..') !== -1) { res.statusCode = 404; res.end('not found'); return }
+				var rel = pathname.replace(/^\//, '')
+				var full = join(dir, rel)
+				if (!statSync(full, { throwIfNoEntry: false }) || !statSync(full).isFile()) { res.statusCode = 404; res.end('not found'); return }
+				res.statusCode = 200
+				res.end(readFileSync(full, 'utf8'))
+			} catch (err) { res.statusCode = 500; res.end('error') }
+		})
+		await new Promise<void>(function (resolve) { server.listen(0, '127.0.0.1', function () { resolve() }) })
+		var addr = server.address() as unknown as { port: number }
+		try { (server as unknown as { unref?: () => void }).unref?.() } catch (err) {}
+		return 'http://127.0.0.1:' + String(addr.port) + '/'
+	}
+	var baseCounter = await get_catalog_definition('counter', BASE) as { catalogVersion: number; description: string }
+	var baseXkcd = await get_catalog_definition('xkcd', BASE) as { catalogVersion: number; description: string }
+	var counterCv = baseCounter.catalogVersion
+	var xkcdCv = baseXkcd.catalogVersion
+	var dirB = buildCatalogCopy({
+		counter: { catalogVersion: counterCv + 1, description: baseCounter.description + ' (v2)' },
+		xkcd: { catalogVersion: xkcdCv + 1, description: baseXkcd.description + ' (v2)' },
+	})
+	var dirC = buildCatalogCopy({
+		counter: { catalogVersion: counterCv + 2, description: baseCounter.description + ' (v3)' },
+	})
+	var baseB = await serveCatalogDir(dirB)
+	var baseC = await serveCatalogDir(dirC)
+	var absorbStore = createMemoryStore()
+	await store_install_from_catalog('app-store', absorbStore, BASE)
+	await store_install_from_catalog('counter', absorbStore, BASE)
+	await store_install_from_catalog('xkcd', absorbStore, BASE)
+	await act('counter', 'set_count', { value: 7 }, absorbStore)
+	await set_pin('counter', true, absorbStore)
+	var counterTampered = clone(baseCounter) as { description: string }
+	counterTampered.description = 'locally renamed counter'
+	await add_app(counterTampered as never, absorbStore)
+	var xkcdTampered = clone(baseXkcd) as { description: string }
+	xkcdTampered.description = 'locally renamed xkcd'
+	await add_app(xkcdTampered as never, absorbStore)
+	check('tampered counter is modified-current before absorb', (await get_app_status('counter', absorbStore, BASE)).status === 'modified-current', '')
+	check('tampered xkcd is modified-current before absorb', (await get_app_status('xkcd', absorbStore, BASE)).status === 'modified-current', '')
+	// Absorb counter against BASE, keeping the local description.
+	var mergedCounter = clone(baseCounter) as { description: string }
+	mergedCounter.description = 'locally renamed counter'
+	var absorbed = await absorb_from_catalog('counter', mergedCounter as never, absorbStore, BASE)
+	check('absorb of a modified-current app succeeds', absorbed.ok === true, JSON.stringify(absorbed))
+	check('absorbed counter reads absorbed', (await get_app_status('counter', absorbStore, BASE)).status === 'absorbed', '')
+	var absorbedState = await get_app_state('counter', absorbStore) as { count: number }
+	check('absorb preserves state', absorbedState.count === 7, JSON.stringify(absorbedState))
+	check('absorb leaves pins untouched', (await get_pinned(absorbStore)).join(',') === 'counter', (await get_pinned(absorbStore)).join(','))
+	var absorbedSnap = await readInstallSnapshot(absorbStore, 'counter')
+	var baseCounterEntry = await get_catalog_entry('counter', BASE)
+	var storedCounter = await get_app('counter', absorbStore) as { definition: unknown }
+	check('absorb records the catalog version', absorbedSnap !== null && absorbedSnap.catalogVersion === counterCv, JSON.stringify(absorbedSnap))
+	check('absorb records the fingerprint of the stored definition', absorbedSnap !== null && absorbedSnap.fingerprint === fingerprintDefinition(storedCounter.definition as never), JSON.stringify(absorbedSnap))
+	check('absorb records the catalog fingerprint absorbed from', absorbedSnap !== null && baseCounterEntry !== null && absorbedSnap.catalogFingerprint === baseCounterEntry.fingerprint, JSON.stringify({ snap: absorbedSnap, entry: baseCounterEntry }))
+	// A plain update is refused for an absorbed app, and so is a restore.
+	var gAbs = globalThis as unknown as Record<string, unknown>
+	var savedAbs = gAbs['KODY_CATALOG_BASE']
+	gAbs['KODY_CATALOG_BASE'] = BASE
+	try {
+		var updateAbsorbed = await manage_update('app-store', 'counter', false, absorbStore)
+		check('plain update is refused for an absorbed app', updateAbsorbed.ok === false && (updateAbsorbed as { error: string }).error.indexOf('has no update available') !== -1, JSON.stringify(updateAbsorbed))
+		var restoreAbsorbed = await manage_restore('app-store', 'counter', false, absorbStore)
+		check('restore is refused for an absorbed app', restoreAbsorbed.ok === false && (restoreAbsorbed as { error: string }).error.indexOf('has nothing to restore') !== -1, JSON.stringify(restoreAbsorbed))
+	} finally {
+		if (savedAbs !== undefined) gAbs['KODY_CATALOG_BASE'] = savedAbs
+	}
+	// Editing after absorbing drops back to the modified branches.
+	var reTampered = clone(baseCounter) as { description: string }
+	reTampered.description = 'renamed again after absorb'
+	await add_app(reTampered as never, absorbStore)
+	check('app edited after absorbing reads modified again', (await get_app_status('counter', absorbStore, BASE)).status === 'modified-current', '')
+	var reMerged = clone(baseCounter) as { description: string }
+	reMerged.description = 'renamed again after absorb'
+	var reAbsorbed = await absorb_from_catalog('counter', reMerged as never, absorbStore, BASE)
+	check('re-absorb after editing succeeds', reAbsorbed.ok === true, JSON.stringify(reAbsorbed))
+	check('re-absorbed counter reads absorbed again', (await get_app_status('counter', absorbStore, BASE)).status === 'absorbed', '')
+	// xkcd is behind-modified against B (catalog moved, local change kept).
+	check('tampered xkcd is behind-modified against the moved catalog', (await get_app_status('xkcd', absorbStore, baseB)).status === 'behind-modified', '')
+	var bXkcd = await get_catalog_definition('xkcd', baseB) as { description: string }
+	var mergedXkcd = clone(bXkcd) as { description: string }
+	mergedXkcd.description = 'locally renamed xkcd'
+	var xkcdAbsorbed = await absorb_from_catalog('xkcd', mergedXkcd as never, absorbStore, baseB)
+	check('absorb of a behind-modified app succeeds', xkcdAbsorbed.ok === true, JSON.stringify(xkcdAbsorbed))
+	check('absorbed xkcd reads absorbed against its catalog', (await get_app_status('xkcd', absorbStore, baseB)).status === 'absorbed', '')
+	// Counter's catalog moves again (C): absorbed-behind, then absorb again.
+	check('absorbed counter reads absorbed-behind against the newer catalog', (await get_app_status('counter', absorbStore, baseC)).status === 'absorbed-behind', '')
+	var cCounter = await get_catalog_definition('counter', baseC) as { description: string }
+	var mergedCounterC = clone(cCounter) as { description: string }
+	mergedCounterC.description = 'renamed again after absorb'
+	var counterAbsorbedC = await absorb_from_catalog('counter', mergedCounterC as never, absorbStore, baseC)
+	check('absorb again of an absorbed-behind app succeeds', counterAbsorbedC.ok === true, JSON.stringify(counterAbsorbedC))
+	check('re-absorbed counter reads absorbed against the newer catalog', (await get_app_status('counter', absorbStore, baseC)).status === 'absorbed', '')
+	var snapC = await readInstallSnapshot(absorbStore, 'counter')
+	var entryC = await get_catalog_entry('counter', baseC)
+	check('re-absorb records the new catalog fingerprint', snapC !== null && entryC !== null && snapC.catalogFingerprint === entryC.fingerprint && snapC.catalogVersion === counterCv + 2, JSON.stringify(snapC))
+	// Refusals write nothing.
+	await store_install_from_catalog('settings', absorbStore, BASE)
+	var settingsBefore = JSON.stringify(await get_app('settings', absorbStore))
+	var settingsSnapBefore = JSON.stringify(await readInstallSnapshot(absorbStore, 'settings'))
+	var settingsAbsorb = await absorb_from_catalog('settings', clone(await get_catalog_definition('settings', BASE)) as never, absorbStore, BASE)
+	check('absorb of an up-to-date app is refused', settingsAbsorb.ok === false && (settingsAbsorb as { error: string }).error.indexOf('up-to-date') !== -1, JSON.stringify(settingsAbsorb))
+	check('refused absorb writes nothing (up-to-date)', JSON.stringify(await get_app('settings', absorbStore)) === settingsBefore && JSON.stringify(await readInstallSnapshot(absorbStore, 'settings')) === settingsSnapBefore, '')
+	await store_install_from_catalog('calculator', absorbStore, BASE)
+	var calculatorTampered = clone(await get_catalog_definition('calculator', BASE)) as { description: string; catalogVersion: number }
+	calculatorTampered.description = 'locally renamed calculator'
+	await add_app(calculatorTampered as never, absorbStore)
+	var calculatorBefore = JSON.stringify(await get_app('calculator', absorbStore))
+	var calculatorSnapBefore = JSON.stringify(await readInstallSnapshot(absorbStore, 'calculator'))
+	var calculatorMerged = clone(await get_catalog_definition('calculator', BASE)) as { description: string; catalogVersion: number }
+	calculatorMerged.description = 'locally renamed calculator'
+	calculatorMerged.catalogVersion = calculatorMerged.catalogVersion + 99
+	var calculatorAbsorb = await absorb_from_catalog('calculator', calculatorMerged as never, absorbStore, BASE)
+	check('absorb with a mismatched catalogVersion is refused', calculatorAbsorb.ok === false, JSON.stringify(calculatorAbsorb))
+	check('refused absorb writes nothing (mismatched version)', JSON.stringify(await get_app('calculator', absorbStore)) === calculatorBefore && JSON.stringify(await readInstallSnapshot(absorbStore, 'calculator')) === calculatorSnapBefore, '')
+	await add_app(clone(await get_catalog_definition('clock', BASE)) as never, absorbStore)
+	var clockBefore = JSON.stringify(await get_app('clock', absorbStore))
+	var clockAbsorb = await absorb_from_catalog('clock', clone(await get_catalog_definition('clock', BASE)) as never, absorbStore, BASE)
+	check('absorb of a snapshot-less app is refused', clockAbsorb.ok === false && (clockAbsorb as { error: string }).error.indexOf('snapshot-less') !== -1, JSON.stringify(clockAbsorb))
+	check('refused absorb writes nothing (snapshot-less)', JSON.stringify(await get_app('clock', absorbStore)) === clockBefore && (await readInstallSnapshot(absorbStore, 'clock')) === null, '')
 }
 
 // remove-catalog-pin 2.1: the shell holds no catalog source of its own.
