@@ -34,27 +34,93 @@ given, all verified against the tree at v4.1.11 build 46:
   where the Store is itself, and can never discover a newer
   catalog or a newer Store. Any design that pins the Store's
   declared base to a tag reintroduces that freeze, and must
-  answer it explicitly.
+  answer it explicitly. Phase 1 answers it with two bases,
+  not one: the discovery base stays `main`, so the Store
+  can always discover a newer Store, while only the
+  listing base is pinned (Decision 1B).
+
+## Phases
+
+- **Phase 1 — Store-as-gate (no plugin gate).** Split
+  bases, Store self-update out of the list, maintainer
+  pin-update procedure. Implementable now.
+- **Phase 2 — Automatic resolution (plugin-gated).**
+  `releases.json`, the resolver plugin, the durable
+  last-good snapshot, and recipe plugin dependencies.
+  Implementable only after the plugins spec (Decision 1).
 
 ## Decisions
 
-### 1. Gate: the plugins spec lands first
+### 1. Gate: the plugins spec gates Phase 2 only
 
-No implementation work in this change starts until the
-plugins spec exists, is reviewed, and settles the interface
-this change depends on (proposal.md, Dependencies). The
+No Phase 2 implementation work starts until the plugins
+spec exists, is reviewed, and settles the interface
+Phase 2 depends on (proposal.md, Dependencies). The
 resolver's manifest shape, route namespace, storage
 namespace, and lifecycle are defined there, not here. If
 that spec settles a different interface, this change's
-deltas follow it and this change is re-reviewed. This is a
-sequencing dependency, not a validity failure: the change
-is written so it can be reviewed now, and implemented only
-after the gate passes.
+Phase 2 deltas follow it and this change is re-reviewed.
+This is a sequencing dependency, not a validity failure:
+Phase 2 is written so it can be reviewed now, and
+implemented only after the gate passes. Phase 1 has no
+plugin dependency and SHALL NOT wait for this gate.
 
-### 2. The resolver is a user-land plugin, not shell core
+### 1A. Phase 1 — Store self-update is a separate section, out of the apps list
 
-The shell core ships no resolver, no pin, and no
-releases-index reader. The resolver is installed by an
+The App Store bundle SHALL NOT render the App Store as
+a row in its own list. It SHALL render a separate
+section above the list showing: installed Store
+`catalogVersion`, the pinned snapshot (tag, and the
+running shell version), and the latest compatible Store
+version found on the discovery (`main`) base, with one
+update control. Updating the Store SHALL fetch that
+Store definition from the discovery base, not from the
+pinned listing base, and SHALL be gated by `add_app`'s
+`minPackageVersion` check: a Store requiring a newer
+shell SHALL be refused, and the user stays on the old
+Store and the old snapshot. After a successful Store
+update, the pin moves and the apps list refreshes from
+the new snapshot. Update All SHALL NOT include the
+Store itself. The Store's own row controls (Remove, and
+the gated-row Remove from `catalog-robustness-fixes`)
+move with it into the separate section, with the same
+confirmation behaviour as a row. This decision is
+Phase 1: it needs no plugin, and Phase 2 reuses the
+same section, showing the resolved snapshot instead
+of the pinned one.
+
+### 1B. Phase 1 — Split bases: discovery on `main`, listing pinned to a tag
+
+The Store SHALL declare two proxy entries: `catalog`
+(`https://raw.githubusercontent.com/Hypercubed/kody-os/
+main/catalog/`, the discovery base) and `catalog-apps`
+(`https://raw.githubusercontent.com/Hypercubed/kody-os/
+<tag>/catalog/`, the listing base, pinned to a tag by
+the maintainer). The shell's management API SHALL
+route by target: a Store self-update uses the discovery
+base; every other app's rows, install, and update use
+the listing base when the installed Store declares one,
+falling back to the discovery base when it declares
+none (so a Store installed before this change keeps
+working as today, reading `main`). The agent exports
+SHALL follow the same routing when no explicit
+`catalogBase` is supplied. Changing either entry's URL
+is a definition change and bumps the Store's
+`catalogVersion` by 1 under the existing rule.
+
+Rationale: this is the freeze answer. A Store whose
+only base were a pinned tag could never discover a
+newer Store. With the discovery base kept on `main`,
+the Store always can, and the pin only ever governs
+which apps it lists. The pin is set by hand in Phase 1
+and set by the resolver in Phase 2; the routing does
+not change between phases, only who picks the tag.
+
+### 2. Phase 2 — The resolver is a user-land plugin, not shell core
+
+The shell core ships no resolver and no
+releases-index reader; the pin lives in the Store
+definition (Phase 1), not in shell core. The resolver is installed by an
 agent following a recipe, into the user's own package, in
 the segregated plugin location the plugins spec defines,
 and is published as part of that user's package. It is
@@ -73,11 +139,11 @@ either the agent or a shell change anyway — the plugin is
 the honest place for the server side.
 
 Consequence: a shell without the plugin installed behaves
-exactly as today. That is intentional and is the
-backwards-compatibility story: nothing in this change
+exactly as Phase 1. That is intentional and is the
+backwards-compatibility story: nothing in Phase 2
 breaks a shell that never installs the plugin.
 
-### 3. Discovery source is `catalog/releases.json` on `main`
+### 3. Phase 2 — Discovery source is `catalog/releases.json` on `main`
 
 The resolver reads one static file from `main`:
 `catalog/releases.json`, generated alongside
@@ -98,7 +164,7 @@ is cacheable by the same fetch discipline as the catalog,
 and is fork-friendly: a fork generates its own file from
 its own tags.
 
-### 4. Tag is the label; SHA is the fetch identity
+### 4. Phase 1 and 2 — Tag is the label; SHA is the fetch identity
 
 A catalog snapshot is identified by its git tag for
 display and by its commit SHA for fetching. The resolver
@@ -113,7 +179,7 @@ for human notes. It is optional, and nothing in this
 change reads it. Releases do not add a mechanism: a
 release *is* a tag plus notes.
 
-### 5. Resolution rule: highest snapshot at or below the running shell
+### 5. Phase 2 — Resolution rule: highest snapshot at or below the running shell
 
 The resolver SHALL pick the highest entry in
 `releases.json` whose `shellVersion` is at or below the
@@ -138,7 +204,7 @@ snapshot is the unit of compatibility, and an app-level
 exception would reintroduce per-app version picking,
 which is out of scope (see Non-goals).
 
-### 6. The Store's declared base stays `main`; the resolved snapshot is the listing base
+### 6. The Store's declared discovery base stays `main`; the listing base is pinned (Phase 1) or resolved (Phase 2)
 
 The Store's `capabilities.proxy` entry named `catalog`
 SHALL stay the `main` branch base. That preserves the
@@ -146,24 +212,29 @@ canonical "Store follows the latest catalog" requirement
 in its discovery sense: the Store can discover its own
 updates and can read `releases.json` from `main`.
 
-When the resolver plugin is installed, the Store's rows
-and installs come from the *resolved snapshot's* base,
-not from the declared base. The plugin's server side
-passes the resolved base explicitly to the catalog fetch
-(the same explicit-base path the agent exports already
-use), and the Store bundle displays the resolved
-snapshot (tag + SHA short form) instead of the `main`
-URL. When the plugin is not installed, rows and installs
-come from the declared base as today.
+In Phase 1 the Store's rows and installs come from the
+*listing* base declared in its `catalog-apps` entry
+(Decision 1B), not from the declared discovery base.
+In Phase 2, when the resolver plugin is installed, the
+Store's rows and installs come from the *resolved
+snapshot's* base instead of the pinned listing base.
+The plugin's server side passes the resolved base
+explicitly to the catalog fetch (the same explicit-base
+path the agent exports already use), and the Store
+bundle displays the resolved snapshot (tag + SHA short
+form) instead of the pinned tag. When the plugin is
+not installed, rows and installs come from the pinned
+listing base as in Phase 1.
 
 This is the design's answer to the freeze the canonical
 requirement warns about: the Store is not pinned to a
-tag in its own definition, so it can always discover a
+tag in its only base, so it can always discover a
 newer Store; the *listing* is pinned to a snapshot by
-the resolver, and the pin moves when the Store updates
-(Decision 9 below).
+the maintainer (Phase 1) or by the resolver (Phase 2),
+and the pin moves when the Store updates (Decision 9
+below, as built in Phase 1).
 
-### 7. Durable last-good snapshot of the resolved catalog
+### 7. Phase 2 — Durable last-good snapshot of the resolved catalog
 
 The resolver SHALL keep one durable snapshot of the
 resolved catalog in `packageStorage`, under a key the
@@ -193,7 +264,7 @@ installed-only. If there is no durable snapshot, it
 falls back to installed-only with an honest error, as
 today.
 
-### 8. `releases.json` is generated, and the harness enforces it
+### 8. Phase 2 — `releases.json` is generated, and the harness enforces it
 
 `catalog/releases.json` SHALL be generated by extending
 the existing catalog-index generator
@@ -231,39 +302,22 @@ an error — users keep installing from their last
 resolved catalog and simply do not see the new apps
 until the index lands.
 
-### 9. Store self-update is a separate section, out of the apps list
+### 9. Phase 1 built, Phase 2 reuses — Store self-update section
 
-The App Store bundle SHALL NOT render the App Store as
-a row in its own list. It SHALL render a separate
-section above the list showing: installed Store
-`catalogVersion`, the resolved snapshot (tag, and the
-running shell version), and the latest compatible Store
-version the resolver found, with one update control.
-Updating the Store SHALL fetch that Store definition
-from the *latest compatible* snapshot, not from the
-pinned snapshot, and SHALL be gated by `add_app`'s
-`minPackageVersion` check: a Store requiring a newer
-shell SHALL be refused, and the user stays on the old
-Store and the old snapshot. After a successful Store
-update, the pin moves and the apps list refreshes from
-the new snapshot.
-
-Update All SHALL NOT include the Store itself, since
-it is not in the list. The Store's own row controls
-(Remove, and the gated-row Remove from
-`catalog-robustness-fixes`) move with it into the
-separate section, with the same confirmation behaviour
-as a row.
-
-Without the resolver plugin installed, the separate
-section SHALL still render, but its "latest compatible
-Store" SHALL be read from the declared (`main`) base
-as today — that is, it degrades to the current
-self-update behaviour, and the apps list comes from
-`main` as today. The section SHALL NOT claim a
+See Decision 1A: the separate self-update section is
+built in Phase 1, showing the pinned snapshot and the
+latest compatible Store version found on the discovery
+(`main`) base. In Phase 2 the same section shows the
+resolved snapshot instead of the pinned one, and the
+Store update is fetched from the *latest compatible*
+snapshot (as resolved), not from the pinned snapshot.
+In both phases the update is gated by `add_app`'s
+`minPackageVersion` check, and after a successful Store
+update the pin moves and the apps list refreshes from
+the new snapshot. The section SHALL NOT claim a
 resolved snapshot when none was resolved.
 
-### 10. Recipes declare plugin dependencies; plugin install is always agent-assisted
+### 10. Phase 2 — Recipes declare plugin dependencies; plugin install is always agent-assisted
 
 An app whose install requires a shell feature SHALL
 declare that requirement in its `RECIPE.md` (and, where

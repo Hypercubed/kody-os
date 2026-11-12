@@ -1,14 +1,103 @@
 # Tasks
 
 No task in this file commits, pushes, publishes, tags, or
-releases anything. The maintainer tagging and index procedure
-is documented in `catalog/README.md` (task 2.4); running it
-is a release act, not a task in this change.
+releases anything. The maintainer tagging and pin-update
+procedure is documented in `catalog/README.md` (task 1.5);
+running it is a release act, not a task in this change.
 
-## 0. Gate — the plugins spec first
+This change is phased. Phase 1 (section 1) is the
+Store-as-gate slice and has no plugin dependency: it SHALL
+be implementable, reviewable, and shippable before Phase 2
+starts. Phase 2 (sections 2–7) is the automatic resolver
+and is the only part gated behind the plugins spec
+(section 2). Do not start section 3 until section 2 is
+checked.
 
-- [ ] 0.1 Confirm the gate: a plugins OpenSpec change exists,
-  is reviewed, and settles the interface this change depends
+## 1. Phase 1 — Store-as-gate (manual pin, no plugin)
+
+- [ ] 1.0 Confirm the `catalog-robustness-fixes` gated-row
+  Remove behaviour this change assumes is in the canonical
+  spec (or record that it is still open and that this
+  change's Store section carries the same Remove behaviour
+  for gated rows regardless).
+- [ ] 1.1 Shell split-base routing: extend the management
+  API (`pkg/src/apps/registry.ts`: `resolveManagedBase`
+  and the agent-base fallback) to route by target. A
+  Store self-update (`app-store`) uses the Store's
+  `catalog` proxy entry (discovery base, `main`); every
+  other app's rows, install, and update use the Store's
+  `catalog-apps` proxy entry (listing base, pinned tag)
+  when the installed Store declares one, falling back
+  to the discovery base when it declares none. An
+  explicit `catalogBase` supplied to
+  `install_from_catalog` / `update_from_catalog` still
+  wins over both. Verify: with a Store declaring both
+  entries, `manage_rows` lists apps from the pinned
+  tag, a Store update fetches from `main`, and an app
+  install fetches from the pinned tag; with a Store
+  declaring only `catalog`, all three read `main` as
+  today.
+- [ ] 1.2 Store definition: add the `catalog-apps` proxy
+  entry to `catalog/app-store/definition.json`, pinned
+  to the current tag (or to `main` until the first tag
+  is cut — record which, and why), and bump the Store's
+  `catalogVersion` by the existing rule. Regenerate
+  `catalog/catalog.json`. Changing either proxy URL is
+  a definition change and bumps `catalogVersion` by 1.
+- [ ] 1.3 Store bundle — self-update section: remove the
+  App Store from its own apps list in the Store bundle
+  (`catalog/app-store/store.js`, `index.html`): no row
+  for `app-store` in `.store-list`, and Update All
+  excludes it. Add the separate self-update section
+  above the list: installed Store `catalogVersion`,
+  pinned snapshot (tag, and the running shell version),
+  latest compatible Store version found on the
+  discovery (`main`) base, one update control, and the
+  gated-row Remove behaviour (with the same
+  confirmation as a row). Bump the Store's
+  `catalogVersion` by the existing rule and regenerate
+  `catalog/catalog.json`. Verify in `kody dev` (mock
+  target): the section shows the pinned snapshot and
+  the Store updates from `main`; a Store requiring a
+  newer shell is refused and the installed Store and
+  snapshot are unchanged.
+- [ ] 1.4 Store bundle — display: display the pinned
+  snapshot (tag) in the Store status line instead of
+  the `main` URL, and show the discovery base only for
+  the Store's own update. Verify: a Store pinned to a
+  tag shows that tag with no resolved-snapshot claim
+  and no stale label.
+- [ ] 1.5 Document the maintainer procedure in
+  `catalog/README.md` (tagging and pin update): cut a
+  tag for a catalog snapshot (`git tag vX.Y.Z && git
+  push origin vX.Y.Z`; tags are never moved after
+  cutting), update the Store's `catalog-apps` entry to
+  that tag, bump the Store's `catalogVersion` by 1,
+  regenerate the catalog index, run the harness,
+  commit, push to `main`. Note explicitly that a new
+  app version pushed to `main` is not visible to the
+  Store until the pin moves, and that an older shell
+  keeps its old Store and old pin because the Store
+  update is gated by `minPackageVersion`.
+- [ ] 1.6 Verify Phase 1 end to end in `kody dev` (mock
+  target, server stopped for writes): (a) a new app
+  version pushed to `main` and tagged appears to a
+  compatible shell after a Store update, with no Kody
+  publish in the loop; (b) that update path needs no
+  agent; (c) a shell older than the snapshot still
+  installs from its pinned tag, because it cannot
+  update its Store. Record the shell versions, tags,
+  and snapshot used for each leg, and add a close-out
+  note for Phase 1 to this file recording what was
+  verified, what was substituted, and what was left
+  open. Phase 1 is done when this task is checked;
+  Phase 2 does not need to be started for Phase 1 to
+  ship.
+
+## 2. Gate — the plugins spec first (Phase 2 only)
+
+- [ ] 2.1 Confirm the gate: a plugins OpenSpec change exists,
+  is reviewed, and settles the interface Phase 2 depends
   on — plugin location and import rules, manifest shape,
   discovery/registration, route namespacing, storage
   namespace, lifecycle (install, update, disable, remove),
@@ -18,16 +107,11 @@ is a release act, not a task in this change.
   provisional names in design.md Decisions 7 and 9, update
   this change's design and spec deltas to match it and
   re-review this change before proceeding. Do not start
-  section 1 until this task is checked.
-- [ ] 0.2 Confirm the `catalog-robustness-fixes` gated-row
-  Remove behaviour this change assumes is in the canonical
-  spec (or record that it is still open and that this
-  change's Store section carries the same Remove behaviour
-  for gated rows regardless).
+  section 3 until this task is checked.
 
-## 1. Releases index — generator and harness
+## 3. Phase 2 — Releases index — generator and harness
 
-- [ ] 1.1 Extend `scripts/build-catalog-index.ts` (same run
+- [ ] 3.1 Extend `scripts/build-catalog-index.ts` (same run
   that regenerates `catalog/catalog.json`) to also generate
   `catalog/releases.json`, never hand-edited. For each local
   git tag, verify it against the tag itself: `git show
@@ -40,7 +124,7 @@ is a release act, not a task in this change.
   unchanged inputs is byte-identical. Record the decision
   on catalog-only tag naming (design Open Question 3) in
   the generator's header comment and in `catalog/README.md`.
-- [ ] 1.2 Extend `tests/catalog-harness.ts` to fail on a
+- [ ] 3.2 Extend `tests/catalog-harness.ts` to fail on a
   stale `releases.json`: any local tag missing from it, any
   entry pointing at a missing tag or a mismatched SHA, any
   entry whose `shellVersion` does not match the version at
@@ -50,12 +134,12 @@ is a release act, not a task in this change.
   until the first tag is cut); adding a test tag and
   re-running the generator makes the harness pass, and
   deleting the entry makes it fail.
-- [ ] 1.3 Verify the generator's failure modes: a tag whose
+- [ ] 3.3 Verify the generator's failure modes: a tag whose
   `pkg/package.json` version does not match the tag name
   fails the generator; a tag with no `catalog/catalog.json`
   fails the generator; a `releases.json` edited by hand to
   a wrong SHA fails the harness.
-- [ ] 1.4 Document the maintainer procedure in
+- [ ] 3.4 Document the maintainer procedure in
   `catalog/README.md` (release cutting): regenerate,
   run the harness, commit, cut the tag, re-run the
   generator (now it sees the new tag), commit the updated
@@ -64,11 +148,13 @@ is a release act, not a task in this change.
   cutting. Note explicitly that the Store fetches
   `releases.json` from `main`, not from the tag, so the
   second commit is sufficient and the tag need not
-  contain its own entry.
+  contain its own entry. This extends the Phase 1
+  pin-update procedure (task 1.5); the pin itself is
+  now set by the resolver, not by hand.
 
-## 2. Resolver plugin — interface and resolution
+## 4. Phase 2 — Resolver plugin — interface and resolution
 
-- [ ] 2.1 Write the resolver plugin against the plugins
+- [ ] 4.1 Write the resolver plugin against the plugins
   spec's interface (Decision 1): manifest (identity,
   version, minimum shell version, declared `kody:`
   imports/capabilities, routes), segregated location,
@@ -78,7 +164,7 @@ is a release act, not a task in this change.
   only by an agent following its recipe. Record the
   plugin's slug, manifest, route/export names, and
   storage key in this file.
-- [ ] 2.2 Implement resolution in the plugin's server
+- [ ] 4.2 Implement resolution in the plugin's server
   side: read `catalog/releases.json` from `main`
   (HTTPS-only, 8000 ms timeout, size caps per the
   catalog fetch discipline), pick the highest entry
@@ -92,7 +178,7 @@ is a release act, not a task in this change.
   Verify: on a shell at version X, the resolver picks
   the highest snapshot at or below X; on a shell older
   than every snapshot, it reports no compatible catalog.
-- [ ] 2.3 Implement install/update from the resolved
+- [ ] 4.3 Implement install/update from the resolved
   base through the existing explicit-base path (the
   same path `install_from_catalog` / `update_from_catalog`
   use): the plugin passes the resolved base explicitly,
@@ -101,25 +187,29 @@ is a release act, not a task in this change.
   app in the resolved snapshot whose minimum is above
   the running shell is refused with nothing written;
   an app at or below installs.
-- [ ] 2.4 Implement the Store self-update as a special
+- [ ] 4.4 Implement the Store self-update as a special
   case in the plugin: fetching the Store definition from
   the *latest compatible* snapshot, not from the pinned
   snapshot, gated by `add_app`'s `minPackageVersion`
   check. Verify: a Store requiring a newer shell is
   refused and the installed Store and snapshot are
   unchanged; a Store at or below the running shell
-  updates and the pin moves to its snapshot.
-- [ ] 2.5 Verify plugin failure isolation per the plugins
+  updates and the pin moves to its snapshot. This
+  reuses the separate section built in Phase 1
+  (task 1.3); only the source of the Store definition
+  changes, from the discovery base to the resolved
+  snapshot.
+- [ ] 4.5 Verify plugin failure isolation per the plugins
   spec: a resolver failure (fetch failure, invalid
   index, invalid snapshot) does not take down the shell
   — the Store degrades to the durable snapshot (section
-  3) or to installed-only with an honest error, and
+  5) or to installed-only with an honest error, and
   other apps keep working. Record the failure modes
   checked.
 
-## 3. Durable last-good snapshot of the resolved catalog
+## 5. Phase 2 — Durable last-good snapshot of the resolved catalog
 
-- [ ] 3.1 Implement the durable snapshot in the plugin
+- [ ] 5.1 Implement the durable snapshot in the plugin
   (storage key per the plugins spec's namespace rule;
   provisional key in design Decision 7 to be confirmed):
   manifest plus definitions as fetched from the resolved
@@ -129,7 +219,7 @@ is a release act, not a task in this change.
   different snapshot. Verify: a successful read updates
   the snapshot; a failed or gated read leaves the
   previous snapshot untouched.
-- [ ] 3.2 Serve the snapshot labelled stale on failure:
+- [ ] 5.2 Serve the snapshot labelled stale on failure:
   when the resolved snapshot fetch or validation fails,
   the Store shows the durable snapshot with its tag and
   age, and installs from it. When there is no durable
@@ -138,7 +228,7 @@ is a release act, not a task in this change.
   base made unreachable, the Store still lists and
   installs from the stale snapshot; with no snapshot
   stored, it shows installed-only and an error.
-- [ ] 3.3 Verify the snapshot does not mask a deliberate
+- [ ] 5.3 Verify the snapshot does not mask a deliberate
   removal: an app removed from the resolved snapshot is
   not offered from the stale snapshot as a new install
   after the snapshot's freshness window the design
@@ -146,46 +236,30 @@ is a release act, not a task in this change.
   reasoning; if no window is implemented, record that
   explicitly and why).
 
-## 4. Store bundle — self-update section and resolved display
+## 6. Phase 2 — Store bundle — resolved display
 
-- [ ] 4.1 Remove the App Store from its own apps list in
-  the Store bundle (`catalog/app-store/store.js`,
-  `index.html`): no row for `app-store` in `.store-list`,
-  and Update All excludes it. Bump the Store's
-  `catalogVersion` by the existing rule and regenerate
-  `catalog/catalog.json`.
-- [ ] 4.2 Add the separate self-update section above the
-  list: installed Store `catalogVersion`, resolved
-  snapshot (tag, running shell version), latest
-  compatible Store version found, one update control,
-  and the gated-row Remove behaviour (with the same
-  confirmation as a row). When the resolver plugin is
-  not installed, the section degrades to the current
-  behaviour: latest compatible Store read from the
-  declared (`main`) base, apps list from `main`, and
-  no resolved snapshot claimed. Verify in `kody dev`
-  (mock target): with the plugin installed, the section
-  shows the resolved snapshot and the Store updates
-  from the latest compatible snapshot; without it, the
-  section shows the `main` behaviour and claims no
-  snapshot.
-- [ ] 4.3 Display the resolved snapshot in the Store
+- [ ] 6.1 Display the resolved snapshot in the Store
   status line (tag, and stale labelling with age when
   the durable snapshot is being served), replacing the
-  `main` URL display when a snapshot is resolved.
+  pinned-tag display from Phase 1 (task 1.4) when a
+  snapshot is resolved. When the resolver plugin is
+  not installed, the section degrades to the Phase 1
+  behaviour: latest compatible Store read from the
+  declared (`main`) base, apps list from the pinned
+  listing base, and no resolved snapshot claimed.
   Verify: a fresh resolved snapshot shows its tag with
   no stale label; a stale snapshot shows its tag and
   age.
-- [ ] 4.4 Verify the Store still requires JavaScript
+- [ ] 6.2 Verify the Store still requires JavaScript
   (no-JS note pointing at agent `add_app`, no rows),
   and that a row action, Update All, or the self-update
   control while in flight is disabled with a working
   label, re-enabled on settle, per the existing shell
   rule.
 
-## 5. Recipes — plugin dependencies
+## 7. Phase 2 — Recipes — plugin dependencies
 
-- [ ] 5.1 Document the recipe rule in the authoring
+- [ ] 7.1 Document the recipe rule in the authoring
   docs (`pkg/.agents/skills/adding-an-app/SKILL.md` and
   the authoring spec delta): an app whose install
   requires a shell feature declares it in its
@@ -194,7 +268,7 @@ is a release act, not a task in this change.
   check, publish the user's package) and only then
   install the app. The Store never one-click installs
   a plugin and never auto-installs one.
-- [ ] 5.2 Write the resolver plugin's own recipe
+- [ ] 7.2 Write the resolver plugin's own recipe
   (`RECIPE.md` in the plugin's source location, per the
   plugins spec): the install procedure for the plugin,
   naming the plugin and the target package
@@ -203,14 +277,14 @@ is a release act, not a task in this change.
   in the pattern of the existing recipe prompts) when
   the plugin is not installed and a compatible catalog
   cannot be resolved without it.
-- [ ] 5.3 Verify: a recipe-only app that requires a
+- [ ] 7.3 Verify: a recipe-only app that requires a
   plugin shows its recipe prompt in place of Add, and
   the prompt names the plugin install step before the
   app install step.
 
-## 6. Verify and sync specs
+## 8. Verify and sync specs
 
-- [ ] 6.1 Verify: catalog harness ALL PASSED (including
+- [ ] 8.1 Verify: catalog harness ALL PASSED (including
   the new releases-index checks); store harness ALL
   PASSED (including the separate self-update section,
   the resolved-snapshot display, and the stale-snapshot
@@ -220,7 +294,7 @@ is a release act, not a task in this change.
   jsdom where a live browser is not available; record
   any substitution with its reason, the same way
   earlier changes recorded theirs.
-- [ ] 6.2 Verify the three user goals end to end in
+- [ ] 8.2 Verify the three user goals end to end in
   `kody dev` (mock target, server stopped for writes):
   (a) a new app version pushed to `main` and tagged
   appears to a compatible shell after a Store update,
@@ -228,15 +302,18 @@ is a release act, not a task in this change.
   path needs no agent; (c) a shell older than the
   snapshot still installs from its latest compatible
   snapshot. Record the shell versions, tags, and
-  snapshot used for each leg.
-- [ ] 6.3 Sync the canonical specs: the app-registry,
+  snapshot used for each leg. (Phase 1 verifies the
+  same three goals with the manual pin, task 1.6;
+  Phase 2 verifies them with the resolver picking the
+  pin.)
+- [ ] 8.3 Sync the canonical specs: the app-registry,
   shell, and authoring deltas in this change become
   canonical (see `specs/`). Record the version
   decision in the implementation commit (Store
   `catalogVersion` +1 by the bundle-change rule;
   no pkg version bump is specified by this change
   alone — see proposal.md, Impact).
-- [ ] 6.4 Archive with a close-out note recording what
+- [ ] 8.4 Archive with a close-out note recording what
   was verified, what was substituted, and what was
   left open. `openspec validate` passes for the change
   (run on the PC — the `openspec` CLI is not available
