@@ -71,7 +71,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
 import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -313,6 +313,21 @@ function installSteps(text: string): string[] {
 	check('Help page block differs only by the closing line', help.indexOf(helpPageBlock) === 0, '')
 	check('Help and About are not catalog apps any more', await get_catalog_definition('help', BASE) === null && await get_catalog_definition('about', BASE) === null)
 	check('empty help Add prompt references the operations file', help.indexOf('Read package:kody-os#OPERATIONS.md, then add a new app: Name: [display name]; What it does: [describe what it should do]') !== -1 && help.indexOf('App id: [slug]') === -1, '')
+	check('packageRefForHost derives @owner/leaf from a Kody host', packageRefForHost('hypercubed.kody.run', '/kody-os') === '@hypercubed/kody-os', packageRefForHost('hypercubed.kody.run', '/kody-os'))
+	check('packageRefForHost falls back to the leaf off Kody', packageRefForHost('localhost', '/kody-os') === 'kody-os' && packageRefForHost('127.0.0.1', '') === 'kody-os', '')
+	var helpFull = renderEmptyHelp('', { packageRef: '@hypercubed/kody-os' })
+	check('empty help uses the full @owner/leaf reference when supplied', helpFull.indexOf('Read package:@hypercubed/kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/app-store') !== -1 && helpFull.indexOf('package:kody-os#OPERATIONS.md') === -1, '')
+	var dashFull = renderDashboard([], '', false, '@hypercubed/kody-os')
+	check('empty Home passes the full reference through', dashFull.indexOf('Read package:@hypercubed/kody-os#OPERATIONS.md') !== -1 && dashFull.indexOf('package:kody-os#OPERATIONS.md') === -1, '')
+	var bundleDef = { id: 'counter', name: 'counter', schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>counter</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: 'counter', openAs: 'page', actions: [] } } as never
+	var bundleWithRef = renderBundleContent(bundleDef, '/kody-os/apps/counter', '@hypercubed/kody-os')
+	check('bundle container carries the shell-provided package ref', bundleWithRef.indexOf('data-package-ref="@hypercubed/kody-os"') !== -1 && bundleWithRef.indexOf('data-action-base="/kody-os/apps/counter"') !== -1, bundleWithRef)
+	var bundleWithoutRef = renderBundleContent(bundleDef, '/kody-os/apps/counter')
+	check('bundle container omits data-package-ref when none is given', bundleWithoutRef.indexOf('data-package-ref') === -1, bundleWithoutRef)
+	var sectionWithRef = renderAppSection(bundleDef, {}, '/kody-os', '', '@hypercubed/kody-os')
+	check('app section passes the package ref to the bundle container', sectionWithRef.indexOf('data-package-ref="@hypercubed/kody-os"') !== -1, '')
+	var panelWithRef = renderAppPanel(bundleDef, {}, '/kody-os', '', '', undefined, undefined, '', undefined, undefined, '@hypercubed/kody-os')
+	check('app panel passes the package ref through', panelWithRef.indexOf('data-package-ref="@hypercubed/kody-os"') !== -1, '')
 	var dashNoApps = renderDashboard([], '', false)
 	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Install the App Catalog') !== -1, '')
 	check('Home and Apps render the same help block', dashNoApps.indexOf(help) !== -1, '')
@@ -832,7 +847,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.1.3 in this tree', running === '4.1.3', running)
+	check('running package version is 4.2.1 in this tree', running === '4.2.1', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min
@@ -1037,7 +1052,7 @@ function installSteps(text: string): string[] {
 // Store definition cannot declare a loopback http proxy entry (the
 // definition validator requires https proxy URLs), so loopback servers
 // cannot carry the split bases and the stub is the honest stand-in. The
-// real 4.1.11 pin's catalog is currently byte-identical to main's, so a
+// real 4.2.0 pin's catalog is currently byte-identical to main's, so a
 // browser list cannot distinguish the two bases either.
 {
   var p1Fs = await import('node:fs')
@@ -1188,7 +1203,7 @@ function installSteps(text: string): string[] {
     var p1CounterRow = p1Rows.rows.filter(function (r) { return r.id === 'counter' })[0]
     check('rows list the counter from the listing base', p1CounterRow !== undefined && p1CounterRow.label === 'Counter', JSON.stringify(p1CounterRow))
     check('storeSelf reports the installed Store version', p1Rows.storeSelf.installedCatalogVersion === 27, JSON.stringify(p1Rows.storeSelf))
-    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 28, JSON.stringify(p1Rows.storeSelf))
+    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 29, JSON.stringify(p1Rows.storeSelf))
     check('storeSelf offers the Store update', p1Rows.storeSelf.hasUpdate === true && p1Rows.storeSelf.needsNewerShell === false, JSON.stringify(p1Rows.storeSelf))
     check('storeSelf pins the listing base', p1Rows.storeSelf.pinnedLabel !== null && p1Rows.storeSelf.pinnedLabel.indexOf('listing.example.com') !== -1, JSON.stringify(p1Rows.storeSelf))
     check('status line names the listing base, not the discovery base', p1Rows.catalogRelease.indexOf('listing.example.com') !== -1 && p1Rows.catalogRelease.indexOf('discovery.example.com') === -1, p1Rows.catalogRelease)
@@ -1199,7 +1214,7 @@ function installSteps(text: string): string[] {
     var p1SelfUpdate = await manage_update('app-store', 'app-store', true, p1Store)
     check('Store self-update succeeds from the discovery base', p1SelfUpdate.ok === true, JSON.stringify(p1SelfUpdate))
     var p1StoreDefAfter = p1DefOf(await get_app('app-store', p1Store))
-    check('Store self-update installs v28', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 28, JSON.stringify(p1StoreDefAfter))
+    check('Store self-update installs v29', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 29, JSON.stringify(p1StoreDefAfter))
     check('Store self-update keeps the listing pin', p1ProxyUrl(p1StoreDefAfter, 'catalog-apps') === LISTING, JSON.stringify(p1StoreDefAfter))
     check('Store self-update keeps the discovery base', p1ProxyUrl(p1StoreDefAfter, 'catalog') === DISCOVERY, JSON.stringify(p1StoreDefAfter))
     var p1Store2 = createMemoryStore()

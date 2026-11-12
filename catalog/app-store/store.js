@@ -16,14 +16,31 @@ function storeManageBase() {
   return '';
 }
 function storePackageSlug() {
+  // The shell stamps the full package reference (@owner/leaf) on the
+  // bundle container as data-package-ref; use it when present — the
+  // shell is the single source of truth, the same value its Help
+  // prompts use. Otherwise derive it from the host + mount (an older
+  // shell stamps no attribute, and the mock/localhost has none), falling
+  // back to the bare leaf on a non-Kody host.
+  var root = storeRoot();
+  var providedEl = root.querySelector('[data-package-ref]');
+  var provided = providedEl ? providedEl.getAttribute('data-package-ref') : '';
+  if (provided) { return provided; }
   var base = storeManageBase();
+  var leaf = 'kody-os';
   if (base) {
     var slug = base.charAt(0) === '/' ? base.slice(1) : base;
     var slash = slug.indexOf('/');
     if (slash !== -1) { slug = slug.slice(0, slash); }
-    if (slug) { return slug; }
+    if (slug) { leaf = slug; }
   }
-  return 'kody-os';
+  var host = (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
+  var suffix = '.kody.run';
+  if (host.length > suffix.length && host.slice(host.length - suffix.length) === suffix) {
+    var owner = host.slice(0, host.length - suffix.length);
+    if (owner) { return '@' + owner + '/' + leaf; }
+  }
+  return leaf;
 }
 function storeBadge(status) {
   if (status === 'not-installed') { return 'Not installed'; }
@@ -94,6 +111,12 @@ function storeAgentPrompt(row) {
     if (!row.folderUrl) { return null; }
     return { summary: 'Install with an agent', prompt: ops + ', then install this app: ' + row.folderUrl };
   }
+  // Remove needs only the id (remove_app(id)); the catalog folder is
+  // irrelevant to deleting the installed app, so it is not gated on a
+  // folder URL and the prompt names the id, not the folder.
+  if (row.status === 'up-to-date' || row.status === 'absorbed') {
+    return { summary: 'Remove with an agent', prompt: ops + ', then remove this app: ' + row.id };
+  }
   if (!row.folderUrl) { return null; }
   if (row.status === 'behind-clean' || row.status === 'catalog-differing') {
     return { summary: 'Update with an agent', prompt: ops + ', then update this app to the latest catalog version: ' + row.folderUrl };
@@ -106,9 +129,6 @@ function storeAgentPrompt(row) {
   }
   if (row.status === 'snapshot-less') {
     return { summary: 'Overwrite with an agent', prompt: ops + ', then overwrite this app with the catalog copy: ' + row.folderUrl };
-  }
-  if (row.status === 'up-to-date' || row.status === 'absorbed') {
-    return { summary: 'Remove with an agent', prompt: ops + ', then remove this app: ' + row.folderUrl };
   }
   return null;
 }
@@ -129,6 +149,29 @@ function storeInit() {
   var rows = [];
   var storeSelf = null;
   var afterLoadStatus = '';
+  // The github.com URL of the catalog directory the apps are listed
+  // from. Seeded from the static loading text in index.html (the pinned
+  // catalog), then corrected from the rows' folder URLs once they load,
+  // so it follows the actual listing base. The static text must be
+  // updated when the pin moves; the rows correct it after the first load.
+  var catalogSourceUrl = null;
+  function catalogUrlFromRows() {
+    for (var i = 0; i < rows.length; i++) {
+      var folder = rows[i] && rows[i].folderUrl;
+      if (folder) {
+        var cut = folder.lastIndexOf('/');
+        if (cut > 0) { return folder.slice(0, cut); }
+      }
+    }
+    return null;
+  }
+  function loadingText() {
+    return catalogSourceUrl ? 'Loading apps from ' + catalogSourceUrl + '…' : 'Loading apps…';
+  }
+  if (status) {
+    var seed = /https:\/\/github\.com\/[^\s…]+/.exec(status.textContent || '');
+    if (seed) { catalogSourceUrl = seed[0]; }
+  }
   function setStatus(text) { if (status) { status.textContent = text; } }
   function safeUpdatable() {
     var out = [];
@@ -343,6 +386,16 @@ function storeInit() {
       latest.textContent = 'Latest App Catalog v' + storeSelf.latestCatalogVersion + ' from ' + from + (storeSelf.hasUpdate ? '' : ' — you have it.');
     }
     selfSection.appendChild(latest);
+    if (catalogSourceUrl) {
+      var src = document.createElement('span');
+      src.className = 'store-self-line';
+      src.textContent = 'Catalog source: ';
+      var link = document.createElement('a');
+      link.href = catalogSourceUrl;
+      link.textContent = catalogSourceUrl;
+      src.appendChild(link);
+      selfSection.appendChild(src);
+    }
     if (storeSelf.needsNewerShell) {
       var need = document.createElement('span');
       need.className = 'store-self-line';
@@ -363,7 +416,7 @@ function storeInit() {
     return 'Catalog ' + catalogRelease + (catalogCached ? ' (cached)' : '');
   }
   function load() {
-    setStatus('Loading apps…');
+    setStatus(loadingText());
     if (retry) { retry.hidden = true; }
     clearConfirm();
     storeApi('rows', '').then(function (res) {
@@ -372,6 +425,8 @@ function storeInit() {
         storeSelf = res.storeSelf || null;
         if (res.catalogRelease) { catalogRelease = res.catalogRelease; }
         catalogCached = !!res.catalogCached;
+        var fromRows = catalogUrlFromRows();
+        if (fromRows) { catalogSourceUrl = fromRows; }
         var base = afterLoadStatus || '';
         afterLoadStatus = '';
         var err = res.catalogError || '';

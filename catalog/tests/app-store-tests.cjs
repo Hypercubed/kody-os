@@ -101,7 +101,8 @@ async function main() {
   var caret = rule(".store-details summary::before");
   check(caret.indexOf('content: ""') !== -1 && caret.indexOf("flex-shrink: 0") !== -1 && caret.indexOf("margin-right: 0.5rem") !== -1 && caret.indexOf("solid transparent") !== -1 && caret.indexOf("solid currentColor") !== -1 && caret.indexOf("transition: transform 0.15s") !== -1, "summary has a ::before border-triangle caret");
   check(rule(".store-details[open] > summary::before").indexOf("transform: rotate(90deg)") !== -1, "open details rotates the caret 90deg");
-  check(rule(".store-details summary").indexOf("min-height: 48px") !== -1, "summary keeps the 48px tap target");
+  check(rule(".store-details summary").indexOf("min-height") === -1, "summary carries no min-height");
+  check(rule(".store-details summary").indexOf("font-size: 0.875rem") !== -1, "summary uses the reduced font size");
   check(rule(".store-row").indexOf("align-items: stretch") !== -1, "store row stretches children to the line height");
   var mainRule = rule(".store-main");
   check(mainRule.indexOf("align-self: stretch") !== -1 && mainRule.indexOf("justify-content: center") !== -1, "store main stretches and centers its content");
@@ -111,6 +112,8 @@ async function main() {
   check(buttonRule.indexOf("box-sizing: border-box") !== -1 && buttonRule.indexOf("width: calc(12ch + 2rem + 2px)") !== -1 && buttonRule.indexOf("white-space: nowrap") !== -1, "row buttons share one fixed width");
   check(rule(".store-dialog-panel button").indexOf("margin: 4px 4px 4px 0") !== -1, "dialog buttons keep their sizing");
   check(rule(".store-update-all").indexOf("margin: 0 0 12px 0") !== -1, "Update All keeps its sizing");
+  check(rule(".store-self").indexOf("border") === -1, "self-update section carries no box border");
+  check(rule(".store-self button").indexOf("float: right") !== -1, "self-update button floats right");
   check(css.indexOf("url(") === -1, "caret uses no image");
   check(js.indexOf("summary::before") === -1, "no JavaScript draws the caret");
   const rows = [
@@ -120,8 +123,8 @@ async function main() {
     { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: false } },
     { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: true } },
   ];
-  const storeSelfMain = { installedCatalogVersion: 27, pinnedLabel: '4.1.11', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.0', latestCatalogVersion: 28, needsNewerShell: false, hasUpdate: true };
-  const storeSelfUpToDate = { installedCatalogVersion: 27, pinnedLabel: '4.1.11', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.0', latestCatalogVersion: 27, needsNewerShell: false, hasUpdate: false };
+  const storeSelfMain = { installedCatalogVersion: 27, pinnedLabel: '4.2.0', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 29, needsNewerShell: false, hasUpdate: true };
+  const storeSelfUpToDate = { installedCatalogVersion: 27, pinnedLabel: '4.2.0', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 27, needsNewerShell: false, hasUpdate: false };
   const calls = [];
   const dom = new JSDOM(
     '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
@@ -131,7 +134,7 @@ async function main() {
   win.fetch = function (url) {
     calls.push(url);
     if (url.indexOf("/manage/rows") !== -1) {
-      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows, catalogRelease: '4.1.11', storeSelf: storeSelfMain }); } });
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows, catalogRelease: '4.2.0', storeSelf: storeSelfMain }); } });
     }
     if (url.indexOf("/manage/update") !== -1 && url.indexOf("confirmed=1") === -1) {
       if (url.indexOf("id=calculator") !== -1) {
@@ -148,6 +151,7 @@ async function main() {
     return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
   };
   win.eval(js);
+  check(win.document.querySelector(".store-status").textContent === "Loading apps from https://github.com/Hypercubed/kody-os/tree/4.2.0/catalog…", "loading text names the catalog source URL");
   await new Promise(function (r) { setTimeout(r, 50); });
   const doc = win.document;
   const items = doc.querySelectorAll(".store-row");
@@ -181,12 +185,14 @@ async function main() {
   var wrapKids = Array.prototype.slice.call(doc.querySelector(".store-wrap").children);
   check(wrapKids.indexOf(selfSection) !== -1 && wrapKids.indexOf(selfSection) < wrapKids.indexOf(doc.querySelector(".store-list")), "self-update section sits above the apps list");
   check(selfSection.textContent.indexOf("App Catalog v27") !== -1, "section shows the installed Store version");
-  check(selfSection.textContent.indexOf("Catalog snapshot 4.1.11") !== -1, "section shows the pinned snapshot tag");
-  check(selfSection.textContent.indexOf("shell v4.2.0") !== -1, "section shows the running shell version");
-  check(selfSection.textContent.indexOf("Latest App Catalog v28") !== -1, "section shows the latest Store on the discovery base");
+  check(selfSection.textContent.indexOf("Catalog snapshot 4.2.0") !== -1, "section shows the pinned snapshot tag");
+  check(selfSection.textContent.indexOf("shell v4.2.1") !== -1, "section shows the running shell version");
+  check(selfSection.textContent.indexOf("Latest App Catalog v29") !== -1, "section shows the latest Store on the discovery base");
   check(selfSection.textContent.indexOf("from main") !== -1, "section names the discovery base for the Store update");
+  check(selfSection.textContent.indexOf("Catalog source: https://github.com/Hypercubed/kody-os/tree/4.2.0/catalog") !== -1, "section shows the catalog source URL");
+  check(selfSection.querySelector('a[href="https://github.com/Hypercubed/kody-os/tree/4.2.0/catalog"]') !== null, "catalog source URL is a link");
   check(buttonLabels(selfSection).join(",") === "Update", "section offers one Update control");
-  check(doc.querySelector(".store-status").textContent === "Catalog 4.1.11", "status line shows the pinned tag, not the main URL");
+  check(doc.querySelector(".store-status").textContent === "Catalog 4.2.0", "status line shows the pinned tag, not the main URL");
   check(doc.querySelector(".store-status").textContent.indexOf("raw.githubusercontent") === -1, "status line shows no main URL");
   check(doc.querySelector(".store-status").textContent.indexOf("resolved") === -1 && doc.querySelector(".store-status").textContent.indexOf("stale") === -1, "status line claims no resolved or stale snapshot");
   const updateBtn = selfSection.querySelector("button");
@@ -308,7 +314,7 @@ async function main() {
     { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installMode: "json", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/clock" },
     { id: "streaks", label: "Streaks", name: "Streaks", icon: "#", description: "Streaks.", installMode: "json", installed: true, inCatalog: true, status: "absorbed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/streaks" },
     { id: "pushup", label: "Pushup Tracker", name: "Pushup Tracker", icon: "#", description: "Pushups.", installMode: "json", installed: true, inCatalog: true, status: "absorbed-behind", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/pushup" },
-    { id: "future-app", label: "Future App", name: "Future App", icon: "#", description: "Needs a newer shell.", installMode: "json", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, needsNewerShell: true, minPackageVersion: "9.9.9", shellVersion: "4.2.0" },
+    { id: "future-app", label: "Future App", name: "Future App", icon: "#", description: "Needs a newer shell.", installMode: "json", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, needsNewerShell: true, minPackageVersion: "9.9.9", shellVersion: "4.2.1" },
     { id: "schema-app", label: "Schema App", name: "Schema App", icon: "#", description: "Needs a newer schema.", installMode: "json", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, needsNewerSchema: true, schemaVersion: 3, schemaFloor: 5 },
     { id: "daily-feed", label: "Daily Feed", name: "Daily Feed", icon: "#", description: "Daily feed.", installMode: "recipe-only", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/daily-feed" },
     { id: "recipe-app", label: "Recipe App", name: "Recipe App", icon: "#", description: "Recipe app.", installMode: "json", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/recipe-app" },
@@ -363,11 +369,11 @@ async function main() {
   check(promptCode(items4[4]) && promptCode(items4[4]).textContent === "Read package:kody-os#OPERATIONS.md, then overwrite this app with the catalog copy: https://github.com/Hypercubed/kody-os/tree/main/catalog/settings", "overwrite prompt is the one-liner with the folder URL");
   check(items4[5] && buttonLabels(items4[5]).join(",") === "Remove", "up-to-date row keeps Remove");
   check(summaryOf(items4[5]) && summaryOf(items4[5]).textContent === "Remove with an agent", "up-to-date row shows Remove details");
-  check(promptCode(items4[5]) && promptCode(items4[5]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/clock", "remove prompt is the one-liner with the folder URL");
+  check(promptCode(items4[5]) && promptCode(items4[5]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: clock", "remove prompt names the app id, not the folder URL");
   check(items4[6] && buttonLabels(items4[6]).join(",") === "Remove", "absorbed row offers Remove only");
   check(items4[6].querySelector(".store-badge") && items4[6].querySelector(".store-badge").textContent === "Absorbed", "absorbed row badges Absorbed");
   check(summaryOf(items4[6]) && summaryOf(items4[6]).textContent === "Remove with an agent", "absorbed row shows Remove details, not Absorb details");
-  check(promptCode(items4[6]) && promptCode(items4[6]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/streaks", "absorbed prompt is the remove one-liner");
+  check(promptCode(items4[6]) && promptCode(items4[6]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: streaks", "absorbed prompt is the remove one-liner with the app id");
 
   check(items4[7] && buttonLabels(items4[7]).join(",") === "Overwrite", "absorbed-behind row offers confirmed Overwrite");
   check(items4[7].querySelector(".store-badge") && items4[7].querySelector(".store-badge").textContent === "Absorbed \u00b7 update available", "absorbed-behind row badges Absorbed \u00b7 update available");
@@ -439,7 +445,7 @@ async function main() {
   const rowsGated = [
     { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
   ];
-  const storeSelfGated = { installedCatalogVersion: 27, pinnedLabel: '4.1.11', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.0', latestCatalogVersion: 28, latestMinPackageVersion: '9.9.9', needsNewerShell: true, hasUpdate: false };
+  const storeSelfGated = { installedCatalogVersion: 27, pinnedLabel: '4.2.0', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 29, latestMinPackageVersion: '9.9.9', needsNewerShell: true, hasUpdate: false };
   const calls5 = [];
   const dom5 = new JSDOM(
     '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
@@ -464,7 +470,7 @@ async function main() {
   const doc5 = win5.document;
   const selfSection5 = doc5.querySelector(".store-self");
   check(selfSection5 && selfSection5.hidden === false, "gated section renders");
-  check(selfSection5.textContent.indexOf("Requires shell v9.9.9 (running v4.2.0).") !== -1, "gated section shows the requirement instead of an update");
+  check(selfSection5.textContent.indexOf("Requires shell v9.9.9 (running v4.2.1).") !== -1, "gated section shows the requirement instead of an update");
   check(buttonLabels(selfSection5).join(",") === "Remove", "gated section keeps Remove, not Update");
   const gatedRemoveBtn = selfSection5.querySelector("button");
   gatedRemoveBtn.click();
@@ -474,6 +480,51 @@ async function main() {
   gatedConfirmBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
   check(calls5.indexOf("/manage/remove?app=app-store&id=app-store&confirmed=1") !== -1, "confirm submits the confirmed Store remove");
+  // Full package reference (agent-prompt-pattern): on a Kody host the
+  // prompts use @owner/leaf (owner from the host subdomain, leaf from
+  // the mount); on localhost the bare leaf is the fallback (see the
+  // earlier prompt checks, which use package:kody-os).
+  const rowsKodyHost = [
+    { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installMode: "json", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/counter" },
+    { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installMode: "json", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/clock" },
+  ];
+  const dom6 = new JSDOM(
+    '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/kody-os/apps/app-store">' + html + "</div></section></body></html>",
+    { url: "https://hypercubed.kody.run/kody-os/apps/app-store", runScripts: "outside-only" }
+  );
+  const win6 = dom6.window;
+  win6.fetch = function (url) {
+    if (url.indexOf("/manage/rows") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rowsKodyHost }); } });
+    }
+    return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
+  };
+  win6.eval(js);
+  await new Promise(function (r) { setTimeout(r, 50); });
+  const doc6 = win6.document;
+  const items6 = doc6.querySelectorAll(".store-row");
+  check(promptCode(items6[0]) && promptCode(items6[0]).textContent === "Read package:@hypercubed/kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/counter", "Kody-host install prompt uses the full @owner/leaf reference");
+  check(promptCode(items6[1]) && promptCode(items6[1]).textContent === "Read package:@hypercubed/kody-os#OPERATIONS.md, then remove this app: clock", "Kody-host remove prompt uses the full @owner/leaf reference");
+  // dom7: the shell stamps data-package-ref on the bundle container.
+  // On localhost the host derivation would give the bare leaf, so a
+  // full @owner/leaf prompt here proves the shell-provided ref wins.
+  const dom7 = new JSDOM(
+    '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store" data-package-ref="@hypercubed/kody-os">' + html + "</div></section></body></html>",
+    { url: "http://localhost:4302/apps/app-store", runScripts: "outside-only" }
+  );
+  const win7 = dom7.window;
+  win7.fetch = function (url) {
+    if (url.indexOf("/manage/rows") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rowsKodyHost }); } });
+    }
+    return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
+  };
+  win7.eval(js);
+  await new Promise(function (r) { setTimeout(r, 50); });
+  const doc7 = win7.document;
+  const items7 = doc7.querySelectorAll(".store-row");
+  check(promptCode(items7[0]) && promptCode(items7[0]).textContent === "Read package:@hypercubed/kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/counter", "shell-provided data-package-ref wins over the localhost host derivation");
+  check(promptCode(items7[1]) && promptCode(items7[1]).textContent === "Read package:@hypercubed/kody-os#OPERATIONS.md, then remove this app: clock", "shell-provided ref is used by the remove prompt too");
   if (failures > 0) {
     console.error("\n" + failures + " check(s) FAILED");
     process.exit(1);

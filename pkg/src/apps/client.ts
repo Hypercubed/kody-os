@@ -88,9 +88,12 @@ function inlineBundleAssets(entry: string, def: AppDefinition, used: string[]): 
  *
  * When `actionBase` is given, the container carries it as
  * `data-action-base` so bundle scripts can resolve action URLs against the
- * owning app instead of the current page path.
+ * owning app instead of the current page path. When `packageRef` is
+ * given, the container also carries it as `data-package-ref` so bundle
+ * scripts can name the running package in agent prompts instead of
+ * deriving it from the host.
  */
-export function renderBundleContent(def: AppDefinition, actionBase?: string): string {
+export function renderBundleContent(def: AppDefinition, actionBase?: string, packageRef?: string): string {
 	var entry = bundleFile(def, 'index.html')
 	if (typeof entry !== 'string' || entry === '') {
 		throw new Error('bundle "' + def.id + '" has no readable entry')
@@ -101,7 +104,11 @@ export function renderBundleContent(def: AppDefinition, actionBase?: string): st
 		typeof actionBase === 'string' && actionBase !== ''
 			? ' data-action-base="' + escapeHtml(actionBase) + '"'
 			: ''
-	return '<div class="bundle" data-bundle="' + escapeHtml(def.id) + '"' + baseAttr + '>\n' + inlined + '\n</div>'
+	var refAttr =
+		typeof packageRef === 'string' && packageRef !== ''
+			? ' data-package-ref="' + escapeHtml(packageRef) + '"'
+			: ''
+	return '<div class="bundle" data-bundle="' + escapeHtml(def.id) + '"' + baseAttr + refAttr + '>\n' + inlined + '\n</div>'
 }
 
 /**
@@ -136,10 +143,10 @@ export function renderStateSeed(def: AppDefinition, state: AppState): string {
 	return '<script type="application/json" data-kody-state-seed="1" data-app-id="' + escapeHtml(def.id) + '">' + json + '</script>'
 }
 
-export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, fromPath?: string): string {
+export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, fromPath?: string, packageRef?: string): string {
 	var bundleHtml: string
 	try {
-		bundleHtml = renderBundleContent(def, appBasePath + '/apps/' + def.id)
+		bundleHtml = renderBundleContent(def, appBasePath + '/apps/' + def.id, packageRef)
 	} catch (err) {
 		bundleHtml = '<p>This bundle could not be displayed. The stored definition is damaged; reinstall it with add_app.</p>'
 	}
@@ -195,9 +202,10 @@ export function renderAppPanel(
 	fromPath?: string,
 	closeHref?: string,
 	expandHref?: string,
+	packageRef?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
-	var content = renderAppSection(def, state, appBasePath, fromPath)
+	var content = renderAppSection(def, state, appBasePath, fromPath, packageRef)
 	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
 	var back =
 		backHref !== '' && backLabel !== ''
@@ -239,9 +247,9 @@ export function renderAppPanel(
  * so the overlay markup contains exactly one `section.app`. Fully present
  * in server-rendered HTML.
  */
-export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string): string {
+export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string, packageRef?: string): string {
 	var fromPath = appBasePath + '/apps#app-' + def.id
-	var panel = renderAppPanel(def, state, appBasePath, '', '', undefined, undefined, fromPath, '#apps', appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/apps'))
+	var panel = renderAppPanel(def, state, appBasePath, '', '', undefined, undefined, fromPath, '#apps', appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/apps'), packageRef)
 	return (
 		'<div class="overlay" id="app-' +
 		escapeHtml(def.id) +
@@ -511,9 +519,10 @@ export function renderWidgetSection(
 	index: number,
 	total: number,
 	error?: string,
+	packageRef?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
-	var content = renderAppSection(def, state, appBasePath, appBasePath + '/')
+	var content = renderAppSection(def, state, appBasePath, appBasePath + '/', packageRef)
 	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
 	var upDisabled = index <= 0 ? ' disabled' : ''
 	var downDisabled = index >= total - 1 ? ' disabled' : ''
@@ -576,9 +585,37 @@ export function renderWidgetSection(
  * ("Once an app is installed...") is true of the first-run empty
  * state, not of the Help page itself. Empty Home / empty Apps keep it.
  */
-export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: boolean }): string {
-	var slug = 'kody-os'
+/**
+ * The full package reference for agent prompts: @owner/leaf. The owner
+ * is the subdomain of the Kody host (hypercubed in hypercubed.kody.run);
+ * the leaf is the mount (the first path segment of the base path). On a
+ * non-Kody host (local mock, localhost) there is no owner, so the bare
+ * leaf is the reference. Mirrors the Store bundle's storePackageSlug.
+ */
+export function packageRefForHost(host: string, appBasePath: string): string {
+	var leaf = 'kody-os'
 	if (appBasePath) {
+		var base = appBasePath.charAt(0) === '/' ? appBasePath.slice(1) : appBasePath
+		var slash = base.indexOf('/')
+		var first = slash === -1 ? base : base.slice(0, slash)
+		if (first) { leaf = first }
+	}
+	var suffix = '.kody.run'
+	if (host && host.length > suffix.length && host.slice(host.length - suffix.length) === suffix) {
+		var owner = host.slice(0, host.length - suffix.length)
+		if (owner) { return '@' + owner + '/' + leaf }
+	}
+	return leaf
+}
+
+export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: boolean; packageRef?: string }): string {
+	// The full @owner/leaf reference when the caller supplies it (the
+	// shell derives it from the request host + mount); otherwise the
+	// bare leaf from the mount, as before.
+	var slug = 'kody-os'
+	if (opts && typeof opts.packageRef === 'string' && opts.packageRef !== '') {
+		slug = opts.packageRef
+	} else if (appBasePath) {
 		var base = appBasePath.charAt(0) === '/' ? appBasePath.slice(1) : appBasePath
 		var slash = base.indexOf('/')
 		var first = slash === -1 ? base : base.slice(0, slash)
@@ -603,7 +640,7 @@ export function renderEmptyHelp(appBasePath: string, opts?: { omitClosing?: bool
  * are installed at all, or a short Add-to-home message when apps are
  * installed but none are on Home.
  */
-export function renderDashboard(widgets: string[], appBasePath: string, hasApps: boolean): string {
+export function renderDashboard(widgets: string[], appBasePath: string, hasApps: boolean, packageRef?: string): string {
 	if (widgets.length === 0) {
 		if (hasApps === true) {
 			return (
@@ -614,7 +651,7 @@ export function renderDashboard(widgets: string[], appBasePath: string, hasApps:
 		}
 		return (
 			'<section class="dashboard dashboard-empty" aria-label="Home">\n' +
-			renderEmptyHelp(appBasePath) +
+			renderEmptyHelp(appBasePath, packageRef ? { packageRef: packageRef } : undefined) +
 			'\n</section>'
 		)
 	}

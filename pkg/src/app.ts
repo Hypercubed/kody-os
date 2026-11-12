@@ -529,6 +529,12 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var renderRecentSection = c.renderRecentSection
 				var renderWidgetSection = c.renderWidgetSection
 
+			// The full @owner/leaf package reference for agent prompts,
+			// derived from the request host + mount (mirrors the Store
+			// bundle); the Help and empty-state prompts use it, falling
+			// back to the bare leaf when the host gives no owner.
+			var packageRef = c.packageRefForHost(new URL(request.url).hostname, appBasePath)
+
 			/** Menu-bar links for one render: flagged, non-hidden apps, sorted by label (id breaks ties). */
 			function menuAppsFor(apps: { id: string, label: string, menuBar: boolean }[], hiddenIds: string[], showHelp?: boolean, showAbout?: boolean): { id: string, label: string, builtin?: boolean }[] {
 				var out: { id: string, label: string, builtin?: boolean }[] = []
@@ -584,13 +590,13 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								wchain = wchain.then(function (): Promise<void> {
 									return get_app(want).then(function (entry): void {
 										if ('error' in entry) return
-										widgets.push(renderWidgetSection(entry.definition, entry.state, appBasePath, idx, ordered.length, want === widgetErrorId ? widgetError : ''))
+										widgets.push(renderWidgetSection(entry.definition, entry.state, appBasePath, idx, ordered.length, want === widgetErrorId ? widgetError : '', packageRef))
 									})
 								})
 							})(ordered[wi], wi)
 						}
 						return wchain.then(function (): Response {
-							var dashboard = renderDashboard(widgets, appBasePath, apps.length > 0)
+							var dashboard = renderDashboard(widgets, appBasePath, apps.length > 0, packageRef)
 							var lines = dashboard.split('\n')
 							var indented = ''
 							for (var li = 0; li < lines.length; li++) indented += '\t\t\t' + lines[li] + '\n'
@@ -609,7 +615,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					var closeHref = safeNextPath(fromParam, appBasePath)
 					var closeLabel = closeHref === appsPath ? 'Apps' : closeHref === homePath ? 'Home' : 'Back'
 					try {
-						var panel = renderAppPanel(definition, state, appBasePath, '', '', withError, false, fromParam !== '' ? closeHref : '')
+						var panel = renderAppPanel(definition, state, appBasePath, '', '', withError, false, fromParam !== '' ? closeHref : '', undefined, undefined, packageRef)
 						var lines = panel.split('\n')
 						var indented = ''
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
@@ -811,7 +817,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			if (method === 'GET' && path === '/help') {
 				if (chrome.showHelp === false) return Promise.resolve(notFoundPage(chrome))
 				return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
-					var helpLines = renderEmptyHelp(appBasePath, { omitClosing: true }).split('\n')
+					var helpLines = renderEmptyHelp(appBasePath, { omitClosing: true, packageRef: packageRef }).split('\n')
 					var helpBody = ''
 					for (var hli = 0; hli < helpLines.length; hli++) helpBody += '\t\t\t' + helpLines[hli] + '\n'
 					return new Response(
@@ -899,7 +905,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				var byId: Record<string, number> = {}
 					for (var bi = 0; bi < apps.length; bi++) byId[apps[bi].id] = bi
 					if (apps.length === 0) {
-						var helpLines = renderEmptyHelp(appBasePath).split('\n')
+						var helpLines = renderEmptyHelp(appBasePath, { packageRef: packageRef }).split('\n')
 						var helpIndented = ''
 						for (var hli = 0; hli < helpLines.length; hli++) helpIndented += '\t\t\t\t' + helpLines[hli] + '\n'
 						return Promise.resolve(new Response(
@@ -961,7 +967,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 								ochain = ochain.then(function (): Promise<void> {
 									return get_app(want).then(function (entry): void {
 										if ('error' in entry) return
-										overlays.push(renderOverlaySection(entry.definition, entry.state, appBasePath))
+										overlays.push(renderOverlaySection(entry.definition, entry.state, appBasePath, packageRef))
 									})
 								})
 							})(modalIds[oi])

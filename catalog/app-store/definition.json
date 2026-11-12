@@ -3,7 +3,7 @@
   "name": "App Catalog",
   "label": "App Catalog",
   "schemaVersion": 5,
-  "catalogVersion": 28,
+  "catalogVersion": 29,
   "minPackageVersion": "4.2.0",
   "icon": "\u229e",
   "category": "utilities",
@@ -17,7 +17,7 @@
       },
       {
         "name": "catalog-apps",
-        "url": "https://raw.githubusercontent.com/Hypercubed/kody-os/4.1.11/catalog/"
+        "url": "https://raw.githubusercontent.com/Hypercubed/kody-os/4.2.0/catalog/"
       }
     ]
   },
