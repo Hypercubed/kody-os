@@ -41,6 +41,13 @@
  *     removal requires confirmation and then deletes the definition,
  *     state, and snapshot and scrubs pins.
  *   List shape (store-list-shape): a bare-array list() result normalizes to the documented envelope (prefix filter, key order, client-side pagination, envelope pass-through, unrecognized shape fails loudly); listInstalledIds enumerates the same ids through either shape.
+ *   Split bases (compatible-catalog Phase 1): a Store with both proxy
+ *     entries routes ordinary rows, installs, and updates through the
+ *     listing base (catalog-apps, pinned to a tag) and its own update
+ *     through the discovery base (catalog, main); a Store with only the
+ *     catalog entry reads that base throughout; a newer Store on the
+ *     discovery base whose minimum exceeds the running shell refuses
+ *     the self-update and reports the requirement instead.
  *   Absorb (store-row-agent-prompts): a modified-current or
  *     behind-modified app absorbs through absorb_from_catalog and
  *     then reads absorbed with its snapshot carrying the catalog
@@ -64,7 +71,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
 import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -1020,6 +1027,234 @@ function installSteps(text: string): string[] {
 	check('https final url still fetches', allowedFinalOk)
 	;(globalThis as unknown as Record<string, unknown>)['fetch'] = realFetch4
 }
+
+// compatible-catalog Phase 1: split bases (Store-as-gate). A Store with
+// both proxy entries routes ordinary rows, installs, and updates through
+// the listing base (catalog-apps, pinned to a tag) and its own update
+// through the discovery base (catalog, main); a Store with only the
+// catalog entry reads that base throughout. The bases below are distinct
+// https hosts served by a fetch stub over temp catalog dirs on disk: a
+// Store definition cannot declare a loopback http proxy entry (the
+// definition validator requires https proxy URLs), so loopback servers
+// cannot carry the split bases and the stub is the honest stand-in. The
+// real 4.1.11 pin's catalog is currently byte-identical to main's, so a
+// browser list cannot distinguish the two bases either.
+{
+  var p1Fs = await import('node:fs')
+  var gP1 = globalThis as unknown as Record<string, unknown>
+  var savedP1 = gP1['KODY_CATALOG_BASE']
+  delete gP1['KODY_CATALOG_BASE']
+  var p1Dirs: string[] = []
+  var p1RealFetch = gP1['fetch']
+  var LISTING = 'https://listing.example.com/catalog/'
+  var DISCOVERY = 'https://discovery.example.com/catalog/'
+  var GATED = 'https://gated.example.com/catalog/'
+  var GATEDLISTING = 'https://gated-listing.example.com/catalog/'
+  function p1RebuildIndex(dir: string): void {
+    var entries: { id: string; label: string; catalogVersion: number; fingerprint: string; installMode: string; definitionPath: string; recipePath: string; bundleFiles: string[] }[] = []
+    var ids = readdirSync(dir).filter(function (name: string): boolean {
+      return name !== 'tests' && statSync(join(dir, name)).isDirectory()
+    }).sort()
+    for (var ii = 0; ii < ids.length; ii++) {
+      var one = ids[ii]
+      var oneDefPath = join(dir, one, 'definition.json')
+      if (!statSync(oneDefPath, { throwIfNoEntry: false })) continue
+      var oneDef = JSON.parse(readFileSync(oneDefPath, 'utf8')) as { id: string; label?: string; name: string; catalogVersion: number; installMode?: string; bundle: unknown }
+      if (oneDef.id !== one) throw new Error('p1 catalog: directory ' + one + ' holds id ' + String(oneDef.id))
+      var readOne = (function (appId: string): (path: string) => string | undefined {
+        return function (path: string): string | undefined {
+          var full = join(dir, appId, path)
+          try { if (!statSync(full).isFile()) return undefined } catch (e) { return undefined }
+          return readFileSync(full, 'utf8')
+        }
+      })(one)
+      var assembled = assembleBundleFiles(oneDef.bundle, readOne)
+      if (!assembled.ok) throw new Error('p1 catalog: app ' + one + ': ' + (assembled as { ok: false; error: string }).error)
+      var files = (assembled as { ok: true; files: Record<string, string> }).files
+      var assembledDef = JSON.parse(JSON.stringify(oneDef)) as Record<string, unknown>
+      assembledDef['bundle'] = { entry: 'index.html', files: files }
+      var problem = validateCatalogDefinition(assembledDef)
+      if (problem !== null) throw new Error('p1 catalog: app ' + one + ' invalid: ' + problem)
+      entries.push({ id: one, label: oneDef.label !== undefined ? oneDef.label : oneDef.name, catalogVersion: oneDef.catalogVersion, fingerprint: fingerprintDefinition(assembledDef as never), installMode: oneDef.installMode !== undefined ? oneDef.installMode : 'json', definitionPath: one + '/definition.json', recipePath: one + '/RECIPE.md', bundleFiles: Object.keys(files).sort() })
+    }
+    writeFileSync(join(dir, 'catalog.json'), JSON.stringify({ apps: entries }, null, 2) + String.fromCharCode(10), 'utf8')
+  }
+  function p1EditDef(dir: string, id: string, edit: (def: Record<string, any>) => void): void {
+    var defPath = join(dir, id, 'definition.json')
+    var def = JSON.parse(readFileSync(defPath, 'utf8')) as Record<string, any>
+    edit(def)
+    writeFileSync(defPath, JSON.stringify(def, null, 2) + String.fromCharCode(10), 'utf8')
+  }
+  function p1SetStoreBases(dir: string, disc: string, list: string): void {
+    p1EditDef(dir, 'app-store', function (def) {
+      var proxy = def['capabilities']['proxy'] as { name: string; url: string }[]
+      for (var i = 0; i < proxy.length; i++) {
+        if (proxy[i].name === 'catalog') proxy[i].url = disc
+        if (proxy[i].name === 'catalog-apps') proxy[i].url = list
+      }
+    })
+  }
+  function p1CounterLabel(dir: string, label: string): void {
+    p1EditDef(dir, 'counter', function (def) {
+      def['label'] = label
+      def['name'] = label
+    })
+  }
+  function p1ProxyUrl(def: { capabilities: { proxy: { name: string; url: string }[] } } | null, name: string): string | null {
+    if (def === null) return null
+    var proxy = def.capabilities.proxy
+    for (var i = 0; i < proxy.length; i++) { if (proxy[i].name === name) return proxy[i].url }
+    return null
+  }
+  function p1DefOf(entry: unknown): { catalogVersion: number; label: string; capabilities: { proxy: { name: string; url: string }[] } } | null {
+    if (entry !== null && typeof entry === 'object' && 'definition' in (entry as Record<string, unknown>)) {
+      return (entry as { definition: { catalogVersion: number; label: string; capabilities: { proxy: { name: string; url: string }[] } } }).definition
+    }
+    return null
+  }
+  type P1Rows = { ok: boolean; rows: { id: string; label: string }[]; storeSelf: { installedCatalogVersion: number; pinnedLabel: string | null; runningVersion: string; latestCatalogVersion: number | null; latestMinPackageVersion?: string; needsNewerShell: boolean; hasUpdate: boolean }; catalogRelease: string; error?: string }
+  try {
+    var stamp = String(Date.now()) + '-' + String(Math.floor(Math.random() * 1000000000))
+    var listingDir = join(tmpdir(), 'p1-listing-' + stamp)
+    var discoveryDir = join(tmpdir(), 'p1-discovery-' + stamp)
+    var gatedDir = join(tmpdir(), 'p1-gated-' + stamp)
+    var gatedListingDir = join(tmpdir(), 'p1-gatedlisting-' + stamp)
+    p1Fs.mkdirSync(listingDir, { recursive: true })
+    p1Fs.mkdirSync(discoveryDir, { recursive: true })
+    p1Fs.mkdirSync(gatedDir, { recursive: true })
+    p1Fs.mkdirSync(gatedListingDir, { recursive: true })
+    p1Dirs.push(listingDir, discoveryDir, gatedDir, gatedListingDir)
+    cpSync(__catalogDir, listingDir, { recursive: true })
+    cpSync(__catalogDir, discoveryDir, { recursive: true })
+    cpSync(__catalogDir, gatedDir, { recursive: true })
+    cpSync(__catalogDir, gatedListingDir, { recursive: true })
+    // The v27 fixture drops minPackageVersion, as the real v27 Store had
+    // none: fingerprintDefinition ignores catalogVersion, so a version-only
+    // difference would hash identically and read up-to-date. The v27
+    // fixture keeps the catalog-apps entry (unlike the real v27) so the
+    // split-base routing can be exercised at v27 at all.
+    p1EditDef(listingDir, 'app-store', function (def) { def['catalogVersion'] = 27; delete def['minPackageVersion'] })
+    p1SetStoreBases(listingDir, DISCOVERY, LISTING)
+    p1RebuildIndex(listingDir)
+    p1CounterLabel(discoveryDir, 'Counter (discovery)')
+    p1SetStoreBases(discoveryDir, DISCOVERY, LISTING)
+    p1RebuildIndex(discoveryDir)
+    p1CounterLabel(gatedDir, 'Counter (discovery)')
+    p1EditDef(gatedDir, 'app-store', function (def) { def['catalogVersion'] = 29; def['minPackageVersion'] = '99.0.0' })
+    p1SetStoreBases(gatedDir, GATED, LISTING)
+    p1RebuildIndex(gatedDir)
+    p1EditDef(gatedListingDir, 'app-store', function (def) { def['catalogVersion'] = 27; delete def['minPackageVersion'] })
+    p1SetStoreBases(gatedListingDir, GATED, GATEDLISTING)
+    p1RebuildIndex(gatedListingDir)
+    var p1BaseDirs: { base: string; dir: string }[] = [
+      { base: LISTING, dir: listingDir },
+      { base: DISCOVERY, dir: discoveryDir },
+      { base: GATED, dir: gatedDir },
+      { base: GATEDLISTING, dir: gatedListingDir },
+    ]
+    var p1Fetch = function (url: unknown, init?: unknown): Promise<unknown> {
+      var urlStr = String(url)
+      for (var bi = 0; bi < p1BaseDirs.length; bi++) {
+        if (urlStr.indexOf(p1BaseDirs[bi].base) === 0) {
+          var rel = urlStr.slice(p1BaseDirs[bi].base.length)
+          var qi = rel.indexOf('?')
+          if (qi !== -1) rel = rel.slice(0, qi)
+          var full = join(p1BaseDirs[bi].dir, rel)
+          try {
+            if (!statSync(full, { throwIfNoEntry: false }) || !statSync(full).isFile()) {
+              return Promise.resolve({ ok: false, status: 404, url: urlStr, text: function () { return Promise.resolve('not found') } })
+            }
+            var body = readFileSync(full, 'utf8')
+            return Promise.resolve({ ok: true, status: 200, url: urlStr, text: function () { return Promise.resolve(body) } })
+          } catch (err) {
+            return Promise.resolve({ ok: false, status: 500, url: urlStr, text: function () { return Promise.resolve('error') } })
+          }
+        }
+      }
+      return (p1RealFetch as (u: unknown, i?: unknown) => Promise<unknown>)(url, init)
+    }
+    gP1['fetch'] = p1Fetch
+    var p1Store = createMemoryStore()
+    var p1Install = await store_install_from_catalog('app-store', p1Store, LISTING)
+    check('split-base Store installs from the listing base', p1Install.ok === true, JSON.stringify(p1Install))
+    var p1StoreDef = p1DefOf(await get_app('app-store', p1Store))
+    check('installed Store is v27', p1StoreDef !== null && p1StoreDef.catalogVersion === 27, JSON.stringify(p1StoreDef))
+    check('installed Store declares the discovery base', p1ProxyUrl(p1StoreDef, 'catalog') === DISCOVERY, JSON.stringify(p1StoreDef))
+    check('installed Store declares the listing base', p1ProxyUrl(p1StoreDef, 'catalog-apps') === LISTING, JSON.stringify(p1StoreDef))
+    var p1Rows = await manage_rows('app-store', p1Store) as unknown as P1Rows
+    check('split-base manage_rows succeeds', p1Rows.ok === true, JSON.stringify(p1Rows))
+    var p1RowIds = p1Rows.rows.map(function (r) { return r.id })
+    check('split-base list has no app-store row', p1RowIds.indexOf('app-store') === -1, p1RowIds.join(','))
+    var p1CounterRow = p1Rows.rows.filter(function (r) { return r.id === 'counter' })[0]
+    check('rows list the counter from the listing base', p1CounterRow !== undefined && p1CounterRow.label === 'Counter', JSON.stringify(p1CounterRow))
+    check('storeSelf reports the installed Store version', p1Rows.storeSelf.installedCatalogVersion === 27, JSON.stringify(p1Rows.storeSelf))
+    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 28, JSON.stringify(p1Rows.storeSelf))
+    check('storeSelf offers the Store update', p1Rows.storeSelf.hasUpdate === true && p1Rows.storeSelf.needsNewerShell === false, JSON.stringify(p1Rows.storeSelf))
+    check('storeSelf pins the listing base', p1Rows.storeSelf.pinnedLabel !== null && p1Rows.storeSelf.pinnedLabel.indexOf('listing.example.com') !== -1, JSON.stringify(p1Rows.storeSelf))
+    check('status line names the listing base, not the discovery base', p1Rows.catalogRelease.indexOf('listing.example.com') !== -1 && p1Rows.catalogRelease.indexOf('discovery.example.com') === -1, p1Rows.catalogRelease)
+    var p1CounterInstall = await manage_install('app-store', 'counter', p1Store)
+    check('manage_install installs from the listing base', p1CounterInstall.ok === true, JSON.stringify(p1CounterInstall))
+    var p1CounterDef = p1DefOf(await get_app('counter', p1Store))
+    check('installed counter carries the listing label', p1CounterDef !== null && p1CounterDef.label === 'Counter', JSON.stringify(p1CounterDef))
+    var p1SelfUpdate = await manage_update('app-store', 'app-store', true, p1Store)
+    check('Store self-update succeeds from the discovery base', p1SelfUpdate.ok === true, JSON.stringify(p1SelfUpdate))
+    var p1StoreDefAfter = p1DefOf(await get_app('app-store', p1Store))
+    check('Store self-update installs v28', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 28, JSON.stringify(p1StoreDefAfter))
+    check('Store self-update keeps the listing pin', p1ProxyUrl(p1StoreDefAfter, 'catalog-apps') === LISTING, JSON.stringify(p1StoreDefAfter))
+    check('Store self-update keeps the discovery base', p1ProxyUrl(p1StoreDefAfter, 'catalog') === DISCOVERY, JSON.stringify(p1StoreDefAfter))
+    var p1Store2 = createMemoryStore()
+    var p1Install2 = await store_install_from_catalog('app-store', p1Store2, LISTING)
+    check('second Store installs from the listing base', p1Install2.ok === true, JSON.stringify(p1Install2))
+    var p1AgentInstall = await install_from_catalog('counter', p1Store2)
+    check('agent install with no base uses the listing base', p1AgentInstall.ok === true, JSON.stringify(p1AgentInstall))
+    var p1AgentCounter = p1DefOf(await get_app('counter', p1Store2))
+    check('agent-installed counter carries the listing label', p1AgentCounter !== null && p1AgentCounter.label === 'Counter', JSON.stringify(p1AgentCounter))
+    var p1Explicit = await install_from_catalog('counter', p1Store2, DISCOVERY)
+    check('explicit agent base wins over the listing base', p1Explicit.ok === true, JSON.stringify(p1Explicit))
+    var p1ExplicitCounter = p1DefOf(await get_app('counter', p1Store2))
+    check('explicit-base counter carries the discovery label', p1ExplicitCounter !== null && p1ExplicitCounter.label === 'Counter (discovery)', JSON.stringify(p1ExplicitCounter))
+    var p1AgentUpdate = await update_from_catalog('counter', p1Store2)
+    check('agent update with no base returns to the listing base', p1AgentUpdate.ok === true, JSON.stringify(p1AgentUpdate))
+    var p1UpdatedCounter = p1DefOf(await get_app('counter', p1Store2))
+    check('agent-updated counter carries the listing label again', p1UpdatedCounter !== null && p1UpdatedCounter.label === 'Counter', JSON.stringify(p1UpdatedCounter))
+    var p1GatedStore = createMemoryStore()
+    var p1GatedInstall = await store_install_from_catalog('app-store', p1GatedStore, GATEDLISTING)
+    check('gated-leg Store installs from its listing base', p1GatedInstall.ok === true, JSON.stringify(p1GatedInstall))
+    var p1GatedRows = await manage_rows('app-store', p1GatedStore) as unknown as P1Rows
+    check('gated storeSelf finds the newer Store', p1GatedRows.storeSelf.latestCatalogVersion === 29, JSON.stringify(p1GatedRows.storeSelf))
+    check('gated storeSelf reports the newer shell requirement', p1GatedRows.storeSelf.needsNewerShell === true && p1GatedRows.storeSelf.latestMinPackageVersion === '99.0.0', JSON.stringify(p1GatedRows.storeSelf))
+    check('gated storeSelf offers no update', p1GatedRows.storeSelf.hasUpdate === false, JSON.stringify(p1GatedRows.storeSelf))
+    var p1GatedBefore = JSON.stringify(await get_app('app-store', p1GatedStore))
+    var p1GatedUpdate = await manage_update('app-store', 'app-store', true, p1GatedStore)
+    check('gated Store self-update is refused', p1GatedUpdate.ok === false, JSON.stringify(p1GatedUpdate))
+    check('refused gated update leaves the installed Store byte-identical', JSON.stringify(await get_app('app-store', p1GatedStore)) === p1GatedBefore, '')
+    var p1CatOnlyStore = createMemoryStore()
+    var p1CatOnlyDef = clone(await get_catalog_definition('app-store', DISCOVERY)) as Record<string, any>
+    p1CatOnlyDef['capabilities']['proxy'] = (p1CatOnlyDef['capabilities']['proxy'] as { name: string }[]).filter(function (e) { return e.name !== 'catalog-apps' })
+    var p1CatOnlyAdd = await add_app(p1CatOnlyDef as never, p1CatOnlyStore)
+    check('catalog-only Store installs via generic add_app', p1CatOnlyAdd.ok === true, JSON.stringify(p1CatOnlyAdd))
+    var p1CatOnlyRows = await manage_rows('app-store', p1CatOnlyStore) as unknown as P1Rows
+    var p1CatOnlyCounter = p1CatOnlyRows.rows.filter(function (r) { return r.id === 'counter' })[0]
+    check('catalog-only rows read the discovery base', p1CatOnlyCounter !== undefined && p1CatOnlyCounter.label === 'Counter (discovery)', JSON.stringify(p1CatOnlyCounter))
+    check('catalog-only storeSelf is unpinned', p1CatOnlyRows.storeSelf.pinnedLabel === null, JSON.stringify(p1CatOnlyRows.storeSelf))
+    var p1CatOnlyInstall = await manage_install('app-store', 'counter', p1CatOnlyStore)
+    check('catalog-only install succeeds from the discovery base', p1CatOnlyInstall.ok === true, JSON.stringify(p1CatOnlyInstall))
+    var p1CatOnlyCounterDef = p1DefOf(await get_app('counter', p1CatOnlyStore))
+    check('catalog-only counter carries the discovery label', p1CatOnlyCounterDef !== null && p1CatOnlyCounterDef.label === 'Counter (discovery)', JSON.stringify(p1CatOnlyCounterDef))
+    check('catalogTagLabel reads a pinned tag', catalogTagLabel('https://raw.githubusercontent.com/Hypercubed/kody-os/4.1.11/catalog/') === '4.1.11', '')
+    check('catalogTagLabel is null for main', catalogTagLabel('https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/') === null, '')
+    check('catalogGitHubRef reads main', catalogGitHubRef('https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/') === 'main', '')
+    check('catalogTagLabel is null for a loopback base', catalogTagLabel(LISTING) === null, '')
+  } finally {
+    if (savedP1 !== undefined) gP1['KODY_CATALOG_BASE'] = savedP1
+    else delete gP1['KODY_CATALOG_BASE']
+    gP1['fetch'] = p1RealFetch
+    for (var di = 0; di < p1Dirs.length; di++) {
+      try { p1Fs.rmSync(p1Dirs[di], { recursive: true, force: true }) } catch (err) {}
+    }
+  }
+}
+
 
 if (failures.length === 0) {
 	console.log('\nALL STORE CHECKS PASSED')

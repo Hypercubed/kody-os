@@ -123,9 +123,11 @@ function storeInit() {
   var confirmBox = wrap.querySelector('.store-confirm');
   var retry = wrap.querySelector('.store-retry');
   var updateAll = wrap.querySelector('.store-update-all');
+  var selfSection = wrap.querySelector('.store-self');
   var updateAllBtn = updateAll ? updateAll.querySelector('button') : null;
   if (updateAllBtn) { updateAllBtn.addEventListener('click', updateAllNow); }
   var rows = [];
+  var storeSelf = null;
   var afterLoadStatus = '';
   function setStatus(text) { if (status) { status.textContent = text; } }
   function safeUpdatable() {
@@ -308,6 +310,52 @@ function storeInit() {
       })(rows[i]);
     }
   }
+  function selfMutate(kind, labelText, busyLabel) {
+    return storeBusyButton(labelText, busyLabel, function () {
+      clearConfirm();
+      setStatus('Working…');
+      return storeApi(kind, '&id=app-store').then(function (res) {
+        if (res.ok) { load(); }
+        else if (res.needsConfirmation) { showConfirm(kind, { id: 'app-store', label: 'App Catalog' }, res); setStatus(''); }
+        else { setStatus(res.error || 'That change failed.'); }
+      });
+    });
+  }
+  function renderSelf() {
+    if (!selfSection) { return; }
+    selfSection.innerHTML = '';
+    if (!storeSelf) { selfSection.hidden = true; return; }
+    selfSection.hidden = false;
+    var title = document.createElement('span');
+    title.className = 'store-self-title';
+    title.textContent = 'App Catalog v' + storeSelf.installedCatalogVersion;
+    selfSection.appendChild(title);
+    var pin = document.createElement('span');
+    pin.className = 'store-self-line';
+    pin.textContent = 'Catalog snapshot ' + (storeSelf.pinnedLabel || 'follows the discovery base') + ' · shell v' + storeSelf.runningVersion;
+    selfSection.appendChild(pin);
+    var latest = document.createElement('span');
+    latest.className = 'store-self-line';
+    if (storeSelf.latestCatalogVersion === null || storeSelf.latestCatalogVersion === undefined) {
+      latest.textContent = 'Latest App Catalog: could not be read.' + (storeSelf.error ? ' ' + storeSelf.error : '');
+    } else {
+      var from = storeSelf.discoveryRef || storeSelf.discoveryLabel || 'the discovery base';
+      latest.textContent = 'Latest App Catalog v' + storeSelf.latestCatalogVersion + ' from ' + from + (storeSelf.hasUpdate ? '' : ' — you have it.');
+    }
+    selfSection.appendChild(latest);
+    if (storeSelf.needsNewerShell) {
+      var need = document.createElement('span');
+      need.className = 'store-self-line';
+      var want = storeSelf.latestMinPackageVersion ? String(storeSelf.latestMinPackageVersion) : 'newer';
+      need.textContent = 'Requires shell v' + want + ' (running v' + storeSelf.runningVersion + ').';
+      selfSection.appendChild(need);
+      selfSection.appendChild(selfMutate('remove', 'Remove', 'Removing…'));
+    } else if (storeSelf.hasUpdate) {
+      selfSection.appendChild(selfMutate('update', 'Update', 'Updating…'));
+    } else {
+      selfSection.appendChild(selfMutate('remove', 'Remove', 'Removing…'));
+    }
+  }
   var catalogRelease = '';
   var catalogCached = false;
   function releaseText() {
@@ -320,7 +368,8 @@ function storeInit() {
     clearConfirm();
     storeApi('rows', '').then(function (res) {
       if (res.ok && res.rows) {
-        rows = res.rows;
+        rows = res.rows.filter(function (r) { return r.id !== 'app-store'; });
+        storeSelf = res.storeSelf || null;
         if (res.catalogRelease) { catalogRelease = res.catalogRelease; }
         catalogCached = !!res.catalogCached;
         var base = afterLoadStatus || '';
@@ -332,6 +381,7 @@ function storeInit() {
         if (rel) { msg = msg ? msg + ' ' + rel : rel; }
         setStatus(msg);
         render();
+        renderSelf();
         if (err && retry) {
           retry.hidden = false;
           retry.onclick = function () { load(); };

@@ -15,12 +15,13 @@ checked.
 
 ## 1. Phase 1 — Store-as-gate (manual pin, no plugin)
 
-- [ ] 1.0 Confirm the `catalog-robustness-fixes` gated-row
+- [x] 1.0 Confirm the `catalog-robustness-fixes` gated-row
   Remove behaviour this change assumes is in the canonical
   spec (or record that it is still open and that this
   change's Store section carries the same Remove behaviour
   for gated rows regardless).
-- [ ] 1.1 Shell split-base routing: extend the management
+  Note (2026-11-11): the gated-row Remove behaviour is NOT in the canonical spec — `openspec/specs/app-registry/spec.md` has only a Remove-on-up-to-date line. It lives only in the open change `openspec/changes/catalog-robustness-fixes/` (tasks.md 1.1 C5, unchecked, plus the spec delta "Gated installed rows keep Remove"). Still open there. The Phase 1 Store section carries the same behaviour regardless: a gated section shows the requirement and keeps Remove with the row confirmation (bundle-tests fixture 5 and the store-harness gated leg).
+- [x] 1.1 Shell split-base routing: extend the management
   API (`pkg/src/apps/registry.ts`: `resolveManagedBase`
   and the agent-base fallback) to route by target. A
   Store self-update (`app-store`) uses the Store's
@@ -37,14 +38,16 @@ checked.
   install fetches from the pinned tag; with a Store
   declaring only `catalog`, all three read `main` as
   today.
-- [ ] 1.2 Store definition: add the `catalog-apps` proxy
+  Note (2026-11-11): implemented as specified, with two deviations. (1) `update_from_catalog` takes no `catalogBase` parameter (that is C6 in `catalog-robustness-fixes` task 1.2, still open); it resolves via `resolveAgentCatalogBase(active, undefined, id)`, so the agent update path uses the installed Store's listing base. The "explicit catalogBase still wins" verify applies to `install_from_catalog` (and absorb/store variants), which all take the parameter. (2) The dev override (`KODY_CATALOG_BASE`) replaces BOTH bases when set, by design. Store self-update data travels in the `manage_rows` payload (`storeSelf` + `catalogRelease`) — no new endpoint. Verified by 40 new store-harness checks using a fetch stub over distinct https bases (`*.example.com`) backed by temp catalog dirs: loopback servers cannot carry the split bases because `validateCatalogDefinition` requires https proxy URLs.
+- [x] 1.2 Store definition: add the `catalog-apps` proxy
   entry to `catalog/app-store/definition.json`, pinned
   to the current tag (or to `main` until the first tag
   is cut — record which, and why), and bump the Store's
   `catalogVersion` by the existing rule. Regenerate
   `catalog/catalog.json`. Changing either proxy URL is
   a definition change and bumps `catalogVersion` by 1.
-- [ ] 1.3 Store bundle — self-update section: remove the
+  Note (2026-11-11): done. `catalog-apps` pinned to the 4.1.11 tag (`https://raw.githubusercontent.com/Hypercubed/kody-os/4.1.11/catalog/`): 4.1.11 is the latest released catalog snapshot; no 4.2.0 tag exists yet (branch uncommitted/unpushed); the pin moves to the v4.2.0 tag when cut per the maintainer procedure (1.5). `minPackageVersion: "4.2.0"` set. Single `catalogVersion` +1 for the whole Phase 1 batch (27 -> 28): tasks 1.2 and 1.3 each call for a +1, but the batch takes one +1 total per the version call — the Store is NOT bumped to 29. Package stays 4.2.0 / build 46.
+- [x] 1.3 Store bundle — self-update section: remove the
   App Store from its own apps list in the Store bundle
   (`catalog/app-store/store.js`, `index.html`): no row
   for `app-store` in `.store-list`, and Update All
@@ -61,13 +64,15 @@ checked.
   the Store updates from `main`; a Store requiring a
   newer shell is refused and the installed Store and
   snapshot are unchanged.
-- [ ] 1.4 Store bundle — display: display the pinned
+  Note (2026-11-11): done. Section renders above the list: installed v28, pinned snapshot tag + running shell version, latest Store on the discovery base, one control (Update / Remove), gated Remove with the row confirmation. The 27 -> 28 bump is the same single +1 counted in 1.2 (no second bump). Verified in the mock (1.6), by bundle tests (138 checks, incl. a gated-section fixture), and by the store harness.
+- [x] 1.4 Store bundle — display: display the pinned
   snapshot (tag) in the Store status line instead of
   the `main` URL, and show the discovery base only for
   the Store's own update. Verify: a Store pinned to a
   tag shows that tag with no resolved-snapshot claim
   and no stale label.
-- [ ] 1.5 Document the maintainer procedure in
+  Note (2026-11-11): done. Status line shows `Catalog 4.1.11` (the pinned tag) with no main URL and no resolved/stale claim; the discovery base is named only inside the self-update section for the Store's own update. Verified in the mock rows payload (`catalogRelease: "4.1.11"`) and bundle tests.
+- [x] 1.5 Document the maintainer procedure in
   `catalog/README.md` (tagging and pin update): cut a
   tag for a catalog snapshot (`git tag vX.Y.Z && git
   push origin vX.Y.Z`; tags are never moved after
@@ -79,7 +84,8 @@ checked.
   Store until the pin moves, and that an older shell
   keeps its old Store and old pin because the Store
   update is gated by `minPackageVersion`.
-- [ ] 1.6 Verify Phase 1 end to end in `kody dev` (mock
+  Note (2026-11-11): done. `catalog/README.md` gains "Pinned catalog maintenance" (cut tag -> move pin -> `catalogVersion` +1 -> regenerate -> harnesses -> commit -> push; tags never moved; new versions on `main` invisible until the pin moves; older shells keep old Store + old pin via the `minPackageVersion` gate). Also fixed the two stale sentences (Catalog index paragraph, Release cutting paragraph).
+- [x] 1.6 Verify Phase 1 end to end in `kody dev` (mock
   target, server stopped for writes): (a) a new app
   version pushed to `main` and tagged appears to a
   compatible shell after a Store update, with no Kody
@@ -93,6 +99,31 @@ checked.
   open. Phase 1 is done when this task is checked;
   Phase 2 does not need to be started for Phase 1 to
   ship.
+
+  Note (2026-11-11): verified end to end as far as the environment allows; see the Phase 1 close-out note below.
+
+### Phase 1 close-out (2026-11-11)
+
+Shell 4.2.0 / build 46; Store v28 (`minPackageVersion` 4.2.0); pin `https://raw.githubusercontent.com/Hypercubed/kody-os/4.1.11/catalog/`; `main`'s catalog byte-identical to the 4.1.11 tag's catalog (Store v20 on both).
+
+Verified:
+- Typecheck exit 0. Store harness 227 PASS / 1 FAIL (only the pre-existing stale 4.1.3 version check, left alone). Catalog harness ALL PASSED (18 apps). Bundle tests ALL PASSED (138 checks). Agent-tools harness 40 PASS / 1 FAIL (only the pre-existing 16-apps count, left alone). `bun build pkg/src/app.ts` succeeds.
+- Split-base routing proved in the store harness with genuinely distinct bases (fetch stub over `https://listing/discovery/gated/gated-listing.example.com/catalog/` backed by temp catalog dirs): rows/installs/updates for ordinary apps read the listing base; the Store's own update reads the discovery base; explicit base wins; agent update returns to the listing base; gated self-update (min 99.0.0) is refused with the installed Store byte-identical; catalog-only Store reads the discovery base throughout.
+- Mock (`kody dev --target mock`, shell 4.2.0): installed Store v28, `catalogRelease: "4.1.11"`, `storeSelf` installed 28 / pin 4.1.11 / discovery main / running 4.2.0 / latest 20 / no update, 17 rows with no app-store row, all folder URLs from the 4.1.11 tag, Counter still behind-modified (def v4, snapshot v5, untouched).
+
+Substituted (not claimed as live):
+- Leg (a) (new version on `main` + tagged appearing after a Store update, no publish): cannot be shown live — no push/tag allowed and v28 is not on `main`. Substituted by the harness two-base test (listing v27 -> discovery v28 self-update) plus the mock install below.
+- Leg (b) (no-agent update path): the browser section Update control is the path; in the mock no newer Store exists on `main` (latest v20 < installed v28), so the section shows Remove, not Update. The Update control's call into `manage_update` is proved by the jsdom bundle tests and the harness self-update leg.
+- Leg (c) (older shell installs from pinned tag): the mock runs shell 4.2.0, so an older shell cannot be simulated live. Substituted by the harness gated leg (a Store requiring shell 99.0.0 is refused and keeps listing from its pin) and catalog-only leg.
+- Mock Store install: `kody execute --target mock` with an explicit loopback catalog base does NOT work in this environment — the mock's workerd egress allows public HTTPS (verified: 200 from raw.githubusercontent in 414 ms) but blocks loopback (direct fetch to 127.0.0.1 and localhost both fail). The install instead ran the real code on the host (`bun` + the same `store_install_from_catalog`, same loopback base) and merged exactly the three keys it wrote (`kody-os.apps.def/snapshot/state.app-store`) into the mock state file while `kody dev` was stopped (backup at `state.json.bak-20261111`); Counter and all other keys verified byte-identical to the backup.
+- Browser list content cannot distinguish the listing base from the discovery base today (`main`'s catalog is byte-identical to the 4.1.11 tag's), so the mock rows' tag provenance is shown by the folder URLs (`tree/4.1.11`) and `catalogRelease`, not by differing list content.
+
+Left open:
+- The real-release check (a Store update offered from `main` after the v4.2.0 tag is cut and the pin moves) still needs a pushed tag + `main` push + publish decision — none of those are directed here.
+- `catalog-robustness-fixes` C5 (gated-row Remove) and C6 (`update_from_catalog` `catalogBase` parameter) remain open in their own change.
+- Two pre-existing harness failures left alone: store harness stale 4.1.3 check, agent-tools 16-apps count.
+
+Work left uncommitted on branch `close-v4-tail` (HEAD d3d9785). No commit, push, tag push, or publish done. User decisions still needed: commit, tag push, merge to `main`, publish.
 
 ## 2. Gate — the plugins spec first (Phase 2 only)
 

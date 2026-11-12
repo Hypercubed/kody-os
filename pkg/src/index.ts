@@ -70,11 +70,11 @@ export default async function main(): Promise<{
 			},
 			{
 				name: 'install_from_catalog',
-				useWhen: 'Install a shipped catalog app by id; idempotent, state preserved on re-install, never wipes state. Takes an optional catalogBase: without one it uses the installed App Store\'s declared base, and with neither it refuses.',
+				useWhen: 'Install a shipped catalog app by id; idempotent, state preserved on re-install, never wipes state. Takes an optional catalogBase: without one it uses the installed App Store\'s declared bases (the pinned listing base for apps, the discovery base for the App Store itself), and with neither it refuses.',
 			},
 			{
 				name: 'update_from_catalog',
-				useWhen: 'Bring an already-installed app up to its shipped catalog definition, preserving state; refuses to install new apps. Uses the installed App Store\'s declared base, and refuses when no catalog source exists.',
+				useWhen: 'Bring an already-installed app up to its shipped catalog definition, preserving state; refuses to install new apps. Uses the installed App Store\'s declared bases (the pinned listing base for apps, the discovery base for the App Store itself), and refuses when no catalog source exists.',
 			},
 			{
 				name: 'absorb_from_catalog',

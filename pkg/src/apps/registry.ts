@@ -34,7 +34,7 @@ import type {
 	ProxyDecl,
 	StateFieldDef,
 } from './types.ts'
-import { devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
+import { catalogGitHubRef, catalogLabelForBase, catalogTagLabel, devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
 import {
 	RECENT_CAP,
 	createMemoryStore,
@@ -793,6 +793,22 @@ export function declaredCatalogBase(def: AppDefinition | null | undefined): stri
 	return null
 }
 
+/**
+ * The listing base a Store declares in its own definition: the proxy
+ * entry named catalog-apps. Returns null when the definition declares
+ * no such entry or the entry has no usable URL. Changing it is a
+ * definition change (catalogVersion +1) like changing catalog.
+ */
+export function declaredCatalogAppsBase(def: AppDefinition | null | undefined): string | null {
+	if (!def || !def.capabilities || !Array.isArray(def.capabilities.proxy)) return null
+	var entries = def.capabilities.proxy
+	for (var i = 0; i < entries.length; i++) {
+		var entry = entries[i]
+		if (entry && entry.name === 'catalog-apps' && typeof entry.url === 'string' && entry.url !== '') return entry.url
+	}
+	return null
+}
+
 /** Catalog base declared by one installed app (the Store driving the
  * call), or null when it declares none. Stored declarations were
  * HTTPS-validated at install; a stored base that no longer validates
@@ -816,18 +832,45 @@ function installedStoreCatalogBase(active: KeyStore): Promise<string | null> {
 	return actingCatalogBase(active, 'app-store')
 }
 
+/** Listing base declared by one installed app (the Store driving the
+ * call), or null when it declares none. Same validation rule as
+ * actingCatalogBase: a stored base that no longer validates is
+ * treated as no source rather than fetched. */
+function actingCatalogAppsBase(active: KeyStore, actingId: string): Promise<string | null> {
+	return readJson<AppDefinition>(active, defKey(actingId)).then(function (def) {
+		var declared = declaredCatalogAppsBase(def !== undefined ? def : null)
+		if (declared === null) return null
+		try {
+			normalizeCatalogBase(declared)
+		} catch (err) {
+			return null
+		}
+		return declared
+	})
+}
+
+/** Listing base declared by the installed App Store, or null when no
+ * Store is installed or it declares none. */
+function installedStoreCatalogAppsBase(active: KeyStore): Promise<string | null> {
+	return actingCatalogAppsBase(active, 'app-store')
+}
+
 /**
- * Resolve the base for a browser management call: the dev override when
- * set (local verification replaces the acting Store's declared base),
- * else the acting Store's declared base. Null means the acting Store
- * declares no source. The management API takes no explicit base
- * parameter, so the override is the only thing that beats a
- * declaration; agent calls with an explicit base parameter keep
- * winning over the override via `resolveAgentCatalogBase`. The
+ * Resolve the base for a browser management call, by target: a Store
+ * self-update (app-store) uses the discovery base (the acting
+ * Store's catalog entry, main); every other app uses the listing base
+ * (the acting Store's catalog-apps entry, pinned tag) when the acting
+ * Store declares one, falling back to the discovery base when it
+ * declares none. The dev override, when set, replaces both bases
+ * (local verification uses one loopback base for everything). Null
+ * means the acting Store declares no source. The management API takes
+ * no explicit base parameter, so the override is the only thing that
+ * beats a declaration; agent calls with an explicit base parameter
+ * keep winning over the override via resolveAgentCatalogBase. The
  * resolved base is passed on as an explicit base, which the fetch
  * layer then uses as-is without re-applying the override.
  */
-function resolveManagedBase(active: KeyStore, actingId: string): Promise<string | null> {
+function resolveManagedBase(active: KeyStore, actingId: string, targetId?: string): Promise<string | null> {
 	var override: string | null = null
 	try {
 		override = devOverrideBase()
@@ -835,7 +878,30 @@ function resolveManagedBase(active: KeyStore, actingId: string): Promise<string 
 		override = null
 	}
 	if (override !== null) return Promise.resolve(override)
-	return actingCatalogBase(active, actingId)
+	if (targetId === 'app-store') return actingCatalogBase(active, actingId)
+	return actingCatalogAppsBase(active, actingId).then(function (listing) {
+		if (listing !== null) return listing
+		return actingCatalogBase(active, actingId)
+	})
+}
+
+/** Both bases for a management rows call: the discovery base (the
+ * acting Store's catalog entry) and the listing base (its
+ * catalog-apps entry, or the discovery base when it declares none).
+ * The dev override, when set, is both. */
+function resolveManagedBases(active: KeyStore, actingId: string): Promise<{ discovery: string | null; listing: string | null }> {
+	var override: string | null = null
+	try {
+		override = devOverrideBase()
+	} catch (err) {
+		override = null
+	}
+	if (override !== null) return Promise.resolve({ discovery: override, listing: override })
+	return actingCatalogBase(active, actingId).then(function (discovery) {
+		return actingCatalogAppsBase(active, actingId).then(function (listing) {
+			return { discovery: discovery, listing: listing !== null ? listing : discovery }
+		})
+	})
 }
 
 function noCatalogSourceError(caller: string, id: string): string {
@@ -844,11 +910,13 @@ function noCatalogSourceError(caller: string, id: string): string {
  * when supplied (validated — a refused base is an `{ ok: false }`
  * with no write), else the dev override when set (kept as-is: the
  * override replaces the installed-Store base), else the installed App
- * Store's declared base. Null means no source: refuse, write nothing.
+ * Store's declared base for that target (listing base for apps,
+ * discovery base for the Store itself). Null means no source: refuse,
+ * write nothing.
  * The resolved base is passed explicitly to the fetch layer, where an
  * explicitly passed base always wins over the override — so the
  * precedence here holds end to end. */
-function resolveAgentCatalogBase(active: KeyStore, catalogBase: string | undefined): Promise<string | null> {
+function resolveAgentCatalogBase(active: KeyStore, catalogBase: string | undefined, targetId?: string): Promise<string | null> {
 	if (catalogBase !== undefined) {
 		try {
 			return Promise.resolve(normalizeCatalogBase(catalogBase))
@@ -863,7 +931,11 @@ function resolveAgentCatalogBase(active: KeyStore, catalogBase: string | undefin
 		override = null
 	}
 	if (override !== null) return Promise.resolve(override)
-	return installedStoreCatalogBase(active)
+	if (targetId === 'app-store') return installedStoreCatalogBase(active)
+	return installedStoreCatalogAppsBase(active).then(function (listing) {
+		if (listing !== null) return listing
+		return installedStoreCatalogBase(active)
+	})
 }
 
 function installFromCatalogBase(
@@ -886,7 +958,7 @@ function installFromCatalogBase(
  * wiped by an install.
  *
  * The catalog source is caller-supplied: an explicit `catalogBase`
- * when given, else the installed App Store's declared base. With
+ * when given, else the installed App Store's declared base for that target (listing base for apps, discovery base for the Store itself). With
  * neither, the call is refused naming that no catalog source was
  * given, and nothing is written.
  */
@@ -896,7 +968,7 @@ export function install_from_catalog(
 	catalogBase?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return resolveAgentCatalogBase(active, catalogBase).then(function (base) {
+		return resolveAgentCatalogBase(active, catalogBase, id).then(function (base) {
 			if (base === null) return { ok: false as const, error: noCatalogSourceError('install_from_catalog', id) }
 			return installFromCatalogBase(id, active, base)
 		}, function (err) {
@@ -935,7 +1007,7 @@ export function update_from_catalog(
 	store?: KeyStore,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return installedStoreCatalogBase(active).then(function (base) {
+		return resolveAgentCatalogBase(active, undefined, id).then(function (base) {
 			if (base === null) return { ok: false as const, error: noCatalogSourceError('update_from_catalog', id) }
 			return updateFromCatalogBase(id, active, base)
 		})
@@ -977,7 +1049,7 @@ export function absorb_from_catalog(
 		activeStore = store
 	}
 	return resolveStore(activeStore).then(function (active: KeyStore) {
-		return resolveAgentCatalogBase(active, baseArg).then(function (base) {
+		return resolveAgentCatalogBase(active, baseArg, id).then(function (base) {
 			if (base === null) return { ok: false as const, error: noCatalogSourceError('absorb_from_catalog', id) }
 			return get_catalog_entry(id, base).then(function (entry) {
 				if (entry === null) return { ok: false as const, error: 'absorb_from_catalog: unknown catalog app "' + id + '"' }
@@ -1073,7 +1145,7 @@ export function store_install_from_catalog(
 	catalogBase?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return resolveAgentCatalogBase(active, catalogBase).then(function (base) {
+		return resolveAgentCatalogBase(active, catalogBase, id).then(function (base) {
 			if (base === null) return { ok: false as const, error: noCatalogSourceError('store_install_from_catalog', id) }
 			return installFromCatalogBase(id, active, base).then(function (result) {
 				if (!result.ok) return result
@@ -1101,7 +1173,7 @@ export function store_update_from_catalog(
 	catalogBase?: string,
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
 	return resolveStore(store).then(function (active: KeyStore) {
-		return resolveAgentCatalogBase(active, catalogBase).then(function (base) {
+		return resolveAgentCatalogBase(active, catalogBase, id).then(function (base) {
 			if (base === null) return { ok: false as const, error: noCatalogSourceError('store_update_from_catalog', id) }
 			return updateFromCatalogBase(id, active, base).then(function (result) {
 				if (!result.ok) return result
@@ -1130,27 +1202,102 @@ export function store_update_from_catalog(
  * error text so the bundle can render them.
  */
 export type ManageResult =
-	| { ok: true; id?: string; rows?: StoreRow[]; catalogRelease?: string; catalogCached?: boolean; catalogError?: string }
+	| { ok: true; id?: string; rows?: StoreRow[]; catalogRelease?: string; catalogCached?: boolean; catalogError?: string; storeSelf?: StoreSelfUpdate }
 	| { ok: false; error: string; needsConfirmation?: boolean; additions?: string[]; permissionDenied?: boolean; catalogRelease?: string; catalogCached?: boolean }
 
 function checkManagePermission(active: KeyStore, actingId: string): Promise<boolean> {
 	return readJson<AppDefinition>(active, defKey(actingId)).then(function (def) {
 		return def !== null && def !== undefined && def.capabilities !== undefined && def.capabilities.manageApps === true
 	})
-}export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageResult> {
+}/**
+ * The App Store's own update state for the separate self-update
+ * section above the apps list. The rows payload carries it so the
+ * bundle needs no second endpoint. pinnedLabel is the tag ref of the
+ * listing base (for example 4.1.11), the full base label for a
+ * non-GitHub listing base, or null when the Store declares no listing
+ * base and the list follows the discovery base. discoveryRef is the
+ * GitHub ref of the discovery base (main), or null for a non-GitHub
+ * base, where discoveryLabel carries the full base label instead.
+ * latestCatalogVersion is the Store version on the discovery base, or
+ * null when it could not be read; hasUpdate is true only when that
+ * version is newer than the installed one and compatible with the
+ * running shell. When the latest Store needs a newer shell,
+ * needsNewerShell is true, hasUpdate is false, and the section shows
+ * the requirement with Remove (the gated-row Remove behaviour).
+ */
+export interface StoreSelfUpdate {
+	installedCatalogVersion: number
+	pinnedLabel: string | null
+	discoveryRef: string | null
+	discoveryLabel: string | null
+	runningVersion: string
+	latestCatalogVersion: number | null
+	latestMinPackageVersion?: string
+	needsNewerShell: boolean
+	hasUpdate: boolean
+	error?: string
+}
+
+function getStoreSelfUpdate(active: KeyStore, actingId: string, discovery: string | null, listing: string | null): Promise<StoreSelfUpdate> {
+	return Promise.all([
+		readJson<AppDefinition>(active, defKey(actingId)),
+		getRunningPackageVersion(),
+	]).then(function (parts) {
+		var installedDef = parts[0]
+		var running = parts[1]
+		var installedVersion = installedDef !== undefined && typeof installedDef.catalogVersion === 'number' ? installedDef.catalogVersion : 0
+		var pinnedLabel: string | null = null
+		if (listing !== null && listing !== discovery) {
+			var tag = catalogTagLabel(listing)
+			pinnedLabel = tag !== null ? tag : catalogLabelForBase(listing)
+		}
+		var discoveryRef: string | null = discovery !== null ? catalogGitHubRef(discovery) : null
+		var discoveryLabel: string | null = discovery !== null && discoveryRef === null ? catalogLabelForBase(discovery) : null
+		var self: StoreSelfUpdate = { installedCatalogVersion: installedVersion, pinnedLabel: pinnedLabel, discoveryRef: discoveryRef, discoveryLabel: discoveryLabel, runningVersion: running, latestCatalogVersion: null, needsNewerShell: false, hasUpdate: false }
+		if (discovery === null) {
+			self.error = 'This Store declares no catalog source.'
+			return self
+		}
+		return get_catalog_definition_meta('app-store', discovery).then(function (latestDef) {
+			if (latestDef === null) {
+				self.error = 'Could not read the App Catalog from the discovery base.'
+				return self
+			}
+			var latestVersion = typeof latestDef.catalogVersion === 'number' ? latestDef.catalogVersion : 0
+			var latestMin = (latestDef as unknown as Record<string, unknown>)['minPackageVersion'] !== undefined ? String((latestDef as unknown as Record<string, unknown>)['minPackageVersion']) : undefined
+			var gated = latestMin !== undefined ? rowNeedsNewerShell(latestMin, running) : false
+			self.latestCatalogVersion = latestVersion
+			if (latestMin !== undefined) self.latestMinPackageVersion = latestMin
+			self.needsNewerShell = gated
+			self.hasUpdate = latestVersion > installedVersion && !gated
+			return self
+		})
+	})
+}
+
+export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageResult> {
 	return resolveStore(store).then(function (active: KeyStore) {
 		return checkManagePermission(active, actingId).then(function (allowed) {
 			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
-			return resolveManagedBase(active, actingId).then(function (base) {
-				return get_store_rows(active, base !== null ? base : undefined).then(function (rows) {
-					if (base === null) {
-						return { ok: true as const, rows: rows, catalogRelease: '', catalogCached: false, catalogError: 'This Store declares no catalog source. Showing installed apps.' }
-					}
-					return readCatalogManifest(base).then(function (manifest) {
-						return { ok: true as const, rows: rows, catalogRelease: manifest.releaseLabel, catalogCached: manifest.cached }
-					}, function () {
-						var src = get_catalog_source(base)
-						return { ok: true as const, rows: rows, catalogRelease: src.releaseLabel, catalogCached: true, catalogError: 'Catalog could not be refreshed. Showing installed apps. Retry to refresh.' }
+			return resolveManagedBases(active, actingId).then(function (bases) {
+				var base = bases.listing
+				return get_store_rows(active, base !== null ? base : undefined).then(function (allRows) {
+					// The App Store is not a row in its own list: its update
+					// lives in the separate self-update section (storeSelf).
+					var rows = allRows.filter(function (row) { return row.id !== 'app-store' })
+					return getStoreSelfUpdate(active, actingId, bases.discovery, bases.listing).then(function (self) {
+						if (base === null) {
+							return { ok: true as const, rows: rows, storeSelf: self, catalogRelease: '', catalogCached: false, catalogError: 'This Store declares no catalog source. Showing installed apps.' }
+						}
+						var useBase: string = base
+						return readCatalogManifest(useBase).then(function (manifest) {
+							var tag = catalogTagLabel(useBase)
+							return { ok: true as const, rows: rows, storeSelf: self, catalogRelease: tag !== null ? tag : manifest.releaseLabel, catalogCached: manifest.cached }
+						}, function () {
+							var src = get_catalog_source(useBase)
+							var tag = catalogTagLabel(useBase)
+							return { ok: true as const, rows: rows, storeSelf: self, catalogRelease: tag !== null ? tag : src.releaseLabel, catalogCached: true, catalogError: 'Catalog could not be refreshed. Showing installed apps. Retry to refresh.' }
+						})
 					})
 				})
 			})
@@ -1184,7 +1331,7 @@ export function manage_install(actingId: string, targetId: string, store?: KeySt
 	return resolveStore(store).then(function (active: KeyStore) {
 		return checkManagePermission(active, actingId).then(function (allowed) {
 			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
-			return resolveManagedBase(active, actingId).then(function (base) {
+			return resolveManagedBase(active, actingId, targetId).then(function (base) {
 				return get_app_status(targetId, active, base !== null ? base : undefined).then(function (info) {
 					if (info.installed) return { ok: false as const, error: 'App "' + targetId + '" is already installed.' }
 					if (base === null) return { ok: false as const, error: 'manage_install: no catalog source for "' + targetId + '" (the calling Store declares no catalog)' }
@@ -1208,7 +1355,7 @@ function manage_update_with_status(
 	return resolveStore(store).then(function (active: KeyStore) {
 		return checkManagePermission(active, actingId).then(function (allowed) {
 			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
-			return resolveManagedBase(active, actingId).then(function (base) {
+			return resolveManagedBase(active, actingId, targetId).then(function (base) {
 				var useBase = base !== null ? base : undefined
 				return get_app_status(targetId, active, useBase).then(function (info) {
 				if (!info.installed || !info.inCatalog) {

@@ -4,7 +4,12 @@
  * a mocked management API (fetch stub): rows render from /manage/rows,
  * capabilities are disclosed in plain words, a modified-app update
  * shows the bundle's own confirmation UI and only applies on confirm,
- * and the no-JavaScript note is hidden once the script runs.
+ * and the no-JavaScript note is hidden once the script runs. The
+ * self-update section above the list carries the App Store itself
+ * (installed version, pinned snapshot tag, latest Store on the
+ * discovery base, one update control, and Remove with the same
+ * confirmation as a row, including on a gated row); the status line
+ * shows the pinned tag instead of the main URL.
  * Not-installed rows offer Add; up-to-date rows offer Remove through the
  * confirmed management remove path; Update All appears only when a safe
  * (non-overwrite) update exists and updates only those rows.
@@ -115,6 +120,8 @@ async function main() {
     { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: false } },
     { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: true } },
   ];
+  const storeSelfMain = { installedCatalogVersion: 27, pinnedLabel: '4.1.11', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.0', latestCatalogVersion: 28, needsNewerShell: false, hasUpdate: true };
+  const storeSelfUpToDate = { installedCatalogVersion: 27, pinnedLabel: '4.1.11', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.0', latestCatalogVersion: 27, needsNewerShell: false, hasUpdate: false };
   const calls = [];
   const dom = new JSDOM(
     '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
@@ -124,7 +131,7 @@ async function main() {
   win.fetch = function (url) {
     calls.push(url);
     if (url.indexOf("/manage/rows") !== -1) {
-      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows }); } });
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows, catalogRelease: '4.1.11', storeSelf: storeSelfMain }); } });
     }
     if (url.indexOf("/manage/update") !== -1 && url.indexOf("confirmed=1") === -1) {
       if (url.indexOf("id=calculator") !== -1) {
@@ -147,13 +154,14 @@ async function main() {
   function buttonLabels(row) {
     return Array.prototype.map.call(row.querySelectorAll("button"), function (b) { return b.textContent; });
   }
-  check(items.length === 5, "five rows render from mocked management API");
+  check(items.length === 4, "four rows render; a stale App Store row in the payload is filtered out");
+  var rowLabels = Array.prototype.map.call(doc.querySelectorAll(".store-row .store-label"), function (el) { return el.textContent; });
+  check(rowLabels.indexOf("App Store") === -1, "no rendered row is the App Store");
   check(items[0] && buttonLabels(items[0]).join(",") === "Add", "not-installed row offers Add, not Install");
   check(items[1] && buttonLabels(items[1]).join(",") === "Update", "behind-clean row offers Update");
-  check(items[2] && buttonLabels(items[2]).join(",") === "Overwrite", "behind-modified row offers Overwrite");
-  check(items[3] && buttonLabels(items[3]).join(",") === "Overwrite", "snapshot-less row offers Overwrite");
-  check(items[4] && buttonLabels(items[4]).join(",") === "Remove", "up-to-date row offers Remove");
-  check(!doc.querySelector(".store-update-all").hidden, "Update All is shown when a safe update exists");
+  check(items[2] && buttonLabels(items[2]).join(",") === "Overwrite", "snapshot-less row offers Overwrite");
+  check(items[3] && buttonLabels(items[3]).join(",") === "Remove", "up-to-date row offers Remove");
+    check(!doc.querySelector(".store-update-all").hidden, "Update All is shown when a safe update exists");
   const firstChildren = Array.prototype.slice.call(items[0].children);
   const mainIndex = firstChildren.indexOf(items[0].querySelector(".store-main"));
   const bodyIndex = firstChildren.indexOf(items[0].querySelector(".store-body"));
@@ -163,23 +171,35 @@ async function main() {
   const mainKids = Array.prototype.slice.call(items[0].querySelector(".store-main").children);
   check(mainKids[0].className === "store-icon" && mainKids[1].className === "store-label", "icon and title are stacked in the tile block");
   check(!items[0].querySelector(".store-badge"), "no Installed or Not installed label");
-  check(items[2].querySelector(".store-badge").textContent.indexOf("update available") !== -1, "other status labels stay");
-  check(doc.body.textContent.indexOf("Can manage other apps") !== -1, "manageApps is disclosed in plain words");
-  check(items[3].textContent.indexOf("Can view the shell theme.") !== -1, "theme view-only is disclosed in plain words");
-  check(items[4].textContent.indexOf("Can view and change the shell theme.") !== -1, "theme view+set is disclosed in plain words");
+  check(items[1].querySelector(".store-badge").textContent.indexOf("Update available") !== -1, "other status labels stay");
+    check(items[2].textContent.indexOf("Can view the shell theme.") !== -1, "theme view-only is disclosed in plain words");
+  check(items[3].textContent.indexOf("Can view and change the shell theme.") !== -1, "theme view+set is disclosed in plain words");
   check(doc.querySelector(".store-nojs").style.display === "none", "no-JavaScript note is hidden once the script runs");
   check(calls[0] === "/manage/rows?app=app-store", "first fetch is the management rows API");
-  const updateBtn = items[2].querySelector("button");
+  var selfSection = doc.querySelector(".store-self");
+  check(selfSection && selfSection.hidden === false, "self-update section renders");
+  var wrapKids = Array.prototype.slice.call(doc.querySelector(".store-wrap").children);
+  check(wrapKids.indexOf(selfSection) !== -1 && wrapKids.indexOf(selfSection) < wrapKids.indexOf(doc.querySelector(".store-list")), "self-update section sits above the apps list");
+  check(selfSection.textContent.indexOf("App Catalog v27") !== -1, "section shows the installed Store version");
+  check(selfSection.textContent.indexOf("Catalog snapshot 4.1.11") !== -1, "section shows the pinned snapshot tag");
+  check(selfSection.textContent.indexOf("shell v4.2.0") !== -1, "section shows the running shell version");
+  check(selfSection.textContent.indexOf("Latest App Catalog v28") !== -1, "section shows the latest Store on the discovery base");
+  check(selfSection.textContent.indexOf("from main") !== -1, "section names the discovery base for the Store update");
+  check(buttonLabels(selfSection).join(",") === "Update", "section offers one Update control");
+  check(doc.querySelector(".store-status").textContent === "Catalog 4.1.11", "status line shows the pinned tag, not the main URL");
+  check(doc.querySelector(".store-status").textContent.indexOf("raw.githubusercontent") === -1, "status line shows no main URL");
+  check(doc.querySelector(".store-status").textContent.indexOf("resolved") === -1 && doc.querySelector(".store-status").textContent.indexOf("stale") === -1, "status line claims no resolved or stale snapshot");
+  const updateBtn = selfSection.querySelector("button");
   updateBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
-  check(doc.querySelector(".store-dialog").textContent.indexOf("Confirm update") !== -1, "modified update shows bundle confirmation, not an immediate apply");
+  check(doc.querySelector(".store-dialog").textContent.indexOf("Confirm update") !== -1, "Store self-update shows bundle confirmation, not an immediate apply");
   check(doc.querySelector(".store-dialog").textContent.indexOf("manage other apps") !== -1, "confirmation lists capability additions");
   const confirmBtn = doc.querySelectorAll(".store-dialog button")[0];
   confirmBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
-  check(calls.indexOf("/manage/update?app=app-store&id=app-store&confirmed=1") !== -1, "confirm submits the confirmed update");
+  check(calls.indexOf("/manage/update?app=app-store&id=app-store&confirmed=1") !== -1, "confirm submits the confirmed Store update");
   const reloaded = doc.querySelectorAll(".store-row");
-  const snapshotLessBtn = reloaded[3] && reloaded[3].querySelector("button");
+  const snapshotLessBtn = reloaded[2] && reloaded[2].querySelector("button");
   snapshotLessBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
   check(doc.querySelector(".store-dialog").textContent.indexOf("Confirm update") !== -1, "snapshot-less Overwrite shows the same confirmation");
@@ -192,11 +212,11 @@ async function main() {
   await new Promise(function (r) { setTimeout(r, 50); });
   const batchCalls = calls.slice(callsBeforeUpdateAll);
   check(batchCalls.indexOf("/manage/update?app=app-store&id=calculator") !== -1, "Update All updates the behind-clean app without confirmation");
-  check(batchCalls.filter(function (c) { return c.indexOf("/manage/update") !== -1 && c.indexOf("id=app-store") !== -1; }).length === 0, "Update All never calls update for the behind-modified app");
+  check(batchCalls.filter(function (c) { return c.indexOf("/manage/update") !== -1 && c.indexOf("id=app-store") !== -1; }).length === 0, "Update All never calls update for the App Store itself");
   check(batchCalls.filter(function (c) { return c.indexOf("/manage/update") !== -1 && c.indexOf("id=xkcd") !== -1; }).length === 0, "Update All never calls update for the snapshot-less app");
   check(batchCalls.filter(function (c) { return c.indexOf("confirmed=1") !== -1; }).length === 0, "Update All never sends a confirmed update");
-  check(doc.querySelector(".store-status").textContent === "Updated 1 app.", "Update All reports what it updated");
-  const removeBtn = doc.querySelectorAll(".store-row")[4].querySelector("button");
+  check(doc.querySelector(".store-status").textContent.indexOf("Updated 1 app.") === 0, "Update All reports what it updated");
+  const removeBtn = doc.querySelectorAll(".store-row")[3].querySelector("button");
   removeBtn.click();
   await new Promise(function (r) { setTimeout(r, 50); });
   check(doc.querySelector(".store-dialog").textContent.indexOf("Confirm remove") !== -1, "up-to-date Remove shows a remove confirmation, not an immediate apply");
@@ -216,7 +236,7 @@ async function main() {
   const win2 = dom2.window;
   win2.fetch = function (url) {
     if (url.indexOf("/manage/rows") !== -1) {
-      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rowsNoSafe }); } });
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rowsNoSafe, storeSelf: storeSelfUpToDate }); } });
     }
     return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
   };
@@ -224,6 +244,11 @@ async function main() {
   await new Promise(function (r) { setTimeout(r, 50); });
   const doc2 = win2.document;
   check(doc2.querySelector(".store-update-all").hidden === true, "Update All is hidden when every out-of-date app needs Overwrite");
+  var selfSection2 = doc2.querySelector(".store-self");
+  check(selfSection2 && selfSection2.hidden === false, "up-to-date self-update section renders");
+  check(doc2.querySelectorAll(".store-row").length === 2, "stale App Store row is filtered from the no-safe list");
+  check(buttonLabels(selfSection2).join(",") === "Remove", "up-to-date section offers Remove only");
+  check(selfSection2.textContent.indexOf("Latest App Catalog v27") !== -1, "up-to-date section shows the latest Store matches the installed one");
   // Busy button: Add disables with "Adding…" while its install runs,
   // a second click fires no second request, and a failed install
   // re-enables it with its original label and shows the error.
@@ -277,7 +302,7 @@ async function main() {
     { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installMode: "json", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
     { id: "calculator", label: "Calculator", name: "Calculator", icon: "#", description: "Calculator.", installMode: "json", installed: true, inCatalog: true, status: "behind-clean", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/calculator" },
     { id: "app-store", label: "App Store", name: "App Store", icon: "⊞", description: "Store.", installMode: "json", installed: true, inCatalog: true, status: "behind-modified", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: true, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/app-store" },
-    { id: "tictactoe", label: "Tic Tac Toe", name: "Tic Tac Toe", icon: "#", description: "Tic Tac Toe.", installMode: "json", installed: true, inCatalog: true, status: "modified-current", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/tictactoe" },
+    { id: "tictactoe", label: "Tic Tac Toe", name: "Tic Tac Toe", icon: "#", description: "Tic Tac Toe.", installMode: "json", installed: true, inCatalog: true, status: "modified-current", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/tictactoe" },
     { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installMode: "json", installed: true, inCatalog: true, status: "modified-ahead", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/xkcd" },
     { id: "settings", label: "Settings", name: "Settings", icon: "#", description: "Settings.", installMode: "json", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/settings" },
     { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installMode: "json", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/main/catalog/clock" },
@@ -308,51 +333,51 @@ async function main() {
   function detailsOf(rowEl) { return rowEl.querySelector(".store-details"); }
   function promptCode(rowEl) { var d = detailsOf(rowEl); return d ? d.querySelector("code") : null; }
   function summaryOf(rowEl) { var d = detailsOf(rowEl); return d ? d.querySelector("summary") : null; }
-  check(items4.length === 13, "thirteen prompt-fixture rows render");
+  check(items4.length === 12, "twelve prompt-fixture rows render");
+  check(doc4.querySelector(".store-self").hidden === true, "no self-update section without storeSelf data");
+  var rowLabels4 = Array.prototype.map.call(doc4.querySelectorAll(".store-row .store-label"), function (el) { return el.textContent; });
+  check(rowLabels4.indexOf("App Store") === -1, "no rendered row is the App Store");
   check(items4[0] && buttonLabels(items4[0]).join(",") === "Add", "not-installed json row keeps Add");
   check(!detailsOf(items4[0]), "not-installed row without a folderUrl shows no Install details");
-  // items4[0] carries no folderUrl, so it shows no details; items4[12]
+  // items4[0] carries no folderUrl, so it shows no details; items4[11]
   // carries one and shows the Install one-liner.
-  check(summaryOf(items4[12]) && summaryOf(items4[12]).textContent === "Install with an agent", "recipe row shows Install details");
-  check(promptCode(items4[12]) && promptCode(items4[12]).textContent === "Read package:kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/recipe-app", "install prompt is the one-liner with the folder URL");
-  check(promptCode(items4[12]) && promptCode(items4[12]).textContent.indexOf("install_from_catalog") === -1, "install one-liner names no MCP call");
-  check(promptCode(items4[12]) && promptCode(items4[12]).textContent.indexOf("(") === -1, "install one-liner names no label or id outside the folder URL");
-  check(detailsOf(items4[12]).open === false && !detailsOf(items4[12]).hasAttribute("open"), "install details is collapsed by default");
+  check(summaryOf(items4[11]) && summaryOf(items4[11]).textContent === "Install with an agent", "recipe row shows Install details");
+  check(promptCode(items4[11]) && promptCode(items4[11]).textContent === "Read package:kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/recipe-app", "install prompt is the one-liner with the folder URL");
+  check(promptCode(items4[11]) && promptCode(items4[11]).textContent.indexOf("install_from_catalog") === -1, "install one-liner names no MCP call");
+  check(promptCode(items4[11]) && promptCode(items4[11]).textContent.indexOf("(") === -1, "install one-liner names no label or id outside the folder URL");
+  check(detailsOf(items4[11]).open === false && !detailsOf(items4[11]).hasAttribute("open"), "install details is collapsed by default");
   check(items4[1] && buttonLabels(items4[1]).join(",") === "Update", "behind-clean row keeps Update");
 
   check(summaryOf(items4[1]) && summaryOf(items4[1]).textContent === "Update with an agent", "behind-clean row shows Update details");
   check(promptCode(items4[1]) && promptCode(items4[1]).textContent === "Read package:kody-os#OPERATIONS.md, then update this app to the latest catalog version: https://github.com/Hypercubed/kody-os/tree/main/catalog/calculator", "update prompt is the one-liner with the folder URL");
-  check(items4[2] && buttonLabels(items4[2]).join(",") === "Overwrite", "behind-modified row keeps Overwrite");
-  check(summaryOf(items4[2]) && summaryOf(items4[2]).textContent === "Absorb with an agent", "behind-modified row shows Absorb details, not an overwrite prompt");
-  check(promptCode(items4[2]) && promptCode(items4[2]).textContent === "Read package:kody-os#OPERATIONS.md, then absorb the catalog changes into this app, keeping my local customizations: https://github.com/Hypercubed/kody-os/tree/main/catalog/app-store", "absorb prompt is the one-liner with the folder URL");
+  check(items4[2] && buttonLabels(items4[2]).join(",") === "Restore", "modified-current row keeps Restore");
+  check(summaryOf(items4[2]) && summaryOf(items4[2]).textContent === "Absorb with an agent", "modified-current row shows Absorb details");
+  check(promptCode(items4[2]) && promptCode(items4[2]).textContent === "Read package:kody-os#OPERATIONS.md, then absorb the catalog changes into this app, keeping my local customizations: https://github.com/Hypercubed/kody-os/tree/main/catalog/tictactoe", "modified-current prompt is the absorb one-liner");
   check(promptCode(items4[2]) && promptCode(items4[2]).textContent.indexOf("absorb_from_catalog") === -1, "absorb one-liner names no MCP call");
-  check(items4[3] && buttonLabels(items4[3]).join(",") === "Restore", "modified-current row keeps Restore");
-  check(summaryOf(items4[3]) && summaryOf(items4[3]).textContent === "Absorb with an agent", "modified-current row shows Absorb details");
-  check(promptCode(items4[3]) && promptCode(items4[3]).textContent === "Read package:kody-os#OPERATIONS.md, then absorb the catalog changes into this app, keeping my local customizations: https://github.com/Hypercubed/kody-os/tree/main/catalog/tictactoe", "modified-current prompt is the absorb one-liner");
-  check(items4[4] && buttonLabels(items4[4]).join(",") === "Restore", "modified-ahead row keeps Restore");
+  check(items4[3] && buttonLabels(items4[3]).join(",") === "Restore", "modified-ahead row keeps Restore");
 
-  check(summaryOf(items4[4]) && summaryOf(items4[4]).textContent === "Restore with an agent", "modified-ahead row shows Restore details");
-  check(promptCode(items4[4]) && promptCode(items4[4]).textContent === "Read package:kody-os#OPERATIONS.md, then restore this app to the catalog copy: https://github.com/Hypercubed/kody-os/tree/main/catalog/xkcd", "restore prompt is the one-liner with the folder URL");
-  check(items4[5] && buttonLabels(items4[5]).join(",") === "Overwrite", "snapshot-less row keeps Overwrite");
-  check(summaryOf(items4[5]) && summaryOf(items4[5]).textContent === "Overwrite with an agent", "snapshot-less row shows Overwrite details");
-  check(promptCode(items4[5]) && promptCode(items4[5]).textContent === "Read package:kody-os#OPERATIONS.md, then overwrite this app with the catalog copy: https://github.com/Hypercubed/kody-os/tree/main/catalog/settings", "overwrite prompt is the one-liner with the folder URL");
-  check(items4[6] && buttonLabels(items4[6]).join(",") === "Remove", "up-to-date row keeps Remove");
-  check(summaryOf(items4[6]) && summaryOf(items4[6]).textContent === "Remove with an agent", "up-to-date row shows Remove details");
-  check(promptCode(items4[6]) && promptCode(items4[6]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/clock", "remove prompt is the one-liner with the folder URL");
-  check(items4[7] && buttonLabels(items4[7]).join(",") === "Remove", "absorbed row offers Remove only");
-  check(items4[7].querySelector(".store-badge") && items4[7].querySelector(".store-badge").textContent === "Absorbed", "absorbed row badges Absorbed");
-  check(summaryOf(items4[7]) && summaryOf(items4[7]).textContent === "Remove with an agent", "absorbed row shows Remove details, not Absorb details");
-  check(promptCode(items4[7]) && promptCode(items4[7]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/streaks", "absorbed prompt is the remove one-liner");
+  check(summaryOf(items4[3]) && summaryOf(items4[3]).textContent === "Restore with an agent", "modified-ahead row shows Restore details");
+  check(promptCode(items4[3]) && promptCode(items4[3]).textContent === "Read package:kody-os#OPERATIONS.md, then restore this app to the catalog copy: https://github.com/Hypercubed/kody-os/tree/main/catalog/xkcd", "restore prompt is the one-liner with the folder URL");
+  check(items4[4] && buttonLabels(items4[4]).join(",") === "Overwrite", "snapshot-less row keeps Overwrite");
+  check(summaryOf(items4[4]) && summaryOf(items4[4]).textContent === "Overwrite with an agent", "snapshot-less row shows Overwrite details");
+  check(promptCode(items4[4]) && promptCode(items4[4]).textContent === "Read package:kody-os#OPERATIONS.md, then overwrite this app with the catalog copy: https://github.com/Hypercubed/kody-os/tree/main/catalog/settings", "overwrite prompt is the one-liner with the folder URL");
+  check(items4[5] && buttonLabels(items4[5]).join(",") === "Remove", "up-to-date row keeps Remove");
+  check(summaryOf(items4[5]) && summaryOf(items4[5]).textContent === "Remove with an agent", "up-to-date row shows Remove details");
+  check(promptCode(items4[5]) && promptCode(items4[5]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/clock", "remove prompt is the one-liner with the folder URL");
+  check(items4[6] && buttonLabels(items4[6]).join(",") === "Remove", "absorbed row offers Remove only");
+  check(items4[6].querySelector(".store-badge") && items4[6].querySelector(".store-badge").textContent === "Absorbed", "absorbed row badges Absorbed");
+  check(summaryOf(items4[6]) && summaryOf(items4[6]).textContent === "Remove with an agent", "absorbed row shows Remove details, not Absorb details");
+  check(promptCode(items4[6]) && promptCode(items4[6]).textContent === "Read package:kody-os#OPERATIONS.md, then remove this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/streaks", "absorbed prompt is the remove one-liner");
 
-  check(items4[8] && buttonLabels(items4[8]).join(",") === "Overwrite", "absorbed-behind row offers confirmed Overwrite");
-  check(items4[8].querySelector(".store-badge") && items4[8].querySelector(".store-badge").textContent === "Absorbed \u00b7 update available", "absorbed-behind row badges Absorbed \u00b7 update available");
-  check(summaryOf(items4[8]) && summaryOf(items4[8]).textContent === "Absorb with an agent", "absorbed-behind row shows Absorb details again");
-  check(promptCode(items4[8]) && promptCode(items4[8]).textContent === "Read package:kody-os#OPERATIONS.md, then absorb the catalog changes into this app, keeping my local customizations: https://github.com/Hypercubed/kody-os/tree/main/catalog/pushup", "absorbed-behind prompt is the absorb one-liner");
-  check(!detailsOf(items4[9]), "needsNewerShell row shows no details element");
-  check(!detailsOf(items4[10]), "needsNewerSchema row shows no details element");
-  check(detailsOf(items4[11]) && summaryOf(items4[11]).textContent === "Install with an agent", "not-installed recipe-only row now shows Install details");
-  check(promptCode(items4[11]) && promptCode(items4[11]).textContent === "Read package:kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/daily-feed", "recipe-only install prompt is the one-liner with the folder URL");
-  check(items4[11].textContent.indexOf("Ask an agent to install via its recipe.") !== -1, "not-installed recipe-only row keeps its recipe prompt");
+  check(items4[7] && buttonLabels(items4[7]).join(",") === "Overwrite", "absorbed-behind row offers confirmed Overwrite");
+  check(items4[7].querySelector(".store-badge") && items4[7].querySelector(".store-badge").textContent === "Absorbed \u00b7 update available", "absorbed-behind row badges Absorbed \u00b7 update available");
+  check(summaryOf(items4[7]) && summaryOf(items4[7]).textContent === "Absorb with an agent", "absorbed-behind row shows Absorb details again");
+  check(promptCode(items4[7]) && promptCode(items4[7]).textContent === "Read package:kody-os#OPERATIONS.md, then absorb the catalog changes into this app, keeping my local customizations: https://github.com/Hypercubed/kody-os/tree/main/catalog/pushup", "absorbed-behind prompt is the absorb one-liner");
+  check(!detailsOf(items4[8]), "needsNewerShell row shows no details element");
+  check(!detailsOf(items4[9]), "needsNewerSchema row shows no details element");
+  check(detailsOf(items4[10]) && summaryOf(items4[10]).textContent === "Install with an agent", "not-installed recipe-only row now shows Install details");
+  check(promptCode(items4[10]) && promptCode(items4[10]).textContent === "Read package:kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/daily-feed", "recipe-only install prompt is the one-liner with the folder URL");
+  check(items4[10].textContent.indexOf("Ask an agent to install via its recipe.") !== -1, "not-installed recipe-only row keeps its recipe prompt");
   check(doc4.querySelectorAll(".store-details button").length === 0, "no copy button inside any details element");
   check(js.indexOf("navigator.clipboard") === -1, "bundle uses no Clipboard API for the prompt");
   const updateAllBtn4 = doc4.querySelector(".store-update-all button");
@@ -378,12 +403,12 @@ async function main() {
   check(!items4[2].querySelector('.store-body .store-details'), 'details is no longer inside the body');
   check(detailsOf(items4[2]) && detailsOf(items4[2]).parentNode === items4[2], 'details parent is the row, not the body');
   check(detailsOf(items4[2]) && items4[2].lastChild === detailsOf(items4[2]), 'details is the last child of the row');
-  check(detailsOf(items4[12]) && detailsOf(items4[12]).parentNode === items4[12] && items4[12].lastChild === detailsOf(items4[12]), 'folder-url row details is also the last child of its row');
+  check(detailsOf(items4[11]) && detailsOf(items4[11]).parentNode === items4[11] && items4[11].lastChild === detailsOf(items4[11]), 'folder-url row details is also the last child of its row');
   check(rule('.store-row').indexOf('padding: 0.7rem 0.7rem') !== -1, 'row has top and bottom padding');
   check(rule('.store-row').indexOf('min-height: 6.5rem') !== -1, 'row keeps its 6.5rem minimum height');
   check(rule('.store-details').indexOf('flex: 0 0 100%') !== -1, 'details spans the full row width');
   check(rule('.store-details summary::before').indexOf('solid currentColor') !== -1, 'caret triangle is still present');
-  check(items4[6] && !items4[6].querySelector('.store-badge'), 'up-to-date row has no badge');
+  check(items4[5] && !items4[5].querySelector('.store-badge'), 'up-to-date row has no badge');
   // Fixed row heights: badge margin above, and .store-main, .store-body,
   // .store-controls each spanning the row content height (6.5rem row
   // minus 1.4rem padding minus 0.25rem border = 4.85rem) with their
@@ -406,6 +431,49 @@ async function main() {
   check(agentCode.indexOf('font-weight: normal') !== -1, 'agent code uses normal weight, like the help');
   check(agentCode.indexOf('padding: 0.7rem 0.8rem') !== -1, 'agent code insets its text from the dashed border');
   check(agentCode.indexOf('display: block') !== -1 && agentCode.indexOf('white-space: pre-wrap') !== -1, 'agent code keeps its block pre-wrap layout');
+
+  // Self-update section, gated (compatible-catalog Phase 1): when the
+  // latest Store needs a newer shell, the section shows the
+  // requirement instead of an update control, and keeps Remove with
+  // the same confirmation as a row.
+  const rowsGated = [
+    { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
+  ];
+  const storeSelfGated = { installedCatalogVersion: 27, pinnedLabel: '4.1.11', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.0', latestCatalogVersion: 28, latestMinPackageVersion: '9.9.9', needsNewerShell: true, hasUpdate: false };
+  const calls5 = [];
+  const dom5 = new JSDOM(
+    '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
+    { url: "http://localhost/apps/app-store", runScripts: "outside-only" }
+  );
+  const win5 = dom5.window;
+  win5.fetch = function (url) {
+    calls5.push(url);
+    if (url.indexOf("/manage/rows") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rowsGated, storeSelf: storeSelfGated }); } });
+    }
+    if (url.indexOf("/manage/remove") !== -1 && url.indexOf("confirmed=1") === -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "Confirmation required.", needsConfirmation: true, additions: [] }); } });
+    }
+    if (url.indexOf("confirmed=1") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, id: "app-store" }); } });
+    }
+    return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
+  };
+  win5.eval(js);
+  await new Promise(function (r) { setTimeout(r, 50); });
+  const doc5 = win5.document;
+  const selfSection5 = doc5.querySelector(".store-self");
+  check(selfSection5 && selfSection5.hidden === false, "gated section renders");
+  check(selfSection5.textContent.indexOf("Requires shell v9.9.9 (running v4.2.0).") !== -1, "gated section shows the requirement instead of an update");
+  check(buttonLabels(selfSection5).join(",") === "Remove", "gated section keeps Remove, not Update");
+  const gatedRemoveBtn = selfSection5.querySelector("button");
+  gatedRemoveBtn.click();
+  await new Promise(function (r) { setTimeout(r, 50); });
+  check(doc5.querySelector(".store-dialog").textContent.indexOf("Confirm remove") !== -1, "gated Remove shows a remove confirmation, not an immediate apply");
+  const gatedConfirmBtn = doc5.querySelectorAll(".store-dialog button")[0];
+  gatedConfirmBtn.click();
+  await new Promise(function (r) { setTimeout(r, 50); });
+  check(calls5.indexOf("/manage/remove?app=app-store&id=app-store&confirmed=1") !== -1, "confirm submits the confirmed Store remove");
   if (failures > 0) {
     console.error("\n" + failures + " check(s) FAILED");
     process.exit(1);

@@ -186,6 +186,30 @@ export function catalogLabelForBase(base: string): string {
 }
 
 /**
+ * GitHub ref (branch or tag) of a raw.githubusercontent catalog base,
+ * or null for any other base. The ref is the display label for a
+ * pinned snapshot, never a fetch identity on its own.
+ */
+export function catalogGitHubRef(base: string): string | null {
+  var parsed = parseGitHubRawBase(base)
+  return parsed === null ? null : parsed.ref
+}
+
+/**
+ * Tag label for a pinned GitHub-raw base: the bare ref (e.g. '4.1.11')
+ * when the base is a raw.githubusercontent base whose ref is not
+ * 'main'; null otherwise (main, loopback, or any other base). The
+ * Store status line shows this instead of the full base URL when the
+ * listing base is pinned to a tag. It names no snapshot beyond the ref
+ * in the URL itself, so it claims nothing resolved or stale.
+ */
+export function catalogTagLabel(base: string): string | null {
+  var ref = catalogGitHubRef(base)
+  if (ref === null || ref === 'main') return null
+  return ref
+}
+
+/**
  * Shared GitHub-raw base parsing: a normalized catalog base of the
  * form https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<tail>
  * (tail is the path after the ref, e.g. catalog/) yields its parts;

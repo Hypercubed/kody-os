@@ -105,6 +105,6 @@ export {
 export type { AppStoreStatus, AppStoreStatusInfo, BackupEntry, BackupSummary, CapabilitySummary, InstallSnapshot, ManageResult, StoreRow } from './registry.ts'
 export { compileDefinition } from './definition.ts'
 export { actFromForm } from './forms.ts'
-export { catalogLabelForBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, get_catalog_recipe, get_catalog_source, list_catalog, normalizeCatalogBase, readCatalogManifest } from './remote-catalog.ts'
+export { catalogGitHubRef, catalogLabelForBase, catalogTagLabel, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, get_catalog_recipe, get_catalog_source, list_catalog, normalizeCatalogBase, readCatalogManifest } from './remote-catalog.ts'
 export type { CatalogSummary } from './remote-catalog.ts'
 export { editAppsLink, escapeHtml, isModalApp, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, renderOverlaySection, renderPinnedSection, renderRecentSection, renderWidgetSection } from './client.ts'
