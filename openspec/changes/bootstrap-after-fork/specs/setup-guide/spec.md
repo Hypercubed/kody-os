@@ -1,12 +1,16 @@
 # Spec Delta
 
+## Cleanup (2026-11-11)
+
+OTP references removed (OTP was removed from Kody Nov 7, 2026; the canonical setup-guide spec forbids OTP). "Pinned release" updated to pinned TAG per compatible-catalog Phase 1 (no `releases.json` until Phase 2); the catalog source is repo-root `catalog/`.
+
 ## ADDED Requirements
 
 ### Requirement: Bootstrap choice after forking
 
 The setup guide SHALL present, after fork,
-publish, empty-registry confirmation, and OTP
-unlock, a choice: install nothing, or install the
+publish, and empty-registry confirmation,
+a choice: install nothing, or install the
 Store. Installing nothing SHALL be presented
 as a supported choice with the shared help
 text and its two prompts stated, and
@@ -21,11 +25,11 @@ encouraged, never required.
   with its two prompts, and the setup is
   complete, not broken.
 
-### Requirement: Bootstrap procedure from the pinned release
+### Requirement: Bootstrap procedure from the pinned tag
 
 Bootstrap SHALL be an agent/script procedure
 that fetches the Store bundle from the pinned
-public release, validates it before writing,
+public tag, validates it before writing,
 installs it via `add_app`, and verifies with
 `list_apps` and by opening the Store page,
 stopping and asking on any failed check.
@@ -38,7 +42,7 @@ seeding.
   bootstrap procedure
 - **THEN** `list_apps` shows `app-store`, the Store
   page opens, and the Store lists catalog apps
-  from the pinned release.
+  from the pinned tag.
 
 ### Requirement: Bootstrap apps are ordinary installs
 
@@ -65,4 +69,4 @@ first app from bundled examples in `pkg/catalog/`
 as the setup path, and SHALL NOT describe the
 App Store as specified but not yet implemented.
 The catalog source in setup and authoring docs
-SHALL be the public repo's pinned release.
+SHALL be the public repo's pinned tag.

@@ -31,7 +31,7 @@
 ## 5. Docs and specs
 
 - [ ] 5.1 Verify `pkg/catalog/README.md` needs no change (it describes the layout, not the app list); update it only if it enumerates the apps.
-- [ ] 5.2 Sync the canonical specs by hand from this change's deltas at archive time (`openspec/specs/generic-rss-feed/spec.md`, `app-registry`, `authoring`), reconciling with `help-about-built-in` if it archived first and with `store-recipe-prompt`'s `recipe-or-json` removal (see design.md, Decision 7).
+- [ ] 5.2 Sync the canonical specs by hand from this change's deltas at archive time (`openspec/specs/generic-rss-feed/spec.md`, `app-registry`, `authoring`), reconciling with `help-about-built-in` if it archived first and with `store-recipe-prompt`'s `recipe-or-json` removal (see design.md, Decision 7). Cleanup 2026-11-11: the removal has landed (shipped v4.1.11, commit `5283ca6`; `store-recipe-prompt` archived 2026-11-11), so the remaining reconciliation is against the canonical `Recipe install mode` requirement in its pattern form (the one-liner Store-row prompt); the `recipe-or-json` scenario is already gone from the canonical requirement.
 - [ ] 5.3 Run `npx --yes @fission-ai/openspec@latest validate generic-rss-feed --type change` — reports valid.
 
 ## 6. Verification and version

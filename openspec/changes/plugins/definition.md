@@ -13,7 +13,7 @@ separate, later change specified on its own.
 
 **Sources checked:** GitHub `Hypercubed/kody-os` main `1525bad`
 (v4.1.11, build 46), read 2026-11-09/10. OpenSpec changes on main:
-`compatible-catalog`, `install-registry-race`, `store-recipe-prompt`,
+`compatible-catalog`, `install-registry-race`, `store-recipe-prompt` (archived 2026-11-11),
 `store-row-agent-prompts`, `generic-rss-feed`, `handoff-board`,
 `email-client`, `agent-app-authoring`, `catalog-robustness-fixes`.
 

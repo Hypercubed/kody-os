@@ -8,11 +8,15 @@ The Store row gate branch today suppresses **all** controls, not just install/up
 
 The gate branch keeps suppressing Install and Update controls on an incompatible row, but a row for an **installed** app keeps its Remove control. Removal does not depend on the catalog (it deletes the installed definition, state, snapshot, and references), so there is no reason to gate it. The Store row for a gated installed app shows the requirement note **and** Remove. `safeUpdatable()` / `updateAllNow()` still skip gated rows (Remove is not an update).
 
+Cleanup note (2026-11-11): narrowed — the Store's own self-update section already renders Remove for a gated Store (`catalog/app-store/store.js` `renderSelf`); the still-open part is list rows, which still render no control for a gated installed row (the gate branch short-circuits the control chain).
+
 ### Decision 2 — C6: Update gets the same `catalogBase` treatment as install
 
 `install_from_catalog` and `store_install_from_catalog` accept optional `catalogBase` and resolve via `resolveAgentCatalogBase` (explicit > override > installed Store). `store_update_from_catalog` also accepts it. But agent `update_from_catalog(id, store?)` uses only `installedStoreCatalogBase(active)` — so with no Store installed it refuses with "no catalog source" **even when `KODY_CATALOG_BASE` is set** (the fetch layer would have honored the override, but the registry refuses before ever reaching it). Same pre-emption in `manage_rows`: an acting Store that declares no catalog gets installed-only rows, even with the override set.
 
 `update_from_catalog` gains the same optional `catalogBase` parameter and the same `resolveAgentCatalogBase` treatment as the install functions. The `manage_rows` refusal point is left as-is for this change (the acting Store's declared base is the source for the management API; the override is a fetch-layer/dev concern, and C1 in handoff 13 settles where the override is consulted) — the spec records the asymmetry rather than changing it here.
+
+Cleanup note (2026-11-11): the manage_rows note is stale — Phase 1's `resolveManagedBase` (`pkg/src/apps/registry.ts:873`) consults the dev override first, and `resolveAgentCatalogBase` (`registry.ts:919`) consults it when no explicit base is given, so the override half is fixed. The open part is the explicit `catalogBase` parameter on `update_from_catalog` (`registry.ts:1005`) and forwarding `input.base` from `pkg/scripts/catalog.ts` (which still declares `base?: string` and calls `update_from_catalog(input.id, undefined)`).
 
 `pkg/scripts/catalog.ts`: the `update` Input variant declares `base?: string`, but the code calls `update_from_catalog(input.id, undefined)` — the base is never passed, so a caller passing `base` to `update` gets no error and no effect. Once `update_from_catalog` accepts `catalogBase`, the script forwards `input.base` the same way `install` does. If the script cannot forward it (signature mismatch), the `base` field is dropped from the `update` Input variant instead — never silently ignored.
 
@@ -46,6 +50,8 @@ The no-source refusal is checked **before** calling `get_app_status` in `manage_
 
 The `useWhen` strings are corrected: a bare call needs an explicit base (the dev override aside); the Store-base fallback lives in the install/update tools, not in the listing tools. The implementer may instead add a Store-base-resolving wrapper for the listing tools — but only if the wrapper is the smaller change and the `useWhen` text is updated to match whichever is true. Either way, the documented behavior and the actual behavior agree.
 
+Cleanup note (2026-11-11): `install_from_catalog`'s `useWhen` was updated for Phase 1 (pinned listing base / discovery base); the two remaining stale strings are `list_catalog` and `get_catalog_definition`. The tool descriptions themselves are not rewritten here.
+
 ### Decision 8 — C12: `get_store_catalog_info` resolves the Store base from its `store` parameter
 
 `get_store_catalog_info` ignores its `store` parameter (`void store`), and a bare call fails with "no catalog source given" even when a Store is installed — the tool cannot resolve the installed Store's base. It has no internal callers (only re-exported as an agent tool).
@@ -64,9 +70,11 @@ The fetch is aborted on timeout (`AbortController`), and the cap is enforced on 
 
 `MIN_SUPPORTED_SCHEMA_VERSION` is derived from the list (`Math.min.apply(null, SUPPORTED_SCHEMA_VERSIONS)`), or the list is defined from the constant. One source of truth; the value stays 3 today.
 
+Cleanup note (2026-11-11): already true in code — verified at `pkg/src/apps/definition.ts:626`; task 4.1 is checked on that basis, and the requirement is synced to the canonical app-registry spec.
+
 ### Decision 11 — C15: Observe the `0.1.0` running-version fallback
 
-`getRunningPackageVersion` mirrors `getPackageMeta` exactly — same `import('../../package.json', { with: { type: 'json' } })`, same `0.1.0` fallback, same permanently-cached promise — so no new drift *today* (package version is `4.0.0`). But a bundler regression that stops inlining `package.json` would make every `minPackageVersion` install refuse with the confusing `requires package version X (running 0.1.0)`, and the cached promise makes a transient import failure permanent for the process. One latent divergence: `getPackageMeta` accepts any non-empty version string, while `getRunningPackageVersion` falls back to `0.1.0` for a non-`MAJOR.MINOR.PATCH` version — if the version ever became e.g. `4.0.0-beta`, the status bar and the gate would disagree.
+`getRunningPackageVersion` mirrors `getPackageMeta` exactly — same `import('../../package.json', { with: { type: 'json' } })`, same `0.1.0` fallback, same permanently-cached promise — so no new drift *today* (package version is `4.2.0`; corrected 2026-11-11 — the design said `4.0.0`). But a bundler regression that stops inlining `package.json` would make every `minPackageVersion` install refuse with the confusing `requires package version X (running 0.1.0)`, and the cached promise makes a transient import failure permanent for the process. One latent divergence: `getPackageMeta` accepts any non-empty version string, while `getRunningPackageVersion` falls back to `0.1.0` for a non-`MAJOR.MINOR.PATCH` version — if the version ever became e.g. `4.0.0-beta`, the status bar and the gate would disagree.
 
 At minimum the fallback is observed (logged) so a failed `package.json` import is visible instead of silent. The implementer may additionally surface "running version unknown" distinctly from "running 0.1.0" in the gate error — but only if that is the smaller change and the error still names the app, the required minimum, and the running version (or that it is unknown).
 
@@ -75,6 +83,8 @@ At minimum the fallback is observed (logged) so a failed `package.json` import i
 `pkg/src/app.ts`: the removed GET form is gone and the fallback now reads: "The App Store app is not installed. / Ask an agent to install it: follow catalog/app-store/RECIPE.md (the agent supplies the catalog source)." That names a repo-relative path with no copyable prompt and no link — a browser-only user with no repo access cannot act on it. Contrast `renderEmptyHelp` in `client.ts`, which gives a full copy-this-prompt block for the same install. Removing the one-tap path is the intended design; the fallback text is the issue.
 
 The fallback becomes the same selectable `<code>` copy-prompt the empty-Help block gives (or a link to it), naming the install call with its catalog base, rather than a bare path. The fallback still offers no one-tap install (there is no catalog source to fetch from without one).
+
+Cleanup note (2026-11-11): doubly stale — the fallback wording is also inconsistent with the v27 one-liner pattern (folder URLs + `OPERATIONS.md`) that replaced `RECIPE.md` links everywhere else (Help, Store rows). The fallback text itself is unchanged here (implementation, still open).
 
 ## Version decision
 

@@ -79,7 +79,7 @@ The shell's automatic App Store seed only fires on an empty registry, so install
 
 - A change lives in `openspec/changes/<slug>/` with `proposal.md`, `design.md`, and `tasks.md`, plus a spec delta under `specs/<spec>/spec.md` for every canonical spec it changes. Keep the canonical specs in `openspec/specs/` in sync in the same change; a change whose spec deltas do not match the code is unfinished.
 - When a change is done, archive it to `openspec/changes/archive/<YYYY-MM-DD>-<slug>/` and add a close-out note to its `tasks.md` recording what was actually verified, what was substituted, and what was left open. Archived changes are the record of what shipped; do not rewrite them to make the past look cleaner.
-- Specs 4–6 of the store/catalog rethink (`catalog-out-of-pkg`, `public-pinned-catalog`, `bootstrap-after-fork`) are written but not implemented, gated on this repository being public. The catalog move must land in the same release window as the pinned-catalog change, never alone.
+- Specs 4–6 of the store/catalog rethink: `catalog-out-of-pkg` has landed (the catalog is at repo-root `catalog/`), `public-pinned-catalog` is archived (2026-11-08), and `bootstrap-after-fork` is still written but not implemented — its concept holds (the shell never seeds) but it needs revision (2026-11-11 review: OTP step stale, "pinned release" is now a pinned tag, the Task 1.2 base decision is open). The repository is public, so the old "gated on being public" condition no longer applies.
 
 ## Security and secrets
 

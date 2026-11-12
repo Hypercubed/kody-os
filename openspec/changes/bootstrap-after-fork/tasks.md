@@ -1,9 +1,7 @@
 # Tasks
 
 Phases land in order: 1, then 2, then 3. This
-change is docs-only and is blocked on final
-URLs until `public-pinned-catalog` is done,
-though drafting may start earlier. No task in
+change is docs-only. Cleanup (2026-11-11): the `public-pinned-catalog` blocker is removed — that change is archived, and the final URLs exist under compatible-catalog Phase 1's pinned tag. The remaining blocker is the Task 1.2 open decision below (which base installs the Store for a fresh fork). Drafting may start earlier. No task in
 this file commits, pushes, or publishes anything
 except the spec commit itself, which is outside
 this change's implementation scope.
@@ -12,7 +10,7 @@ this change's implementation scope.
 
 - [ ] 1.1 Rewrite `pkg/docs/setup.md` around
   the new sequence: fork, publish, confirm
-  empty registry, unlock with an OTP, then
+  empty registry, then
   choose install-nothing (supported, with the
   shared help text and its two prompts stated)
   or bootstrap.
@@ -23,9 +21,11 @@ this change's implementation scope.
   re-add it.) Keep the fork /
   publish / adopt / Use-access definitions
   unchanged.
+
+  Cleanup (2026-11-11): the OTP unlock step is removed from this sequence — OTP was removed from Kody Nov 7, 2026, and the canonical setup-guide spec forbids OTP. (Rewriting `pkg/docs/setup.md` itself is Task 1.1's implementation, not done here.)
 - [ ] 1.2 Write the bootstrap procedure per
   design.md: a copy-paste agent prompt that fetches the
-  Store bundle from the pinned release - the
+  Store bundle from the pinned tag - the
   definition plus its manifest-listed bundle
   files (`index.html`, `store.js`, `store.css`),
   assembled before install - validates it before
@@ -36,6 +36,8 @@ this change's implementation scope.
   install, removable via agent `remove_app`, and
   that About and Help are built-in pages needing
   no install.
+
+  Open decision (2026-11-11): which base installs the Store for a fresh fork is undecided — a fresh fork has no Store yet to declare a pin, so there is no pinned tag to read the Store from. Evidence: `pkg/docs/setup.md` steps 2/4 hardcode the `main` catalog base (`https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/`), which under Phase 1 would pull the v20 Store, not v28. Do not decide here.
 - [ ] 1.3 Confirm there is no separate Store-alone
   procedure to write: installing the Store IS
   the bootstrap procedure (1.2); About and Help
@@ -50,17 +52,17 @@ this change's implementation scope.
   `pkg/catalog/` or bundled-examples references.
 - [ ] 2.2 Update `pkg/.agents/skills/adding-an-app/SKILL.md`
   for the new catalog source (public repo
-  pinned release, not `pkg/catalog/`) and
+  pinned tag, not the old `pkg/catalog/` path) and
   update `catalog/README.md` bootstrap notes
   to match, with the canonical public repo URL
-  and pinned-release name filled in from the
+  and pinned-tag name filled in from the
   actual public repo.
-- [ ] 2.3 Repo-wide grep sweep for stale setup
+- [x] 2.3 Repo-wide grep sweep for stale setup
   copy: `pkg/catalog/` as a catalog source,
   "App Store specified but not yet
   implemented," and bundled-examples first-app
   instructions must not remain in current
-  docs (archived spec text excepted).
+  docs (archived spec text excepted). Cleanup (2026-11-11): verified by grep — no `pkg/catalog/` in `pkg/docs/setup.md`, `pkg/README.md`, `pkg/.agents/skills/adding-an-app/SKILL.md`, or `catalog/README.md`; no "specified but not yet implemented" in current docs; no "bundled" in `pkg/docs/setup.md` or `pkg/README.md`. (Other open changes still cite `pkg/catalog/` in their own drafts — email-client, generic-rss-feed, handoff-board, f-flat-minor-calculator — out of this change's scope.)
 
 ## 3. Verify the docs procedure
 
@@ -78,3 +80,5 @@ this change's implementation scope.
   the implementation commit (docs-only: rides
   with the next version-bumping publish or
   PATCH on its own).
+
+  Cleanup (2026-11-11): partly done — the canonical setup-guide spec already carries empty-install / no-OTP / no-seeding (it forbids OTP and describes the shell as starting empty and seeding nothing). The ADDED requirements — the bootstrap choice, the pinned-tag procedure, and bootstrap apps as ordinary installs — are NOT yet in the canonical spec. They are not added here: that is implementation of the unimplemented bootstrap procedure, not cleanup.

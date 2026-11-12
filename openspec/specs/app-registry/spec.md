@@ -1192,6 +1192,17 @@ well-formed, and this gate is the compatibility check alongside
 - **THEN** the row shows the schema requirement instead of any
   install control.
 
+### Requirement: `MIN_SUPPORTED_SCHEMA_VERSION` is derived from `SUPPORTED_SCHEMA_VERSIONS`
+
+`MIN_SUPPORTED_SCHEMA_VERSION` SHALL be derived from `SUPPORTED_SCHEMA_VERSIONS` (for example `Math.min.apply(null, SUPPORTED_SCHEMA_VERSIONS)`), or the list SHALL be defined from the constant. There SHALL be one source of truth; the value is 3 today.
+
+(Synced 2026-11-11 from `catalog-robustness-fixes` C14; already true in code at `pkg/src/apps/definition.ts:626`.)
+
+#### Scenario: The floor follows the list
+
+- **WHEN** `SUPPORTED_SCHEMA_VERSIONS` changes (for example the minimum is raised)
+- **THEN** `MIN_SUPPORTED_SCHEMA_VERSION` follows it (the two cannot diverge).
+
 ### Requirement: Pure definition surface lives in its own module
 
 The pure definition operations SHALL live in
