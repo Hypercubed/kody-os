@@ -71,7 +71,7 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_info, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
 import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -847,7 +847,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.2.1 in this tree', running === '4.2.1', running)
+	check('running package version is 4.3.0 in this tree', running === '4.3.0', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min
@@ -1203,10 +1203,21 @@ function installSteps(text: string): string[] {
     var p1CounterRow = p1Rows.rows.filter(function (r) { return r.id === 'counter' })[0]
     check('rows list the counter from the listing base', p1CounterRow !== undefined && p1CounterRow.label === 'Counter', JSON.stringify(p1CounterRow))
     check('storeSelf reports the installed Store version', p1Rows.storeSelf.installedCatalogVersion === 27, JSON.stringify(p1Rows.storeSelf))
-    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 30, JSON.stringify(p1Rows.storeSelf))
+    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 31, JSON.stringify(p1Rows.storeSelf))
     check('storeSelf offers the Store update', p1Rows.storeSelf.hasUpdate === true && p1Rows.storeSelf.needsNewerShell === false, JSON.stringify(p1Rows.storeSelf))
     check('storeSelf pins the listing base', p1Rows.storeSelf.pinnedLabel !== null && p1Rows.storeSelf.pinnedLabel.indexOf('listing.example.com') !== -1, JSON.stringify(p1Rows.storeSelf))
     check('status line names the listing base, not the discovery base', p1Rows.catalogRelease.indexOf('listing.example.com') !== -1 && p1Rows.catalogRelease.indexOf('discovery.example.com') === -1, p1Rows.catalogRelease)
+    var p1Info = await manage_info('app-store', p1Store)
+    check('manage_info names the listing base URL', p1Info.ok === true && (p1Info as { listingUrl?: string | null }).listingUrl === 'https://listing.example.com/catalog', JSON.stringify(p1Info))
+    check('manage_info names the discovery base URL', p1Info.ok === true && (p1Info as { discoveryUrl?: string | null }).discoveryUrl === 'https://discovery.example.com/catalog', JSON.stringify(p1Info))
+    check('manage_info carries the pinned label and no discovery ref', p1Info.ok === true && (p1Info as { pinnedLabel?: string | null }).pinnedLabel !== null && ((p1Info as { pinnedLabel?: string | null }).pinnedLabel as string).indexOf('listing.example.com') !== -1 && (p1Info as { discoveryRef?: string | null }).discoveryRef === null, JSON.stringify(p1Info))
+    var p1InfoDenied = await manage_info('counter', p1Store)
+    check('manage_info denies an undeclared caller', p1InfoDenied.ok === false && (p1InfoDenied as { permissionDenied?: boolean }).permissionDenied === true, JSON.stringify(p1InfoDenied))
+    var p1NoSourceStore = createMemoryStore()
+    var p1NoSourceDef = { id: 'app-store', name: 'App Store', schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>App Store</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: 'App Store', openAs: 'page', actions: [] as unknown[] }, capabilities: { manageApps: true } }
+    await add_app(p1NoSourceDef as never, p1NoSourceStore)
+    var p1NoSourceInfo = await manage_info('app-store', p1NoSourceStore)
+    check('manage_info with no catalog source returns nulls', p1NoSourceInfo.ok === true && (p1NoSourceInfo as { listingUrl?: string | null }).listingUrl === null && (p1NoSourceInfo as { discoveryUrl?: string | null }).discoveryUrl === null, JSON.stringify(p1NoSourceInfo))
     var p1CounterInstall = await manage_install('app-store', 'counter', p1Store)
     check('manage_install installs from the listing base', p1CounterInstall.ok === true, JSON.stringify(p1CounterInstall))
     var p1CounterDef = p1DefOf(await get_app('counter', p1Store))
@@ -1214,7 +1225,7 @@ function installSteps(text: string): string[] {
     var p1SelfUpdate = await manage_update('app-store', 'app-store', true, p1Store)
     check('Store self-update succeeds from the discovery base', p1SelfUpdate.ok === true, JSON.stringify(p1SelfUpdate))
     var p1StoreDefAfter = p1DefOf(await get_app('app-store', p1Store))
-    check('Store self-update installs v30', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 30, JSON.stringify(p1StoreDefAfter))
+    check('Store self-update installs v31', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 31, JSON.stringify(p1StoreDefAfter))
     check('Store self-update keeps the listing pin', p1ProxyUrl(p1StoreDefAfter, 'catalog-apps') === LISTING, JSON.stringify(p1StoreDefAfter))
     check('Store self-update keeps the discovery base', p1ProxyUrl(p1StoreDefAfter, 'catalog') === DISCOVERY, JSON.stringify(p1StoreDefAfter))
     var p1Store2 = createMemoryStore()

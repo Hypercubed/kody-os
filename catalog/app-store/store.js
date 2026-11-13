@@ -150,10 +150,10 @@ function storeInit() {
   var storeSelf = null;
   var afterLoadStatus = '';
   // The github.com URL of the catalog directory the apps are listed
-  // from. Seeded from the static loading text in index.html (the pinned
-  // catalog), then corrected from the rows' folder URLs once they load,
-  // so it follows the actual listing base. The static text must be
-  // updated when the pin moves; the rows correct it after the first load.
+  // from. Set from the management `info` action before rows load,
+  // then refreshed from the rows' folder URLs once they load, so it
+  // follows the actual listing base. Never seeded from static text:
+  // the static loading text in index.html carries no URL.
   var catalogSourceUrl = null;
   function catalogUrlFromRows() {
     for (var i = 0; i < rows.length; i++) {
@@ -167,10 +167,6 @@ function storeInit() {
   }
   function loadingText() {
     return catalogSourceUrl ? 'Loading apps from ' + catalogSourceUrl + '…' : 'Loading apps…';
-  }
-  if (status) {
-    var seed = /https:\/\/github\.com\/[^\s…]+/.exec(status.textContent || '');
-    if (seed) { catalogSourceUrl = seed[0]; }
   }
   function setStatus(text) { if (status) { status.textContent = text; } }
   function safeUpdatable() {
@@ -419,7 +415,11 @@ function storeInit() {
     setStatus(loadingText());
     if (retry) { retry.hidden = true; }
     clearConfirm();
-    storeApi('rows', '').then(function (res) {
+    storeApi('info', '').then(function (info) {
+      if (info && info.ok && info.listingUrl) { catalogSourceUrl = info.listingUrl; }
+      setStatus(loadingText());
+      return storeApi('rows', '');
+    }).then(function (res) {
       if (res.ok && res.rows) {
         rows = res.rows.filter(function (r) { return r.id !== 'app-store'; });
         storeSelf = res.storeSelf || null;

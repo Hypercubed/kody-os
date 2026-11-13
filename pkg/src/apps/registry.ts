@@ -34,7 +34,7 @@ import type {
 	ProxyDecl,
 	StateFieldDef,
 } from './types.ts'
-import { catalogGitHubRef, catalogLabelForBase, catalogTagLabel, devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
+import { catalogDirUrl, catalogGitHubRef, catalogLabelForBase, catalogTagLabel, devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
 import {
 	RECENT_CAP,
 	createMemoryStore,
@@ -1300,6 +1300,37 @@ export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageR
 						})
 					})
 				})
+			})
+		})
+	})
+}
+
+export type ManageInfoResult =
+	| { ok: true; listingUrl: string | null; discoveryUrl: string | null; discoveryRef: string | null; pinnedLabel: string | null }
+	| { ok: false; error: string; permissionDenied?: boolean }
+
+/**
+ * Management `info` action (store-dynamic-loading-url): the resolved
+ * catalog bases as display URLs, so the Store bundle can name the
+ * real listing URL in its loading text before rows load. No upstream
+ * fetch: the bases are resolved locally from the Store definition.
+ * Same permission rule as manage_rows: an undeclared caller gets
+ * the permission-denied result the route turns into a plain 404.
+ */
+export function manage_info(actingId: string, store?: KeyStore): Promise<ManageInfoResult> {
+	return resolveStore(store).then(function (active: KeyStore) {
+		return checkManagePermission(active, actingId).then(function (allowed) {
+			if (!allowed) return { ok: false as const, error: 'management not permitted', permissionDenied: true }
+			return resolveManagedBases(active, actingId).then(function (bases) {
+				var listingUrl: string | null = bases.listing !== null ? catalogDirUrl(bases.listing) : null
+				var discoveryUrl: string | null = bases.discovery !== null ? catalogDirUrl(bases.discovery) : null
+				var discoveryRef: string | null = bases.discovery !== null ? catalogGitHubRef(bases.discovery) : null
+				var pinnedLabel: string | null = null
+				if (bases.listing !== null && bases.listing !== bases.discovery) {
+					var tag = catalogTagLabel(bases.listing)
+					pinnedLabel = tag !== null ? tag : catalogLabelForBase(bases.listing)
+				}
+				return { ok: true as const, listingUrl: listingUrl, discoveryUrl: discoveryUrl, discoveryRef: discoveryRef, pinnedLabel: pinnedLabel }
 			})
 		})
 	})

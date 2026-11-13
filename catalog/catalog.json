@@ -15,7 +15,7 @@
     {
       "id": "app-store",
       "label": "App Catalog",
-      "catalogVersion": 30,
+      "catalogVersion": 31,
       "fingerprint": "fnv:372674070-3407494972-26824",
       "installMode": "json",
       "definitionPath": "app-store/definition.json",

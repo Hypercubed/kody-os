@@ -9,7 +9,11 @@
  * (installed version, pinned snapshot tag, latest Store on the
  * discovery base, one update control, and Remove with the same
  * confirmation as a row, including on a gated row); the status line
- * shows the pinned tag instead of the main URL.
+ * shows the pinned tag instead of the main URL. The loading text
+ * names the real listing URL from the management `info` action
+ * (fetched before rows); when the shell has no `info` action it
+ * falls back to the generic text, corrected from the rows' folder
+ * URLs, and the static loading text carries no URL.
  * Not-installed rows offer Add; up-to-date rows offer Remove through the
  * confirmed management remove path; Update All appears only when a safe
  * (non-overwrite) update exists and updates only those rows.
@@ -117,14 +121,14 @@ async function main() {
   check(css.indexOf("url(") === -1, "caret uses no image");
   check(js.indexOf("summary::before") === -1, "no JavaScript draws the caret");
   const rows = [
-    { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
+    { id: "counter", label: "Counter", name: "Counter", icon: "#", description: "A counter.", installed: false, inCatalog: true, status: "not-installed", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] }, folderUrl: "https://github.com/Hypercubed/kody-os/tree/4.2/catalog/counter" },
     { id: "calculator", label: "Calculator", name: "Calculator", icon: "#", description: "Calculator.", installed: true, inCatalog: true, status: "behind-clean", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [] } },
     { id: "app-store", label: "App Store", name: "App Store", icon: "⊞", description: "Store.", installed: true, inCatalog: true, status: "behind-modified", modified: true, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: true, feedHosts: [], proxyHosts: [] } },
     { id: "xkcd", label: "xkcd", name: "xkcd", icon: "#", description: "xkcd.", installed: true, inCatalog: true, status: "snapshot-less", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: false } },
     { id: "clock", label: "Clock", name: "Clock", icon: "#", description: "Clock.", installed: true, inCatalog: true, status: "up-to-date", modified: false, pinned: false, hidden: false, homepage: false, capabilities: { manageApps: false, feedHosts: [], proxyHosts: [], themeView: true, themeSet: true } },
   ];
-  const storeSelfMain = { installedCatalogVersion: 27, pinnedLabel: '4.2.0', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 29, needsNewerShell: false, hasUpdate: true };
-  const storeSelfUpToDate = { installedCatalogVersion: 27, pinnedLabel: '4.2.0', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 27, needsNewerShell: false, hasUpdate: false };
+  const storeSelfMain = { installedCatalogVersion: 27, pinnedLabel: '4.2', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 29, needsNewerShell: false, hasUpdate: true };
+  const storeSelfUpToDate = { installedCatalogVersion: 27, pinnedLabel: '4.2', discoveryRef: 'main', discoveryLabel: null, runningVersion: '4.2.1', latestCatalogVersion: 27, needsNewerShell: false, hasUpdate: false };
   const calls = [];
   const dom = new JSDOM(
     '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
@@ -133,8 +137,11 @@ async function main() {
   const win = dom.window;
   win.fetch = function (url) {
     calls.push(url);
+    if (url.indexOf("/manage/info") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, listingUrl: 'https://github.com/Hypercubed/kody-os/tree/4.2/catalog', discoveryUrl: 'https://github.com/Hypercubed/kody-os/tree/main/catalog', discoveryRef: 'main', pinnedLabel: '4.2' }); } });
+    }
     if (url.indexOf("/manage/rows") !== -1) {
-      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows, catalogRelease: '4.2.0', storeSelf: storeSelfMain }); } });
+      return new Promise(function (resolve) { setTimeout(function () { resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows, catalogRelease: '4.2', storeSelf: storeSelfMain }); } }); }, 30); });
     }
     if (url.indexOf("/manage/update") !== -1 && url.indexOf("confirmed=1") === -1) {
       if (url.indexOf("id=calculator") !== -1) {
@@ -151,7 +158,9 @@ async function main() {
     return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
   };
   win.eval(js);
-  check(win.document.querySelector(".store-status").textContent === "Loading apps from https://github.com/Hypercubed/kody-os/tree/4.2.0/catalog…", "loading text names the catalog source URL");
+  check(win.document.querySelector(".store-status").textContent === "Loading apps…", "static loading text carries no catalog URL");
+  await new Promise(function (r) { setTimeout(r, 10); });
+  check(win.document.querySelector(".store-status").textContent === "Loading apps from https://github.com/Hypercubed/kody-os/tree/4.2/catalog…", "loading text names the real listing URL from info while rows load");
   await new Promise(function (r) { setTimeout(r, 50); });
   const doc = win.document;
   const items = doc.querySelectorAll(".store-row");
@@ -179,20 +188,21 @@ async function main() {
     check(items[2].textContent.indexOf("Can view the shell theme.") !== -1, "theme view-only is disclosed in plain words");
   check(items[3].textContent.indexOf("Can view and change the shell theme.") !== -1, "theme view+set is disclosed in plain words");
   check(doc.querySelector(".store-nojs").style.display === "none", "no-JavaScript note is hidden once the script runs");
-  check(calls[0] === "/manage/rows?app=app-store", "first fetch is the management rows API");
+  check(calls[0] === "/manage/info?app=app-store", "first fetch is the management info API");
+  check(calls[1] === "/manage/rows?app=app-store", "second fetch is the management rows API");
   var selfSection = doc.querySelector(".store-self");
   check(selfSection && selfSection.hidden === false, "self-update section renders");
   var wrapKids = Array.prototype.slice.call(doc.querySelector(".store-wrap").children);
   check(wrapKids.indexOf(selfSection) !== -1 && wrapKids.indexOf(selfSection) < wrapKids.indexOf(doc.querySelector(".store-list")), "self-update section sits above the apps list");
   check(selfSection.textContent.indexOf("App Catalog v27") !== -1, "section shows the installed Store version");
-  check(selfSection.textContent.indexOf("Catalog snapshot 4.2.0") !== -1, "section shows the pinned snapshot tag");
+  check(selfSection.textContent.indexOf("Catalog snapshot 4.2") !== -1, "section shows the pinned snapshot tag");
   check(selfSection.textContent.indexOf("shell v4.2.1") !== -1, "section shows the running shell version");
   check(selfSection.textContent.indexOf("Latest App Catalog v29") !== -1, "section shows the latest Store on the discovery base");
   check(selfSection.textContent.indexOf("from main") !== -1, "section names the discovery base for the Store update");
-  check(selfSection.textContent.indexOf("Catalog source: https://github.com/Hypercubed/kody-os/tree/4.2.0/catalog") !== -1, "section shows the catalog source URL");
-  check(selfSection.querySelector('a[href="https://github.com/Hypercubed/kody-os/tree/4.2.0/catalog"]') !== null, "catalog source URL is a link");
+  check(selfSection.textContent.indexOf("Catalog source: https://github.com/Hypercubed/kody-os/tree/4.2/catalog") !== -1, "section shows the catalog source URL");
+  check(selfSection.querySelector('a[href="https://github.com/Hypercubed/kody-os/tree/4.2/catalog"]') !== null, "catalog source URL is a link");
   check(buttonLabels(selfSection).join(",") === "Update", "section offers one Update control");
-  check(doc.querySelector(".store-status").textContent === "Catalog 4.2.0", "status line shows the pinned tag, not the main URL");
+  check(doc.querySelector(".store-status").textContent === "Catalog 4.2", "status line shows the pinned tag, not the main URL");
   check(doc.querySelector(".store-status").textContent.indexOf("raw.githubusercontent") === -1, "status line shows no main URL");
   check(doc.querySelector(".store-status").textContent.indexOf("resolved") === -1 && doc.querySelector(".store-status").textContent.indexOf("stale") === -1, "status line claims no resolved or stale snapshot");
   const updateBtn = selfSection.querySelector("button");
@@ -525,6 +535,26 @@ async function main() {
   const items7 = doc7.querySelectorAll(".store-row");
   check(promptCode(items7[0]) && promptCode(items7[0]).textContent === "Read package:@hypercubed/kody-os#OPERATIONS.md, then install this app: https://github.com/Hypercubed/kody-os/tree/main/catalog/counter", "shell-provided data-package-ref wins over the localhost host derivation");
   check(promptCode(items7[1]) && promptCode(items7[1]).textContent === "Read package:@hypercubed/kody-os#OPERATIONS.md, then remove this app: clock", "shell-provided ref is used by the remove prompt too");
+  // Fallback (store-dynamic-loading-url): when the shell has no `info`
+  // action, the loading text stays generic and the catalog source URL
+  // is corrected from the rows' folder URLs after the first load.
+  const dom8 = new JSDOM(
+    '<!doctype html><html><body><section class="app" data-app-id="app-store"><div class="bundle" data-action-base="/apps/app-store">' + html + "</div></section></body></html>",
+    { url: "http://localhost/apps/app-store", runScripts: "outside-only" }
+  );
+  const win8 = dom8.window;
+  win8.fetch = function (url) {
+    if (url.indexOf("/manage/rows") !== -1) {
+      return Promise.resolve({ json: function () { return Promise.resolve({ ok: true, rows: rows, catalogRelease: '4.2', storeSelf: storeSelfMain }); } });
+    }
+    return Promise.resolve({ json: function () { return Promise.resolve({ ok: false, error: "unexpected" }); } });
+  };
+  win8.eval(js);
+  await new Promise(function (r) { setTimeout(r, 50); });
+  const doc8 = win8.document;
+  const selfSection8 = doc8.querySelector(".store-self");
+  check(selfSection8.querySelector('a[href="https://github.com/Hypercubed/kody-os/tree/4.2/catalog"]') !== null, "fallback corrects the catalog source URL from row folder URLs");
+  check(doc8.querySelector(".store-status").textContent === "Catalog 4.2", "fallback status line shows the pinned tag");
   if (failures > 0) {
     console.error("\n" + failures + " check(s) FAILED");
     process.exit(1);
