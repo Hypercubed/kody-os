@@ -124,8 +124,8 @@ const idsOf = f => { const a = []; for (let i = 0; i + 1 < f.length; i += 2) a.p
   g.pickSet('little'); ok(g.count().found === 5, 'Little progress restored from state')
   g.close()
   // boot straight into a saved current set
-  g = await makeDom(Object.assign(clone(INIT), { cur: 'god', sort: 'az' }), true)
-  ok(g.count().total === 500 && g.count().found === 27, 'boots into Doodle God from saved cur')
+  g = await makeDom(Object.assign(clone(INIT), { cur: 'byril', sort: 'az' }), true)
+  ok(g.count().total === 336 && g.count().found === 4, 'boots into Alchemy (Byril) from saved cur')
   ok(/Order: A/.test(g.doc.querySelector('[data-key="sort"]').textContent), 'saved sort applied')
   g.close()
   // bogus state
