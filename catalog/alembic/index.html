@@ -38,8 +38,8 @@
 #alembic .result .chips .btn { float: right; }
 #alembic .chip { display: inline-block; margin: 0 6px 4px 0; background: #000; color: #fff; border: 2px solid #000; padding: 3px 8px; font: 700 16px/1.2 Verdana, Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
 #alembic .chip.plain { background: #fff; color: #000; }
-#alembic .uses { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); column-gap: 8px; row-gap: 8px; }
-#alembic .uses .btn { overflow-wrap: anywhere; line-height: 1.1; padding-top: 8px; padding-bottom: 8px; }
+#alembic .uses { overflow: hidden; }
+#alembic .uses .btn { float: right; margin: 0 0 8px 8px; overflow-wrap: anywhere; line-height: 1.1; padding-top: 8px; padding-bottom: 8px; }
 #alembic .tabs { display: grid; grid-template-columns: repeat(4, 1fr); border: 3px solid #000; }
 #alembic .tab { min-height: 52px; border: 0; border-right: 3px solid #000; border-radius: 0; background: #fff; color: #000; font: 700 17px/1 Verdana, Arial, sans-serif; cursor: pointer; touch-action: manipulation; padding: 0 4px; }
 #alembic .tab:last-child { border-right: 0; }
@@ -201,7 +201,7 @@ function applyDurable(d, boot) {
 if (!d || typeof d !== "object") return;
 KEYS.forEach(function (k) { prog[k].f = cleanF(d["p_" + k]); });
 prog.alembic.h = cleanH(d.hints);
-sort = d.sort === "az" ? "az" : "found";
+sort = d.sort === "az" ? "az" : (d.sort === "tier" ? "tier" : "found");
 if (boot && defs[d.cur]) setKey = d.cur;
 }
 function readSeed() {
@@ -214,7 +214,7 @@ try { return JSON.parse(els[i].textContent || ""); } catch (e) { return null; }
 return null;
 }
 function mergeState(server, mine, eraseKey) {
-var out = { cur: mine.cur, sort: mine.sort === "az" ? "az" : "found" };
+var out = { cur: mine.cur, sort: mine.sort === "az" ? "az" : (mine.sort === "tier" ? "tier" : "found") };
 KEYS.forEach(function (k) {
 var key = "p_" + k;
 if (k === eraseKey) { out[key] = cleanF(mine[key]); return; }
@@ -354,7 +354,7 @@ persist("alembic");
 render("hint");
 }
 function toggleSort() {
-sort = sort === "found" ? "az" : "found";
+sort = sort === "found" ? "az" : (sort === "az" ? "tier" : "found");
 page = (sort === "found" && !filter && !letter) ? -1 : 0;
 persistPrefs();
 render("sort");
@@ -421,6 +421,7 @@ return g;
 }
 function letterOf(name) { var c = name.charAt(0).toUpperCase(); return (c >= "A" && c <= "Z") ? c : "#"; }
 function byName(a, b) { return nameOf(a).localeCompare(nameOf(b)); }
+function byTier(a, b) { var d = cur.tier[a] - cur.tier[b]; return d !== 0 ? d : byName(a, b); }
 function perPage() { return (window.innerWidth >= 560 ? 4 : 3) * 5; }
 function renderTop() {
 fill($("am-count"), h("div", { class: "label", text: "Found" }), h("div", { text: order.length + " of " + cur.total }));
@@ -570,6 +571,7 @@ return;
 }
 var items = order.slice();
 if (sort === "az") items.sort(byName);
+else if (sort === "tier") items.sort(byTier);
 if (letter) items = items.filter(function (id) { return letterOf(nameOf(id)) === letter; });
 if (filter) items = items.filter(matchesFilter);
 if (!items.length) { fill(box, h("p", { text: "No elements match. Tap Clear to see them all." })); return; }
@@ -590,7 +592,7 @@ function renderPlay() {
 fill($("am-view"),
 h("div", { class: "bar" },
 h("p", { class: "label", text: "Tap to combine" }),
-h("button", { class: "btn small", type: "button", "data-key": "sort", onclick: toggleSort, text: "Order: " + (sort === "found" ? "Found" : "A\u2013Z") })),
+h("button", { class: "btn small", type: "button", "data-key": "sort", onclick: toggleSort, text: "Order: " + (sort === "found" ? "Found" : (sort === "az" ? "A\u2013Z" : "Tier")) })),
 findBar(true),
 h("div", { id: "am-list" }));
 drawList();
