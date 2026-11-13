@@ -717,7 +717,7 @@ function installSteps(text: string): string[] {
 	delete g['KODY_CATALOG_BASE']
 	try {
 		var declared = await list_catalog(BASE)
-		check('a fetch with a declared base returns the catalog', declared.length === 18, String(declared.length))
+		check('a fetch with a declared base returns the catalog', declared.length === 19, String(declared.length))
 		var refusedDef = await get_catalog_definition('counter', 'http://example.com/catalog/')
 		check('non-HTTPS declared base fetches nothing', refusedDef === null)
 		var badStore = createMemoryStore()
@@ -757,16 +757,16 @@ function installSteps(text: string): string[] {
 		var baseB = 'http://127.0.0.1:' + String(secondAddr.port) + '/'
 		try { (second as unknown as { unref?: () => void }).unref?.() } catch (err) {}
 		var freshA = await readCatalogManifest(BASE)
-		check('first base resolves to its own cache entry', freshA.entries.length === 18, JSON.stringify({ cached: freshA.cached }))
+		check('first base resolves to its own cache entry', freshA.entries.length === 19, JSON.stringify({ cached: freshA.cached }))
 		var srcLabel = get_catalog_source(BASE)
 		check('catalog source reports the declared base', srcLabel.baseUrl === BASE && srcLabel.releaseLabel.indexOf('127.0.0.1') !== -1, JSON.stringify(srcLabel))
 		await new Promise<void>(function (resolve) { __server.close(function () { resolve() }) })
 		var staleA = await readCatalogManifest(BASE)
-		check('stopped base falls back to its own cache entry', staleA.cached === true && staleA.entries.length === 18, JSON.stringify({ cached: staleA.cached }))
+		check('stopped base falls back to its own cache entry', staleA.cached === true && staleA.entries.length === 19, JSON.stringify({ cached: staleA.cached }))
 		var freshB = await readCatalogManifest(baseB)
-		check('second base does not share the first base cache entry', freshB.cached === false && freshB.entries.length === 18, JSON.stringify({ cached: freshB.cached }))
+		check('second base does not share the first base cache entry', freshB.cached === false && freshB.entries.length === 19, JSON.stringify({ cached: freshB.cached }))
 		var freshB2 = await readCatalogManifest(baseB)
-		check('repeat read serves the fresh cache entry with its age', freshB2.cached === true && freshB2.entries.length === 18 && freshB2.releaseLabel.indexOf('cached') !== -1, freshB2.releaseLabel)
+		check('repeat read serves the fresh cache entry with its age', freshB2.cached === true && freshB2.entries.length === 19 && freshB2.releaseLabel.indexOf('cached') !== -1, freshB2.releaseLabel)
 		await new Promise<void>(function (resolve) { second.close(function () { resolve() }) })
 	} finally {
 		if (savedOverride !== undefined) g['KODY_CATALOG_BASE'] = savedOverride
@@ -959,7 +959,7 @@ function installSteps(text: string): string[] {
 	;(globalThis as unknown as Record<string, unknown>)['fetch'] = countFetch
 	try {
 		var rowRows = await get_store_rows(createMemoryStore(), rowBase)
-		check('store listing reads every catalog row', rowRows.length === 18, String(rowRows.length))
+		check('store listing reads every catalog row', rowRows.length === 19, String(rowRows.length))
 		check('store listing fetches no bundle files', bundleFetches === 0, String(bundleFetches))
 		check('store listing performs a bounded number of manifest fetches', manifestFetches <= 2, String(manifestFetches))
 		manifestFetches = 0
@@ -974,12 +974,12 @@ function installSteps(text: string): string[] {
 	}
 	await new Promise<void>(function (resolve) { rowServer.close(function () { resolve() }) })
 	var staleRows = await readCatalogManifest(rowBase)
-	check('stale manifest falls back to the cached copy with its age shown', staleRows.cached === true && staleRows.entries.length === 18 && staleRows.releaseLabel.indexOf('cached') !== -1, staleRows.releaseLabel)
+	check('stale manifest falls back to the cached copy with its age shown', staleRows.cached === true && staleRows.entries.length === 19 && staleRows.releaseLabel.indexOf('cached') !== -1, staleRows.releaseLabel)
 	var realNow = Date.now
 	Date.now = function () { return realNow() + 60000 }
 	try {
 		var forcedStale = await readCatalogManifest(rowBase)
-		check('expired cache falls back to the cached copy on fetch failure', forcedStale.cached === true && forcedStale.entries.length === 18 && forcedStale.releaseLabel.indexOf('cached') !== -1, forcedStale.releaseLabel)
+		check('expired cache falls back to the cached copy on fetch failure', forcedStale.cached === true && forcedStale.entries.length === 19 && forcedStale.releaseLabel.indexOf('cached') !== -1, forcedStale.releaseLabel)
 	} finally {
 		Date.now = realNow
 	}
@@ -1018,7 +1018,7 @@ function installSteps(text: string): string[] {
 	try { normalizeCatalogBase(localhostBase); localhostOk = true } catch (err) {}
 	check('genuine http://localhost base still validates', localhostOk)
 	var localhostList = await list_catalog(localhostBase)
-	check('genuine http://localhost base still fetches', localhostList.length === 18, String(localhostList.length))
+	check('genuine http://localhost base still fetches', localhostList.length === 19, String(localhostList.length))
 	await new Promise<void>(function (resolve) { c4Server.close(function () { resolve() }) })
 	var realFetch4 = (globalThis as unknown as Record<string, unknown>)['fetch']
 	;(globalThis as unknown as Record<string, unknown>)['fetch'] = function () {

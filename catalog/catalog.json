@@ -1,6 +1,18 @@
 {
   "apps": [
     {
+      "id": "alembic",
+      "label": "Alembic",
+      "catalogVersion": 1,
+      "fingerprint": "fnv:776116009-1821998202-79769",
+      "installMode": "json",
+      "definitionPath": "alembic/definition.json",
+      "recipePath": "alembic/RECIPE.md",
+      "bundleFiles": [
+        "index.html"
+      ]
+    },
+    {
       "id": "app-store",
       "label": "App Catalog",
       "catalogVersion": 30,

@@ -1,0 +1,158 @@
+{
+  "id": "alembic",
+  "name": "Alembic",
+  "label": "Alembic",
+  "schemaVersion": 5,
+  "catalogVersion": 1,
+  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"miter\"><polygon points=\"12,3 21,18 3,18\" /><polygon points=\"3,7 21,7 12,22\" /></svg>",
+  "category": "Games",
+  "description": "An element-combining alchemy puzzle for e-ink with 5 recipe sets (the original Alembic with nine goals, Little Alchemy, Alchemy Fusion 2, Alchemy by Byril, Doodle God). Each set saves its own progress. High contrast, tap only, no drag and drop, no animation.",
+  "bundle": {
+    "entry": "index.html",
+    "files": [
+      "index.html"
+    ]
+  },
+  "ui": {
+    "title": "Alembic",
+    "openAs": "page",
+    "hideState": true,
+    "menuBar": false
+  },
+  "stateSchema": {
+    "type": "object",
+    "initial": {
+      "cur": "alembic",
+      "sort": "found",
+      "hints": "000000000",
+      "p_alembic": "",
+      "p_little": "",
+      "p_fusion2": "",
+      "p_byril": "",
+      "p_god": ""
+    },
+    "fields": {
+      "cur": {
+        "type": "string",
+        "maxLength": 16
+      },
+      "sort": {
+        "type": "string",
+        "maxLength": 8
+      },
+      "hints": {
+        "type": "string",
+        "maxLength": 16
+      },
+      "p_alembic": {
+        "type": "string",
+        "maxLength": 82
+      },
+      "p_little": {
+        "type": "string",
+        "maxLength": 1190
+      },
+      "p_fusion2": {
+        "type": "string",
+        "maxLength": 1494
+      },
+      "p_byril": {
+        "type": "string",
+        "maxLength": 672
+      },
+      "p_god": {
+        "type": "string",
+        "maxLength": 954
+      }
+    }
+  },
+  "actions": {
+    "save": {
+      "description": "Save the current set, list order, hints and every set's found elements.",
+      "args": {
+        "cur": {
+          "type": "string",
+          "required": true,
+          "maxLength": 16
+        },
+        "sort": {
+          "type": "string",
+          "required": true,
+          "maxLength": 8
+        },
+        "hints": {
+          "type": "string",
+          "required": true,
+          "maxLength": 16
+        },
+        "p_alembic": {
+          "type": "string",
+          "required": true,
+          "maxLength": 82
+        },
+        "p_little": {
+          "type": "string",
+          "required": true,
+          "maxLength": 1190
+        },
+        "p_fusion2": {
+          "type": "string",
+          "required": true,
+          "maxLength": 1494
+        },
+        "p_byril": {
+          "type": "string",
+          "required": true,
+          "maxLength": 672
+        },
+        "p_god": {
+          "type": "string",
+          "required": true,
+          "maxLength": 954
+        }
+      },
+      "effects": [
+        {
+          "op": "set",
+          "field": "cur",
+          "fromArg": "cur"
+        },
+        {
+          "op": "set",
+          "field": "sort",
+          "fromArg": "sort"
+        },
+        {
+          "op": "set",
+          "field": "hints",
+          "fromArg": "hints"
+        },
+        {
+          "op": "set",
+          "field": "p_alembic",
+          "fromArg": "p_alembic"
+        },
+        {
+          "op": "set",
+          "field": "p_little",
+          "fromArg": "p_little"
+        },
+        {
+          "op": "set",
+          "field": "p_fusion2",
+          "fromArg": "p_fusion2"
+        },
+        {
+          "op": "set",
+          "field": "p_byril",
+          "fromArg": "p_byril"
+        },
+        {
+          "op": "set",
+          "field": "p_god",
+          "fromArg": "p_god"
+        }
+      ]
+    }
+  }
+}
