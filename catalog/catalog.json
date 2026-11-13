@@ -3,8 +3,8 @@
     {
       "id": "alembic",
       "label": "Alembic",
-      "catalogVersion": 2,
-      "fingerprint": "fnv:772905270-3412378830-68102",
+      "catalogVersion": 3,
+      "fingerprint": "fnv:2794978450-1717135300-68208",
       "installMode": "json",
       "definitionPath": "alembic/definition.json",
       "recipePath": "alembic/RECIPE.md",

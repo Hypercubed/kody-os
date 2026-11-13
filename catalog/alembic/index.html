@@ -34,6 +34,8 @@
 #alembic .result > *:last-child { margin-bottom: 0; }
 #alembic .result .out { margin-top: 6px; font: 700 28px/1.1 Georgia, "Times New Roman", serif; overflow-wrap: anywhere; }
 #alembic .result .eq { overflow-wrap: anywhere; }
+#alembic .result .chips { min-height: 48px; }
+#alembic .result .chips .btn { float: right; }
 #alembic .chip { display: inline-block; margin: 0 6px 4px 0; background: #000; color: #fff; border: 2px solid #000; padding: 3px 8px; font: 700 16px/1.2 Verdana, Arial, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
 #alembic .chip.plain { background: #fff; color: #000; }
 #alembic .uses { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); column-gap: 8px; row-gap: 8px; }
@@ -480,8 +482,9 @@ var slotsOut = [];
 for (var i = 0; i < n; i++) slotsOut.push(slotNode(i));
 var res;
 var parts = [];
+var clearBtn = bench.length ? h("button", { class: "btn small", type: "button", "data-key": "clear", onclick: clearBench, text: "Clear bench" }) : null;
 if (!last) {
-parts.push(h("div", { class: "chips" }, h("span", { class: "chip plain", text: "Ready" })));
+parts.push(h("div", { class: "chips" }, h("span", { class: "chip plain", text: "Ready" }), clearBtn));
 parts.push(h("p", { class: "out", text: "Pick two elements" }));
 parts.push(h("p", { class: "eq", text: "They combine as soon as they match a recipe." }));
 } else {
@@ -491,7 +494,7 @@ if (last.kind === "known") chips.push(h("span", { class: "chip plain", text: "Al
 if (last.kind === "none") chips.push(h("span", { class: "chip plain", text: "No reaction" }));
 if (last.kind === "wait") chips.push(h("span", { class: "chip plain", text: "Keep adding" }));
 if (last.goal) chips.push(h("span", { class: "chip", text: "Goal reached" }));
-parts.push(h("div", { class: "chips" }, chips));
+parts.push(h("div", { class: "chips" }, chips, clearBtn));
 var title = last.kind === "wait" ? "Add another element" : (last.out.length ? last.out.map(nameOf).join(", ") : "Nothing happens");
 parts.push(h("p", { class: "out", text: title }));
 var eq = last.a.map(nameOf).join(" + ");
@@ -503,7 +506,6 @@ return h("button", { class: "btn small", type: "button", "data-key": "use:" + id
 })));
 }
 }
-if (bench.length) parts.push(h("div", {}, h("button", { class: "btn small", type: "button", "data-key": "clear", onclick: clearBench, text: "Clear bench" })));
 res = h("div", { class: "result" }, parts);
 fill($("am-bench"), slotsOut, res);
 }
