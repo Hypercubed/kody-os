@@ -415,11 +415,7 @@ function storeInit() {
     setStatus(loadingText());
     if (retry) { retry.hidden = true; }
     clearConfirm();
-    storeApi('info', '').then(function (info) {
-      if (info && info.ok && info.listingUrl) { catalogSourceUrl = info.listingUrl; }
-      setStatus(loadingText());
-      return storeApi('rows', '');
-    }).then(function (res) {
+    storeApi('rows', '').then(function (res) {
       if (res.ok && res.rows) {
         rows = res.rows.filter(function (r) { return r.id !== 'app-store'; });
         storeSelf = res.storeSelf || null;

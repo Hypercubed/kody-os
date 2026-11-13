@@ -265,19 +265,6 @@ export function folderUrlForBase(base: string, id: string): string {
   return base + id + '/'
 }
 
-/**
- * Display URL of the catalog directory itself (no app id): the
- * GitHub tree form for GitHub raw bases, the base URL otherwise.
- * No trailing slash, matching the loading text the Store derives
- * from row folder URLs. Used by the management `info` action so
- * the bundle can name the real catalog source before rows load.
- */
-export function catalogDirUrl(base: string): string {
-  var url = folderUrlForBase(base, '')
-  while (url.length > 0 && url.charAt(url.length - 1) === '/') { url = url.slice(0, -1) }
-  return url
-}
-
 export function get_catalog_source(base?: string): { baseUrl: string; releaseLabel: string } {
   var useBase = resolveFetchBase(base)
   return { baseUrl: useBase, releaseLabel: catalogLabelForBase(useBase) }

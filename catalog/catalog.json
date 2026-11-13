@@ -15,8 +15,8 @@
     {
       "id": "app-store",
       "label": "App Catalog",
-      "catalogVersion": 31,
-      "fingerprint": "fnv:372674070-3407494972-26824",
+      "catalogVersion": 32,
+      "fingerprint": "fnv:1851483125-4011966218-26637",
       "installMode": "json",
       "definitionPath": "app-store/definition.json",
       "recipePath": "app-store/RECIPE.md",

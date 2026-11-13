@@ -508,7 +508,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			var get_pinned = m.get_pinned
 			var get_recent = m.get_recent
 			var list_apps = m.list_apps
-			var manage_info = m.manage_info
 			var manage_install = m.manage_install
 			var manage_remove = m.manage_remove
 			var manage_restore = m.manage_restore
@@ -1010,12 +1009,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				if (actingId === '') return Promise.resolve(plain404)
 				if (manageAction === 'rows') {
 					return manage_rows(actingId).then(function (result) {
-						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
-						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
-					})
-				}
-				if (manageAction === 'info') {
-					return manage_info(actingId).then(function (result) {
 						if (!result.ok && (result as { permissionDenied?: boolean }).permissionDenied) return Promise.resolve(plain404)
 						return Promise.resolve(new Response(JSON.stringify(result), { status: result.ok ? 200 : 400, headers: jsonHeaders }))
 					})

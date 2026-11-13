@@ -147,3 +147,33 @@ pre-existing failure, not fixed here; the
 catalog-tags-semver-line spec change is still
 uncommitted and its README procedure rewrite is
 still pending (separate change).
+
+## Revert (2026-11-12, same evening — this change was reverted)
+
+Pushed to main as `ef6d1f2` (parent `00767d5`) the same
+evening, then reverted at the user's direction ("OK.
+Drop it. Update the loading text to be generic.").
+Reason, in his words: the shell should not care about
+the app catalog — the Store's definition knows where
+it reads the catalog data from, so there is no reason
+for the Store to ask the shell for its own bases.
+The `info` action had the shell resolving the Store's
+own catalog URLs and handing them back, which cost a
+shell MINOR bump (4.3.0) for a Store display string.
+The loading text is now generic ("Loading apps…"
+until rows arrive; the real URL comes from the row
+folder URLs once rows load). The revert removes
+`manage_info` and `catalogDirUrl`, restores the shell
+to 4.2.1 build 48, and takes the Store to v32 (the
+bundle no longer fetches `info`). Shell 4.3.0 build 49
+was pushed to GitHub but never published to Kody, so
+the 4.3.0/49 pair was never live and is free to reuse;
+the repo now matches the live shell (4.2.1 build 48)
+exactly. The hardcoded-text alternative (update the
+static loading text when the pin changes) was
+discussed and not taken: the text would duplicate the
+pin, and updating it on every catalog change would
+re-couple app adds to Store updates. This spec is
+archived as the record of what was tried and why it
+was reverted; do not rewrite it to make the past look
+cleaner.

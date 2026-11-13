@@ -3,7 +3,7 @@
   "name": "App Catalog",
   "label": "App Catalog",
   "schemaVersion": 5,
-  "catalogVersion": 31,
+  "catalogVersion": 32,
   "minPackageVersion": "4.2.0",
   "icon": "\u229e",
   "category": "utilities",
