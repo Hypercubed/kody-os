@@ -55,19 +55,28 @@ bun scripts/build-catalog-index.ts
 
 Each app entry carries id, label, catalogVersion, fingerprint, installMode, definitionPath, recipePath (paths relative to `catalog/`), and `bundleFiles` (the bundle file paths, sorted, relative to the app directory). The fingerprint is computed by the package's own `fingerprintDefinition` over the assembled definition (manifest resolved to its files map first). The generator writes the manifest only. Regenerating from unchanged inputs is byte-identical; `tests/catalog-harness.ts` fails on a stale index.
 
-The Store lists apps from the pinned tag, so a repo-added app (or a new version of one) is invisible to the Store until the pin moves to a tag that contains it — committing to `main` alone no longer makes it appear, and no Kody publish is needed for it to appear once the pin moves; the tag is the catalog-release snapshot. The Store's own update is still discovered from `main`, so a new Store version is offered there as soon as it is committed. Local dev never needs a tag: run a tiny static file server on `catalog/` and point `KODY_CATALOG_BASE` at `http://127.0.0.1:<port>/` (loopback http is dev-only; production stays HTTPS-only).
+The Store lists apps from the `catalog-apps` entry pinned to a line tag, never from `main` directly. The tag is the catalog's id: bare `<major>.<minor>` (for example `4.2`), no patch, no `v` prefix — a patch release cannot change what apps can be installed, so the tag does not need the full version. A shell reads only its own line's tag, so the catalog cannot get ahead of the shell. A repo-added app (or a new version of one) is invisible to the Store until the line tag moves to a commit containing it — committing to `main` alone no longer makes it appear, and no Kody publish is needed for it to appear once the tag moves. The Store's own update is still discovered from `main`, so a new Store version is offered there as soon as it is committed. Local dev never needs a tag: run a tiny static file server on `catalog/` and point `KODY_CATALOG_BASE` at `http://127.0.0.1:<port>/` (loopback http is dev-only; production stays HTTPS-only).
 
 ## Pinned catalog maintenance
 
-The Store lists apps from the `catalog-apps` entry pinned to a release tag, never from `main` directly. Moving the pin is a maintainer action, done after a catalog change has landed on `main` and only when the new snapshot is ready to ship:
+Adding an app or a new app version moves the line tag — no pin move, no Store update, no version bump anywhere. A tag move is a force-push of one tag by name and needs its own explicit direction naming the tag and the remote, every time:
 
-1. Cut the tag for the release: `git tag vX.Y.Z && git push origin vX.Y.Z`. Tags are release snapshots and are never moved.
-2. Move the pin: in `catalog/app-store/definition.json`, set the `catalog-apps` proxy entry to `https://raw.githubusercontent.com/Hypercubed/kody-os/vX.Y.Z/catalog/`.
+1. Push the catalog change to `main`, regenerate the index (`bun scripts/build-catalog-index.ts`), and run the harnesses (`bun tests/catalog-harness.ts`, `bun tests/store-harness.ts`, `node catalog/tests/app-store-tests.cjs`). Never move the tag across an unvalidated commit.
+2. Move the tag: `git tag -f <major>.<minor> <commit> && git push -f origin <major>.<minor>`. One tag by name, never `--mirror` or `--all`.
+
+A moved tag can serve stale content for a while (`raw.githubusercontent` caches by ref, and a clone that already fetched the old tag keeps the old target until it force-fetches tags) — a new app may take a while to appear. Do not re-move the tag to "fix" a slow appearance; wait for the cache. A bad manifest breaks the listing for the whole line until fixed (manifest validation is all-or-nothing), so the harness run in step 1 is the gate, not an optional check.
+
+When a shell change adds a feature (a minor or major line advance), the old line's tag stops moving — it is frozen at its last commit. Cut the new line tag, move the pin in a new Store version, and publish that Store version to `main`:
+
+1. Cut the new line tag: `git tag <major>.<minor> <commit> && git push origin <major>.<minor>`.
+2. Move the pin: in `catalog/app-store/definition.json`, set the `catalog-apps` proxy entry to `https://raw.githubusercontent.com/Hypercubed/kody-os/<major>.<minor>/catalog/`.
 3. Bump the Store's `catalogVersion` by exactly 1 (the pin move is a definition change).
-4. Regenerate the index (`bun scripts/build-catalog-index.ts`) and run the harnesses (`bun tests/catalog-harness.ts`, `bun tests/store-harness.ts`, `node catalog/tests/app-store-tests.cjs`).
+4. Regenerate the index and run the harnesses (as above).
 5. Commit and push to `main`.
 
-A new app version on `main` is invisible to the Store until the pin moves to a tag containing it. An older shell keeps its old Store and its old pin: the Store update is `minPackageVersion`-gated, so a shell older than the new Store's minimum is never offered the update and keeps listing from the old snapshot.
+The Store update carrying the new pin is `minPackageVersion`-gated, so a shell older than the new Store's minimum is never offered the update and keeps listing from the frozen tag; after the shell is updated, the Store update goes through and the new catalog is there. Shell first, then Store.
+
+A Store update with the shell unchanged needs no shell change: the Store self-updates from `main` whenever the latest Store version is newer and compatible with the running shell.
 
 Catalog versioning and install snapshots: every catalog definition carries `catalogVersion`, a positive integer starting at 1 on its first versioned release, incremented by exactly 1 on any change to that definition file, never reused, never decreased, never bumped for an unrelated app or a shell change, and distinct from `schemaVersion` and from the package version. A catalog definition without a valid `catalogVersion` fails catalog validation. The canonical stored definition preserves `catalogVersion` through `add_app` normalization. A store install or store update records an install snapshot separate from the definition (install-time `catalogVersion` plus a fingerprint of the canonical stored definition, content only); a snapshot is written only by store install/update (including seeding), never by generic `add_app`/`import_app`, deleted by `remove_app`, and never included in exports. Snapshot-less installs claim no status and get no update control under this scheme. The store never auto-updates. `minPackageVersion` is fingerprinted content, unlike `installMode`: adding or changing it is a definition change requiring `catalogVersion` +1, and `add_app` refuses an app whose minimum is newer than the running shell.
 
