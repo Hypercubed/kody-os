@@ -10,7 +10,19 @@
       "recipePath": "alembic/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Alembic",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"miter\"><polygon points=\"12,3 21,18 3,18\" /><polygon points=\"3,7 21,7 12,22\" /></svg>",
+      "category": "Games",
+      "description": "An element-combining alchemy puzzle for e-ink with 4 recipe sets (the original Alembic with nine goals, Little Alchemy, Alchemy Fusion 2, Alchemy by Byril). Each set saves its own progress. High contrast, tap only, no drag and drop, no animation.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "app-store",
@@ -24,7 +36,22 @@
         "index.html",
         "store.css",
         "store.js"
-      ]
+      ],
+      "name": "App Catalog",
+      "icon": "⊞",
+      "category": "utilities",
+      "description": "Install and update apps from the catalog, right here in the browser — no agent needed.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": true,
+        "feedHosts": [],
+        "proxyHosts": [
+          "raw.githubusercontent.com"
+        ],
+        "themeView": false,
+        "themeSet": false
+      },
+      "minPackageVersion": "4.2.0"
     },
     {
       "id": "arrow-game",
@@ -36,7 +63,19 @@
       "recipePath": "arrow-game/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Arrow Game",
+      "icon": "→",
+      "category": "Games",
+      "description": "A puzzle about clearing the blue arrows; a red arrow costs a life, and a new life arrives every five levels. A kody-os rewrite of Hypercubed/arrow-game on GitHub.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "calculator",
@@ -48,7 +87,19 @@
       "recipePath": "calculator/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Calculator",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"5.5\" y=\"3.5\" width=\"13\" height=\"17\" rx=\"1.5\" /><path d=\"M8.5 7.5h7\" /><path d=\"M8.5 12h1.5M11.2 12h1.5M14 12h1.5M8.5 15.5h1.5M11.2 15.5h1.5M14 15.5h1.5\" /></svg>",
+      "category": "utilities",
+      "description": "A recreation of the original Macintosh calculator with its classic button layout.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "calendar",
@@ -60,7 +111,19 @@
       "recipePath": "calendar/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Calendar",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\" /><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\" /><line x1=\"8\" y1=\"3\" x2=\"8\" y2=\"7\" /><line x1=\"16\" y1=\"3\" x2=\"16\" y2=\"7\" /></svg>",
+      "category": "utilities",
+      "description": "A month calendar that always opens on the current month, with today highlighted.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "cellular-playground",
@@ -72,7 +135,19 @@
       "recipePath": "cellular-playground/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Cellular Playground",
+      "icon": "▦",
+      "category": "Games",
+      "description": "A playground for Life, Brian’s Brain, and Seeds on a 20 by 14 board. A kody-os rewrite of Hypercubed/CellularPlayground on GitHub.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "clock",
@@ -84,7 +159,19 @@
       "recipePath": "clock/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Clock",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><path d=\"M12 7v5l3.5 2\" /></svg>",
+      "category": "utilities",
+      "description": "A live clock showing the current time and date.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "counter",
@@ -96,7 +183,19 @@
       "recipePath": "counter/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Counter",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M12 8v8M8 12h8\" /></svg>",
+      "category": "utilities",
+      "description": "A simple counter that adds and subtracts, with a saved count.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "daily-feed",
@@ -108,7 +207,19 @@
       "recipePath": "daily-feed/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Daily Feed",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"12\" y2=\"15\" /><circle cx=\"16.5\" cy=\"15\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\" /></svg>",
+      "category": "reading",
+      "description": "A daily feed, updated by your agent, showing one entry at a time.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "eight-ball",
@@ -120,7 +231,19 @@
       "recipePath": "eight-ball/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Eight Ball",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><circle cx=\"12\" cy=\"9.4\" r=\"2.4\" /><circle cx=\"12\" cy=\"15\" r=\"2.8\" /></svg>",
+      "category": "toys",
+      "description": "A Magic 8-Ball for yes-or-no questions.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "generic-feed",
@@ -132,7 +255,19 @@
       "recipePath": "generic-feed/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Generic Feed",
+      "icon": "≡",
+      "category": "reading",
+      "description": "A generic RSS feed, configured by your agent — paste the prompt, give it a feed URL, and it shows one entry at a time.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "hoodie-weather",
@@ -144,7 +279,21 @@
       "recipePath": "hoodie-weather/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Hoodie Weather",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 5 3 8l2.5 4L8 10.5V19h8v-8.5l2.5 1.5L21 8l-5-3\" /><path d=\"M9 5c1-2 5-2 6 0\" /><path d=\"M10 14h4v3h-4z\" /></svg>",
+      "category": "weather",
+      "description": "A next-hour clothing forecast for your saved place: raincoat, jacket, hoodie, or t-shirt. A kody-os rewrite of Hypercubed/HoodieWeather on GitHub.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [
+          "api.open-meteo.com"
+        ],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "link-drop",
@@ -156,7 +305,19 @@
       "recipePath": "link-drop/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Link Drop",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 14a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7\" /><path d=\"M14 10a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7\" /></svg>",
+      "category": "utilities",
+      "description": "Save links from any browser with a bookmarklet, and open them later, including on the Scribe. Newest first; you can clear the whole list at once.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "mac-puzzle",
@@ -168,7 +329,19 @@
       "recipePath": "mac-puzzle/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Puzzle",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M3.5 9.2h17M3.5 14.8h17M9.2 3.5v5.7M14.8 3.5v5.7M9.2 14.8v5.7M14.8 14.8v5.7\" /></svg>",
+      "category": "toys",
+      "description": "The original Macintosh Puzzle: 15 numbered tiles in a 4x4 grid.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "news",
@@ -180,7 +353,22 @@
       "recipePath": "news/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "News",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"13\" y2=\"9\" /><line x1=\"15\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"17.5\" y2=\"15\" /></svg>",
+      "category": "reading",
+      "description": "Six news sections (World, Technology, Business, Science, Arts, and Finance) with headlines and summaries.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [
+          "feeds.bbci.co.uk",
+          "www.cnbc.com"
+        ],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "probe",
@@ -192,7 +380,19 @@
       "recipePath": "probe/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Scribe Probe",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>",
+      "category": "diagnostics",
+      "description": "Check this browser's JavaScript, storage, and display features, and send the results back.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "settings",
@@ -204,7 +404,19 @@
       "recipePath": "settings/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "Settings",
+      "icon": "⚙",
+      "category": "utilities",
+      "description": "Change the shell theme from the browser: name, title, icon, and background.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": true,
+        "themeSet": true
+      }
     },
     {
       "id": "three-bit-art",
@@ -216,7 +428,19 @@
       "recipePath": "three-bit-art/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "3-Bit Art",
+      "icon": "◼",
+      "category": "Art",
+      "description": "A 16 by 16 pixel drawing app with three cycling modes — solid Color, Motif + Color, and Bayer + Color — and a gallery of saved drawings. A kody-os rewrite of Hypercubed/3-bit-art on GitHub.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     },
     {
       "id": "xkcd",
@@ -228,7 +452,21 @@
       "recipePath": "xkcd/RECIPE.md",
       "bundleFiles": [
         "index.html"
-      ]
+      ],
+      "name": "xkcd",
+      "icon": "X",
+      "category": "reading",
+      "description": "The latest xkcd comics, with each comic’s image and alt text.",
+      "schemaVersion": 5,
+      "capabilities": {
+        "manageApps": false,
+        "feedHosts": [
+          "xkcd.com"
+        ],
+        "proxyHosts": [],
+        "themeView": false,
+        "themeSet": false
+      }
     }
   ]
 }

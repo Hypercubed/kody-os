@@ -13,7 +13,11 @@
  * cap, and the entry reference contract), computes the fingerprint with the
  * existing `fingerprintDefinition`, and requires the sibling `RECIPE.md`.
  * Each index entry records `bundleFiles` (sorted, relative to the app
- * directory). Output is deterministic (sorted by id, sorted file keys,
+ * directory) plus the display fields the Store renders its rows from
+ * (`name`, `icon`, `category`, `description`, `schemaVersion`,
+ * `minPackageVersion` when the definition carries one, and the
+ * `capabilities` summary) — the Store builds its rows from the index
+ * alone and fetches a definition only to install. Output is deterministic (sorted by id, sorted file keys,
  * two-space JSON + newline): running it twice over unchanged inputs is
  * byte-identical.
  *
@@ -35,6 +39,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { AppDefinition } from '../pkg/src/apps/types.ts'
+import type { CapabilitySummary } from '../pkg/src/apps/definition.ts'
 
 type InstallMode = 'json' | 'recipe-only'
 
@@ -47,6 +52,13 @@ interface IndexEntry {
   definitionPath: string
   recipePath: string
   bundleFiles: string[]
+  name: string
+  icon: string
+  category: string
+  description: string
+  schemaVersion: number
+  minPackageVersion?: string
+  capabilities: CapabilitySummary
 }
 
 var root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -84,6 +96,8 @@ var assembleBundleFiles = registry.assembleBundleFiles as (
 ) => { ok: true; files: Record<string, string> } | { ok: false; error: string }
 var fingerprintDefinition = registry.fingerprintDefinition as (definition: AppDefinition) => string
 var validateCatalogDefinition = registry.validateCatalogDefinition as (definition: unknown) => string | null
+var summarizeCapabilities = registry.summarizeCapabilities as (definition: AppDefinition) => CapabilitySummary
+var parsePackageVersion = registry.parsePackageVersion as (value: unknown) => [number, number, number] | null
 
 // App directories hold a definition or a recipe; `tests/` holds bundle
 // harnesses, not apps.
@@ -131,6 +145,16 @@ for (var id of appIds) {
       if (readFile(bundleFiles[bi]) === undefined) fail('app ' + id + ' bundle file missing on disk: ' + bundleFiles[bi])
     }
   }
+  // Display fields are required in the manifest (the Store builds its
+  // rows from the index alone), even though icon/category/description
+  // are optional in the definition type: a catalog definition without
+  // them fails the generator here instead of shipping a row the shell
+  // cannot render.
+  if (typeof definition.name !== 'string' || definition.name === '') fail('definition ' + definitionPath + ' has no name')
+  if (typeof definition.icon !== 'string' || definition.icon === '') fail('definition ' + definitionPath + ' has no icon')
+  if (typeof definition.category !== 'string' || definition.category === '') fail('definition ' + definitionPath + ' has no category')
+  if (typeof definition.description !== 'string' || definition.description === '') fail('definition ' + definitionPath + ' has no description')
+  if (typeof definition.schemaVersion !== 'number' || !Number.isSafeInteger(definition.schemaVersion) || definition.schemaVersion < 1) fail('definition ' + definitionPath + ' has no valid schemaVersion')
   apps.push({
     id: id,
     label: definition.label !== undefined ? definition.label : definition.name,
@@ -140,7 +164,18 @@ for (var id of appIds) {
     definitionPath: definitionPath,
     recipePath: recipePath,
     bundleFiles: bundleFiles,
+    name: definition.name,
+    icon: definition.icon,
+    category: definition.category,
+    description: definition.description,
+    schemaVersion: definition.schemaVersion,
+    capabilities: summarizeCapabilities(assembledDef),
   })
+  var minRaw = (definition as unknown as Record<string, unknown>)['minPackageVersion']
+  if (minRaw !== undefined) {
+    if (parsePackageVersion(minRaw) === null) fail('definition ' + definitionPath + ' has an invalid minPackageVersion')
+    apps[apps.length - 1].minPackageVersion = minRaw as string
+  }
 }
 
 var output = JSON.stringify({ apps: apps }, null, 2) + '\n'

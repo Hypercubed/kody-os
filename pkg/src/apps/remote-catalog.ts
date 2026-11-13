@@ -28,15 +28,20 @@
  * Failure degrades honestly: a failed manifest fetch is an error the
  * Store shows alongside installed apps (never a blank Store); a cached
  * manifest served from the short-TTL cache or used as fallback is
- * labeled as cached with its age. Definitions are fetched on demand:
- * row display reads each entry's definition.json only (no bundle
- * assembly); bundle files are fetched only for install/update (full
- * definition assembly), never prefetched for every app.
+ * labeled as cached with its age. The listing reads the manifest
+ * only: every display field (name, icon, category, description,
+ * minPackageVersion, schemaVersion, capabilities) lives in the
+ * manifest entry, so row display fetches no definition. Definitions
+ * are fetched on demand only: bundle files are fetched for
+ * install/update (full definition assembly), never prefetched for
+ * every app.
  *
  * ES2019 ceiling: no ?. and no ?? in this file.
  */
 
 import type { AppDefinition } from './types.ts'
+import { parsePackageVersion } from './definition.ts'
+import type { CapabilitySummary } from './definition.ts'
 
 /**
  * Validate a catalog base URL and normalize it to a trailing-slash
@@ -89,10 +94,12 @@ export interface CatalogSummary {
   installMode: CatalogInstallMode
   /** Manifest-relative path of the app recipe, e.g. app-store/RECIPE.md. */
   recipePath: string
-  /** Minimum shell version the entry's definition.json declares, when present. */
+  /** Minimum shell version the manifest entry declares, when present. */
   minPackageVersion?: string
-  /** Definition schema the entry's definition.json carries, when known. */
-  schemaVersion?: number
+  /** Definition schema the manifest entry carries. */
+  schemaVersion: number
+  /** Capabilities the manifest entry discloses, in summarizeCapabilities shape. */
+  capabilities: CapabilitySummary
 }
 
 interface ManifestEntry {
@@ -104,6 +111,13 @@ interface ManifestEntry {
   definitionPath: string
   recipePath: string
   bundleFiles: string[]
+  name: string
+  icon: string
+  category: string
+  description: string
+  schemaVersion: number
+  minPackageVersion?: string
+  capabilities: CapabilitySummary
 }
 
 interface CatalogManifest {
@@ -291,6 +305,32 @@ function isSafeManifestPath(path: string, id: string, kind: string): boolean {
   return true
 }
 
+function isStringArray(value: unknown): value is string[] {
+  if (!Array.isArray(value)) return false
+  for (var i = 0; i < value.length; i++) {
+    if (typeof value[i] !== 'string' || (value[i] as string) === '') return false
+  }
+  return true
+}
+
+/** Validate a manifest capabilities summary (summarizeCapabilities shape). */
+function validateCapabilitiesSummary(raw: unknown): CapabilitySummary | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  var c = raw as Record<string, unknown>
+  if (c['manageApps'] !== true && c['manageApps'] !== false) return null
+  if (!isStringArray(c['feedHosts'])) return null
+  if (!isStringArray(c['proxyHosts'])) return null
+  if (c['themeView'] !== true && c['themeView'] !== false) return null
+  if (c['themeSet'] !== true && c['themeSet'] !== false) return null
+  return {
+    manageApps: c['manageApps'] as boolean,
+    feedHosts: (c['feedHosts'] as string[]).slice(),
+    proxyHosts: (c['proxyHosts'] as string[]).slice(),
+    themeView: c['themeView'] as boolean,
+    themeSet: c['themeSet'] as boolean,
+  }
+}
+
 function validateManifestEntry(raw: unknown): ManifestEntry | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   var r = raw as Record<string, unknown>
@@ -320,7 +360,16 @@ function validateManifestEntry(raw: unknown): ManifestEntry | null {
     if (!ok) return null
   }
   if ((bf as string[]).indexOf('index.html') === -1) return null
-  return {
+  if (typeof r['name'] !== 'string' || (r['name'] as string) === '') return null
+  if (typeof r['icon'] !== 'string' || (r['icon'] as string) === '') return null
+  if (typeof r['category'] !== 'string' || (r['category'] as string) === '') return null
+  if (typeof r['description'] !== 'string' || (r['description'] as string) === '') return null
+  if (typeof r['schemaVersion'] !== 'number' || !isFinite(r['schemaVersion'] as number) || Math.floor(r['schemaVersion'] as number) !== (r['schemaVersion'] as number) || (r['schemaVersion'] as number) < 1) return null
+  var minRaw = r['minPackageVersion']
+  if (minRaw !== undefined && (typeof minRaw !== 'string' || parsePackageVersion(minRaw) === null)) return null
+  var caps = validateCapabilitiesSummary(r['capabilities'])
+  if (caps === null) return null
+  var out: ManifestEntry = {
     id: id,
     label: r['label'] as string,
     catalogVersion: r['catalogVersion'] as number,
@@ -329,7 +378,15 @@ function validateManifestEntry(raw: unknown): ManifestEntry | null {
     definitionPath: r['definitionPath'] as string,
     recipePath: r['recipePath'] as string,
     bundleFiles: (bf as string[]).slice().sort(),
+    name: r['name'] as string,
+    icon: r['icon'] as string,
+    category: r['category'] as string,
+    description: r['description'] as string,
+    schemaVersion: r['schemaVersion'] as number,
+    capabilities: caps,
   }
+  if (typeof minRaw === 'string') out.minPackageVersion = minRaw
+  return out
 }
 
 function validateManifestShape(raw: unknown): ManifestEntry[] | null {
@@ -436,10 +493,11 @@ async function fetchDefinitionJson(base: string, entry: ManifestEntry): Promise<
 }
 
 /**
- * Summaries for the Store listing: membership and order come from the
- * manifest; display fields come from each entry's definition.json.
- * A definition fetch failure for one entry falls back to the manifest
- * label so one bad definition never blanks the Store.
+ * Summaries for the Store listing: membership, order, and every
+ * display field come from the manifest entry. No definition is
+ * fetched here; a definition fetch happens only for install/update
+ * (get_catalog_definition) or a single-app read
+ * (get_catalog_definition_meta).
  */
 export async function list_catalog(base?: string): Promise<CatalogSummary[]> {
   var useBase = resolveFetchBase(base)
@@ -447,34 +505,19 @@ export async function list_catalog(base?: string): Promise<CatalogSummary[]> {
   var out: CatalogSummary[] = []
   for (var i = 0; i < manifest.entries.length; i++) {
     var entry = manifest.entries[i]
-    var def = await fetchDefinitionJson(useBase, entry)
-    if (def !== null) {
-      var minRaw = (def as unknown as Record<string, unknown>)['minPackageVersion']
-      var schemaRaw = (def as unknown as Record<string, unknown>)['schemaVersion']
-      out.push({
-        id: entry.id,
-        name: def.name,
-        label: entry.label,
-        icon: (def as AppDefinition).icon,
-        category: (def as AppDefinition).category,
-        description: (def as AppDefinition).description,
-        installMode: entry.installMode,
-        recipePath: entry.recipePath,
-        minPackageVersion: typeof minRaw === 'string' ? minRaw : undefined,
-        schemaVersion: typeof schemaRaw === 'number' ? schemaRaw as number : undefined,
-      })
-    } else {
-      out.push({
-        id: entry.id,
-        name: entry.label,
-        label: entry.label,
-        icon: undefined,
-        category: undefined,
-        description: undefined,
-        installMode: entry.installMode,
-        recipePath: entry.recipePath,
-      })
-    }
+    out.push({
+      id: entry.id,
+      name: entry.name,
+      label: entry.label,
+      icon: entry.icon,
+      category: entry.category,
+      description: entry.description,
+      installMode: entry.installMode,
+      recipePath: entry.recipePath,
+      minPackageVersion: entry.minPackageVersion,
+      schemaVersion: entry.schemaVersion,
+      capabilities: entry.capabilities,
+    })
   }
   return out
 }
@@ -495,9 +538,11 @@ export async function get_catalog_entry(id: string, base?: string): Promise<Mani
 }
 
 /**
- * Lightweight definition for row display, or null for unknown ids and
+ * Lightweight definition for a single app, or null for unknown ids and
  * fetch failures (no write): the entry's definition.json only, with no
- * bundle assembly (no bundle-file fetches). Install/update paths must
+ * bundle assembly (no bundle-file fetches). Store rows no longer use
+ * this — they read the manifest entry — but agents and
+ * `get_catalog_definition` still do. Install/update paths must
  * keep using `get_catalog_definition` for the full assembled bundle.
  */
 export async function get_catalog_definition_meta(id: string, base?: string): Promise<AppDefinition | null> {

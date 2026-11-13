@@ -71,7 +71,8 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, summarizeCapabilities, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import type { CapabilitySummary } from '../pkg/src/apps/definition.ts'
 import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -516,9 +517,9 @@ function installSteps(text: string): string[] {
 			writeFileSync(defPath, JSON.stringify(def, null, 2) + '\n', 'utf8')
 		}
 		// Rebuild the index exactly like scripts/build-catalog-index.ts
-		// (same assembly + fingerprint calls), so the tmp manifest agrees
-		// with the tmp definitions it serves.
-		var entries: { id: string; label: string; catalogVersion: number; fingerprint: string; installMode: string; definitionPath: string; recipePath: string; bundleFiles: string[] }[] = []
+		// (same assembly + fingerprint calls, same display fields), so
+		// the tmp manifest agrees with the tmp definitions it serves.
+		var entries: { id: string; label: string; catalogVersion: number; fingerprint: string; installMode: string; definitionPath: string; recipePath: string; bundleFiles: string[]; name: string; icon: string; category: string; description: string; schemaVersion: number; minPackageVersion?: string; capabilities: CapabilitySummary }[] = []
 		var ids = readdirSync(dir).filter(function (name: string): boolean {
 			return name !== 'tests' && statSync(join(dir, name)).isDirectory()
 		}).sort()
@@ -526,7 +527,7 @@ function installSteps(text: string): string[] {
 			var one = ids[ii]
 			var oneDefPath = join(dir, one, 'definition.json')
 			if (!statSync(oneDefPath, { throwIfNoEntry: false })) continue
-			var oneDef = JSON.parse(readFileSync(oneDefPath, 'utf8')) as { id: string; label?: string; name: string; catalogVersion: number; installMode?: string; bundle: unknown }
+			var oneDef = JSON.parse(readFileSync(oneDefPath, 'utf8')) as { id: string; label?: string; name: string; icon: string; category: string; description: string; schemaVersion: number; minPackageVersion?: string; catalogVersion: number; installMode?: string; bundle: unknown }
 			if (oneDef.id !== one) throw new Error('tmp catalog: directory ' + one + ' holds id ' + String(oneDef.id))
 			var readOne = (function (appId: string): (path: string) => string | undefined {
 				return function (path: string): string | undefined {
@@ -542,7 +543,8 @@ function installSteps(text: string): string[] {
 			assembledDef['bundle'] = { entry: 'index.html', files: files }
 			var problem = validateCatalogDefinition(assembledDef)
 			if (problem !== null) throw new Error('tmp catalog: app ' + one + ' invalid: ' + problem)
-			entries.push({ id: one, label: oneDef.label !== undefined ? oneDef.label : oneDef.name, catalogVersion: oneDef.catalogVersion, fingerprint: fingerprintDefinition(assembledDef as never), installMode: oneDef.installMode !== undefined ? oneDef.installMode : 'json', definitionPath: one + '/definition.json', recipePath: one + '/RECIPE.md', bundleFiles: Object.keys(files).sort() })
+			entries.push({ id: one, label: oneDef.label !== undefined ? oneDef.label : oneDef.name, catalogVersion: oneDef.catalogVersion, fingerprint: fingerprintDefinition(assembledDef as never), installMode: oneDef.installMode !== undefined ? oneDef.installMode : 'json', definitionPath: one + '/definition.json', recipePath: one + '/RECIPE.md', bundleFiles: Object.keys(files).sort(), name: oneDef.name, icon: oneDef.icon, category: oneDef.category, description: oneDef.description, schemaVersion: oneDef.schemaVersion, capabilities: summarizeCapabilities(assembledDef as never) })
+			if (oneDef.minPackageVersion !== undefined) entries[entries.length - 1].minPackageVersion = oneDef.minPackageVersion
 		}
 		writeFileSync(join(dir, 'catalog.json'), JSON.stringify({ apps: entries }, null, 2) + '\n', 'utf8')
 		return dir
@@ -803,7 +805,12 @@ function installSteps(text: string): string[] {
 	var __path = await import('node:path')
 	var tmpCat = __fs.mkdtempSync(__path.join(__os.tmpdir(), 'oldcatalog-'))
 	__fs.mkdirSync(__path.join(tmpCat, 'counter'), { recursive: true })
-	var realIndex = JSON.parse(readFileSync(join(__catalogDir, 'catalog.json'), 'utf8'))
+	var realIndex = JSON.parse(readFileSync(join(__catalogDir, 'catalog.json'), 'utf8')) as { apps: { id: string; schemaVersion: number }[] }
+	// The manifest is the row source now: the counter entry must agree
+	// with its edited definition, or the row reads schema 5 from it.
+	for (var ri = 0; ri < realIndex.apps.length; ri++) {
+		if (realIndex.apps[ri].id === 'counter') realIndex.apps[ri].schemaVersion = 2
+	}
 	__fs.writeFileSync(__path.join(tmpCat, 'catalog.json'), JSON.stringify(realIndex))
 	var realCounter = JSON.parse(readFileSync(join(__catalogDir, 'counter', 'definition.json'), 'utf8'))
 	realCounter.schemaVersion = 2
@@ -847,7 +854,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.2.1 in this tree', running === '4.2.1', running)
+	check('running package version is 4.2.2 in this tree', running === '4.2.2', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min
@@ -1066,7 +1073,7 @@ function installSteps(text: string): string[] {
   var GATED = 'https://gated.example.com/catalog/'
   var GATEDLISTING = 'https://gated-listing.example.com/catalog/'
   function p1RebuildIndex(dir: string): void {
-    var entries: { id: string; label: string; catalogVersion: number; fingerprint: string; installMode: string; definitionPath: string; recipePath: string; bundleFiles: string[] }[] = []
+    var entries: { id: string; label: string; catalogVersion: number; fingerprint: string; installMode: string; definitionPath: string; recipePath: string; bundleFiles: string[]; name: string; icon: string; category: string; description: string; schemaVersion: number; minPackageVersion?: string; capabilities: CapabilitySummary }[] = []
     var ids = readdirSync(dir).filter(function (name: string): boolean {
       return name !== 'tests' && statSync(join(dir, name)).isDirectory()
     }).sort()
@@ -1074,7 +1081,7 @@ function installSteps(text: string): string[] {
       var one = ids[ii]
       var oneDefPath = join(dir, one, 'definition.json')
       if (!statSync(oneDefPath, { throwIfNoEntry: false })) continue
-      var oneDef = JSON.parse(readFileSync(oneDefPath, 'utf8')) as { id: string; label?: string; name: string; catalogVersion: number; installMode?: string; bundle: unknown }
+      var oneDef = JSON.parse(readFileSync(oneDefPath, 'utf8')) as { id: string; label?: string; name: string; icon: string; category: string; description: string; schemaVersion: number; minPackageVersion?: string; catalogVersion: number; installMode?: string; bundle: unknown }
       if (oneDef.id !== one) throw new Error('p1 catalog: directory ' + one + ' holds id ' + String(oneDef.id))
       var readOne = (function (appId: string): (path: string) => string | undefined {
         return function (path: string): string | undefined {
@@ -1090,7 +1097,8 @@ function installSteps(text: string): string[] {
       assembledDef['bundle'] = { entry: 'index.html', files: files }
       var problem = validateCatalogDefinition(assembledDef)
       if (problem !== null) throw new Error('p1 catalog: app ' + one + ' invalid: ' + problem)
-      entries.push({ id: one, label: oneDef.label !== undefined ? oneDef.label : oneDef.name, catalogVersion: oneDef.catalogVersion, fingerprint: fingerprintDefinition(assembledDef as never), installMode: oneDef.installMode !== undefined ? oneDef.installMode : 'json', definitionPath: one + '/definition.json', recipePath: one + '/RECIPE.md', bundleFiles: Object.keys(files).sort() })
+      entries.push({ id: one, label: oneDef.label !== undefined ? oneDef.label : oneDef.name, catalogVersion: oneDef.catalogVersion, fingerprint: fingerprintDefinition(assembledDef as never), installMode: oneDef.installMode !== undefined ? oneDef.installMode : 'json', definitionPath: one + '/definition.json', recipePath: one + '/RECIPE.md', bundleFiles: Object.keys(files).sort(), name: oneDef.name, icon: oneDef.icon, category: oneDef.category, description: oneDef.description, schemaVersion: oneDef.schemaVersion, capabilities: summarizeCapabilities(assembledDef as never) })
+      if (oneDef.minPackageVersion !== undefined) entries[entries.length - 1].minPackageVersion = oneDef.minPackageVersion
     }
     writeFileSync(join(dir, 'catalog.json'), JSON.stringify({ apps: entries }, null, 2) + String.fromCharCode(10), 'utf8')
   }

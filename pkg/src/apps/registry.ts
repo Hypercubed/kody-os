@@ -34,7 +34,7 @@ import type {
 	ProxyDecl,
 	StateFieldDef,
 } from './types.ts'
-import { catalogGitHubRef, catalogLabelForBase, catalogTagLabel, devOverrideBase, get_catalog_definition, get_catalog_definition_meta, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
+import { catalogGitHubRef, catalogLabelForBase, catalogTagLabel, devOverrideBase, get_catalog_definition, get_catalog_entry, list_catalog, normalizeCatalogBase, readCatalogManifest, get_catalog_source, folderUrlForBase } from './remote-catalog.ts'
 import {
 	RECENT_CAP,
 	createMemoryStore,
@@ -1258,18 +1258,25 @@ function getStoreSelfUpdate(active: KeyStore, actingId: string, discovery: strin
 			self.error = 'This Store declares no catalog source.'
 			return self
 		}
-		return get_catalog_definition_meta('app-store', discovery).then(function (latestDef) {
-			if (latestDef === null) {
+		return readCatalogManifest(discovery).then(function (manifest) {
+			var latestEntry: { catalogVersion: number; minPackageVersion?: string } | null = null
+			for (var i = 0; i < manifest.entries.length; i++) {
+				if (manifest.entries[i].id === 'app-store') latestEntry = manifest.entries[i]
+			}
+			if (latestEntry === null) {
 				self.error = 'Could not read the App Catalog from the discovery base.'
 				return self
 			}
-			var latestVersion = typeof latestDef.catalogVersion === 'number' ? latestDef.catalogVersion : 0
-			var latestMin = (latestDef as unknown as Record<string, unknown>)['minPackageVersion'] !== undefined ? String((latestDef as unknown as Record<string, unknown>)['minPackageVersion']) : undefined
+			var latestVersion = latestEntry.catalogVersion
+			var latestMin = latestEntry.minPackageVersion
 			var gated = latestMin !== undefined ? rowNeedsNewerShell(latestMin, running) : false
 			self.latestCatalogVersion = latestVersion
 			if (latestMin !== undefined) self.latestMinPackageVersion = latestMin
 			self.needsNewerShell = gated
 			self.hasUpdate = latestVersion > installedVersion && !gated
+			return self
+		}, function () {
+			self.error = 'Could not read the App Catalog from the discovery base.'
 			return self
 		})
 	})
@@ -1644,7 +1651,7 @@ function buildStoreRows(
 	pinned: string[],
 	hidden: string[],
 	homepage: string[],
-	catalog: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; recipePath?: string; minPackageVersion?: string; schemaVersion?: number }[],
+	catalog: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; recipePath?: string; minPackageVersion?: string; schemaVersion?: number; capabilities: CapabilitySummary }[],
 	running: string,
 	catalogBase: string,
 ): Promise<StoreRow[]> {
@@ -1665,21 +1672,18 @@ function buildStoreRows(
 						return Promise.all([
 							readJson<AppDefinition>(active, defKey(want)),
 							get_app_status(want, active, catalogBase),
-							get_catalog_definition_meta(want, catalogBase),
-						]).then(function (triple): void {
-							var installedDef = triple[0]
-							var info = triple[1]
-							var fetchedDef = triple[2]
-							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; recipePath?: string } | null = null
+						]).then(function (pair): void {
+							var installedDef = pair[0]
+							var info = pair[1]
+							var catalogEntry: { id: string; label: string; name: string; icon?: string; category?: string; description?: string; installMode?: string; recipePath?: string; minPackageVersion?: string; schemaVersion?: number; capabilities: CapabilitySummary } | null = null
 							for (var cj = 0; cj < catalog.length; cj++) {
 								if (catalog[cj].id === want) catalogEntry = catalog[cj]
 							}
 							var label = installedDef ? (installedDef.label || installedDef.name) : (catalogEntry ? catalogEntry.label : want)
 							var name = installedDef ? installedDef.name : (catalogEntry ? catalogEntry.name : want)
-							var catalogDef = fetchedDef
-							var catalogMin = fetchedDef && (fetchedDef as unknown as Record<string, unknown>)['minPackageVersion'] !== undefined ? String((fetchedDef as unknown as Record<string, unknown>)['minPackageVersion']) : undefined
+							var catalogMin = catalogEntry !== null && catalogEntry.minPackageVersion !== undefined ? catalogEntry.minPackageVersion : undefined
 							var incompatible = catalogMin !== undefined ? rowNeedsNewerShell(catalogMin, running) : false
-							var catalogSchema = fetchedDef && typeof (fetchedDef as unknown as Record<string, unknown>)['schemaVersion'] === 'number' ? (fetchedDef as unknown as Record<string, unknown>)['schemaVersion'] as number : undefined
+							var catalogSchema = catalogEntry !== null && catalogEntry.schemaVersion !== undefined ? catalogEntry.schemaVersion : undefined
 							var belowFloor = catalogSchema !== undefined ? catalogSchema < MIN_SUPPORTED_SCHEMA_VERSION : false
 							rows.push({
 								id: want,
@@ -1688,7 +1692,7 @@ function buildStoreRows(
 								icon: installedDef ? installedDef.icon : (catalogEntry ? catalogEntry.icon : undefined),
 								category: installedDef ? installedDef.category : (catalogEntry ? catalogEntry.category : undefined),
 								description: catalogEntry && catalogEntry.description !== undefined ? catalogEntry.description : (installedDef ? installedDef.description : undefined),
-								installMode: catalogEntry && catalogEntry.installMode !== undefined ? catalogEntry.installMode : (fetchedDef && (fetchedDef as unknown as Record<string, unknown>)['installMode'] === 'recipe-only' ? 'recipe-only' : 'json'),
+								installMode: catalogEntry && catalogEntry.installMode !== undefined ? catalogEntry.installMode : 'json',
 								folderUrl: catalogEntry ? folderUrlForBase(catalogBase, catalogEntry.id) : undefined,
 								installed: info.installed,
 								inCatalog: info.inCatalog,
@@ -1697,7 +1701,7 @@ function buildStoreRows(
 								pinned: pinned.indexOf(want) !== -1,
 								hidden: hidden.indexOf(want) !== -1,
 								homepage: homepage.indexOf(want) !== -1,
-								capabilities: summarizeCapabilities(catalogDef !== null ? catalogDef : installedDef),
+								capabilities: catalogEntry !== null ? catalogEntry.capabilities : summarizeCapabilities(installedDef),
 								minPackageVersion: catalogMin,
 								shellVersion: running,
 								needsNewerShell: incompatible,

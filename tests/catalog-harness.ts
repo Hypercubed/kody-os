@@ -11,7 +11,8 @@
  *      directories and the definitions: one entry per app, alphabetical by
  *      id, with matching label, catalogVersion, fingerprint (of the
  *      assembled definition), installMode, definitionPath, recipePath,
- *      and bundleFiles.
+ *      bundleFiles, name, icon, category, description, schemaVersion,
+ *      minPackageVersion, and capabilities summary.
  *   3. The index has no `collections` section: a recipe installs only its own
  *      app, so collection recipes no longer exist.
  *   4. Every assembled definition validates via validateCatalogDefinition,
@@ -23,7 +24,9 @@
  *      fingerprint), and every manifest entry has a definition directory
  *      (plus its RECIPE.md); entries are in id order. list_catalog() (via
  *      a local override server) ids match the directories exactly, and each
- *      summary carries the manifest installMode.
+ *      summary carries the manifest installMode. list_catalog() fetches the
+ *      manifest once and no definitions: the Store listing is
+ *      manifest-only.
  *   6. installMode is excluded from the fingerprint, and an invalid
  *      installMode fails validation.
  *   7. get_catalog_definition() returns null for an unknown id.
@@ -34,8 +37,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { add_app, assembleBundleFiles, createMemoryStore, fingerprintDefinition, get_app_state, get_catalog_definition, list_apps, list_catalog, validateCatalogDefinition, validateDefinition } from '../pkg/src/apps/index.ts'
+import { add_app, assembleBundleFiles, createMemoryStore, fingerprintDefinition, get_app_state, get_catalog_definition, list_apps, list_catalog, summarizeCapabilities, validateCatalogDefinition, validateDefinition } from '../pkg/src/apps/index.ts'
 import type { AppDefinition } from '../pkg/src/apps/types.ts'
+import type { CapabilitySummary } from '../pkg/src/apps/definition.ts'
 
 interface IndexEntry {
   id: string
@@ -46,6 +50,13 @@ interface IndexEntry {
   definitionPath: string
   recipePath: string
   bundleFiles: string[]
+  name: string
+  icon: string
+  category: string
+  description: string
+  schemaVersion: number
+  minPackageVersion?: string
+  capabilities: CapabilitySummary
 }
 
 var root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -140,9 +151,16 @@ for (var entry of index.apps) {
   if (entry.definitionPath !== entry.id + '/definition.json') entryProblems.push(entry.id + ':definitionPath')
   if (entry.recipePath !== entry.id + '/RECIPE.md') entryProblems.push(entry.id + ':recipePath')
   if (JSON.stringify(entry.bundleFiles) !== JSON.stringify(Object.keys(readBundleFiles(entry.id, def)).sort())) entryProblems.push(entry.id + ':bundleFiles')
+  if (entry.name !== def.name) entryProblems.push(entry.id + ':name')
+  if (entry.icon !== def.icon) entryProblems.push(entry.id + ':icon')
+  if (entry.category !== def.category) entryProblems.push(entry.id + ':category')
+  if (entry.description !== def.description) entryProblems.push(entry.id + ':description')
+  if (entry.schemaVersion !== def.schemaVersion) entryProblems.push(entry.id + ':schemaVersion')
+  if ((entry.minPackageVersion !== undefined ? entry.minPackageVersion : null) !== (def.minPackageVersion !== undefined ? def.minPackageVersion : null)) entryProblems.push(entry.id + ':minPackageVersion')
+  if (JSON.stringify(entry.capabilities) !== JSON.stringify(summarizeCapabilities(assembled))) entryProblems.push(entry.id + ':capabilities')
   if (!statSync(join(catalogDir, entry.recipePath)).isFile()) entryProblems.push(entry.id + ':missingRecipe')
 }
-check('index entries match the definitions (label, version, fingerprint, mode, paths, bundleFiles)', entryProblems.length === 0, entryProblems.join(', '))
+check('index entries match the definitions (label, name, icon, category, description, version, fingerprint, mode, paths, bundleFiles, minPackageVersion, schemaVersion, capabilities)', entryProblems.length === 0, entryProblems.join(', '))
 
 // 3. No collections: the starter collection went away with the catalog Help
 // and About apps, and a recipe installs only its own app.
@@ -208,8 +226,18 @@ async function withLocalCatalog<T>(fn: () => Promise<T>): Promise<T> {
 var listed: { id: string; installMode: string }[] = []
 var helpAboutOk = false
 var unknownOk = false
+var listManifestFetches = 0
+var listDefinitionFetches = 0
 await withLocalCatalog(async function (): Promise<void> {
+  var realFetch = globalThis.fetch
+  ;(globalThis as unknown as Record<string, unknown>)['fetch'] = function (url: unknown, init?: unknown): Promise<Response> {
+    var u = String(url)
+    if (u.indexOf('catalog.json') !== -1) listManifestFetches++
+    if (u.indexOf('definition.json') !== -1) listDefinitionFetches++
+    return (realFetch as (u: unknown, i?: unknown) => Promise<Response>)(url, init)
+  }
   listed = await list_catalog()
+  ;(globalThis as unknown as Record<string, unknown>)['fetch'] = realFetch
   var listedIds = listed.map(function (summary): string { return summary.id })
   check('manifest agreement: every catalog app is listed', JSON.stringify(dirIds) === JSON.stringify(listedIds), 'dir=' + dirIds.join(',') + ' listed=' + listedIds.join(','))
   check('listing order is alphabetical', JSON.stringify(listedIds) === JSON.stringify(listedIds.slice().sort()))
@@ -219,6 +247,7 @@ await withLocalCatalog(async function (): Promise<void> {
   var unknownDef = await get_catalog_definition('no-such-app')
   unknownOk = unknownDef === null
 })
+check('list_catalog fetches the manifest once and no definitions', listManifestFetches === 1 && listDefinitionFetches === 0, 'manifest=' + String(listManifestFetches) + ' definitions=' + String(listDefinitionFetches))
 check('Help and About are not catalog apps', helpAboutOk)
 check('unknown catalog id returns null', unknownOk)
 
