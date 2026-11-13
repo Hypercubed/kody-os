@@ -1203,7 +1203,7 @@ function installSteps(text: string): string[] {
     var p1CounterRow = p1Rows.rows.filter(function (r) { return r.id === 'counter' })[0]
     check('rows list the counter from the listing base', p1CounterRow !== undefined && p1CounterRow.label === 'Counter', JSON.stringify(p1CounterRow))
     check('storeSelf reports the installed Store version', p1Rows.storeSelf.installedCatalogVersion === 27, JSON.stringify(p1Rows.storeSelf))
-    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 29, JSON.stringify(p1Rows.storeSelf))
+    check('storeSelf finds the newer Store on the discovery base', p1Rows.storeSelf.latestCatalogVersion === 30, JSON.stringify(p1Rows.storeSelf))
     check('storeSelf offers the Store update', p1Rows.storeSelf.hasUpdate === true && p1Rows.storeSelf.needsNewerShell === false, JSON.stringify(p1Rows.storeSelf))
     check('storeSelf pins the listing base', p1Rows.storeSelf.pinnedLabel !== null && p1Rows.storeSelf.pinnedLabel.indexOf('listing.example.com') !== -1, JSON.stringify(p1Rows.storeSelf))
     check('status line names the listing base, not the discovery base', p1Rows.catalogRelease.indexOf('listing.example.com') !== -1 && p1Rows.catalogRelease.indexOf('discovery.example.com') === -1, p1Rows.catalogRelease)
@@ -1214,7 +1214,7 @@ function installSteps(text: string): string[] {
     var p1SelfUpdate = await manage_update('app-store', 'app-store', true, p1Store)
     check('Store self-update succeeds from the discovery base', p1SelfUpdate.ok === true, JSON.stringify(p1SelfUpdate))
     var p1StoreDefAfter = p1DefOf(await get_app('app-store', p1Store))
-    check('Store self-update installs v29', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 29, JSON.stringify(p1StoreDefAfter))
+    check('Store self-update installs v30', p1StoreDefAfter !== null && p1StoreDefAfter.catalogVersion === 30, JSON.stringify(p1StoreDefAfter))
     check('Store self-update keeps the listing pin', p1ProxyUrl(p1StoreDefAfter, 'catalog-apps') === LISTING, JSON.stringify(p1StoreDefAfter))
     check('Store self-update keeps the discovery base', p1ProxyUrl(p1StoreDefAfter, 'catalog') === DISCOVERY, JSON.stringify(p1StoreDefAfter))
     var p1Store2 = createMemoryStore()
