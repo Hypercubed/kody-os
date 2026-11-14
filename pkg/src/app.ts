@@ -336,6 +336,7 @@ function shellChrome(opts: {
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
 		: ''
+	var litScript = '\n\t<script src="' + escapeAttribute(joinPath(assetBase, '/lit.js')) + '"></script>'
 	var menuLinks = ''
 	if (opts.menuApps) {
 		for (var mi = 0; mi < opts.menuApps.length; mi++) {
@@ -417,6 +418,7 @@ function shellChrome(opts: {
 		opts.body +
 		'\n\t\t</main>\n' +			footerPath +
 			'\t</div>' +
+			litScript +
 			clientScript +
 		'\n</body>\n</html>'
 	)
@@ -1186,6 +1188,20 @@ var app = {
 		var appBasePath = str(context.appBasePath, '')
 		var assetBasePath = str(context.assetBasePath, '/_assets')
 		var clientModuleUrl = str(context.clientModuleUrl, '')
+		// The platform stamps an absolute client-module URL using the
+		// package's configured host (e.g. the mock's LAN IP). A browser
+		// that loaded the page via a different host (loopback, Tailscale)
+		// cannot fetch it, so the client never loads and no shared element
+		// is defined. Strip the scheme + host so the browser fetches the
+		// module from the same host as the page, like lit.js does (served
+		// via the relative asset base).
+		var schemeIdx = clientModuleUrl.indexOf('://')
+		if (schemeIdx !== -1) {
+			var pathIdx = clientModuleUrl.indexOf('/', schemeIdx + 3)
+			if (pathIdx !== -1) {
+				clientModuleUrl = clientModuleUrl.slice(pathIdx)
+			}
+		}
 		// Shell-settings Phase 1: resolve the file theme exactly as today
 		// (including its once-per-publish cache), then merge the durable
 		// storage override fresh on every request, per field. With no

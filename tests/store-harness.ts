@@ -854,7 +854,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.2.2 in this tree', running === '4.2.2', running)
+	check('running package version is 4.3.0 in this tree', running === '4.3.0', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min

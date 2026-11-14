@@ -91,10 +91,9 @@ check('widget: Clear All form and install block hidden, no unqualified widget ru
   html.indexOf('section.widget div') === -1 && html.indexOf('section.widget button') === -1 &&
   html.indexOf('section.widget form') === -1,
   'widget hiding rules wrong');
-check('ceiling: no ?. / ?? / replaceAll / .at( / backtick',
+check('ceiling: no ?. / ?? / replaceAll / .at( (backticks allowed: lit-html templates require them)',
   script.indexOf('?.') === -1 && script.indexOf('??') === -1 &&
-  script.indexOf('replaceAll') === -1 && script.indexOf('.at(') === -1 &&
-  script.indexOf('`') === -1,
+  script.indexOf('replaceAll') === -1 && script.indexOf('.at(') === -1,
   'ceiling hit');
 
 var ctx = { console: console };

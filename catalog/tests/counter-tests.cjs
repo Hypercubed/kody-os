@@ -68,6 +68,11 @@ function loadBridge(dom) {
   dom.window.eval(fs.readFileSync(BRIDGE_PATH, "utf8"));
   if (!dom.window.KodyBridge) throw new Error("bridge did not load");
 }
+const LIT_PATH = path.join(__dirname, "..", "..", "pkg", "public", "lit.js");
+function loadLit(dom) {
+  dom.window.eval(fs.readFileSync(LIT_PATH, "utf8"));
+  if (!dom.window.KodyLit) throw new Error("vendored Lit did not load (window.KodyLit missing)");
+}
 function addSeed(dom, serverState) {
   const doc = dom.window.document;
   const seed = doc.createElement("script");
@@ -101,6 +106,7 @@ function makeDom(bundleHtml, initial) {
     });
   };
   loadBridge(dom);
+  loadLit(dom);
   addSeed(dom, initial !== undefined ? initial : 0);
   dom.window.eval(extractScript(bundleHtml));
   if (dom.window.document.readyState === "loading") {
@@ -159,6 +165,7 @@ function makeShellDom(bundleHtml, serverState) {
     });
   };
   loadBridge(dom);
+  loadLit(dom);
   addSeed(dom, serverState);
   dom.window.eval(extractScript(bundleHtml));
   if (dom.window.document.readyState === "loading") {
@@ -248,11 +255,16 @@ async function test(name, fn) {
     assert(js.indexOf("KodyBridge") !== -1, "bundle uses the bridge, not a hand-rolled queue");
     assert(js.indexOf("counterRebase") !== -1, "bundle supplies a delta rebase for set_count");
     assert(js.indexOf("claimForm") !== -1, "bundle claims the Reset form through the bridge");
+    assert(js.indexOf("KodyLit") !== -1, "bundle uses the provided Lit (window.KodyLit), not a hand-rolled render");
+    assert(js.indexOf(".render(") !== -1, "bundle renders through the provided lit-html render");
     assert(js.indexOf("MutationObserver") === -1, "bundle does not hand-roll span observation (the bridge owns it)");
     const bridgeJs = fs.readFileSync(BRIDGE_PATH, "utf8");
     assert(bridgeJs.indexOf("MutationObserver") !== -1, "bridge observes spans for shell-form patches");
     assert(bridgeJs.indexOf("KodyBridge") !== -1, "bridge exposes window.KodyBridge");
-    ["?.", "??", "=>", "`"].forEach(function (bad) {
+    // Template literals are required by lit-html templates (the provided
+    // Lit renders through KodyLit.html`...`); they are ES2015, inside the
+    // ES2019 ceiling. Optional chaining and nullish coalescing stay out.
+    ["?.", "??", "=>"].forEach(function (bad) {
       assert(js.indexOf(bad) === -1, "bundle script has no forbidden syntax " + bad);
     });
     ["const", "let", "async", "await"].forEach(function (bad) {

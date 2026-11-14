@@ -23,12 +23,19 @@
 section.widget #ld-clear-form, section.widget #ld-install { display: none; }
 </style>
 <script>
-/* Link Drop viewer. Pure functions are defined first so Node
- * tests can load this script without a DOM and call them
- * directly; DOM wiring is guarded by typeof document. No act()
+/* Link Drop viewer (shell-islands port, 2026-11-13). Pure functions are
+ * defined first so Node tests can load this script without a DOM and call
+ * them directly; DOM wiring is guarded by typeof document. No act()
  * calls from the bundle itself: sends arrive over the shell
  * GET-action URL from the bookmarklet, and clear is a shell
- * ui.actions button. No copy control, no localStorage. */
+ * ui.actions button. No copy control, no localStorage.
+ * Rendering uses the provided Lit (window.KodyLit, lit-html render):
+ * the link list is a lit-html template rendered from bridge
+ * subscriptions, so the list live-updates when the store changes.
+ * When the provided Lit is absent (an older shell), the bundle falls
+ * back to the hand-rolled innerHTML rendering, so it keeps working
+ * un-updated. Template literals (backticks) are used, as lit-html
+ * templates require; they are ES2015, inside the ES2019 ceiling. */
 function ldEscape(text) {
   return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -110,25 +117,29 @@ if (typeof document !== "undefined" && document.getElementById) {
     var noteEl = document.getElementById("ld-note");
     var markEl = document.getElementById("ld-bookmarklet");
     var clearForm = document.getElementById("ld-clear-form");
+    var ldStore = null;
+    function ldSection() {
+      var scriptEl = null;
+      try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }
+      var el = scriptEl;
+      while (el) {
+        if (el.getAttribute && el.getAttribute("data-app-id")) { return el; }
+        el = el.parentNode;
+      }
+      var sections = document.querySelectorAll("section[data-app-id]");
+      if (sections.length > 0) { return sections[0]; }
+      return null;
+    }
     function readLinks() {
       var links = null;
       try {
         if (typeof window !== "undefined" && window.KodyBridge) {
-          var scriptEl = null;
-          try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }
-          var section = null;
-          var el = scriptEl;
-          while (el) {
-            if (el.getAttribute && el.getAttribute("data-app-id")) { section = el; break; }
-            el = el.parentNode;
+          var section = ldSection();
+          if (section && !ldStore) {
+            ldStore = window.KodyBridge.create(section, { fieldTypes: { links: "array" } });
           }
-          if (!section) {
-            var sections = document.querySelectorAll("section[data-app-id]");
-            if (sections.length > 0) { section = sections[0]; }
-          }
-          if (section) {
-            var store = window.KodyBridge.create(section, { fieldTypes: { links: "array" } });
-            var val = store.get("links");
+          if (ldStore) {
+            var val = ldStore.get("links");
             if (val && typeof val.length === "number") { links = val; }
           }
         }
@@ -166,6 +177,52 @@ if (typeof document !== "undefined" && document.getElementById) {
       }
       return '<div class="ld-item"><div class="ld-text">' + ldEscape(parsed.title || parsed.url) + suffix + "</div></div>";
     }
+    function renderItemLit(raw) {
+      var Lit = window.KodyLit;
+      var parsed = ldParseEntry(raw);
+      if (!parsed.ok) {
+        return Lit.html`<div class="ld-item"><div class="ld-text">${parsed.text}</div></div>`;
+      }
+      var time = ldFormatTime(parsed.t);
+      var suffix = time ? " - " + time : "";
+      if (ldIsHttpUrl(parsed.url)) {
+        return Lit.html`<div class="ld-item"><a href="${parsed.url}">${parsed.title || parsed.url}</a>${suffix}</div>`;
+      }
+      return Lit.html`<div class="ld-item"><div class="ld-text">${parsed.title || parsed.url}${suffix}</div></div>`;
+    }
+    function renderList(links) {
+      if (!links || links.length === 0) {
+        listEl.style.display = "none";
+        installEl.style.display = "";
+        noteEl.style.display = "none";
+        return;
+      }
+      if (typeof window !== "undefined" && window.KodyLit) {
+        var Lit = window.KodyLit;
+        var items = [];
+        var i;
+        for (i = links.length - 1; i >= 0; i--) {
+          items.push(renderItemLit(links[i]));
+        }
+        Lit.render(Lit.html`${items}`, listEl);
+      } else {
+        var html = "";
+        var j;
+        for (j = links.length - 1; j >= 0; j--) {
+          html += renderItem(links[j]);
+        }
+        listEl.innerHTML = html;
+      }
+      listEl.style.display = "";
+      noteEl.style.display = "none";
+      installEl.style.display = "";
+      try {
+        if (installEl.parentNode && installEl.parentNode.appendChild) {
+          installEl.parentNode.appendChild(installEl);
+        }
+      } catch (err) { }
+      try { installEl.className = "ld-compact"; } catch (err) { }
+    }
     function findActionBase() {
       var base = "";
       try {
@@ -199,28 +256,21 @@ if (typeof document !== "undefined" && document.getElementById) {
       var mark = ldBookmarklet(base);
       if (markEl && markEl.setAttribute) { markEl.setAttribute("href", mark); }
       if (clearForm && clearForm.setAttribute) { clearForm.setAttribute("action", base + "?action=clear"); }
-      var links = readLinks();
-      if (!links || links.length === 0) {
-        listEl.style.display = "none";
-        installEl.style.display = "";
-        noteEl.style.display = "none";
-        return;
-      }
-      var html = "";
-      var i;
-      for (i = links.length - 1; i >= 0; i--) {
-        html += renderItem(links[i]);
-      }
-      listEl.innerHTML = html;
-      listEl.style.display = "";
-      noteEl.style.display = "none";
-      installEl.style.display = "";
-      try {
-        if (installEl.parentNode && installEl.parentNode.appendChild) {
-          installEl.parentNode.appendChild(installEl);
+      if (typeof window !== "undefined" && window.KodyBridge) {
+        var section = ldSection();
+        if (section && !ldStore) {
+          ldStore = window.KodyBridge.create(section, { fieldTypes: { links: "array" } });
         }
-      } catch (err) { }
-      try { installEl.className = "ld-compact"; } catch (err) { }
+        if (ldStore) {
+          ldStore.subscribe(function (snap) {
+            renderList(snap.desired.links);
+          });
+          try { ldStore.startSpanObserver(); } catch (err) { }
+          renderList(ldStore.get("links"));
+          return;
+        }
+      }
+      renderList(readLinks());
     }
     if (document.readyState === "complete" || document.readyState === "interactive") {
       init();

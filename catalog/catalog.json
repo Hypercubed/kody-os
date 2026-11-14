@@ -176,8 +176,8 @@
     {
       "id": "counter",
       "label": "Counter",
-      "catalogVersion": 5,
-      "fingerprint": "fnv:1775179679-902417725-6366",
+      "catalogVersion": 6,
+      "fingerprint": "fnv:2835012847-3706305904-7705",
       "installMode": "json",
       "definitionPath": "counter/definition.json",
       "recipePath": "counter/RECIPE.md",
@@ -298,8 +298,8 @@
     {
       "id": "link-drop",
       "label": "Link Drop",
-      "catalogVersion": 3,
-      "fingerprint": "fnv:3353256188-3681484168-11534",
+      "catalogVersion": 4,
+      "fingerprint": "fnv:4104822484-1666053862-13624",
       "installMode": "json",
       "definitionPath": "link-drop/definition.json",
       "recipePath": "link-drop/RECIPE.md",

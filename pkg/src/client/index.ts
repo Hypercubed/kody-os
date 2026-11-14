@@ -4,6 +4,13 @@
  * bridge at init time. See pkg/src/bridge/bridge.js for the store,
  * dispatch, rebase, and span-adoption contract. */
 import '../bridge/bridge.js'
+import { defineOsElements } from './os-elements.ts'
+
+// Shared os-* elements (shell-islands): the shell defines them once here,
+// before DOMContentLoaded, so app bundles mounting at DOMContentLoaded
+// find the tags already defined. Does nothing when the vendored Lit
+// (window.KodyLit) is absent.
+defineOsElements()
 
 /**
  * Browser enhancement for app action forms (same-origin GET JSON fast path).
