@@ -176,8 +176,8 @@
     {
       "id": "counter",
       "label": "Counter",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:2835012847-3706305904-7705",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:2951641433-902661750-7705",
       "installMode": "json",
       "definitionPath": "counter/definition.json",
       "recipePath": "counter/RECIPE.md",

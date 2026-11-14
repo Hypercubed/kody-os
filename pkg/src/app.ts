@@ -520,7 +520,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 			var set_hide = m.set_hide
 			var set_home = m.set_home
 			var set_pin = m.set_pin
-		return import('./apps/client.ts').then(function (c): Promise<Response> {				var isModalApp = c.isModalApp
+		return import('./apps/render.ts').then(function (c): Promise<Response> {				var isModalApp = c.isModalApp
 				var renderAppPanel = c.renderAppPanel
 				var renderDashboard = c.renderDashboard
 				var renderEmptyHelp = c.renderEmptyHelp

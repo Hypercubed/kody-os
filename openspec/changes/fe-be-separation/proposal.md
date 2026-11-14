@@ -33,20 +33,45 @@ behavior change, no hosting change.
 
 ## What Changes
 
-**Each component in its own JS file (light).** The shell chrome
-HTML (`shellChrome` in `app.ts`) and the app-section HTML
-(`renderAppSection` and friends in `apps/client.ts`) each move to
-their own JS file under `pkg/src/client/components/`, exporting a
-render function (data → HTML string) that the BE imports and
-calls, instead of being built by string concatenation in TS.
-(User direction 2026-11-13: "put each component in its own file.
-These can be js files.") The served HTML is byte-identical before
-and after — this is a refactor, not a redesign. The rendering
-model does not change: the server still renders the shell + JSON
-seed + section skeleton (the islands model, no-JS baseline kept);
-only where the HTML text lives changes. The component JS files
-are ES2019 with JSDoc signatures, and the tsconfig gains
-`allowJs` so the TS BE can import them.
+**FE organized by concern, not by component (light).** The
+browser code is organized as a coherent, self-contained layer
+under `pkg/src/client/`, grouped by what it does — not split
+into one file per UI piece. (User direction 2026-11-14: "You
+dont have to create component for every peice of code. Use best
+practices for organizing FE. Treat it as if the FE may
+eventually be run on a different BE.") The FE modules are:
+
+- `index.ts` — the shell client entry: loads the bridge, defines
+  the shared `os-*` elements, enhances forms. The single wiring
+  point.
+- `bridge.js` — the bridge adapter (`window.KodyBridge`), moved
+  from `pkg/src/bridge/bridge.js`. The FE's only interface to BE
+  state.
+- `os-elements.ts` + `os-stepper.ts` — the shared element
+  library, one file per custom element (the shell-islands split,
+  kept).
+
+The server still renders the shell + JSON seed + section
+skeleton (the islands model, no-JS baseline kept); the BE keeps
+building that HTML in TS (`shellChrome` in `app.ts`, the
+renderers in `apps/render.ts`). The HTML text is BE code that
+produces the FE's host document — it is not split into
+component files. The earlier "each component its own JS file"
+approach (tasks 2.1–2.3) was implemented, then reverted at the
+user's direction 2026-11-13, and is now dropped: splitting every
+renderer into its own file added files without adding
+separation, and the FE/BE boundary is the directory plus the
+contract, not the HTML-string location.
+
+**The FE/BE contract is explicit.** The FE talks to the BE only
+through a small, documented surface, so a different BE could
+serve the same FE: the bridge (`window.KodyBridge`, state reads
+/ writes / dispatch), the JSON state seed the BE renders before
+each bundle, the action URLs (`data-action-base`, GET forms),
+and the `data-*` attributes the FE reads (`data-app-id`,
+`data-field`). The contract is recorded in `pkg/AGENTS.md`
+alongside the boundary rule. The FE imports nothing from the
+BE and reads no BE-only state.
 
 **Rename `apps/client.ts`.** It is server-side rendering code, not
 client code. It becomes `apps/render.ts`. Exported function names
@@ -56,13 +81,14 @@ updated in the same change.
 
 **Directory boundary.** FE code lives in `pkg/src/client/`:
 the shell client module, the bridge adapter (moved from
-`pkg/src/bridge/bridge.js` to `pkg/src/client/bridge.js`), the
-shared `os-*` elements, the component JS files, and the styles.
-BE code lives in `pkg/src/` outside `client/`: the entry, the fetch
-handler, `act()`, the registry, storage, MCP exports, feeds, theme.
-The rule: no FE module imports a BE module (no `packageStorage`,
-no registry, no server types). The boundary is the directory
-layout plus that stated rule, recorded in `pkg/AGENTS.md`.
+`pkg/src/bridge/bridge.js` to `pkg/src/client/bridge.js`), and
+the shared `os-*` elements. BE code lives in `pkg/src/` outside
+`client/`: the entry, the fetch handler, `act()`, the registry,
+storage, MCP exports, feeds, theme, and the server renderers
+(`apps/render.ts`, `shellChrome` in `app.ts`). The rule: no FE
+module imports a BE module (no `packageStorage`, no registry,
+no server types). The boundary is the directory layout plus that
+stated rule, recorded in `pkg/AGENTS.md`.
 
 **The contract stays.** The BE renders the shell + seed + skeleton;
 the FE (islands and bundles) mounts from the seed and the bridge.
@@ -80,10 +106,12 @@ None. No observable behavior change.
 
 ## Impact
 
-- Code: `pkg/src/` reorganization only (one JS file per
-  component, one rename, one move, reference updates, `allowJs`
-  in the tsconfig). No definition, state, or stored-data
-  changes. No app is force-migrated; no bundle changes.
+- Code: `pkg/src/` reorganization only (one rename, one move,
+  reference updates, the boundary rule, and the FE/BE contract
+  recorded). No definition, state, or stored-data changes. No
+  app is force-migrated; no bundle changes except the Counter
+  bundle comment naming the bridge path (a comment-only change
+  that bumps its `catalogVersion` by the catalog rule).
 - Version: PATCH by the package policy — an internal refactor with
   no observable change. The bump lands in the implementation commit
   (never a separate "bump version" commit); build +1 on publish.
@@ -105,7 +133,10 @@ does not require shell-islands to be published first.
 
 - Hosting split (FE on GitHub Pages, BE as a separate service) —
   explicitly out. This change keeps one Kody package; the FE and
-  BE are separated by code layout, not by deployment.
+  BE are separated by code layout and by the contract, not by
+  deployment. The "FE may eventually run on a different BE" is a
+  design principle for the layering (the FE depends only on the
+  documented contract), not a deployment change.
 - Deep version (server renders shell + seed only, client renders
   all UI) — out. That is a separate, larger change; this one keeps
   the server rendering the seed + skeleton for the no-JS baseline.

@@ -65,7 +65,7 @@ function makeSection(id, count, actionBase) {
 var A = makeSection('counter-a', 5, '/apps/counter-a');
 var B = makeSection('counter-b', 9, '/apps/counter-b');
 dom.window.eval(fs.readFileSync(
-  path.join(__dirname, '..', 'pkg', 'src', 'bridge', 'bridge.js'), 'utf8'));
+  path.join(__dirname, '..', 'pkg', 'src', 'client', 'bridge.js'), 'utf8'));
 
 function mockFetch() {
   var calls = [];

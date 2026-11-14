@@ -26,7 +26,7 @@
 </style>
 </head>
 <body>
-<!-- Reference implementation: bridge adapter in pkg/src/bridge/bridge.js + the provided Lit (window.KodyLit, vendored by the shell). Pattern: read initial state from the JSON seed, render from bridge subscriptions via lit-html, dispatch set_count with a delta rebase, claim the shell Reset form through the bridge. Verified by catalog/tests/counter-tests.cjs. -->
+<!-- Reference implementation: bridge adapter in pkg/src/client/bridge.js + the provided Lit (window.KodyLit, vendored by the shell). Pattern: read initial state from the JSON seed, render from bridge subscriptions via lit-html, dispatch set_count with a delta rebase, claim the shell Reset form through the bridge. Verified by catalog/tests/counter-tests.cjs. -->
 <div class="counter-wrap">
 <p class="counter-num">0</p>
 <p class="counter-row"><button type="button" class="counter-step" data-delta="1">+1</button><button type="button" class="counter-step" data-delta="-1">-1</button></p>

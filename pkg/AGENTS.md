@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v4.3.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v4.3.1. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -35,6 +35,42 @@ The shell performs no access check in `fetch()`: every request that reaches it i
 ## App actions and the package-app edge
 
 Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain when the browser reports a foreign or `null` `Origin`. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })`. UI actions are GET forms (`GET /apps/:id?action=<name>`, no credential field — the platform admits the visitor before shell code runs); `POST /apps/:id` stays for API clients. Bundle scripts resolve action URLs against the shell-stamped `data-action-base="/apps/<id>"` container with `credentials: 'same-origin'`. Checklist: `src/apps/INTEGRATION.md`.
+
+## Frontend / backend boundary (FE/BE)
+
+The shell's browser code (FE) and Kody code (BE) are separated
+by directory and by contract, so the FE could run on a different
+BE that honors the same contract (fe-be-separation, 2026-11-14).
+
+- **Boundary.** FE code lives in `pkg/src/client/`: the shell
+  client module (`index.ts`, the entry — loads the bridge,
+  defines the shared `os-*` elements, enhances forms), the
+  bridge adapter (`bridge.js`), and the shared elements
+  (`os-elements.ts`, `os-stepper.ts` — one file per custom
+  element). BE code lives in `pkg/src/` outside `client/`: the
+  entry, the fetch handler, `act()`, the registry, storage, MCP
+  exports, feeds, theme, and the server renderers
+  (`apps/render.ts`, `shellChrome` in `app.ts`). No FE module
+  imports a BE module: nothing under `pkg/src/client/` imports
+  `packageStorage`, the registry, a server type, or any file
+  outside `pkg/src/client/` except the vendored Lit
+  (`window.KodyLit`, loaded as a script, not an import).
+- **Contract.** The FE talks to the BE only through this
+  surface: the bridge (`window.KodyBridge` — state reads /
+  writes / dispatch, the FE's only interface to BE state), the
+  JSON state seed the BE renders before each bundle (read once
+  at mount; the bridge reads it, falling back to the spans only
+  when no seed is present), the action URLs
+  (`data-action-base`, GET forms, `format=json` fast path,
+  same-origin), and the `data-*` attributes the FE reads
+  (`data-app-id`, `data-field`, `data-client-module`). A
+  different BE could serve the same FE as long as it honors
+  that contract. The BE still renders the shell + seed +
+  section skeleton (the islands model, no-JS baseline kept).
+- **Organization.** The FE is grouped by concern (entry,
+  bridge, elements), not split into one file per UI piece. The
+  BE's HTML text stays in the BE renderers; it is not split
+  into component files.
 
 ## Adding an app
 

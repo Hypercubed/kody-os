@@ -37,7 +37,7 @@ try {
 }
 
 const DEFINITION_PATH = path.join(__dirname, "..", "link-drop", "definition.json");
-const BRIDGE_PATH = path.join(__dirname, "..", "..", "pkg", "src", "bridge", "bridge.js");
+const BRIDGE_PATH = path.join(__dirname, "..", "..", "pkg", "src", "client", "bridge.js");
 const LIT_PATH = path.join(__dirname, "..", "..", "pkg", "public", "lit.js");
 
 function extractScript(html) {

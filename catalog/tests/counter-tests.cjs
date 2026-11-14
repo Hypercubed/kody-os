@@ -5,7 +5,7 @@
  * JSON seed and the shell-rendered state field, and the shell Reset
  * form's in-place patch. These are behaviour tests, not live tests:
  * nothing here talks to Kody, the hosted OS, or the local preview
- * server. The bridge is loaded from ../../src/bridge/bridge.js before
+ * server. The bridge is loaded from ../../src/client/bridge.js before
  * the bundle script, as the shell client module loads it in production.
  *
  * How to run (jsdom is the only dependency, installed ephemerally so
@@ -63,7 +63,7 @@ function extractScript(html) {
   if (!m) throw new Error("no script");
   return m[1];
 }
-const BRIDGE_PATH = path.join(__dirname, "..", "..", "pkg", "src", "bridge", "bridge.js");
+const BRIDGE_PATH = path.join(__dirname, "..", "..", "pkg", "src", "client", "bridge.js");
 function loadBridge(dom) {
   dom.window.eval(fs.readFileSync(BRIDGE_PATH, "utf8"));
   if (!dom.window.KodyBridge) throw new Error("bridge did not load");

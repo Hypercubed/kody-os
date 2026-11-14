@@ -26,57 +26,56 @@ the browser code still sits beside the BE with no boundary.
 
 ## Decisions
 
-### 1. Each component is its own JS file, imported by the BE
+### 1. The FE is organized by concern, and the BE contract is explicit
 
-Each UI component — the shell chrome, and each app-section
-renderer — moves to its own JS file under
-`pkg/src/client/components/`, exporting a render function that
-takes data and returns an HTML string. The BE imports these
-functions and calls them; it no longer builds HTML by string
-concatenation in TS. (User direction 2026-11-13: "put each
-component in its own file. These can be js files." This supersedes
-the earlier HTML-template-file approach — JS functions carry the
-markup and the branching together, with no placeholder syntax to
-invent and no `fillTemplate` helper to maintain.)
+The browser code is organized as a coherent, self-contained
+layer under `pkg/src/client/`, grouped by what it does — not
+split into one file per UI piece. (User direction 2026-11-14:
+"You dont have to create component for every peice of code.
+Use best practices for organizing FE. Treat it as if the FE
+may eventually be run on a different BE.") The FE modules are:
 
-The component files are ES2019 JS (no TS), each a single
-component:
+- `index.ts` — the shell client entry: loads the bridge, defines
+  the shared `os-*` elements, enhances forms. The single wiring
+  point.
+- `bridge.js` — the bridge adapter (`window.KodyBridge`), moved
+  from `pkg/src/bridge/bridge.js` (Decision 3). The FE's only
+  interface to BE state.
+- `os-elements.ts` + `os-stepper.ts` — the shared element
+  library, one file per custom element (the shell-islands split,
+  kept).
 
-- `shell-chrome.js` — the HTML document (`shellChrome` from
-  `app.ts`).
-- `app-section.js` — `renderAppSection`.
-- `app-panel.js` — `renderAppPanel`.
-- `overlay-section.js` — `renderOverlaySection`.
-- `pinned-section.js` — `renderPinnedSection`.
-- `recent-section.js` — `renderRecentSection`.
-- `tiles.js` — `tileItem`, `tilesList`, `renderHomeTiles`.
-- `bundle-content.js` — `renderBundleContent` (+ the bundle
-  helpers it needs).
-- `state-seed.js` — `renderStateSeed`.
-- `edit-section.js` — `renderEditSection` (+ its toggle helpers
-  and `editAppsLink`).
-- `all-section.js` — `renderAllSection`.
-- `widget-section.js` — `renderWidgetSection`.
-- `empty-help.js` — `renderEmptyHelp`.
-- `helpers.js` — the shared helpers (`escapeHtml`, `str`,
-  `isRecord`, `looksLikeSvg`, `isModalApp`,
-  `packageRefForHost`).
+The server still renders the shell + JSON seed + section
+skeleton (the islands model, no-JS baseline kept); the BE keeps
+building that HTML in TS (`shellChrome` in `app.ts`, the
+renderers in `apps/render.ts`). The HTML text is BE code that
+produces the FE's host document — it is not split into
+component files. The earlier "each component its own JS file"
+approach was implemented, then reverted at the user's direction
+2026-11-13, and is now dropped: splitting every renderer into
+its own file added files without adding separation, and the
+FE/BE boundary is the directory plus the contract, not the
+HTML-string location.
 
-Each JS file carries JSDoc for its function signatures (referencing
-the shared types in `apps/types.ts`), so the signatures stay
-documented. The tsconfig gains `"allowJs": true` so the TS BE can
-import the JS component files; `checkJs` stays off (the JS files
-are not typechecked, only imported — the byte-identical
-verification is the check that matters). The components have no
-runtime imports (they only build HTML strings from data), so they
-stay browser-safe, exactly as `apps/client.ts` is today.
+**The FE/BE contract.** The FE talks to the BE only through a
+small, documented surface, so a different BE could serve the
+same FE:
 
-Component files are the FE's HTML. The BE owns the data (title,
-body, theme, seed, menu apps) and calls the functions; it does
-not own the markup text. This is the light version: the server
-still renders the seed + skeleton (no-JS baseline kept), so the
-components are called server-side. The deep version — the client
-rendering the section from the seed — is a separate change.
+- The bridge (`window.KodyBridge`): state reads / writes /
+  dispatch. The FE's only interface to BE state.
+- The JSON state seed the BE renders before each bundle (read
+  once at mount; the bridge reads it, falling back to the spans
+  only when no seed is present).
+- The action URLs (`data-action-base`, GET forms) the FE
+  submits or fetches (`format=json` fast path, same-origin).
+- The `data-*` attributes the FE reads (`data-app-id`,
+  `data-field`, `data-client-module`).
+
+The FE imports nothing from the BE and reads no BE-only state.
+The contract is recorded in `pkg/AGENTS.md` alongside the
+boundary rule (Decision 4). This is a design principle for the
+layering, not a deployment change: the package stays one Kody
+package, and a hosting split is out of scope.
 
 ### 2. `apps/client.ts` becomes `apps/render.ts`
 
@@ -102,17 +101,17 @@ After this change the layout is:
 ```
 pkg/src/
   index.ts            BE  entry, exports
-  app.ts              BE  fetch handler (calls component functions, no HTML strings)
+  app.ts              BE  fetch handler (renders shell + seed + skeleton)
   apps/               BE  registry, definition, storage, render.ts (server rendering)
   feeds.ts            BE
   shell-theme.ts      BE
   shell-pages.ts      BE
   shell-css.ts        BE (generated, from pkg/public/styles.css)
   client/             FE  everything that runs in the browser
-    index.ts          FE  shell client module
-    bridge.js         FE  bridge adapter
-    os-elements.ts    FE  shared os-* elements
-    components/       FE  one JS file per UI component (data -> HTML string)
+    index.ts          FE  shell client module (entry: bridge + elements + forms)
+    bridge.js         FE  bridge adapter (the FE's only interface to BE state)
+    os-elements.ts    FE  shared os-* elements (registry)
+    os-stepper.ts     FE  os-stepper element
 ```
 
 ### 4. The boundary rule
@@ -130,6 +129,12 @@ in the tasks; a static enforcement check is not shipped (the
 same reasoning as the shell-islands bridge-only check: the
 pattern is greppable and review catches it, and a broader check
 would false-positive on the documented no-bridge fallback).
+
+The FE/BE contract (Decision 1) is recorded alongside the
+boundary rule in `pkg/AGENTS.md`: the bridge, the JSON state
+seed, the action URLs, and the `data-*` attributes the FE reads.
+A different BE could serve the same FE as long as it honors
+that contract.
 
 ### 5. Verification is byte-identical output
 
@@ -153,9 +158,11 @@ bridge contract are unchanged).
 - A reader can tell FE from BE by looking at the tree: browser
   code is under `pkg/src/client/`, Kody code is everywhere else
   in `pkg/src/`.
-- No HTML is built by string concatenation in a BE TS file; each
-  component lives in its own JS file under
-  `pkg/src/client/components/`.
+- The FE is a coherent layer organized by concern (entry,
+  bridge, elements), not split into one file per UI piece.
+- The FE depends only on the documented BE contract (bridge,
+  seed, action URLs, `data-*` attributes), so a different BE
+  could serve the same FE.
 - `apps/client.ts` no longer exists under a misleading name.
 - The served HTML, routes, and bridge contract are unchanged.
 
@@ -169,20 +176,18 @@ bridge contract are unchanged).
 
 ## Risks
 
-- A component typo or a missed import breaks a page (the shell
-  chrome is on every page). Mitigated by the byte-identical
-  verification: the pages are diffed before the change is
-  accepted.
 - A missed import after the rename or the bridge move breaks the
   typecheck or a harness. Mitigated by typecheck + all harnesses
   green before the change is accepted.
-- Adding `allowJs` to the tsconfig widens what the typechecker
-  accepts. Mitigated by keeping `checkJs` off and JSDoc on the
-  component signatures, and by the byte-identical verification
-  (the JS components are verified by output, not by types).
-- The component split makes a future edit touch a component file
-  instead of a BE file. Accepted: that is the point of the
-  separation — the markup is owned by the FE, the data by the BE.
+- The Counter bundle comment names the bridge path; updating it
+  changes the bundle, so its `catalogVersion` bumps by the
+  catalog rule and the catalog index is regenerated. Mitigated by
+  the catalog harness (index/directory/manifest match) and the
+  Counter harness.
+- The FE/BE contract is documented but not enforced by a check,
+  so a future FE change could quietly reach past it. Mitigated
+  by the boundary grep (Decision 4) and by review: the contract
+  is short and the FE is small.
 
 ## Migration plan
 
@@ -192,11 +197,8 @@ Rollback is a revert of the reorganization commit.
 
 ## Open questions
 
-None. The component-file approach (one JS file per component,
-`allowJs` in the tsconfig), the bridge move, and the rename are
-decided above. If implementation finds a component that cannot
-be expressed as a standalone JS function (e.g. one whose
-rendering depends on BE-only state that cannot be passed as
-data), the implementation records the exception in the design
-and keeps that one renderer in TS with a dated note — it does
-not silently widen the scope.
+None. The FE organization by concern (entry, bridge, elements),
+the explicit BE contract, the bridge move, and the rename are
+decided above. The component-per-file approach is dropped (see
+Decision 1); if a future change needs a new FE module, it is
+added under `pkg/src/client/` by concern, not by UI piece.

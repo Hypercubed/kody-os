@@ -34,8 +34,8 @@
  *     - without a rebase function, the pending dispatch is sent as-is.
  *   On fetch failure or { ok: false }, the in-flight flag clears and the
  *   desired paint is kept, so the next dispatch re-sends from the desired
- *   state (the counter is not wedged). Durable truth remains server
- *   packageStorage, changed only via act().
+ *   state (the counter is not wedged). Durable truth remains server-side,
+ *   changed only via act().
  *
  * Nested rebase rule (schemaVersion 5): rebase is per-dispatch, supplied
  * by the bundle, because only the bundle knows whether a pending write

@@ -28,7 +28,7 @@ function check(name, ok, detail) {
   if (!ok) failures += 1;
 }
 
-var bridgeJs = fs.readFileSync(path.join(__dirname, '..', 'pkg', 'src', 'bridge', 'bridge.js'), 'utf8');
+var bridgeJs = fs.readFileSync(path.join(__dirname, '..', 'pkg', 'src', 'client', 'bridge.js'), 'utf8');
 var counterDef = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pkg', 'catalog', 'counter/definition.json'), 'utf8'));
 var counterScript = counterDef.bundle.files['index.html'].match(/<script>([\s\S]*?)<\/script>/)[1];
 
