@@ -414,7 +414,7 @@ function shellChrome(opts: {
 		'</h1>\n' +
 		expandBox +
 		'\t\t</div>\n' +
-		'\t\t<main>\n' +
+		'\t\t<main id="os-main">\n' +
 		opts.body +
 		'\n\t\t</main>\n' +			footerPath +
 			'\t</div>' +

@@ -1,0 +1,210 @@
+// Client-side navigation harness (client-side-navigation, task 4.1):
+// the shell client navigates Home and Apps client-side, with a
+// native full-load fallback.
+//
+// Kept OUTSIDE pkg/ by design: development verification, not part of
+// the published package (the publish syncs pkg/ only).
+//
+// What it proves:
+//   1. Home -> Apps: clicking the Apps nav link fetches the Apps page
+//      as HTML, swaps #os-main, updates document.title and the nav
+//      aria-current, and pushes the URL with history.pushState.
+//   2. Back: a popstate to Home fetches and swaps back, without a
+//      reload (the document is the same one; only #os-main changed).
+//   3. Fallback: a failed fetch does not swap #os-main, and the code
+//      attempts a native navigation (jsdom reports it as an
+//      unimplemented navigation; that is the observable fallback).
+//   4. App pages stay full-load: clicking an app link does not call
+//      fetch and does not swap #os-main.
+//   5. Same-page click is a no-op: clicking the link to the page
+//      already shown does not fetch.
+//
+// The client entry (pkg/src/client/index.ts) is TypeScript, so the
+// harness bundles it with bun (bun build, browser target) to a temp
+// file, then loads it in jsdom after the vendored Lit. jsdom is run
+// under node (bun + jsdom misbehaves).
+//
+// Run: node tests/client-nav.cjs
+// jsdom resolution, in order: JSDOM_PATH env, /tmp/jsdom-test (the
+// ephemeral install the Counter harness uses), or a resolvable jsdom.
+// Exit code 0 = all checks passed, 1 = a check failed.
+'use strict';
+var fs = require('fs');
+var path = require('path');
+var childProcess = require('child_process');
+var JSDOM;
+try {
+  var jsdomPath = process.env.JSDOM_PATH || '/tmp/jsdom-test/node_modules/jsdom';
+  JSDOM = require(jsdomPath).JSDOM;
+} catch (err) {
+  JSDOM = require('jsdom').JSDOM;
+}
+
+var ROOT = path.join(__dirname, '..');
+var LIT_PATH = path.join(ROOT, 'pkg', 'public', 'lit.js');
+var CLIENT_SRC = path.join(ROOT, 'pkg', 'src', 'client', 'index.ts');
+var BUNDLE_PATH = '/tmp/client-nav-test-bundle.js';
+
+var BASE = 'http://example.com';
+var HOME_URL = BASE + '/';
+var APPS_URL = BASE + '/apps';
+
+var HOME_HTML = '<!doctype html><html data-app-base="" data-client-module="/_assets/client.js"><head><title>Home - kody-os</title></head><body>' +
+  '<nav aria-label="Shell"><a href="/" aria-current="page">Home</a><a href="/apps">Apps</a><a href="/help">Help</a></nav>' +
+  '<main id="os-main"><h1>Home</h1><p>Welcome home.</p></main>' +
+  '</body></html>';
+var APPS_HTML = '<!doctype html><html data-app-base="" data-client-module="/_assets/client.js"><head><title>Apps - kody-os</title></head><body>' +
+  '<nav aria-label="Shell"><a href="/">Home</a><a href="/apps" aria-current="page">Apps</a><a href="/help">Help</a></nav>' +
+  '<main id="os-main"><h1>Apps</h1><p>All apps listed here.</p></main>' +
+  '</body></html>';
+
+var failures = [];
+function check(name, ok, detail) {
+  if (ok) {
+    console.log('ok - ' + name);
+  } else {
+    console.log('FAIL - ' + name + (detail ? ' (' + detail + ')' : ''));
+    failures.push(name);
+  }
+}
+
+function buildClientBundle() {
+  childProcess.execFileSync('bun', ['build', CLIENT_SRC, '--target=browser', '--outfile=' + BUNDLE_PATH], { stdio: 'pipe' });
+  return fs.readFileSync(BUNDLE_PATH, 'utf8');
+}
+
+function makeWindow(html, fetchStub, navAttempts) {
+  var virtualConsole;
+  try {
+    var VirtualConsole = require(jsdomPath).VirtualConsole;
+    virtualConsole = new VirtualConsole();
+  } catch (err) {
+    virtualConsole = undefined;
+  }
+  if (virtualConsole) {
+    virtualConsole.on('jsdomError', function (err) {
+      if (err && err.message && err.message.indexOf('Not implemented: navigation') !== -1) {
+        navAttempts.push(String(err.message));
+      }
+    });
+  }
+  var dom = new JSDOM(html, {
+    url: HOME_URL,
+    runScripts: 'outside-only',
+    virtualConsole: virtualConsole,
+    pretendToBeVisual: true
+  });
+  var win = dom.window;
+  win.fetch = fetchStub;
+  win.eval(fs.readFileSync(LIT_PATH, 'utf8'));
+  win.eval(buildClientBundle());
+  return { dom: dom, win: win };
+}
+
+function nextTick() {
+  return new Promise(function (resolve) { setTimeout(resolve, 0); });
+}
+
+async function flush() {
+  for (var i = 0; i < 10; i++) await nextTick();
+}
+
+async function main() {
+  // Test 1: Home -> Apps swap.
+  var fetchCalls = [];
+  var navAttempts = [];
+  var fetchStub = function (url) {
+    fetchCalls.push(url);
+    var body = url === APPS_URL ? APPS_HTML : HOME_HTML;
+    return Promise.resolve({
+      url: url,
+      text: function () { return Promise.resolve(body); }
+    });
+  };
+  var ctx = makeWindow(HOME_HTML, fetchStub, navAttempts);
+  var win = ctx.win;
+  var doc = win.document;
+  check('1. starts on Home', doc.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  var appsLink = doc.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  appsLink.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('1. fetch called for Apps', fetchCalls.length === 1 && fetchCalls[0] === APPS_URL, fetchCalls.join(','));
+  check('1. #os-main swapped to Apps', doc.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  check('1. title updated to Apps', doc.title === 'Apps - kody-os', doc.title);
+  check('1. aria-current moved to Apps', appsLink.getAttribute('aria-current') === 'page' && doc.querySelector('nav a[href="/"]').getAttribute('aria-current') === null);
+  check('1. URL pushed to /apps', win.location.pathname === '/apps', win.location.pathname);
+
+  // Test 2: Back (popstate) returns to Home without a reload.
+  fetchCalls.length = 0;
+  win.history.back();
+  await flush();
+  check('2. popstate fetched Home', fetchCalls.length === 1 && fetchCalls[0] === HOME_URL, fetchCalls.join(','));
+  check('2. #os-main swapped back to Home', doc.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  check('2. title back to Home', doc.title === 'Home - kody-os', doc.title);
+  check('2. aria-current back on Home', doc.querySelector('nav a[href="/"]').getAttribute('aria-current') === 'page' && appsLink.getAttribute('aria-current') === null);
+  check('2. URL back to /', win.location.pathname === '/', win.location.pathname);
+
+  // Test 3: Failed fetch falls back to native navigation.
+  var failFetchCalls = [];
+  var failNavAttempts = [];
+  var failFetch = function (url) {
+    failFetchCalls.push(url);
+    return Promise.reject(new Error('network down'));
+  };
+  var ctx3 = makeWindow(HOME_HTML, failFetch, failNavAttempts);
+  var win3 = ctx3.win;
+  var doc3 = win3.document;
+  var appsLink3 = doc3.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  appsLink3.dispatchEvent(new win3.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('3. fetch attempted for Apps', failFetchCalls.length === 1 && failFetchCalls[0] === APPS_URL, failFetchCalls.join(','));
+  check('3. #os-main NOT swapped on failure', doc3.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  check('3. native navigation attempted (fallback)', failNavAttempts.length >= 1, failNavAttempts.join('; '));
+
+  // Test 4: App pages stay full-load (not intercepted).
+  var appFetchCalls = [];
+  var appNavAttempts = [];
+  var appFetch = function (url) {
+    appFetchCalls.push(url);
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(HOME_HTML); } });
+  };
+  var ctx4 = makeWindow(HOME_HTML, appFetch, appNavAttempts);
+  var win4 = ctx4.win;
+  var doc4 = win4.document;
+  var appLink = doc4.createElement('a');
+  appLink.setAttribute('href', '/apps/counter');
+  appLink.textContent = 'Counter';
+  doc4.getElementById('os-main').appendChild(appLink);
+  appLink.dispatchEvent(new win4.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('4. app link did not call fetch', appFetchCalls.length === 0, appFetchCalls.join(','));
+  check('4. #os-main unchanged for app link', doc4.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  check('4. app link fell through to native navigation', appNavAttempts.length >= 1, appNavAttempts.join('; '));
+
+  // Test 5: Same-page click is a no-op.
+  var sameFetchCalls = [];
+  var sameNavAttempts = [];
+  var sameFetch = function (url) {
+    sameFetchCalls.push(url);
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(HOME_HTML); } });
+  };
+  var ctx5 = makeWindow(HOME_HTML, sameFetch, sameNavAttempts);
+  var win5 = ctx5.win;
+  var doc5 = win5.document;
+  var homeLink = doc5.querySelector('nav[aria-label="Shell"] a[href="/"]');
+  homeLink.dispatchEvent(new win5.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('5. same-page click did not fetch', sameFetchCalls.length === 0, sameFetchCalls.join(','));
+  check('5. same-page click did not navigate', sameNavAttempts.length === 0, sameNavAttempts.join('; '));
+
+  if (failures.length > 0) {
+    console.log('FAILED: ' + failures.length + ' check(s): ' + failures.join(', '));
+    process.exit(1);
+  }
+  console.log('All client-nav checks passed.');
+}
+
+main().catch(function (err) {
+  console.error('Harness error:', err && err.stack ? err.stack : err);
+  process.exit(1);
+});

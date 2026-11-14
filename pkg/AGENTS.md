@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v4.3.1. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v4.4.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -44,7 +44,8 @@ BE that honors the same contract (fe-be-separation, 2026-11-14).
 
 - **Boundary.** FE code lives in `pkg/src/client/`: the shell
   client module (`index.ts`, the entry — loads the bridge,
-  defines the shared `os-*` elements, enhances forms), the
+  defines the shared `os-*` elements, enhances forms, and
+  navigates shell pages client-side), the
   bridge adapter (`bridge.js`), and the shared elements
   (`os-elements.ts`, `os-stepper.ts` — one file per custom
   element). BE code lives in `pkg/src/` outside `client/`: the
@@ -63,10 +64,26 @@ BE that honors the same contract (fe-be-separation, 2026-11-14).
   when no seed is present), the action URLs
   (`data-action-base`, GET forms, `format=json` fast path,
   same-origin), and the `data-*` attributes the FE reads
-  (`data-app-id`, `data-field`, `data-client-module`). A
+  (`data-app-id`, `data-field`, `data-client-module`,
+  `data-app-base` — the last for client-side navigation). A
   different BE could serve the same FE as long as it honors
   that contract. The BE still renders the shell + seed +
-  section skeleton (the islands model, no-JS baseline kept).
+  section skeleton (the islands model). JavaScript is assumed —
+  the no-JS requirement was dropped Oct 29–30, 2026.
+- **Client-side navigation.** The FE navigates Home (`/`) and
+  Apps (`/apps`) client-side: it intercepts same-origin clicks
+  to those pages, fetches the target as HTML, swaps the
+  `#os-main` content in place, updates the document title and
+  nav `aria-current`, and pushes the URL with
+  `history.pushState`; back/forward (`popstate`) fetches and
+  swaps the same way. Any failure falls back to a native
+  navigation (a full page load). App pages, Help, and About
+  stay full-load. The BE's only part is stamping `id="os-main"`
+  on the `<main>` in `shellChrome`. Scripts in swapped HTML do
+  not execute, so all behaviour stays in the persistent bundle;
+  the post-swap step (title, `aria-current`, scroll) is the hook
+  where seed adoption would go if a future shell page carries
+  seeds — Home/Apps carry none, so none is implemented.
 - **Organization.** The FE is grouped by concern (entry,
   bridge, elements), not split into one file per UI piece. The
   BE's HTML text stays in the BE renderers; it is not split
@@ -135,7 +152,7 @@ Install the `app-store` catalog app with the server stopped (see above): `catalo
 
 - No root-export side effects: no jobs, file writes, or installs.
 - Missing runtime context falls back to shared in-memory storage, starting empty with an honest "no apps yet" tile.
-- Works without JavaScript (form submit + PRG); the client only enhances `form.app-action` with `?format=json` in-place patching (guarded, falls back to native submit). Exception: the App Store itself requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`, and the rest of the shell still works without JavaScript.
+- JavaScript is assumed (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The client enhances `form.app-action` with `?format=json` in-place patching. The App Store requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`.
 - Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.
 - App styles live in the app, never in the shell theme: never put app-specific rules in `public/styles.css` (or the generated `src/shell-css.ts`). A rule that targets one app — for example one scoped by that app's panel label (`aria-label`) — belongs in that app's own bundle CSS, as a `<style>` block in its `index.html` or a `.css` file in its `files` map.

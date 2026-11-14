@@ -25,7 +25,8 @@ defineOsElements()
  * [data-field] value spans update without navigation and a
  * role="alert" error is cleared or shown in place. Any failure falls back
  * to a native form.submit(). Never required: no timers, no WebSockets, no
- * client routing, no frameworks.
+ * frameworks. Client-side navigation for shell pages (Home/Apps) is a
+ * separate enhancement below, also with a native full-load fallback.
  *
  * ES2019 ceiling: no ?. and no ?? in this file (see the canonical ceiling in docs/scribe-limitations.md).
  * No replaceAll, no .at.
@@ -357,6 +358,205 @@ if (canFastPath && typeof DOMParser !== 'undefined') {
 				})
 		} catch (err) {
 			form.submit()
+		}
+	})
+}
+
+/**
+ * Client-side navigation for shell pages (enhancement layer).
+ *
+ * Home and Apps are server-rendered pages, and every navigation is a
+ * full page load by default. Where fetch, DOMParser, and history
+ * exist, clicks on same-origin links to Home and Apps are intercepted:
+ * the target is fetched as HTML, the fresh document's #os-main content
+ * replaces the current one, the document title and nav aria-current
+ * are updated from the fresh document, the URL is pushed with
+ * history.pushState, and the page scrolls to the top. Back/forward
+ * (popstate) fetches and swaps the same way. Any failure falls back
+ * to a native navigation (a full page load). App pages, Help, and
+ * About stay full-load.
+ *
+ * The post-swap step updates title, aria-current, and scroll. It is
+ * also the hook where seed adoption would go if a future shell page
+ * carries JSON state seeds; Home and Apps carry none, so no seed
+ * adoption is implemented here. Scripts in swapped HTML do not
+ * execute, so all behaviour stays in the persistent bundle.
+ *
+ * ES2019 ceiling: no ?. and no ?? in this file.
+ */
+if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undefined' && typeof history.pushState === 'function') {
+	function shellNavPath(suffix: string): string {
+		var base = ''
+		try {
+			base = document.documentElement.getAttribute('data-app-base') || ''
+		} catch (err) {
+			base = ''
+		}
+		if (base.length > 1 && base.charAt(base.length - 1) === '/') base = base.slice(0, -1)
+		if (base === '/') base = ''
+		return base + suffix
+	}
+
+	var homePath = shellNavPath('/')
+	var appsPath = shellNavPath('/apps')
+
+	function isShellPagePath(path: string): boolean {
+		return path === homePath || path === appsPath
+	}
+
+	function resolveNavUrl(href: string): { origin: string; pathname: string; search: string } | null {
+		try {
+			var probe = document.createElement('a')
+			probe.href = href
+			return {
+				origin: String(probe.protocol + '//' + probe.host),
+				pathname: probe.pathname || '/',
+				search: probe.search || ''
+			}
+		} catch (err) {
+			return null
+		}
+	}
+
+	function navPageOrigin(): string {
+		return String(window.location.protocol + '//' + window.location.host)
+	}
+
+	function syncNavCurrent(freshDoc: Document): void {
+		try {
+			var freshNav = freshDoc.querySelector('nav[aria-label="Shell"]')
+			var currentNav = document.querySelector('nav[aria-label="Shell"]')
+			if (!freshNav || !currentNav) return
+			var currentLinks = currentNav.querySelectorAll('a')
+			var freshLinks = freshNav.querySelectorAll('a')
+			for (var i = 0; i < currentLinks.length; i++) {
+				var currentLink = currentLinks[i]
+				var href = currentLink.getAttribute('href') || ''
+				var freshLink: Element | null = null
+				for (var j = 0; j < freshLinks.length; j++) {
+					if ((freshLinks[j].getAttribute('href') || '') === href) {
+						freshLink = freshLinks[j]
+						break
+					}
+				}
+				if (!freshLink) continue
+				var freshCurrent = freshLink.getAttribute('aria-current')
+				if (freshCurrent) currentLink.setAttribute('aria-current', freshCurrent)
+				else currentLink.removeAttribute('aria-current')
+			}
+		} catch (err) {
+			// Never break navigation for a nav sync failure.
+		}
+	}
+
+	function swapNavMain(freshDoc: Document): boolean {
+		var freshMain = freshDoc.getElementById('os-main')
+		var currentMain = document.getElementById('os-main')
+		if (!freshMain || !currentMain) return false
+		if (!freshMain.innerHTML) return false
+		var freshTitle = freshDoc.querySelector('title')
+		var titleText = freshTitle ? freshTitle.textContent : null
+		if (!titleText) return false
+		currentMain.innerHTML = freshMain.innerHTML
+		document.title = titleText
+		syncNavCurrent(freshDoc)
+		try {
+			if (typeof window.scrollTo === 'function') window.scrollTo(0, 0)
+		} catch (err) {
+			// Never break navigation for a scroll failure.
+		}
+		return true
+	}
+
+	function navigateShellTo(url: string, push: boolean): void {
+		fetch(url, { headers: { Accept: 'text/html' }, credentials: 'same-origin', redirect: 'follow' })
+			.then(function (response: Response): Promise<{ url: string; text: string }> {
+				return response.text().then(function (text: string): { url: string; text: string } {
+					return { url: response.url || url, text: text }
+				})
+			})
+			.then(function (pair: { url: string; text: string }): void {
+				var freshDoc: Document
+				try {
+					freshDoc = new DOMParser().parseFromString(pair.text, 'text/html')
+				} catch (parseErr) {
+					window.location.href = url
+					return
+				}
+				if (!swapNavMain(freshDoc)) {
+					window.location.href = url
+					return
+				}
+				if (push) {
+					try {
+						history.pushState({}, '', pair.url)
+					} catch (pushErr) {
+						// The content already swapped; a pushState failure
+						// leaves the URL stale but the page correct.
+					}
+				}
+			})
+			.catch(function (): void {
+				window.location.href = url
+			})
+	}
+
+	document.addEventListener('click', function (event: Event): void {
+		try {
+			var mouseEvent = event as MouseEvent
+			if (mouseEvent.button !== 0) return
+			if (mouseEvent.ctrlKey || mouseEvent.metaKey || mouseEvent.shiftKey || mouseEvent.altKey) return
+			var target = event.target as unknown as Node | null
+			if (!target) return
+			var anchor: HTMLAnchorElement | null = null
+			var node: Node | null = target
+			while (node) {
+				if (node instanceof Element && node.tagName === 'A') {
+					anchor = node as unknown as HTMLAnchorElement
+					break
+				}
+				node = node.parentNode
+			}
+			if (!anchor) return
+			if (anchor.getAttribute('target')) return
+			if (anchor.hasAttribute('download')) return
+			var href = anchor.getAttribute('href') || ''
+			if (href === '' || href.charAt(0) === '#') return
+			var resolved = resolveNavUrl(href)
+			if (!resolved) return
+			if (resolved.origin !== navPageOrigin()) return
+			if (!isShellPagePath(resolved.pathname)) return
+			var currentPath = window.location.pathname || '/'
+			var currentSearch = window.location.search || ''
+			if (resolved.pathname === currentPath && resolved.search === currentSearch) {
+				event.preventDefault()
+				return
+			}
+			event.preventDefault()
+			var fullUrl = resolved.origin + resolved.pathname + resolved.search
+			navigateShellTo(fullUrl, true)
+		} catch (err) {
+			// Never break navigation: on any error, let the browser proceed.
+		}
+	})
+
+	window.addEventListener('popstate', function (): void {
+		try {
+			var href = window.location.href
+			var resolved = resolveNavUrl(href)
+			if (!resolved) return
+			if (resolved.origin !== navPageOrigin()) return
+			if (!isShellPagePath(resolved.pathname)) {
+				window.location.reload()
+				return
+			}
+			navigateShellTo(href, false)
+		} catch (err) {
+			try {
+				window.location.reload()
+			} catch (reloadErr) {
+				// Nothing more to do.
+			}
 		}
 	})
 }
