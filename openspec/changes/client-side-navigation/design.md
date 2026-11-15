@@ -131,7 +131,18 @@ Home URL. The client therefore tracks the rendered page
 navigation's target (`pendingUrl`). A click on a link to a URL that
 is already being navigated to does nothing (the pending navigation
 is allowed to finish); a click on the rendered page cancels any
-pending navigation; anything else starts a navigation.
+pending navigation and restores the browser URL to the rendered
+page; anything else starts a navigation.
+
+Refinement (Nov 15, CodeRabbit follow-up `r4576655058`): a
+same-page cancel restores the browser URL to the rendered page.
+Cancelling the pending navigation stops the fetch but does not by
+itself fix the URL, which Back already changed to the destination.
+Without the restore, the old page stays displayed under the
+destination URL — the state this design says must not occur. The
+cancel branch therefore calls `history.replaceState` with the
+rendered page URL when the current URL differs from it; when the
+URLs already match, the call does nothing.
 
 ### Decision 10: pushState failure falls back to native navigation (CodeRabbit review, Nov 14, 2026)
 

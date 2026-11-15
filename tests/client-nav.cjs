@@ -383,6 +383,51 @@ async function main() {
   check('10. Close box removed on Home', doc10.querySelector('.os-titlebar a.os-box') === null);
   check('10. no native navigation from either Close', closeNavAttempts.length === 0, closeNavAttempts.join('; '));
 
+  // Test 11: A same-page click that cancels a pending navigation restores
+  // the browser URL to the rendered page. After Back the URL is Home
+  // while Apps is still rendered and the Home fetch is pending; clicking
+  // the Apps link (the rendered page) cancels the pending navigation,
+  // and without restoring the URL Apps would stay displayed under the
+  // Home URL.
+  var cancelFetchCalls = [];
+  var cancelNavAttempts = [];
+  var cancelDeferredHomeResolve = null;
+  var cancelFetch = function (url) {
+    cancelFetchCalls.push(url);
+    if (url === HOME_URL) {
+      return new Promise(function (resolve) {
+        cancelDeferredHomeResolve = function () {
+          resolve({ url: url, text: function () { return Promise.resolve(HOME_HTML); } });
+        };
+      });
+    }
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(APPS_HTML); } });
+  };
+  var ctx11 = makeWindow(HOME_HTML, cancelFetch, cancelNavAttempts);
+  var win11 = ctx11.win;
+  var doc11 = win11.document;
+  var appsLink11 = doc11.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  appsLink11.dispatchEvent(new win11.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('11. navigated to Apps first', win11.location.pathname === '/apps', win11.location.pathname);
+  // Back: URL becomes Home, Apps still rendered, Home fetch pending (deferred).
+  win11.history.back();
+  await nextTick();
+  check('11. Back changed URL to Home', win11.location.pathname === '/', win11.location.pathname);
+  check('11. Apps still rendered while Home fetch pending', doc11.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  // Click the Apps link (the rendered page): a same-page click. It must
+  // cancel the pending Home navigation and restore the URL to /apps.
+  appsLink11.dispatchEvent(new win11.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await nextTick();
+  check('11. same-page click restored URL to Apps', win11.location.pathname === '/apps', win11.location.pathname);
+  check('11. Apps still rendered after cancel', doc11.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  // The cancelled Home fetch resolves: it must not swap (stale).
+  if (cancelDeferredHomeResolve) cancelDeferredHomeResolve();
+  await flush();
+  check('11. cancelled Home fetch did not swap', doc11.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  check('11. URL still Apps after stale fetch resolves', win11.location.pathname === '/apps', win11.location.pathname);
+  check('11. no native navigation from the cancel', cancelNavAttempts.length === 0, cancelNavAttempts.join('; '));
+
   if (failures.length > 0) {
     console.log('FAILED: ' + failures.length + ' check(s): ' + failures.join(', '));
     process.exit(1);

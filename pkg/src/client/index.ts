@@ -634,8 +634,23 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 				// navigation the URL has already changed while the
 				// old page is still rendered, so a click on the
 				// URL's page is not a same-page click then.
+				// Restore the browser URL to the rendered page:
+				// after Back the URL already points at the
+				// destination while the old page is still rendered,
+				// and cancelling the pending navigation without
+				// restoring it would leave the old page displayed
+				// under the destination URL.
 				navSeq++
 				pendingUrl = null
+				try {
+					var current = resolveNavUrl(window.location.href)
+					if (!current || current.origin + current.pathname + current.search !== renderedUrl) {
+						history.replaceState({}, '', renderedUrl)
+					}
+				} catch (replaceErr) {
+					// A failed restore leaves the URL mismatched;
+					// the next navigation corrects it.
+				}
 				event.preventDefault()
 				return
 			}

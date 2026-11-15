@@ -231,3 +231,18 @@
   has 44 checks (was 31): added test 10, Close an app to Apps
   then Close the Apps page to Home, asserting the box syncs and
   both closes navigate.
+
+### Same-page cancel restores the URL (2026-11-15, CodeRabbit follow-up `r4576655058` — addressed)
+
+- **Cancel left the URL mismatched.** The `r4576578965` fix made a
+  same-page click cancel a pending navigation, but the cancel
+  branch did not restore the URL, which Back had already changed
+  to the destination. Cancelling left the old page displayed under
+  the destination URL — the state the design says must not occur.
+  Fixed: the cancel branch now calls `history.replaceState` with
+  the rendered page URL (`renderedUrl`) when the current URL
+  differs from it (a no-op when they match). Design Decision 9
+  refined. Harness `tests/client-nav.cjs` now has 52 checks (was
+  44): added test 11, Back to Home with the fetch pending then
+  click the rendered Apps page, asserting the cancel restores the
+  URL to `/apps` and the stale fetch does not swap.
