@@ -26,7 +26,7 @@
 
 - Clone the Artifacts remote into a temp directory and replace its tree with GitHub main's `pkg/` directory, because only `pkg/` ships and Kody does not pull GitHub main.
 
-- Commit the replaced tree as `hypercubed <accounts@hypercubed.com>` and push it fast-forward.
+- Commit the replaced tree using the configured git identity and push it fast-forward.
 
 - Call the Kody `api` tool with operation `packagePublishExternalPush` to start the publish.
 
