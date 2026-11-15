@@ -114,6 +114,8 @@ export KODY_CATALOG_BASE="http://127.0.0.1:${CATALOG_PORT}/"
 # restores direct-workerd behavior (empty appBasePath, bare /apps links).
 if [ "$NO_STUB" = "0" ]; then
   export KODY_DEV_STUB_RUNTIME="1"
+else
+  unset KODY_DEV_STUB_RUNTIME || true
 fi
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy || true
 HOST_ARGS=()
