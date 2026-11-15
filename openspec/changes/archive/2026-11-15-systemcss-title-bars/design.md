@@ -26,37 +26,76 @@ adaptations forced by kody-os, are:
 
 The current shell, for comparison
 (`pkg/public/styles.css`, the source of truth;
-`pkg/src/shell-css.ts` is generated from it):
+`pkg/src/shell-css.ts` is generated from it),
+plus the app-help change on this branch, which
+this change builds on rather than revisits:
 
 - `.os-titlebar`: min-height 3rem, padding
-  0.3rem 3.5rem (room for the left close slot and
-  the right expand / collapse slot), border-bottom
-  2px, stripes from the `--stripes` SVG tile
-  (a 1px rule every 4px), repeated.
+  0.3rem 3.5rem (6.5rem sides with `.has-help`),
+  border-bottom 2px, stripes full bar height from
+  the `--stripes` SVG tile (a 1px rule every 4px).
 - `.os-title`: padding 0.2rem 0.85rem, border 2px,
   white background, 0.9375rem bold, letter-spacing
   0.04em, line-height 1.5, single line with ellipsis.
-- `.os-box`: an absolute left slot, 3rem wide and
-  full bar height (min 3rem). Its `::before` is a
-  0.75rem square, 2px border, white, 1px hard shadow;
-  hover / active turn it black, active drops the
-  shadow and shifts 1px. There is no glyph in it.
+- `.os-box` / `.os-expand` / `.os-collapse` /
+  `.os-help` (help at right:3rem, expand at right:0):
+  absolute 3rem slots, full bar height, min 3rem;
+  the drawn mark is a shared 0.75rem outlined square
+  (flat since the help change — no hard shadow).
+  Expand / collapse add a corner-bracket glyph,
+  help a `?` text glyph; close is still blank.
 - `.app-titlebar` / `.app-title-plate`: the same
-  stripes, plate, size, and weight, with 3.5rem side
-  padding only when the panel has a close and / or
-  expand box (`.has-close`, `.has-expand`).
-- `.os-expand`, `.os-collapse`, `.modal-expand`,
-  `.widget-expand`: 3rem hit areas, outlined square
-  plus a corner-bracket glyph.
+  stripes, bordered plate, size, and weight, with
+  3.5rem (6.5rem with `.has-help`) side padding
+  only when the panel has boxes.
+- `.modal-expand`, `.widget-expand`: same 3rem
+  slots, outlined square plus corner bracket.
+
+## Landed design (locked Nov 15, 2026, mock v12)
+
+Iteration with the reference image (a classic Mac
+"System Folder" bar) settled every open value;
+_phases below implement this, not explore it:_
+
+- Stripe band: full-width, 29px tall, centered —
+  exactly as tall as the 1.7rem button squares.
+  29px is 7 x 4px tile rows + 1, so a black rule
+  lands flush on the band's top and bottom edges
+  and lines up with the box tops and bottoms.
+  The `--stripes` tile itself is unchanged (same
+  4px density as today); band heights stay 4n+1px
+  for the flush-rule property.
+- Title: borderless (no plate border), ~1.1rem
+  bold in `--os-font`, stretched to 100% bar
+  height at its own width (`align-self: stretch`,
+  flex-centered), white top-to-bottom — no stripe
+  ever passes above or below the text.
+- Boxes: 1.7rem drawn squares (up from 0.75rem),
+  glyphs scaled with them (X arms 17px, bracket
+  10px, `?` at 1rem), each with a 3px white halo
+  (`box-shadow: 0 0 0 3px #fff`) punched over the
+  stripes — stripes run up to the halo, no white
+  end columns. Glyph drawing stays CSS
+  pseudo-elements / text per Decision 2.
+- Slots: UNMOVED — close left, expand right,
+  help right:3rem, all absolute 3rem full-height
+  hit targets exactly as today. Bar min-height
+  2.75rem with white top/bottom padding around
+  the band.
+- Help: the `ui.help` layout (slot, padding,
+  dialog) is untouched; only the square and halo
+  restyle. Works with and without help —
+  symmetric padding keeps the full-height title
+  centered either way.
 
 ## Goals / Non-Goals
 
-- Goals: a title bar that reads as the system.css
-  bar at a glance — slimmer visual strip, larger
-  title relative to the bar, denser stripes, a
-  visible glyph in each box — on the shell window
-  bar and on the app panel bar alike, judged on
-  the Scribe, one phase at a time.
+- Goals: the landed design above, on the shell
+  window bar and on the app panel bar alike —
+  29px stripe band matching the 1.7rem boxes,
+  full-height borderless title, tight 3px halos,
+  unmoved 48px slots with and without the help
+  box — judged on the Scribe, one phase at a time.
 - Non-goals: copying system.css's 1.5rem bar height
   or 20px buttons (see Decision 1); copying its
   gradient stripes or gradient glyphs (see
@@ -71,27 +110,25 @@ The current shell, for comparison
 
 ## Decisions
 
-1. **Tap height and visual height are separate,
-   and tap height wins.** A 48px hit slot is a
-   binding shell constraint (`pkg/docs/
+1. **Tap slots stay where they are, at 48px.**
+   A 48px hit slot in its current position
+   (close left, expand right, help right:3rem)
+   is a binding shell constraint (`pkg/docs/
    scribe-limitations.md`, repo AGENTS.md). The
-   system.css bar is 1.5rem tall and its buttons
-   are effectively 20px; neither number survives
-   contact with the Scribe. Phase 0 must settle,
-   before any CSS lands, whether the landed bar
-   stays 3rem tall with a slimmer look inside it,
-   or drops to a shorter visual height while the
-   slots keep a 48px hit area that overlaps the
-   bar's padding. The second option needs a
-   Scribe-width layout test, not an argument:
-   a slot taller than its bar can collide with
-   the menubar above or the panel below. Until
-   that test is done, the default is: bar stays
-   3rem, visual padding and title size do the
-   slimming. No phase may land a slot under 48px
-   in either dimension, including the close box
-   on narrow screens, where the window frame
-   drops away and the panel border returns.
+   landed bar is 2.75rem tall with a 29px visual
+   band inside it — the slots keep their absolute
+   3rem full-height geometry exactly as today,
+   and only the _drawn_ square grows (0.75rem to
+   1.7rem), never the slot. Phase 0 still
+   records the baseline and confirms no collision
+   with the menubar above or the panel below at
+   Scribe width, but the overlap question is
+   settled: there is none, because the slots do
+   not move. No phase may land a slot under 48px
+   in either dimension or in a new position,
+   including the close box on narrow screens,
+   where the window frame drops away and the
+   panel border returns.
 2. **No gradients, no external glyph assets.**
    System.css draws stripes and both box glyphs
    with `linear-gradient`, and its button borders
@@ -104,10 +141,11 @@ The current shell, for comparison
    pseudo-elements (borders, rotated bars) or
    with an inline SVG data URI in the shell's
    existing tile style, in monochrome only.
-   Stripes stay the `--stripes` tile; a phase
-   may change the tile's density (rule every
-   3px instead of 4px, for example) but may not
-   replace it with a gradient.
+   Stripes stay the `--stripes` tile at its
+   current 4px density — the design densifies
+   nothing; the band is taller (29px) because the
+   boxes are bigger (1.7rem), and band heights
+   stay 4n+1px so the tile's rules land flush.
 3. **No webfonts; the shell font stack does the
    work.** System.css's title is Chicago_12, a
    webfont recreation. Kody-os uses system fonts
@@ -115,9 +153,10 @@ The current shell, for comparison
    (`"Chicago", "Geneva", Helvetica, Arial,
    sans-serif`) and the system.css quality has
    to come from size, weight, spacing, and the
-   plate-on-stripes composition, not from the
-   font file. If the title grows (Phase 1), it
-   grows within that stack, and the single-line
+   band-and-full-height-title composition, not
+   from the font file. The title lands at ~1.1rem
+   bold, borderless, stretched to the full bar
+   height at its own width, and the single-line
    ellipsis rule stays: a long title must still
    truncate, never wrap and push the bar taller.
 4. **Visible glyphs, not press-only glyphs.**
@@ -131,10 +170,12 @@ The current shell, for comparison
    active exactly as the box does today. The
    expand / collapse glyph keeps its current
    meaning (page-mode expand, not a Mac resize)
-   and its corner-bracket form unless Phase 2's
-   Scribe test shows a system.css-style diagonal
-   glyph reads better at 0.75rem; the name and
-   the destination never change with the glyph.
+   and its corner-bracket form, scaled to the
+   1.7rem box (bracket ~10px, X arms 17px, `?`
+   at 1rem); the name and the destination never
+   change with the glyph. Boxes punch a 3px white
+   halo over the stripes — stripes run up to the
+   halo, not under the box.
 5. **One bar, two renderings — not two bars.**
    `.os-titlebar` and `.app-titlebar` are the
    same component in two places (shell window

@@ -3,10 +3,11 @@
 ## Purpose
 
 Give the shell and panel title bars the adapted
-system.css look — slimmer visual strip, larger
-title relative to the bar, denser stripes, visible
-box glyphs — while keeping every 48px hit slot,
-every navigation destination, and the
+system.css look — a centered 33px stripe band,
+a full-bar-height borderless title, 1.7rem boxes
+with visible glyphs — while keeping every 48px
+hit slot in its current position, every
+navigation destination, and the
 exactly-one-title rule.
 
 ## MODIFIED Requirements
@@ -17,13 +18,27 @@ The title bar part of this requirement changes
 as follows; the rest (menu strip, main content,
 footer, clock, close-box destinations, document
 title) is unchanged. Every page SHALL use the
-same chrome, whose title bar is a racing-striped
-strip with a centred title on a white bordered
-plate, in the shell font stack, single line with
-ellipsis for long titles. The title SHALL be
-larger relative to the bar than the pre-change
-0.9375rem title, within the 48px-slot constraint
-below. The close box SHALL carry a visible X
+same chrome, whose title bar is a white bar
+carrying a full-width racing-striped band
+taller than the button squares so all eight rules show (33px:
+eight 4px tile rows plus one, so a black rule
+lands flush on the band's top and bottom edges,
+lining up with the box tops and bottoms), in
+the existing 4px `--stripes` SVG tile — the tile
+density does not change. Centred on the band,
+the title is white from bar top to bar bottom
+at its own width (`align-self: stretch`):
+borderless, no plate border, in the shell font
+stack at ~1.1rem bold, single line with
+ellipsis for long titles, so no stripe ever
+passes above or below the text. Every box sits
+in its current slot — close at left, expand /
+collapse at right, help (when the app defines
+`ui.help`) at right:3rem — unchanged in
+position and 48px hit area; the drawn square
+grows to 1.7rem with a 3px white halo punched
+over the stripes so the stripes run up to the
+halo. The close box SHALL carry a visible X
 glyph at rest, black on white, inverting on
 hover / active exactly as the box does today;
 expand / collapse boxes SHALL carry a readable
@@ -31,6 +46,28 @@ glyph (corner bracket or diagonal, whichever
 the implementation phase records as reading
 better at Scribe resolution) and SHALL keep
 their current meanings and destinations.
+
+#### Scenario: Stripe band matches the boxes
+
+- **WHEN** any title bar is fetched
+- **THEN** the striped band is as tall as the
+  drawn button squares (33px band) with a black rule
+  flush on its top and bottom edges, white bar
+  padding shows above and below the band, and
+  no stripe passes above or below the title
+  text, whose white ground runs the full bar
+  height.
+
+#### Scenario: Help layout is unchanged
+
+- **WHEN** an app page whose definition sets
+  `ui.help` is fetched
+- **THEN** the help box sits in its current
+  slot (right:3rem, expand at right:0) with the
+  same 1.7rem square and 3px halo as the other
+  boxes, the bar keeps symmetric padding so
+  the full-height title stays centered, and
+  pages without help render exactly as before.
 
 #### Scenario: Title truncates, never wraps
 
@@ -109,10 +146,15 @@ in `pkg/public/styles.css` and be regenerated
 into `pkg/src/shell-css.ts`, byte-identical,
 with zero external stylesheet `<link>` tags,
 zero webfonts, and zero gradients for stripes
-or glyphs. Every title-bar hit slot (close,
-expand, collapse, modal expand, widget expand)
-SHALL be at least 48px in both dimensions,
-at full width and under 30rem.
+or glyphs. The stripe tile stays the existing
+4px `--stripes` tile; band heights stay 4n+1px
+so the tile's rules land flush. Every
+title-bar hit slot (close, expand, collapse,
+help, modal expand, widget expand)
+SHALL keep its current position (close left,
+expand right, help right:3rem) and be at least
+48px in both dimensions, at full width and
+under 30rem.
 
 #### Scenario: Tap slots survive slimming
 
@@ -133,12 +175,16 @@ at full width and under 30rem.
 The shell window title bar (`.os-titlebar` /
 `.os-title`) and the app panel title bar
 (`.app-titlebar` / `.app-title-plate`) SHALL
-share title size, plate padding, stripe tile,
-box glyphs, and hover / active behavior,
+share title size, band height, stripe tile,
+box size and halo, box glyphs, and hover /
+active behavior,
 except where their different slot layouts
 (absolute slots on the shell bar, padded slots
 on the panel bar) force a difference, which
 SHALL be commented in `pkg/public/styles.css`.
+Both bars use the same 33px band, the same
+full-height borderless title, and the same
+1.7rem boxes with 3px halos.
 
 #### Scenario: Panel bar matches shell bar
 
@@ -149,19 +195,7 @@ SHALL be commented in `pkg/public/styles.css`.
   same close glyph — differing only in the
   slot layout their pages require.
 
-### Requirement: Inactive title bar (only if a use is found)
-
-This requirement applies only if Phase 4 of
-`tasks.md` finds a real use for it; otherwise
-it is dropped with the phase. When it applies,
-an inactive title bar SHALL show its title in
-grey with the stripes dropped, keeping the
-same 48px slots and the same glyphs as the
-active bar.
-
-#### Scenario: Inactive bar is recognizably inactive
-
-- **WHEN** a page renders an inactive title bar
-- **THEN** its title is grey, its strip carries
-  no racing stripes, and its boxes are still
-  tappable at 48px.
+<!-- Phase 4 dropped Nov 15, 2026: no real single-window use for an inactive
+title bar was found. The `:target`-overlay dimming candidate needs `:has()`
+(absent on Scribe Chromium 80) or JS/markup churn disproportionate to the
+effect, so this requirement is removed, not shipped. -->
