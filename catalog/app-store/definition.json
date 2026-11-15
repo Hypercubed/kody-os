@@ -3,8 +3,8 @@
   "name": "App Catalog",
   "label": "App Catalog",
   "schemaVersion": 5,
-  "catalogVersion": 32,
-  "minPackageVersion": "4.2.0",
+  "catalogVersion": 33,
+  "minPackageVersion": "4.4.0",
   "icon": "\u229e",
   "category": "utilities",
   "description": "Install and update apps from the catalog, right here in the browser \u2014 no agent needed.",
@@ -17,7 +17,7 @@
       },
       {
         "name": "catalog-apps",
-        "url": "https://raw.githubusercontent.com/Hypercubed/kody-os/4.2/catalog/"
+        "url": "https://raw.githubusercontent.com/Hypercubed/kody-os/4.3/catalog/"
       }
     ]
   },

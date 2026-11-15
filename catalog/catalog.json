@@ -27,8 +27,8 @@
     {
       "id": "app-store",
       "label": "App Catalog",
-      "catalogVersion": 32,
-      "fingerprint": "fnv:1851483125-4011966218-26637",
+      "catalogVersion": 33,
+      "fingerprint": "fnv:3428567692-1793261493-26637",
       "installMode": "json",
       "definitionPath": "app-store/definition.json",
       "recipePath": "app-store/RECIPE.md",
@@ -51,7 +51,7 @@
         "themeView": false,
         "themeSet": false
       },
-      "minPackageVersion": "4.2.0"
+      "minPackageVersion": "4.4.0"
     },
     {
       "id": "arrow-game",
