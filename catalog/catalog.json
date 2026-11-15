@@ -80,8 +80,8 @@
     {
       "id": "calculator",
       "label": "Calculator",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:2106161938-3496579294-6170",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:620866200-1484561092-6214",
       "installMode": "json",
       "definitionPath": "calculator/definition.json",
       "recipePath": "calculator/RECIPE.md",
@@ -128,8 +128,8 @@
     {
       "id": "cellular-playground",
       "label": "Cellular Playground",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:3762530524-3175378989-18933",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:2940516081-3049766157-19012",
       "installMode": "json",
       "definitionPath": "cellular-playground/definition.json",
       "recipePath": "cellular-playground/RECIPE.md",

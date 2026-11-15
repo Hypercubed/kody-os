@@ -779,6 +779,38 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 		} catch (err) {
 			// Never break navigation for a close-box sync failure.
 		}
+		// Sync the titlebar help box too. The swap replaces #os-main
+		// only, so without this the help box keeps the previous page's
+		// target while the fresh dialog (inside #os-main) belongs to
+		// the new page — or a stale box lingers where the destination
+		// has no help at all. The dialog itself swaps with the content;
+		// only the titlebar box (and the has-help class) needs syncing.
+		try {
+			var freshBar = freshDoc.querySelector('.os-titlebar')
+			var currentBar = document.querySelector('.os-titlebar')
+			if (!freshBar || !currentBar) return
+			var freshHelp = freshBar.querySelector('button.os-help')
+			var currentHelp = currentBar.querySelector('button.os-help')
+			if (freshHelp && currentHelp) {
+				var freshTarget = freshHelp.getAttribute('data-help-open') || ''
+				if (freshTarget !== '') currentHelp.setAttribute('data-help-open', freshTarget)
+			} else if (freshHelp && !currentHelp) {
+				// Destination has help, current does not: insert a
+				// copy immediately left of the expand box (or the
+				// title when there is none), mirroring server order.
+				var helpClone = freshHelp.cloneNode(true) as Element
+				var expandEl = currentBar.querySelector('.os-expand')
+				if (expandEl && expandEl.parentNode) expandEl.parentNode.insertBefore(helpClone, expandEl)
+				else currentBar.appendChild(helpClone)
+			} else if (!freshHelp && currentHelp) {
+				// Destination has no help: remove the stale box.
+				if (currentHelp.parentNode) currentHelp.parentNode.removeChild(currentHelp)
+			}
+			if (freshBar.classList.contains('has-help')) currentBar.classList.add('has-help')
+			else currentBar.classList.remove('has-help')
+		} catch (err) {
+			// Never break navigation for a help-box sync failure.
+		}
 	}
 
 	function swapNavMain(freshDoc: Document): boolean {
@@ -1101,14 +1133,35 @@ document.addEventListener('keydown', function (event: Event): void {
 	try {
 		var keyEvent = event as KeyboardEvent
 		var key = keyEvent.key || ''
-		if (key !== 'Escape' && key !== 'Esc') return
 		var open = document.querySelector('.os-help-dialog:not([hidden])')
-		if (open) {
+		if (!open) return
+		if (key === 'Escape' || key === 'Esc') {
 			event.preventDefault()
 			helpCloseDialog(open)
+			return
+		}
+		// Keep Tab cycling inside the open dialog so background
+		// controls cannot receive focus while it is open.
+		if (key !== 'Tab') return
+		var focusables = open.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+		if (focusables.length === 0) {
+			event.preventDefault()
+			return
+		}
+		var first = focusables[0] as HTMLElement
+		var last = focusables[focusables.length - 1] as HTMLElement
+		var active = document.activeElement
+		if (keyEvent.shiftKey) {
+			if (active === first || !open.contains(active)) {
+				event.preventDefault()
+				last.focus()
+			}
+		} else if (active === last) {
+			event.preventDefault()
+			first.focus()
 		}
 	} catch (err) {
-		// Never break the page for an Escape press.
+		// Never break the page for a key press.
 	}
 })
 

@@ -417,6 +417,8 @@ body {
 	right: 1rem;
 	z-index: 30;
 	max-width: 32rem;
+	max-height: 70vh;
+	overflow-y: auto;
 	margin: 0 auto;
 	border: 6px double #000;
 	background: var(--paper);
@@ -441,6 +443,7 @@ body {
 	font-size: 0.875rem;
 	text-align: center;
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 
 /* Normal auto-width button in a padded, centered footer — the base `button`

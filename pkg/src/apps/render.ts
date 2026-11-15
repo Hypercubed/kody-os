@@ -135,7 +135,7 @@ export function helpTextFor(def: AppDefinition): string | undefined {
  * shared square, so it reads centered on every font's metrics.
  */
 export function renderHelpButton(id: string): string {
-	return '<button type="button" class="os-help" data-help-open="help-' + escapeHtml(id) + '" aria-label="Help" title="Help"><span class="os-help-glyph" aria-hidden="true">?</span></button>'
+	return '<button type="button" class="os-help" data-help-open="help-dialog-' + escapeHtml(id) + '" aria-label="Help" title="Help"><span class="os-help-glyph" aria-hidden="true">?</span></button>'
 }
 
 /**
@@ -149,7 +149,11 @@ export function renderHelpButton(id: string): string {
  * the help text, and a Close button, centered with a double border.
  */
 export function renderHelpDialog(id: string, title: string, help: string): string {
-	var dialogId = 'help-' + escapeHtml(id)
+	// The `dialog-` / `heading-` infixes keep the two identifiers disjoint:
+	// the dialog for app `heading-foo` (`help-dialog-heading-foo`) can
+	// never equal the heading for app `foo` (`help-heading-foo`), which
+	// the old shared `help-` prefix allowed. Button and dialog agree.
+	var dialogId = 'help-dialog-' + escapeHtml(id)
 	var headingId = 'help-heading-' + escapeHtml(id)
 	return (
 		'<div class="os-help-dialog" id="' +
