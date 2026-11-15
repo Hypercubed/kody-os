@@ -245,7 +245,23 @@ The shell SHALL route mount-tolerantly: it slices the request path from the firs
 
 ### Requirement: Single shared chrome
 
-Every page SHALL use the same chrome: title bar with the page title and a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `settings.json` (default `kody-os`) followed immediately by Home and Apps links, then the menu-app links specified in `Top menu bar links`, then the built-in Help and About links when their pages are enabled (no Refresh link); main content; footer with status text and no home navigation — and NO auth path element, because the shell performs no access check and there is no `via kody` / `locked` to report; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, or `/apps#app-<id>` for an app expanded from a modal overlay), carried in `sessionStorage` under key `kody-os:return` and applied by the shell client; with no stored value it SHALL go Home. The server SHALL render the close box defaulting to Home and SHALL NOT read a `from` query value. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the settings file with current values as defaults.
+Every page SHALL use the same chrome: a white 2.75rem title bar carrying a full-width 33px racing-striped band (eight 4px `--stripes` tile rows plus one, so the band shows eight rules with paper at its top and bottom edges) centered with white bar padding above and below, a borderless ~1.1rem bold title (`--os-font`, single line with ellipsis) stretched to the full bar height at its own width (`align-self: stretch`), and 1.7rem boxed glyphs (visible X at rest on the close box, corner brackets on expand/collapse, `?` on help) each with a 3px white halo over the stripes, in unmoved 48px slots (close left, expand right, help at right:3rem), plus a close box (labeled with its destination, omitted on the dashboard); menu strip with the left cluster of brand mark plus product name from `settings.json` (default `kody-os`) followed immediately by Home and Apps links, then the menu-app links specified in `Top menu bar links`, then the built-in Help and About links when their pages are enabled (no Refresh link); main content; footer with status text and no home navigation — and NO auth path element, because the shell performs no access check and there is no `via kody` / `locked` to report; `data-pak-config` carrying the current phase; and a right-aligned date and time (server-rendered UTC on each navigation; a client tick SHALL keep it live in the browser's local time zone where JavaScript runs). The titlebar close box on an app page SHALL return to the opener (`/` or `/apps`, or `/apps#app-<id>` for an app expanded from a modal overlay), carried in `sessionStorage` under key `kody-os:return` and applied by the shell client; with no stored value it SHALL go Home. The server SHALL render the close box defaulting to Home and SHALL NOT read a `from` query value. The dashboard at `GET /` SHALL omit the close box (it already is home) and every other page SHALL show it. The document title SHALL read `{page} · {title}` where `{title}` is the theme title when set, else the theme name. Body background and header mark SHALL likewise render from the settings file with current values as defaults.
+
+#### Scenario: Stripe band matches the boxes
+- **WHEN** any title bar is fetched
+- **THEN** the striped band shows all eight rules (33px band) with paper at its top and bottom edges, white bar padding shows above and below the band, and no stripe passes above or below the title text, whose white ground runs the full bar height.
+
+#### Scenario: Help layout is unchanged
+- **WHEN** an app page whose definition sets `ui.help` is fetched
+- **THEN** the help box sits in its current slot (right:3rem, expand at right:0) with the same 1.7rem square and 3px halo as the other boxes, the bar keeps symmetric padding so the full-height title stays centered, and pages without help render exactly as before.
+
+#### Scenario: Title truncates, never wraps
+- **WHEN** an app page with a long title is fetched at Scribe width
+- **THEN** the title bar stays one line tall, the title truncates with ellipsis, and no box slot is pushed out of the bar.
+
+#### Scenario: Close glyph is visible at rest
+- **WHEN** any page with a close box is fetched
+- **THEN** the close box shows an X glyph before any hover or press, and pressing it still navigates to the opener (or Home with no stored return).
 
 #### Scenario: Unknown routes keep the chrome
 - **WHEN** a request hits an unknown path
@@ -292,11 +308,19 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 - **THEN** the client stores the validated value, the close box returns to it, and the visible URL no longer carries `from` after load; the server ignores the value entirely.
 
 ### Requirement: Scribe-ready styles, inlined
-The shell SHALL inline the full theme in a single `<style>` tag on every page and emit zero external stylesheet `<link>` tags. `src/shell-css.ts` is generated from `public/styles.css` (the authoring source of truth) and MUST be regenerated after any theme edit so the two stay byte-identical.
+The shell SHALL inline the full theme in a single `<style>` tag on every page and emit zero external stylesheet `<link>` tags. `src/shell-css.ts` is generated from `public/styles.css` (the authoring source of truth) and MUST be regenerated after any theme edit so the two stay byte-identical. Title-bar styles SHALL live in `pkg/public/styles.css` with zero webfonts and zero gradients for stripes or glyphs (stripes stay the 4px `--stripes` SVG tile, band heights stay 4n+1px); every title-bar hit slot (close, expand, collapse, help, modal expand, widget expand) SHALL keep its current position and measure at least 48px in both dimensions at full width and under 30rem.
 
 #### Scenario: No external stylesheets anywhere
 - **WHEN** any shell page is fetched
 - **THEN** its HTML contains exactly one `<style>` block, zero `<link rel="stylesheet">` tags, and the inlined CSS is byte-identical to `public/styles.css`.
+
+### Requirement: Shared title-bar look across bars
+
+The shell window title bar (`.os-titlebar` / `.os-title`) and the app panel title bar (`.app-titlebar` / `.app-title-plate`) SHALL share title size, band height, stripe tile, box size and halo, box glyphs, and hover/active behavior, except where their different slot layouts (absolute slots on the shell bar, padded slots on the panel bar) force a difference, which SHALL be commented in `pkg/public/styles.css`. Both bars use the same 33px band, the same full-height borderless title, and the same 1.7rem boxes with 3px halos.
+
+#### Scenario: Panel bar matches shell bar
+- **WHEN** a modal overlay and an app page for the same app are compared
+- **THEN** their title bars read as the same component — same title size, same stripes, same close glyph — differing only in the slot layout their pages require.
 
 ### Requirement: Kindle ceiling (Chromium 75)
 Shell and client code SHALL be ES2019 only: no `?.`, no `??`, no `replaceAll`, no `.at()`. Styles SHALL use no flexbox `gap` (grid `gap` is allowed), system fonts only, zero emojis, minimum 3rem (48px) tap targets, no animations or transitions, `color-scheme: light` only.

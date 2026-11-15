@@ -192,27 +192,57 @@ body {
 	box-shadow: var(--lift-lg);
 }
 
-/* Striped title bar with a white title plate, like a classic OS window. */
+/* Title bar: a white 2.75rem bar carrying a full-width 33px racing-striped band
+   (8 x 4px tile rows + 1, so the band shows eight rules with paper at its top
+   and bottom edges). The band is the
+   ::before layer, centered; white bar padding shows above and below it. The
+   title is borderless white ground running the full bar height at its own
+   width (align-self: stretch), so no stripe ever passes above or below the
+   text. Slots are UNMOVED: absolute 3rem full-height hit targets exactly as
+   before — only the drawn squares grow, never the slots. */
 .os-titlebar {
 	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 3rem;
-	padding: 0.3rem 3.5rem;
+	min-height: 2.75rem;
+	padding: 0 3.5rem;
 	border-bottom: var(--rule);
+	background-color: var(--paper);
+}
+
+/* 33px stripe band, full-width, centered. Same 4px --stripes tile, unchanged
+   density; band heights stay 4n+1px so the tile phase stays aligned top to
+   bottom. 33px = 8 tile rows + 1, giving 8 rules with paper at the band's
+   top and bottom edges. */
+.os-titlebar::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: 33px;
 	background-color: var(--paper);
 	background-image: var(--stripes);
 	background-repeat: repeat;
+	pointer-events: none;
 }
 
 .os-title {
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	z-index: 1;
 	max-width: 100%;
 	margin: 0;
-	padding: 0.2rem 0.85rem;
-	border: var(--rule);
+	padding: 0 0.85rem;
+	border: 0;
 	background: var(--paper);
-	font-size: 0.9375rem;
+	font-family: var(--os-font);
+	font-size: 1.1rem;
 	font-weight: bold;
 	letter-spacing: 0.04em;
 	line-height: 1.5;
@@ -221,7 +251,9 @@ body {
 	text-overflow: ellipsis;
 }
 
-/* Close box doubles as back-to-home, so the chrome is honest. */
+/* Close box doubles as back-to-home, so the chrome is honest. Slots stay at
+   top: 0 for full-height 48px hit targets; the drawn squares shift up 2.5px
+   via the shared header-box square rule to align with the 33px band. */
 .os-box {
 	position: absolute;
 	top: 0;
@@ -237,10 +269,13 @@ body {
 }
 
 /* Shared header-box square: the close, expand/collapse, help, widget-expand,
-   and modal-expand boxes draw one identical 0.75rem outlined square with no
-   shadow. One rule for every box, so a new box cannot drift from the rest.
-   Hover/active inverts the square; the `?` glyph and bracket icons invert
-   with their own rules below. */
+   and modal-expand boxes draw one identical 1.7rem outlined square with a 3px
+   white halo punched over the stripes (stripes run up to the halo, no white
+   end columns). One rule for every box, so a new box cannot drift from the
+   rest. Hover/active inverts the square; the X, `?`, and bracket glyphs
+   invert with their own rules below. Slots stay absolute 3rem full-height.
+   Squares shift up 2.5px here so slots stay at top: 0; glyphs shift with
+   matching offsets in their own rules below. */
 .os-box::before,
 .os-expand::before,
 .os-collapse::before,
@@ -249,10 +284,12 @@ body {
 .modal-expand::before {
 	content: "";
 	display: block;
-	width: 0.75rem;
-	height: 0.75rem;
+	width: 1.7rem;
+	height: 1.7rem;
 	border: 2px solid #000;
 	background: #fff;
+	box-shadow: 0 0 0 3px #fff;
+	transform: translateY(-2.5px);
 }
 
 .os-box:hover::before,
@@ -293,14 +330,38 @@ body {
 	display: none;
 }
 
-/* Expand: upward-outward corner bracket, matching widget/modal expand. */
+/* Close: visible X at rest, black on white, inverting with the box. Text glyph
+   (not a drawing) so it inverts with color exactly like the help `?`; sized
+   to 17px arms to match the 1.7rem square. Kept blank-square fallback: if the
+   X ever reads as a smudge at 1-bit e-ink, remove this rule and the box
+   returns to the inverting blank square. */
+.os-box::after {
+	content: "×";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, calc(-50% - 2.5px));
+	font-family: var(--os-font);
+	font-size: 1.1rem;
+	font-weight: bold;
+	line-height: 1;
+	color: #000;
+}
+
+.os-box:hover::after,
+.os-box:active::after {
+	color: #fff;
+}
+
+/* Expand: upward-outward corner bracket, matching widget/modal expand.
+   10px bracket centered in the upper-right quadrant of the 1.7rem square. */
 .os-expand::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.32rem);
-	left: calc(50% + 0.02rem);
-	width: 0.28rem;
-	height: 0.28rem;
+	top: calc(50% - 0.55rem - 2.5px);
+	left: calc(50% - 0.05rem);
+	width: 0.625rem;
+	height: 0.625rem;
 	border-top: 2px solid #000;
 	border-right: 2px solid #000;
 }
@@ -309,10 +370,10 @@ body {
 .os-collapse::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.02rem);
-	left: calc(50% - 0.32rem);
-	width: 0.28rem;
-	height: 0.28rem;
+	top: calc(50% - 0.075rem - 2.5px);
+	left: calc(50% - 0.575rem);
+	width: 0.625rem;
+	height: 0.625rem;
 	border-bottom: 2px solid #000;
 	border-left: 2px solid #000;
 }
@@ -363,9 +424,9 @@ body {
 	   drop centers the curve on the square (verified against ink dumps at
 	   12px: curve lands within 1 device px of square center, dot clears the
 	   bottom border). Static offset, not an animation or transition. */
-	transform: translate(-50%, calc(-50% + 1px));
+	transform: translate(-50%, calc(-50% + 1px - 2.5px));
 	font-family: var(--os-font);
-	font-size: 0.75rem;
+	font-size: 1rem;
 	font-weight: bold;
 	line-height: 1;
 }
@@ -970,26 +1031,72 @@ button.tile:active .tile-icon {
 	padding-right: 6.5rem;
 }
 
+/* Panel bar shares the shell bar's look: same 33px band, same full-height
+   borderless 1.1rem title, same 1.7rem boxes with 3px halos, same glyphs and
+   hover/active behavior. Forced difference, commented so it is not "fixed"
+   back into drift: the shell bar is a flex bar with absolute slots, while the
+   panel bar keeps its padded-slot layout (has-close / has-expand / has-help
+   side padding) because overlays and widgets place their boxes per header. */
 .app-titlebar {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	margin: 0;
-	padding: 0.3rem 0.5rem;
+	padding: 0 0.5rem;
+	min-height: 2.75rem;
 	border-bottom: var(--rule);
 	background-color: var(--paper);
-	background-image: var(--stripes);
-	background-repeat: repeat;
-	text-align: center;
-	font-size: 0.9375rem;
+	font-size: 1.1rem;
 	line-height: 1.5;
 }
 
+/* Same 33px band as the shell bar: same tile, same 4n+1px aligned phase. */
+.app-titlebar::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: 33px;
+	background-color: var(--paper);
+	background-image: var(--stripes);
+	background-repeat: repeat;
+	pointer-events: none;
+}
+
 .app-title-plate {
-	display: inline-block;
-	padding: 0.2rem 0.85rem;
-	border: var(--rule);
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	z-index: 1;
+	max-width: 100%;
+	min-width: 0;
+	padding: 0 0.85rem;
+	border: 0;
 	background: var(--paper);
-	font-size: 0.9375rem;
+	font-family: var(--os-font);
+	font-size: 1.1rem;
 	font-weight: bold;
 	letter-spacing: 0.04em;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+/* Inner title text: the plate is a flex container, so the raw title text is
+   an anonymous flex item and overflow clipping cuts off its start without an
+   ellipsis. This block child truncates from the end, keeping the start
+   visible with an ellipsis. */
+.app-title-text {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .app-body {
@@ -1355,14 +1462,14 @@ button.tile:active .tile-icon {
 	text-decoration: none;
 }
 
-/* Expand arrow: an upward-outward corner bracket inside the box. */
+/* Expand arrow: an upward-outward corner bracket inside the box (10px, matching shell expand). */
 .widget-expand::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.32rem);
-	left: calc(50% + 0.02rem);
-	width: 0.28rem;
-	height: 0.28rem;
+	top: calc(50% - 0.55rem - 2.5px);
+	left: calc(50% - 0.05rem);
+	width: 0.625rem;
+	height: 0.625rem;
 	border-top: 2px solid #000;
 	border-right: 2px solid #000;
 }
@@ -1391,10 +1498,10 @@ button.tile:active .tile-icon {
 .modal-expand::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.32rem);
-	left: calc(50% + 0.02rem);
-	width: 0.28rem;
-	height: 0.28rem;
+	top: calc(50% - 0.55rem - 2.5px);
+	left: calc(50% - 0.05rem);
+	width: 0.625rem;
+	height: 0.625rem;
 	border-top: 2px solid #000;
 	border-right: 2px solid #000;
 }

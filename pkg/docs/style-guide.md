@@ -18,8 +18,10 @@ each other.
 
 ## 1. What this guide is for
 
-kody-os already has a look: classic Mac chrome (a pinstriped
-title bar, a centred title in a bordered box, 1px black
+kody-os already has a look: classic Mac chrome (a 2.75rem bar carrying a
+full-width 33px pinstriped band in the same 4px tile, a centred borderless
+1.1rem title running the full bar height at its own width, 1.7rem boxes with
+visible glyphs and 3px halos over unmoved 48px slots, 1px black
 borders, a hard bottom-right shadow) crossed with ReKindle
 minimalism (strictly monochrome, high contrast, large tap
 targets, text first, no gradients, no animations). The problem

@@ -33,15 +33,19 @@ this is a piece-by-piece change, not a flag day.
 - The shell window title bar (`.os-titlebar` / `.os-title`)
   and the app panel title bar (`.app-titlebar` /
   `.app-title-plate`) move toward the system.css look:
-  a slimmer visual strip, a larger title relative to the
-  bar, denser racing stripes from the shell's existing
-  SVG tile, and visible glyphs in the close and
-  expand / collapse boxes.
-- The 48px hit slots for close, expand, and collapse
-  stay 48px, whatever the visual bar height becomes.
-  If a phase cannot keep a 48px slot, that phase does
-  not land; the visual height and the tap height are
-  separate decisions, and the tap height wins.
+  a full-width 29px racing-stripe band matching the
+  1.7rem boxes (same 4px `--stripes` tile, unchanged
+  density), a borderless ~1.1rem title stretched to
+  the full bar height at its own width, and visible
+  glyphs (X, corner bracket, `?`) in the boxes with
+  3px white halos. Bar min-height 2.75rem with white
+  top/bottom padding around the band.
+- The 48px hit slots for close, expand, collapse,
+  and help stay exactly where they are (close left,
+  expand right, help right:3rem) at 48px; only the
+  drawn squares grow. No slot moves and none
+  shrinks; the visual height and the slot geometry
+  are separate, and the slots win.
 - Close keeps its current destination semantics
   (back to the opener, Home on a bad / missing `from`,
   omitted on the dashboard) and expand / collapse keep
@@ -68,10 +72,14 @@ this is a piece-by-piece change, not a flag day.
 ### Modified Capabilities
 
 - `shell`: the title-bar requirements change from the
-  current 3rem / 0.9375rem / blank-box look to the
-  adapted system.css look. No route, storage, MCP, or
-  navigation change. No new capability is offered to
-  apps; bundles still must not recreate title bars.
+  current 3rem / 0.9375rem bordered-plate / blank-box
+  look to the landed design: 29px stripe band, 1.7rem
+  boxes with glyphs and 3px halos, full-height
+  borderless ~1.1rem title, unmoved 48px slots
+  (works with and without the `ui.help` box). No
+  route, storage, MCP, or navigation change. No new
+  capability is offered to apps; bundles still must
+  not recreate title bars.
 
 ## Impact
 
