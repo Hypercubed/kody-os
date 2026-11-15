@@ -809,6 +809,71 @@ export function declaredCatalogAppsBase(def: AppDefinition | null | undefined): 
 	return null
 }
 
+/**
+ * Storage-backed dev override for the catalog base (local catalog
+ * development): a bare base URL string stored under exactly this key.
+ * Consulted after the explicit param / env override slot, before any
+ * installed Store's declared base. Never part of install payloads:
+ * export_install never builds it, restore never wipes it (see
+ * export_install / restore — install keys only), so a stored value
+ * survives restore unchanged. No browser control sets or clears it;
+ * only set_dev_catalog_base / clear_dev_catalog_base (agent/script).
+ */
+export var DEV_CATALOG_BASE_KEY = 'kody-os.dev.catalogBase'
+
+/**
+ * Read the stored dev catalog override: a string check plus the
+ * shared base allowlist (HTTPS, loopback http for dev). Any failure
+ * (missing key, non-string, refused base) resolves to null (no
+ * override), never a throw — resolution must stay total so callers
+ * keep their existing no-source errors.
+ */
+function readDevCatalogBase(active: KeyStore): Promise<string | null> {
+	return readJson<unknown>(active, DEV_CATALOG_BASE_KEY).then(function (raw): string | null {
+		if (typeof raw !== 'string' || raw === '') return null
+		try {
+			return normalizeCatalogBase(raw)
+		} catch (err) {
+			return null
+		}
+	})
+}
+
+/**
+ * Set the stored dev catalog override to a base URL (validated with
+ * the same base allowlist; a refused base writes nothing and reports
+ * the refusal). Agent/script path for local catalog development.
+ */
+export function set_dev_catalog_base(
+	base: string,
+	store?: KeyStore,
+): Promise<{ ok: true; baseUrl: string } | { ok: false; error: string }> {
+	var normalized: string
+	try {
+		normalized = normalizeCatalogBase(base)
+	} catch (err) {
+		return Promise.resolve({ ok: false as const, error: 'dev catalog base refused: ' + (err instanceof Error ? err.message : String(err)) })
+	}
+	return resolveStore(store).then(function (active: KeyStore) {
+		return writeJson(active, DEV_CATALOG_BASE_KEY, normalized).then(function (): { ok: true; baseUrl: string } {
+			return { ok: true as const, baseUrl: normalized }
+		})
+	})
+}
+
+/**
+ * Clear the stored dev catalog override. Resolution falls back to
+ * the installed Store's declared base (or no source when none is
+ * installed). Never fails for a missing key.
+ */
+export function clear_dev_catalog_base(store?: KeyStore): Promise<{ ok: true }> {
+	return resolveStore(store).then(function (active: KeyStore) {
+		return deleteKey(active, DEV_CATALOG_BASE_KEY).then(function (): { ok: true } {
+			return { ok: true as const }
+		})
+	})
+}
+
 /** Catalog base declared by one installed app (the Store driving the
  * call), or null when it declares none. Stored declarations were
  * HTTPS-validated at install; a stored base that no longer validates
@@ -878,10 +943,13 @@ function resolveManagedBase(active: KeyStore, actingId: string, targetId?: strin
 		override = null
 	}
 	if (override !== null) return Promise.resolve(override)
-	if (targetId === 'app-store') return actingCatalogBase(active, actingId)
-	return actingCatalogAppsBase(active, actingId).then(function (listing) {
-		if (listing !== null) return listing
-		return actingCatalogBase(active, actingId)
+	return readDevCatalogBase(active).then(function (stored) {
+		if (stored !== null) return stored
+		if (targetId === 'app-store') return actingCatalogBase(active, actingId)
+		return actingCatalogAppsBase(active, actingId).then(function (listing) {
+			if (listing !== null) return listing
+			return actingCatalogBase(active, actingId)
+		})
 	})
 }
 
@@ -897,9 +965,12 @@ function resolveManagedBases(active: KeyStore, actingId: string): Promise<{ disc
 		override = null
 	}
 	if (override !== null) return Promise.resolve({ discovery: override, listing: override })
-	return actingCatalogBase(active, actingId).then(function (discovery) {
-		return actingCatalogAppsBase(active, actingId).then(function (listing) {
-			return { discovery: discovery, listing: listing !== null ? listing : discovery }
+	return readDevCatalogBase(active).then(function (stored) {
+		if (stored !== null) return { discovery: stored, listing: stored }
+		return actingCatalogBase(active, actingId).then(function (discovery) {
+			return actingCatalogAppsBase(active, actingId).then(function (listing) {
+				return { discovery: discovery, listing: listing !== null ? listing : discovery }
+			})
 		})
 	})
 }
@@ -931,10 +1002,13 @@ function resolveAgentCatalogBase(active: KeyStore, catalogBase: string | undefin
 		override = null
 	}
 	if (override !== null) return Promise.resolve(override)
-	if (targetId === 'app-store') return installedStoreCatalogBase(active)
-	return installedStoreCatalogAppsBase(active).then(function (listing) {
-		if (listing !== null) return listing
-		return installedStoreCatalogBase(active)
+	return readDevCatalogBase(active).then(function (stored) {
+		if (stored !== null) return stored
+		if (targetId === 'app-store') return installedStoreCatalogBase(active)
+		return installedStoreCatalogAppsBase(active).then(function (listing) {
+			if (listing !== null) return listing
+			return installedStoreCatalogBase(active)
+		})
 	})
 }
 

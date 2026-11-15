@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
-# Start the kody-os mock dev server with the LOCAL catalog available.
-# Usage: ./scripts/dev-local-catalog.sh [--lan]
-#         ./scripts/dev-local-catalog.sh stop
-#         ./scripts/dev-local-catalog.sh --help
-#   Serves catalog/ on http://127.0.0.1:8901 and starts
-#   `kody dev --target mock` with KODY_CATALOG_BASE pointing at it.
-#   KNOWN LIMITS (verified 2026-11-14): this does NOT yet make the
-#   mock read the local catalog. (1) KODY_CATALOG_BASE does not reach
-#   package code in the mock — the generated workerd config binds
-#   only KODY_RUN_SECRET — so the Store listing still reads GitHub.
-#   (2) This script does not pass --allow-private-network to
-#   `kody dev`, so the mock's workerd blocks the loopback fetch to
-#   http://127.0.0.1:8901/catalog.json. Until the script is fixed,
-#   install the App Store from the local catalog manually: stop just
-#   the mock (pkill -f '[k]ody dev --target mock'). From pkg/, run:
+# Start the kody-os mock dev server, with the LOCAL catalog available.
+# Usage: ./scripts/dev-mock.sh [--lan] [--no-catalog] [--no-stub]
+#         ./scripts/dev-mock.sh stop
+#         ./scripts/dev-mock.sh --help
+#   Serves catalog/ on http://127.0.0.1:8901 (unless --no-catalog) and
+#   starts `kody dev --target mock --allow-private-network` so the
+#   mock's workerd can fetch the loopback catalog. KODY_CATALOG_BASE
+#   is still exported (harmless; it does not reach package code in the
+#   mock — the generated workerd config binds only KODY_RUN_SECRET),
+#   but the override the mock actually reads is the stored dev base
+#   (kody-os.dev.catalogBase): with the mock STOPPED, set it from pkg/ with
 #   kody execute --target mock --allow-private-network --file scripts/catalog.ts
-#     --params '{"op":"install","id":"app-store","base":"http://127.0.0.1:8901/"}'
-#   then restart the mock with the flag (from pkg/: kody dev --target mock
-#   --allow-private-network, plus --host 0.0.0.0 for --lan) so it reads the
-#   updated store. Installing
+#     --params '{"op":"dev-base","base":"http://127.0.0.1:8901/"}'
+#   then (re)start this script so the mock picks up the stored value.
+#   Clear it the same way with '{"op":"dev-base"}' (no base) to go
+#   back to the Store's declared GitHub base. Installing
 #   from GitHub instead ("base":"https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/")
 #   needs no flag.
 #   With --lan, `kody dev` listens on 0.0.0.0:4302 directly (CLI flag
 #   --host), so devices on the trusted local network can open the preview.
 #   LAN is opt-in only: the dev server is plain HTTP with no TLS, so never
 #   start it with --lan on public Wi-Fi or beyond the local network.
+#   With --no-catalog, the catalog server is not started: the mock
+#   reads the Store's declared GitHub base (unless a stale stored dev
+#   base is still set — clear it while stopped, see above). With
+#   --no-stub, KODY_DEV_STUB_RUNTIME is left unset and 3.35.x boots
+#   its default local-Kody upstream (app mounted at
+#   /@<user>/packages/<kodyId> instead of bare /apps links).
 #   All servers run detached; re-running this script is the restart path,
 #   `stop` stops both. This is a dev-only override — the repo's App
 #   Catalog still declares the GitHub base, which is production behavior.
@@ -41,10 +43,12 @@ MOCK_LOG="/tmp/kody-mock-local.log"
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/dev-local-catalog.sh          # catalog + kody dev, no LAN
-  ./scripts/dev-local-catalog.sh --lan    # catalog + kody dev on 0.0.0.0:4302
-  ./scripts/dev-local-catalog.sh stop     # stop both, print what stopped
-  ./scripts/dev-local-catalog.sh --help   # print this usage, exit 0
+  ./scripts/dev-mock.sh                    # catalog + kody dev, no LAN
+  ./scripts/dev-mock.sh --lan              # ... + kody dev on 0.0.0.0:4302
+  ./scripts/dev-mock.sh --no-catalog       # kody dev only (declared GitHub base)
+  ./scripts/dev-mock.sh --no-stub          # ... without KODY_DEV_STUB_RUNTIME=1
+  ./scripts/dev-mock.sh stop               # stop both, print what stopped
+  ./scripts/dev-mock.sh --help             # print this usage, exit 0
 
 With --lan, `kody dev` listens on 0.0.0.0:4302 directly (plain HTTP,
 no TLS). It starts only with --lan. Trusted LAN only: never on public
@@ -53,20 +57,20 @@ EOF
 }
 
 LAN=0
+NO_CATALOG=0
+NO_STUB=0
 MODE="start"
-if [ $# -eq 0 ]; then
-  :
-elif [ $# -eq 1 ]; then
+while [ $# -gt 0 ]; do
   case "$1" in
     --lan) LAN=1 ;;
+    --no-catalog) NO_CATALOG=1 ;;
+    --no-stub) NO_STUB=1 ;;
     stop) MODE="stop" ;;
     --help|-h) usage; exit 0 ;;
     *) usage >&2; exit 1 ;;
   esac
-else
-  usage >&2
-  exit 1
-fi
+  shift
+done
 
 stop_all_quiet() {
   pkill -f '[k]ody dev --target mock' 2>/dev/null || true
@@ -93,30 +97,40 @@ fi
 stop_all_quiet
 sleep 2
 
-# 1. Serve the local catalog over HTTP.
-cd "$CATALOG_DIR"
-setsid nohup python3 -m http.server "$CATALOG_PORT" --bind 127.0.0.1 > "$CATALOG_LOG" 2>&1 < /dev/null &
-sleep 2
+# 1. Serve the local catalog over HTTP (unless opted out).
+if [ "$NO_CATALOG" = "0" ]; then
+  cd "$CATALOG_DIR"
+  setsid nohup python3 -m http.server "$CATALOG_PORT" --bind 127.0.0.1 > "$CATALOG_LOG" 2>&1 < /dev/null &
+  sleep 2
+fi
 
-# 2. Start the mock server with the local-catalog override. With --lan it
-# listens on 0.0.0.0 directly; otherwise loopback only (CLI default).
+# 2. Start the mock server. With --lan it listens on 0.0.0.0 directly;
+# otherwise loopback only (CLI default).
 cd "$PKG_DIR"
 export NO_PROXY='*' no_proxy='*'
 export KODY_CATALOG_BASE="http://127.0.0.1:${CATALOG_PORT}/"
 # 3.35.x boots a local-Kody upstream by default, mounting the app at
 # /@<user>/packages/<kodyId>. KODY_DEV_STUB_RUNTIME=1 skips that and
 # restores direct-workerd behavior (empty appBasePath, bare /apps links).
-export KODY_DEV_STUB_RUNTIME="1"
+if [ "$NO_STUB" = "0" ]; then
+  export KODY_DEV_STUB_RUNTIME="1"
+else
+  unset KODY_DEV_STUB_RUNTIME || true
+fi
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy || true
 HOST_ARGS=()
 if [ "$LAN" = "1" ]; then
   HOST_ARGS=(--host 0.0.0.0)
 fi
-setsid nohup kody dev --target mock "${HOST_ARGS[@]}" > "$MOCK_LOG" 2>&1 < /dev/null &
+setsid nohup kody dev --target mock --allow-private-network "${HOST_ARGS[@]}" > "$MOCK_LOG" 2>&1 < /dev/null &
 sleep 8
 
 # 3. Verify and report.
-echo "catalog: $(curl --noproxy '*' -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${CATALOG_PORT}/catalog.json" || echo down)  http://127.0.0.1:${CATALOG_PORT}/catalog.json"
+if [ "$NO_CATALOG" = "0" ]; then
+  echo "catalog: $(curl --noproxy '*' -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${CATALOG_PORT}/catalog.json" || echo down)  http://127.0.0.1:${CATALOG_PORT}/catalog.json"
+else
+  echo "catalog: off (--no-catalog; mock reads the declared GitHub base)"
+fi
 echo "mock:    $(curl --noproxy '*' -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${MOCK_PORT}/" || echo down)  http://127.0.0.1:${MOCK_PORT}/"
 if [ "$LAN" = "1" ]; then
   LAN_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
