@@ -283,7 +283,7 @@ export function renderAppPanel(
 	var header =
 		withHeader === false
 			? ''
-			: '<h2 class="app-titlebar' + (closeBtn !== '' ? ' has-close' : '') + (expandBtn !== '' ? ' has-expand' : '') + (helpBtn !== '' ? ' has-help' : '') + '">' + closeBtn + '<span class="app-title-plate">' + title + '</span>' + helpBtn + expandBtn + '</h2>\n'
+			: '<h2 class="app-titlebar' + (closeBtn !== '' ? ' has-close' : '') + (expandBtn !== '' ? ' has-expand' : '') + (helpBtn !== '' ? ' has-help' : '') + '">' + closeBtn + '<span class="app-title-plate"><span class="app-title-text">' + title + '</span></span>' + helpBtn + expandBtn + '</h2>\n'
 	return (
 		'<section class="app" data-app-id="' +
 		escapeHtml(def.id) +
@@ -598,9 +598,9 @@ export function renderWidgetSection(
 		'" aria-label="' +
 		title +
 		'">\n' +
-		'<h2 class="app-titlebar"><span class="app-title-plate">' +
+		'<h2 class="app-titlebar"><span class="app-title-plate"><span class="app-title-text">' +
 		title +
-		'</span><a class="widget-expand" href="' +
+		'</span></span><a class="widget-expand" href="' +
 		escapeHtml(appBasePath + '/apps/' + def.id) +
 		'" aria-label="Expand ' +
 		title +

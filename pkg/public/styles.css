@@ -193,8 +193,8 @@ body {
 }
 
 /* Title bar: a white 2.75rem bar carrying a full-width 33px racing-striped band
-   (8 x 4px tile rows + 1, so a tile rule lands flush on the band's top and
-   bottom edges and lines up with the box tops and bottoms). The band is the
+   (8 x 4px tile rows + 1, so the band shows eight rules with paper at its top
+   and bottom edges). The band is the
    ::before layer, centered; white bar padding shows above and below it. The
    title is borderless white ground running the full bar height at its own
    width (align-self: stretch), so no stripe ever passes above or below the
@@ -212,9 +212,9 @@ body {
 }
 
 /* 33px stripe band, full-width, centered. Same 4px --stripes tile, unchanged
-   density; band heights stay 4n+1px so the tile's rules land flush. 33px =
-   8 tile rows + 1, giving 8 rules with the last rule flush on the band's
-   bottom edge, lining up with the button-box bottoms. */
+   density; band heights stay 4n+1px so the tile phase stays aligned top to
+   bottom. 33px = 8 tile rows + 1, giving 8 rules with paper at the band's
+   top and bottom edges. */
 .os-titlebar::before {
 	content: "";
 	position: absolute;
@@ -1047,7 +1047,7 @@ button.tile:active .tile-icon {
 	line-height: 1.5;
 }
 
-/* Same 33px band as the shell bar: same tile, same 4n+1px flush rule. */
+/* Same 33px band as the shell bar: same tile, same 4n+1px aligned phase. */
 .app-titlebar::before {
 	content: "";
 	position: absolute;
@@ -1070,6 +1070,7 @@ button.tile:active .tile-icon {
 	position: relative;
 	z-index: 1;
 	max-width: 100%;
+	min-width: 0;
 	padding: 0 0.85rem;
 	border: 0;
 	background: var(--paper);
@@ -1077,6 +1078,18 @@ button.tile:active .tile-icon {
 	font-size: 1.1rem;
 	font-weight: bold;
 	letter-spacing: 0.04em;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+/* Inner title text: the plate is a flex container, so the raw title text is
+   an anonymous flex item and overflow clipping cuts off its start without an
+   ellipsis. This block child truncates from the end, keeping the start
+   visible with an ellipsis. */
+.app-title-text {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
