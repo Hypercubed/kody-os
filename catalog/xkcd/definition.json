@@ -3,10 +3,10 @@
   "name": "xkcd",
   "label": "xkcd",
   "schemaVersion": 5,
-  "catalogVersion": 5,
+  "catalogVersion": 6,
   "icon": "X",
   "category": "reading",
-  "description": "The latest xkcd comics, with each comic’s image and alt text.",
+  "description": "The latest xkcd comics, with each comic\u2019s image and alt text.",
   "capabilities": {
     "feeds": [
       {
@@ -24,7 +24,8 @@
     ]
   },
   "ui": {
-    "title": "xkcd"
+    "title": "xkcd",
+    "help": "Shows the latest xkcd comic with its alt text. Use Previous and Next to browse, Refresh for the newest."
   },
   "stateSchema": {
     "type": "object",

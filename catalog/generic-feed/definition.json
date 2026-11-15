@@ -3,10 +3,10 @@
   "name": "Generic Feed",
   "label": "Generic Feed",
   "schemaVersion": 5,
-  "catalogVersion": 1,
-  "icon": "≡",
+  "catalogVersion": 2,
+  "icon": "\u2261",
   "category": "reading",
-  "description": "A generic RSS feed, configured by your agent — paste the prompt, give it a feed URL, and it shows one entry at a time.",
+  "description": "A generic RSS feed, configured by your agent \u2014 paste the prompt, give it a feed URL, and it shows one entry at a time.",
   "bundle": {
     "entry": "index.html",
     "files": [
@@ -18,7 +18,8 @@
     "hideState": true,
     "placements": [
       "page"
-    ]
+    ],
+    "help": "Shows one entry at a time. Ask your agent to point it at a feed URL, then use Previous and Next to move between entries."
   },
   "stateSchema": {
     "type": "object",

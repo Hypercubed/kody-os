@@ -3,6 +3,7 @@ import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
 import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
+import { helpTextFor, renderHelpButton, renderHelpDialog } from './apps/render.ts'
 import type { AppDefinition, AppState } from './apps/types.ts'
 
 // Re-export the MCP surface so `import { add_app } from 'kody:@hypercubed/kody-os'`
@@ -300,6 +301,8 @@ function shellChrome(opts: {
 	closeLabel?: string
 	/** App pages opt into the page-mode expand/collapse controls. */
 	expandable?: boolean
+	/** Per-app help (`ui.help`) on an app page: when present, the titlebar gains the `[?]` box left of expand and the page body the hidden `os-help-dialog`, opened in place by the shell client. Omitted on every other page. */
+	help?: { id: string, text: string }
 	/** Menu-bar entries, already filtered (hidden excluded) and sorted; built-in Help/About are appended. Omitted on 404 and transient pages. */
 	menuApps?: { id: string, label: string, builtin?: boolean }[]
 	/** Id of the menu app currently being viewed, for aria-current. */
@@ -332,6 +335,17 @@ function shellChrome(opts: {
 			? '\t\t\t<a class="os-expand" href="#os-full" aria-label="Expand app to fill window" title="Expand app to fill window"></a>\n' +
 				'\t\t\t<a class="os-collapse" href="#" aria-label="Collapse app" title="Collapse app"></a>\n'
 			: ''
+	// Per-app help: the box sits in the titlebar slot immediately left of
+	// expand, and the dialog is server-rendered in the page body, hidden
+	// until the shell client opens it in place (no fragment, no
+	// navigation). Absent help renders neither, so an app page without
+	// help keeps today's bytes.
+	var helpBox = ''
+	var helpDialog = ''
+	if (opts.help && typeof opts.help.text === 'string' && opts.help.text.replace(/\s+/g, '') !== '') {
+		helpBox = '\t\t\t' + renderHelpButton(opts.help.id) + '\n'
+		helpDialog = '\n' + renderHelpDialog(opts.help.id, opts.title, opts.help.text)
+	}
 
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
@@ -407,15 +421,17 @@ function shellChrome(opts: {
 		'</span>\n' +
 		'\t</header>\n' +
 		'\t<div class="os-window">\n' +
-		'\t\t<div class="os-titlebar">\n' +
+		'\t\t<div class="os-titlebar' + (helpBox !== '' ? ' has-help' : '') + '">\n' +
 		homeBox +
 		'\t\t\t<h1 class="os-title">' +
 		safeTitle +
 		'</h1>\n' +
+		helpBox +
 		expandBox +
 		'\t\t</div>\n' +
 		'\t\t<main id="os-main">\n' +
 		opts.body +
+		helpDialog +
 		'\n\t\t</main>\n' +			footerPath +
 			'\t</div>' +
 			litScript +
@@ -460,20 +476,6 @@ function themeGridValue(raw: string): unknown {
 		grid.push(n)
 	}
 	return { grid: grid }
-}/**
- * Only same-OS paths may be used as a safe `from` destination.
- * Rejects protocol-relative and absolute URLs, so this cannot become an open redirect.
- */
-function safeNextPath(value: string, appBasePath: string): string {
-	var home = joinPath(appBasePath, '/')
-	if (typeof value !== 'string' || value === '') return home
-	if (value.charAt(0) !== '/') return home
-	if (value.indexOf('//') === 0) return home
-	if (value.indexOf('\\') !== -1) return home
-	if (value.indexOf('://') !== -1) return home
-	if (value.indexOf('\n') !== -1 || value.indexOf('\r') !== -1) return home
-	if (value !== home && value.indexOf(home) !== 0) return home
-	return value
 }
 
 /** Security headers for every served response. No credential is ever
@@ -559,17 +561,17 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 				return out
 			}
 
-			function appBody(id: string, withError: string, fromParam: string): Promise<Response> {
+			function appBody(id: string, withError: string): Promise<Response> {
 				return get_app(id).then(function (entry): Promise<Response> {
 					if ('error' in entry) return Promise.resolve(notFoundPage(chrome))
 					return Promise.all([list_apps(), get_hidden()]).then(function (parts): Promise<Response> {
 						var menu = menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout)
 						return record_use(id).then(
 							function (): Response {
-								return renderAppPage(id, withError, entry.definition, entry.state, fromParam, menu)
+								return renderAppPage(id, withError, entry.definition, entry.state, menu)
 							},
 							function (): Response {
-								return renderAppPage(id, withError, entry.definition, entry.state, fromParam, menu)
+								return renderAppPage(id, withError, entry.definition, entry.state, menu)
 							},
 						)
 					})
@@ -610,20 +612,22 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					})
 				}
 
-				function renderAppPage(id: string, withError: string, definition: AppDefinition, state: AppState, fromParam: string, menu?: { id: string, label: string }[]): Response {
+				function renderAppPage(id: string, withError: string, definition: AppDefinition, state: AppState, menu?: { id: string, label: string }[]): Response {
 					var defName = (definition as unknown as { name: string }).name || id
-					var homePath = joinPath(appBasePath, '/')
-					var appsPath = joinPath(appBasePath, '/apps')
-					var closeHref = safeNextPath(fromParam, appBasePath)
-					var closeLabel = closeHref === appsPath ? 'Apps' : closeHref === homePath ? 'Home' : 'Back'
+					// Per-app help is threaded into the shell chrome, which owns the
+					// titlebar box and the `:target` dialog on an app page (the panel
+					// renders no header here). Damaged stored definitions simply render
+					// no help.
+					var helpText = helpTextFor(definition)
+					var helpOpt = helpText !== undefined ? { id: id, text: helpText } : undefined
 					try {
-						var panel = renderAppPanel(definition, state, appBasePath, '', '', withError, false, fromParam !== '' ? closeHref : '', undefined, undefined, packageRef)
+						var panel = renderAppPanel(definition, state, appBasePath, '', '', withError, false, '', undefined, packageRef)
 						var lines = panel.split('\n')
 						var indented = ''
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, expandable: true, help: helpOpt, menuApps: menu, currentApp: id, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -635,7 +639,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, closeHref: closeHref, closeLabel: closeLabel, expandable: true, menuApps: menu, currentApp: id, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, expandable: true, help: helpOpt, menuApps: menu, currentApp: id, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}
@@ -668,7 +672,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 									headers: { Location: appBasePath + '/apps/' + id },
 								})
 							}
-							return appBody(id, result.error, '')
+							return appBody(id, result.error)
 						})
 					})
 			}
@@ -709,7 +713,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					}
 					if (gid === 'app-store' && !query.get('action')) {
 						return get_app('app-store').then(function (entry): Promise<Response> | Response {
-							if (!('error' in entry)) return appBody(gid, '', query.get('from') || '')
+							if (!('error' in entry)) return appBody(gid, '')
 							return Promise.all([list_apps(), get_hidden()]).then(function (parts): Response {
 								var menu = menuAppsFor(parts[0], parts[1], chrome.showHelp, chrome.showAbout)
 								var body =
@@ -731,28 +735,35 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 					// alone never reach the server, so without this an opened modal never counts
 					// as used. Scribe-safe: plain 303, no script needed.
 					if (query.get('touch') === '1' && !query.get('action')) {
-						var touchFrom = safeNextPath(query.get('from') || '', appBasePath)
-						var touchDest = touchFrom + '#app-' + gid
+						var touchDest = appBasePath + '/apps#app-' + gid
+						var touchWantJson = query.get('format') === 'json'
 						return get_app(gid).then(function (entry): Promise<Response> {
 							if ('error' in entry) return Promise.resolve(notFoundPage(chrome))
-							return record_use(gid).then(
-								function (): Response {
-									return new Response(null, { status: 303, headers: { Location: touchDest } })
-								},
-								function (): Response {
-									return new Response(null, { status: 303, headers: { Location: touchDest } })
-								},
-							)
+							var touchAnswer = function (): Response {
+								if (touchWantJson) {
+									return new Response(JSON.stringify({ ok: true }), {
+										status: 200,
+										headers: {
+											'Content-Type': 'application/json; charset=utf-8',
+											'Cache-Control': 'no-store',
+											'Referrer-Policy': 'no-referrer',
+											'X-Content-Type-Options': 'nosniff',
+										},
+									})
+								}
+								return new Response(null, { status: 303, headers: { Location: touchDest } })
+							}
+							return record_use(gid).then(touchAnswer, touchAnswer)
 						})
 					}
 					if (query.get('action')) {
 						var getEntries: Record<string, string> = {}
 						query.forEach(function (v: string, k: string): void {
+							// `from` is legacy tolerance for old links that still carry
+							// it: ignored here, never an action argument, not a feature.
 							if (k !== 'k' && k !== 'from' && k !== 'format') getEntries[k] = v
 						})
 						var wantJson = query.get('format') === 'json'
-						var fromPath = query.get('from') || ''
-						var dest = fromPath !== '' ? safeNextPath(fromPath, appBasePath) : appBasePath + '/apps/' + gid
 						return actFromForm(gid, getEntries).then(function (result) {
 							if (wantJson) {
 								return new Response(JSON.stringify(result), {
@@ -768,14 +779,13 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							if (result.ok) {
 								return new Response(null, {
 									status: 303,
-									headers: { Location: dest },
+									headers: { Location: appBasePath + '/apps/' + gid },
 								})
 							}
-							if (fromPath !== '') return dashboardBody(gid, result.error)
-							return appBody(gid, result.error, '')
+							return appBody(gid, result.error)
 					})
 				}
-				return appBody(gid, '', query.get('from') || '')
+				return appBody(gid, '')
 			}
 
 			// POST /__prefs — API path for pin/hide/home/clear (HTML uses GET forms edge-safe).
@@ -1118,8 +1128,6 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 									return getTheme().then(function (themeFile) {
 										var themeDefaults = fileThemeToValues(themeFile)
 										var themeWantJson = themeQuery.get('format') === 'json'
-										var themeFrom = themeQuery.get('from') || ''
-										var themeDest = themeFrom !== '' ? safeNextPath(themeFrom, appBasePath) : appBasePath + '/apps/' + themeApp
 										if (themeAction === '') {
 											return get_shell_theme(themeDefaults).then(function (themeRead) {
 												return new Response(JSON.stringify({ ok: true, defaults: themeRead.defaults, override: themeRead.override, effective: themeRead.effective }), { status: 200, headers: themeJsonHeaders })
@@ -1145,7 +1153,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 											return set_shell_theme(themeDefaults, themePayload).then(function (themeSetResult) {
 												if (!themeSetResult.ok) return new Response(JSON.stringify(themeSetResult), { status: 400, headers: themeJsonHeaders })
 												if (themeWantJson) return new Response(JSON.stringify(themeSetResult), { status: 200, headers: themeJsonHeaders })
-												return new Response(null, { status: 303, headers: { Location: themeDest } })
+												return new Response(null, { status: 303, headers: { Location: appBasePath + '/apps/' + themeApp } })
 											})
 										}
 										var themeField = themeQuery.get('field') || ''
@@ -1156,7 +1164,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 													return new Response(JSON.stringify({ ok: true, override: themeReadAfter.override, effective: themeReadAfter.effective }), { status: 200, headers: themeJsonHeaders })
 												})
 											}
-											return new Response(null, { status: 303, headers: { Location: themeDest } })
+											return new Response(null, { status: 303, headers: { Location: appBasePath + '/apps/' + themeApp } })
 										})
 									})
 								})

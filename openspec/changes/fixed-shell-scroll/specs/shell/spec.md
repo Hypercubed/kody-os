@@ -34,6 +34,18 @@ Every page SHALL use the same chrome: title bar with the page title and a close 
 - **WHEN** an app opened from a home widget is closed via the titlebar box
 - **THEN** the browser lands on Home.
 
+#### Scenario: Close from an overlay returns to the overlay
+- **WHEN** an app expanded from a modal overlay is closed via the titlebar box with JavaScript running
+- **THEN** the browser lands on the Apps page with that app's overlay open.
+
+#### Scenario: No stored return goes Home
+- **WHEN** an app page is opened by direct navigation, bookmark, or a new tab with no stored return, or with JavaScript disabled
+- **THEN** the close box links Home.
+
+#### Scenario: A legacy from value is adopted once, then gone
+- **WHEN** an app page is opened with a `?from=` value in the URL
+- **THEN** the client stores the validated value, the close box returns to it, and the visible URL no longer carries `from` after load; the server ignores the value entirely.
+
 #### Scenario: Bad from falls back to Home
 - **WHEN** an app page is opened with a missing or off-site `from` value
 - **THEN** the close box links Home and no open redirect occurs.

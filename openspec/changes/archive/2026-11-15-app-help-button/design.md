@@ -20,13 +20,13 @@ the two ways of opening an app:
   shows the Apps title, not the app's (shell spec, "App pages render
   definition plus live state").
 
-The shell's existing no-JS reveal mechanism is the CSS `:target`
+The shell's existing reveal mechanism is the CSS `:target`
 overlay: modal tiles link to `#app-<id>` and the overlay section is
 hidden until it matches `:target`; page-mode expand links to
 `#os-full` and the expanded layout is a `:target`-adjacent fragment
 state. The help dialog reuses that mechanism rather than inventing
 one — a plain link, a server-rendered element, CSS reveal, no
-JavaScript, no route, no storage.
+route, no storage.
 
 `description` is not the help field. It already renders on the app
 page body and as a tile `title` tooltip, and its contract is "what
@@ -64,8 +64,9 @@ shell-rendered presentation option lives under `ui`.
    still at `right: 0`. Modal overlay: panel titlebar, help box in
    the slot at `right: 3rem`, modal-expand still at `right: 0`. The
    panel bar gains a `has-help` class (like `has-close` /
-   `has-expand`) widening its right padding to make room for two
-   3rem slots, so the title plate is never covered. Rationale: the
+   `has-expand`) widening both side paddings to 6.5rem to make room
+   for the two right-hand 3rem slots, so the title plate is never
+   covered and stays centered in the bar. Rationale: the
    user asked for "to the left of the expand button", and the two
    headers are the same header from the user's point of view.
 5. **The button is the literal text `?` in the shared box look.**
@@ -77,31 +78,27 @@ shell-rendered presentation option lives under `ui`.
    positioned per bar (`.os-titlebar .os-help`, `.app-titlebar
    .os-help`). Rationale: one class, two placements — the same shape
    as `.os-box`, which is already shared between the two bars.
-6. **Dialog is `:target`-revealed, server-rendered, no JavaScript.**
-   The button links to `#help-<id>`; the dialog is a `<div
-   role="dialog">` already in the page HTML, hidden by default and
-   revealed only when it matches `:target`. It shows the app title,
-   the escaped help text, and a close link. No new route, no storage
-   write, no state change. Rationale: the no-JS baseline binds this
-   change like every other — a native `<dialog>` with `showModal()`
-   needs JavaScript and would leave the dialog unusable without it,
-   and a GET-form round-trip to a help route would navigate away
-   from the app. The `:target` overlay is the proven mechanism on
-   this exact page (modal overlays already do this).
-7. **The dialog close returns to the view that opened it.** On an
-   app page the close link points at the app page URL without a
-   fragment; in an overlay it points at `#app-<id>`, the overlay's
-   own fragment. Rationale: closing help must not close the app —
-   the overlay's own close box already goes to `#apps`, and help's
-   close must not be confused with it.
-8. **Opening help from the expanded view collapses the window.**
-   Expand state lives in the `#os-full` fragment and help lives in
-   the `#help-<id>` fragment; a URL carries one fragment, so
-   following the help link replaces `#os-full` and the window
-   returns to its normal layout. Accepted, not fixed: it is the same
-   class of limitation as every other fragment mechanism on the
-   page, the app's state is untouched (fragments are never
-   submitted), and re-expanding is one tap. The dialog itself works
+6. **Dialog is server-rendered, JS-opened in place.**
+   The button is a `<button type="button" data-help-open>`; the
+   dialog is a `<div role="dialog" hidden>` already in the page
+   HTML, and the shell client removes `hidden` to open it in place —
+   no fragment, no navigation, no page refresh. It shows the app
+   title, the escaped help text, and a Close button (Escape also
+   closes, returning focus to the opener). No new route, no storage
+   write, no state change. Rationale: JavaScript is assumed on the
+   Scribe and no-JS fallbacks are out of scope; a GET-form
+   round-trip to a help route would navigate away from the app.
+   Opening in place also leaves the overlay underneath open and the
+   expanded layout expanded, with the URL untouched.
+7. **Closing help changes nothing underneath.** Close (or Escape)
+   re-hides the dialog and returns focus to the opener; the page,
+   overlay, expanded layout, and URL are exactly as they were.
+   Rationale: closing help must not close the app — and with no
+   navigation involved, there is nothing to return to.
+8. **Opening help from the expanded view keeps the layout.**
+   Help changes no URL, so `#os-full` (and `#app-<id>` under an
+   overlay) is untouched: the dialog opens over whichever layout is
+   showing. The app's state is untouched, and the dialog works
    identically in either layout.
 9. **Help is fingerprinted; `list_apps()` summaries do not carry it.**
    `fingerprintDefinition` canonicalizes then deletes only
@@ -131,24 +128,18 @@ shell-rendered presentation option lives under `ui`.
 
 - Goals: an app author writes one plain-text string and gets a
   help button in the app header and a working dialog, with no
-  JavaScript, no route, and no change to any app that does not
-  define help.
+  route and no change to any app that does not define help.
 - Non-goals: rich text, links, or images in help; help on widgets,
   tiles, or the Apps/Help/About pages; a help route or MCP export;
-  a JavaScript or native-`<dialog>` implementation; help text in
+  a native-`<dialog>` implementation; help text in
   `list_apps()` summaries.
 
 ## Risks / Trade-offs
 
-- [Risk] Two fragments, one URL: help and expand cannot be active
-  at once (Decision 8) → Mitigation: accepted and specified — the
-  dialog works in the normal layout, state is untouched, and the
-  scenario pins the collapse so it is a known behavior, not a bug
-  found later.
-- [Risk] Fragment collision: `#help-<id>` must not collide with
-  `#app-<id>` (overlays) or `#os-full` (expand) → Mitigation: the
-  `help-` prefix is distinct from both, and the verification tasks
-  check the three fragments on one page.
+- [Risk] Help disturbs the overlay or expanded layout → Mitigation: obsolete — help changes no URL, so the overlay stays open and the expanded layout stays expanded; the scenario pins the untouched layout.
+- [Risk] Dialog id collision: `help-<id>` must not collide with
+  `app-<id>` (overlays) → Mitigation: the `help-` prefix is
+  distinct, and the verification tasks check both on one page.
 - [Risk] A long help string bloats every app-page and overlay
   render (Decision 3, no cap) → Mitigation: recorded openly; a cap
   later is a MAJOR-gated decision, not a silent fix.

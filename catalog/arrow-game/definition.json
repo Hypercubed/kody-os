@@ -3,8 +3,8 @@
   "name": "Arrow Game",
   "label": "Arrow Game",
   "schemaVersion": 5,
-  "catalogVersion": 5,
-  "icon": "→",
+  "catalogVersion": 6,
+  "icon": "\u2192",
   "category": "Games",
   "description": "A puzzle about clearing the blue arrows; a red arrow costs a life, and a new life arrives every five levels. A kody-os rewrite of Hypercubed/arrow-game on GitHub.",
   "bundle": {
@@ -17,7 +17,8 @@
     "title": "Arrow Game",
     "openAs": "page",
     "hideState": true,
-    "actions": []
+    "actions": [],
+    "help": "Tap arrows to clear the blue ones. A red arrow costs a life, and every five levels earns one back. Resetting the board costs one life."
   },
   "stateSchema": {
     "type": "object",

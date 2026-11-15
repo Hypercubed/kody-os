@@ -806,6 +806,7 @@ export function validateDefinition(def: unknown): string | null {
 	}
 	if (ui['hideState'] !== undefined && typeof ui['hideState'] !== 'boolean') return 'definition.ui.hideState must be a boolean'
 	if (ui['menuBar'] !== undefined && typeof ui['menuBar'] !== 'boolean') return 'definition.ui.menuBar must be a boolean'
+	if (ui['help'] !== undefined && typeof ui['help'] !== 'string') return 'definition.ui.help must be a string'
 	if (!isRecord(def['stateSchema'])) return 'definition.stateSchema must be an object'
 	var schema = def['stateSchema'] as Record<string, unknown>
 	if (schema['type'] !== 'object') return 'definition.stateSchema.type must be "object"'
@@ -902,6 +903,7 @@ export function canonicalizeDefinition(definition: AppDefinition): AppDefinition
 	if (definition.ui.actions !== undefined) uiOut['actions'] = definition.ui.actions
 	if (definition.ui.hideState !== undefined) uiOut['hideState'] = definition.ui.hideState
 	if (definition.ui.menuBar !== undefined) uiOut['menuBar'] = definition.ui.menuBar
+	if (typeof definition.ui.help === 'string' && definition.ui.help.replace(/\s+/g, '') !== '') uiOut['help'] = definition.ui.help
 	var def: AppDefinition = {
 		id: definition.id,
 		name: definition.name,

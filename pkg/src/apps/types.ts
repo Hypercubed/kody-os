@@ -134,6 +134,8 @@ export interface UiDef {
 	hideState?: boolean
 	/** Also show this app in the top menu bar when installed. Author-controlled, not a user toggle; hidden apps are excluded from the menu. Defaults to false. */
 	menuBar?: boolean
+	/** Plain-text how-to-use text shown in the app-header help dialog (the `[?]` box left of expand). Never interpreted as HTML or markdown. Distinct from `description`, which is the "what this app is for" text shown on the app page body and as a tile tooltip. Absent means no help button. */
+	help?: string
 }
 
 export interface BundleManifest {

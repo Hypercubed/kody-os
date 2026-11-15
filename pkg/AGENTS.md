@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v4.4.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v4.5.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -102,6 +102,7 @@ Registry write, not a package change: no commit, no republish. Shipped catalog a
 - Definition: meta + bundle (`entry: index.html`, relative `.html`/`.js`/`.css` only, 256 KiB cap) + `stateSchema` + `actions` (`set`/`append`; `increment`/`toggle`/`reset` are deprecated sugar). `ui.template` was removed in schemaVersion 4 (required only for schemaVersion 3 submissions, ignored by the renderer in every version) — never send it in a v4 definition, never branch on it.
 - `ui.hideState: true` hides the server-rendered state readout (stays in the DOM for bundle scripts to read initial state). Use when the bundle already displays state.
 - `ui.menuBar: true` also shows the app in the top menu bar while installed (after Apps, alphabetically by label). Author-controlled, not a user toggle; hidden apps are excluded, and uninstalling removes the link. No shipped app uses it today: Help and About are built-in shell pages, not catalog apps.
+- `ui.help: string` — ship one on every app (every catalog app carries it): a short plain-text how-to-use string (one or two short lines saying what the controls do). It adds a `[?]` button immediately left of expand in the app header (app page and modal overlay), opening the standard modal (no fragment, no navigation) with a `{app name} - Help` header line, the text (escaped, line breaks preserved), and a normal Close button. Distinct from `description` (what the app is for); absent or empty `help` means no button.
 - `capabilities.feeds`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }` — HTTPS only, served via `GET /feed/:app/:name` with storage caching. Data-only declarations; the route takes the feed name, never a URL.
 - `capabilities.proxy`: up to 8 `{ name, url, ttlSeconds?, maxBytes? }`, same limits as feeds — HTTPS only, served via `GET /proxy/:app/:name` with storage caching. The route takes the proxy name, never a URL.
 - `capabilities.manageApps`: boolean. Only a bundle declaring this may use the shell management API (`GET /manage/rows|install|update|restore`); undeclared callers get the feed-style plain 404. Capabilities are installer disclosure plus this allowlist, not a sandbox: bundle scripts run same-origin with the visitor's authority.
@@ -160,7 +161,7 @@ Install the `app-store` catalog app with the server stopped (see above): `catalo
 
 - No root-export side effects: no jobs, file writes, or installs.
 - Missing runtime context falls back to shared in-memory storage, starting empty with an honest "no apps yet" tile.
-- JavaScript is assumed (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The client enhances `form.app-action` with `?format=json` in-place patching. The App Store requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`.
+- JavaScript is assumed (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The client enhances `form.app-action` with `?format=json` in-place patching. The App Store requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`. Return-to-opener is a JavaScript enhancement backed by `sessionStorage` (`kody-os:return`): with scripting the app-page Close box points at the opener, and without it the Close box goes Home while a native widget submit lands on the app page. The rest of the no-JS baseline is unchanged: plain action submit + redirect, fragment expand/collapse, and `:target` overlays.
 - Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.
 - App styles live in the app, never in the shell theme: never put app-specific rules in `public/styles.css` (or the generated `src/shell-css.ts`). A rule that targets one app — for example one scoped by that app's panel label (`aria-label`) — belongs in that app's own bundle CSS, as a `<style>` block in its `index.html` or a `.css` file in its `files` map.
