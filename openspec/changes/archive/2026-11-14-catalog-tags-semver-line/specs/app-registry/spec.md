@@ -74,3 +74,12 @@ the tag name" check assumes full-version tags; a line tag
 a line-aware form before Phase 2 lands. That is a Phase 2
 follow-up recorded in this change's design, not a change
 to this requirement now.
+
+#### Scenario: Line tag moves within its line (Phase 2 scope)
+- **WHEN** the `4.2` line tag moves to a compatible commit
+  within its line
+- **THEN** the move is governed by the line-tag rule in
+  "Pinned listing base" above, not by the "SHALL NOT be
+  moved" sentence, and the generator's version-match check
+  is recorded as a Phase 2 follow-up needing a line-aware
+  form before Phase 2 lands.

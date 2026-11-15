@@ -142,14 +142,11 @@ work to redo.
       root). Neither is caused by this change. jsdom is not
       installed on the VM; it was installed ephemerally to
       `/tmp/jsdom-test` for this run.)
-- [ ] 5.3 `openspec validate` passes for this change
+- [x] 5.3 `openspec validate` passes for this change
       (`✓ change/fe-be-separation`). This change carries
       `skip_specs: true` (pure refactor, no canonical requirement
-      changes). (NOT RUN 2026-11-14: the `openspec` CLI is not
-      on the VM — it lives on the PC
-      (`/home/jmh/.nvm/versions/node/v24.16.0/bin/openspec`) and
-      be-quite-900 was offline. Run it on the PC before
-      archiving.)
+      changes). (Validated 2026-11-14: `openspec validate
+      fe-be-separation` passes; change is valid.)
 - [x] 5.4 Version: PATCH by the package policy (internal refactor,
       no observable change). The bump lands in the implementation
       commit, with `pkg/AGENTS.md` header updated in the same
@@ -202,3 +199,7 @@ names `apps/client.ts` and is out of scope here.
 Prep close-out (2026-11-13 evening, user-directed): the component split is done and verified. Each UI component is now its own JS file under pkg/src/client/components/ (15 files: helpers, shell-chrome, app-section, app-panel, overlay-section, pinned-section, recent-section, tiles, bundle-content, state-seed, edit-section, all-section, widget-section, empty-help, dashboard), and apps/client.ts is a thin re-export barrel so existing importers do not change. The BE imports the JS files (tsconfig gains allowJs; checkJs stays off). Verification: typecheck exit 0; counter, link-drop, link-drop-dom, catalog (19 apps), and store harnesses all green; served output byte-identical to the pre-split baseline except the live clock timestamp (expected — the time advanced). One pre-existing staleness fixed alongside: the store harness hardcoded the running version as 4.2.2 while the tree is 4.3.0 (shell-islands MINOR bump); updated to 4.3.0. Remaining in this change (NOT done): the apps/client.ts -> apps/render.ts rename, the bridge move, the boundary rule, and the PATCH version bump.
 
 SUPERSEDED 2026-11-13 ~22:07 MST: the component split above was REVERTED at the user's direction ("Revert the renderer split, keep only the custom-element split"). The 15 component files were deleted, apps/client.ts / app.ts / tsconfig.json were restored from git HEAD, and the store-harness 4.3.0 fix was kept. The spec's section 2 is now marked DROPPED (2026-11-14, user direction: organize the FE by concern, treat it as if it may run on a different BE). The remaining work is the rename (3.1), the bridge move (3.2), reference updates (3.3), the boundary rule + FE/BE contract (4.1–4.3), verification (5.x), and the PATCH version bump.
+
+## Archive note (2026-11-14)
+
+`openspec validate fe-be-separation` passes (valid; `skip_specs: true`, so no spec deltas to sync). No canonical-spec sync was performed — by design this change carries no spec deltas. What was verified is recorded in the 2026-11-14 close-out above plus 5.3 passing on the PC. What was substituted: nothing beyond the substitutions already recorded (bun x, ephemeral jsdom). What was left open: nothing — implementation, harnesses, and validate are done; commit/push/publish remain separate stops needing explicit direction.

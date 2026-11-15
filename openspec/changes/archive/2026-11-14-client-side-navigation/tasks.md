@@ -74,7 +74,7 @@
       failure and whether it is pre-existing (verify
       "pre-existing" on a clean checkout of the base before
       saying so).
-- [ ] 5.4 `openspec validate` passes for this change.
+- [x] 5.4 `openspec validate` passes for this change. (Validated 2026-11-14: `openspec validate client-side-navigation` passes; change is valid.)
 - [x] 5.5 Version: MINOR by the package policy (new feature,
       nothing existing breaks). Target 4.4.0, assuming
       fe-be-separation (4.3.1) lands first; the exact number
@@ -246,3 +246,7 @@
   44): added test 11, Back to Home with the fetch pending then
   click the rendered Apps page, asserting the cancel restores the
   URL to `/apps` and the stale fetch does not swap.
+
+## Archive note (2026-11-14)
+
+`openspec validate client-side-navigation` passes (valid) — 5.4 checked. Spec delta (`specs/shell/spec.md`, ADDED Client-side navigation) syncs to the canonical shell spec on archive. What was verified/substituted is recorded in the close-out notes above. Left open: 5.6 Scribe verification NOT RUN (requires the user on the device — navigate Home → Apps → Home and confirm the swap without a full reload). Archiving with Scribe verification recorded as still open, per direction.

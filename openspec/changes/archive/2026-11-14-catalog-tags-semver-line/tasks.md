@@ -156,3 +156,7 @@ compatible-catalog deltas-only pattern). Note: task
 happen literally — the pin rename (`2bc747c`) and
 the alembic add (`cace3b51`) were separate commits;
 the substance is as specified.
+
+## Archive note (2026-11-14)
+
+`openspec validate catalog-tags-semver-line` initially failed on two Phase-2 MODIFIED requirements missing scenarios (Releases index; Maintainer tagging procedure) — fixed by adding one scenario to each recording the line-tag supersession and the generator check as a Phase-2 follow-up; validate now passes. No canonical-spec sync was performed: the base Phase-1/Phase-2 requirements live in the still-active `compatible-catalog` change, not in `openspec/specs/`, and this change's design records "No canonical-spec sync" as a non-goal (deltas-only pattern). Archiving with `--skip-specs` preserves that intent. What was verified/substituted/left open is recorded in the 2026-11-12 close-out above; the Phase-2 generator follow-up (design Decision 5) stays open.
