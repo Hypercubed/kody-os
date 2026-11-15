@@ -76,3 +76,11 @@ superseded by the line-tag rule. The generator's
 "version matches the tag name" check needs a line-aware
 form before Phase 2 lands; that is a Phase 2 follow-up,
 not a change to this requirement now.
+
+#### Scenario: Tag-naming decision is the semver line
+- **WHEN** the maintainer cuts or moves a catalog snapshot tag
+- **THEN** the tag is the bare semver line (`<major>.<minor>`)
+  and moves within its line per "Maintainer pin-update
+  procedure" above, and the generator's version-match check
+  is recorded as a Phase 2 follow-up needing a line-aware
+  form before Phase 2 lands.

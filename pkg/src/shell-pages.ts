@@ -5,7 +5,7 @@
  * code: the about-wrap description, the GitHub Sponsors / Ko-fi / Buy Me a
  * Coffee links, and their QR codes, plus a Kody referral note at the bottom.
  * Help needs no content here: it renders
- * the shared block from renderEmptyHelp (apps/client.ts).
+ * the shared block from renderEmptyHelp (apps/render.ts).
  *
  * ES2019 ceiling: this is static markup, no script.
  */

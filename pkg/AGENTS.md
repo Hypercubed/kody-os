@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v4.2.2. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v4.4.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 
@@ -35,6 +35,65 @@ The shell performs no access check in `fetch()`: every request that reaches it i
 ## App actions and the package-app edge
 
 Kody's edge rejects mutating requests to a `*.kody.run` package-app subdomain when the browser reports a foreign or `null` `Origin`. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })`. UI actions are GET forms (`GET /apps/:id?action=<name>`, no credential field — the platform admits the visitor before shell code runs); `POST /apps/:id` stays for API clients. Bundle scripts resolve action URLs against the shell-stamped `data-action-base="/apps/<id>"` container with `credentials: 'same-origin'`. Checklist: `src/apps/INTEGRATION.md`.
+
+## Frontend / backend boundary (FE/BE)
+
+The shell's browser code (FE) and Kody code (BE) are separated
+by directory and by contract, so the FE could run on a different
+BE that honors the same contract (fe-be-separation, 2026-11-14).
+
+- **Boundary.** FE code lives in `pkg/src/client/`: the shell
+  client module (`index.ts`, the entry — loads the bridge,
+  defines the shared `os-*` elements, enhances forms, and
+  navigates shell pages client-side), the
+  bridge adapter (`bridge.js`), and the shared elements
+  (`os-elements.ts`, `os-stepper.ts` — one file per custom
+  element). BE code lives in `pkg/src/` outside `client/`: the
+  entry, the fetch handler, `act()`, the registry, storage, MCP
+  exports, feeds, theme, and the server renderers
+  (`apps/render.ts`, `shellChrome` in `app.ts`). No FE module
+  imports a BE module: nothing under `pkg/src/client/` imports
+  `packageStorage`, the registry, a server type, or any file
+  outside `pkg/src/client/` except the vendored Lit
+  (`window.KodyLit`, loaded as a script, not an import).
+- **Contract.** The FE talks to the BE only through this
+  surface: the bridge (`window.KodyBridge` — state reads /
+  writes / dispatch, the FE's only interface to BE state), the
+  JSON state seed the BE renders before each bundle (read once
+  at mount; the bridge reads it, falling back to the spans only
+  when no seed is present), the action URLs
+  (`data-action-base`, GET forms, `format=json` fast path,
+  same-origin), and the `data-*` attributes the FE reads
+  (`data-app-id`, `data-field`, `data-client-module`,
+  `data-app-base` — the last for client-side navigation). A
+  different BE could serve the same FE as long as it honors
+  that contract. The BE still renders the shell + seed +
+  section skeleton (the islands model). JavaScript is assumed —
+  the no-JS requirement was dropped Oct 29–30, 2026.
+- **Client-side navigation.** The FE navigates Home (`/`) and
+  Apps (`/apps`) client-side: it intercepts same-origin clicks
+  to those pages, fetches the target as HTML, swaps the
+  `#os-main` content in place, updates the document title and
+  nav `aria-current`, and pushes the URL with
+  `history.pushState`; back/forward (`popstate`) fetches and
+  swaps the same way. Any failure falls back to a native
+  navigation (a full page load). App pages, Help, and About
+  stay full-load. A page whose `#os-main` contains a bundle
+  section (a Home widget, `section[data-app-id]`) is never
+  swapped in — it falls back to a native full load so the
+  widget's script runs and mounts the bundle. Overlapping
+  navigations are discarded by a sequence token, and a
+  `pushState` failure falls back to a native navigation. The
+  BE's only part is stamping `id="os-main"`
+  on the `<main>` in `shellChrome`. Scripts in swapped HTML do
+  not execute, so all behaviour stays in the persistent bundle;
+  the post-swap step (title, `aria-current`, scroll) is the hook
+  where seed adoption would go if a future shell page carries
+  seeds — Home/Apps carry none, so none is implemented.
+- **Organization.** The FE is grouped by concern (entry,
+  bridge, elements), not split into one file per UI piece. The
+  BE's HTML text stays in the BE renderers; it is not split
+  into component files.
 
 ## Adding an app
 
@@ -84,22 +143,24 @@ Run from `pkg/` only (repo root fails: missing `kody.app.entry`). Proxy bypass r
 
 ```sh
 cd pkg
-kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
+kody dev --target mock --allow-private-network # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
 systemctl --user enable --now kody-os-dev.service # persistent across turns; verify with is-active + curl status
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}' # list; op add/remove take definition/id
-kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}' # install from catalog by id; op update/list also supported
+kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"install","id":"app-store","base":"http://127.0.0.1:8901/"}' # install from catalog by id; op update/list also supported
 kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)" # install a definition file directly; params ARE the definition, no op wrapper
 ```
 
+The `app-store` install needs an explicit `"base"` and `--allow-private-network` on the execute. Without `"base"`, `install_from_catalog` has no catalog source when the App Store itself is not installed yet (and `KODY_CATALOG_BASE` does not reach package code in the mock), so it fails with `no catalog source`. Without the flag, the execute's workerd blocks the loopback fetch to `http://127.0.0.1:8901/catalog.json` and the install fails with `unknown catalog app`. The `"base"` above is the local catalog served by `./scripts/dev-local-catalog.sh` on port 8901 (which must be running); installing from GitHub instead uses `"base":"https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/"` and needs no flag. `kody dev` also needs `--allow-private-network` for the running mock to fetch the local catalog at all — `dev-local-catalog.sh` does not yet pass it, so start the mock manually with the flag until the script is fixed.
+
 **Mock writes need a stopped server.** `kody dev` reads `~/.cache/kody/mock-sessions/default/state.json` once at startup and serves that snapshot from memory; `kody execute` writes the file, not the running process. A write made while the preview is running returns `{ ok: true }` and does land on disk, but the preview never shows it — and the preview's next write (any app action or state change) rewrites the file from its snapshot and silently deletes the CLI change. So stop `kody dev`, run the `registry`/`catalog`/`add-app` writes, then start it again; "write now, restart later" loses the write as soon as the running preview acts. Verified 2026-10-31: `add-app.ts` with a new id → `{ ok: true }` and present on disk, `GET /apps/<id>` still 404, and the definition gone from the file after one `set_count` on the preview. Live-reload covers `src/` edits; it does not cover mock data.
 
-Install the `app-store` catalog app with the server stopped (see above): `catalog.ts` install as above — no Python step needed any more. Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No credential step: the mock target serves login-free because there is no gate at all. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. There is no authenticated `fetch` check ceremony: verify actions in the browser instead.
+Install the `app-store` catalog app with the server stopped (see above): `catalog.ts` install as above, with the explicit `"base"` and `--allow-private-network` on the execute — without them it fails (`no catalog source` with no base, `unknown catalog app` without the flag, because the loopback manifest fetch is blocked). No Python step needed any more. Install it explicitly: a fresh shell starts empty and seeds nothing, so the App Store only appears once installed. No credential step: the mock target serves login-free because there is no gate at all. Mock store: `~/.cache/kody/mock-sessions/default/state.json` (`kody-os.apps.registry`, `def.*`, `state.*`). Live-reload 47–197ms; `POST /apps/:id` → 400 guard is expected; `check --offline` 8 checks pass; `fetch` attaches to running pid; `job`/`webhook`/`emit` report `(none)` — no handlers declared. There is no authenticated `fetch` check ceremony: verify actions in the browser instead.
 
 ## Edge cases
 
 - No root-export side effects: no jobs, file writes, or installs.
 - Missing runtime context falls back to shared in-memory storage, starting empty with an honest "no apps yet" tile.
-- Works without JavaScript (form submit + PRG); the client only enhances `form.app-action` with `?format=json` in-place patching (guarded, falls back to native submit). Exception: the App Store itself requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`, and the rest of the shell still works without JavaScript.
+- JavaScript is assumed (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The client enhances `form.app-action` with `?format=json` in-place patching. The App Store requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`.
 - Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.
 - App styles live in the app, never in the shell theme: never put app-specific rules in `public/styles.css` (or the generated `src/shell-css.ts`). A rule that targets one app — for example one scoped by that app's panel label (`aria-label`) — belongs in that app's own bundle CSS, as a `<style>` block in its `index.html` or a `.css` file in its `files` map.

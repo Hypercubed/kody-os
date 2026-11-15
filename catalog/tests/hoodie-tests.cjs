@@ -38,7 +38,7 @@ try {
 }
 
 const DEFINITION_PATH = path.join(__dirname, "..", "hoodie-weather/definition.json");
-const BRIDGE_PATH = path.join(__dirname, "..", "..", "pkg", "src", "bridge", "bridge.js");
+const BRIDGE_PATH = path.join(__dirname, "..", "..", "pkg", "src", "client", "bridge.js");
 
 const DEFAULT_SEED = { lat: 47606200, lon: -122332100, label: "Seattle, WA" };
 const SAVED_SEED = { lat: 40712800, lon: -74006000, label: "New York, NY" };

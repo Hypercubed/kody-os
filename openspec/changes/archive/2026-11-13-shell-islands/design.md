@@ -249,3 +249,31 @@ bundles in the same change.
    this change's Scribe task. If the POC is abandoned or delayed,
    the check is a standalone probe install (same method as the Lit
    probe: install via `add_app`, run on the Scribe, remove).
+
+## Evaluation: bridge-only state check (Task 4.2, 2026-11-13)
+
+Evaluated a harness/static check for the bridge-only state rule
+(Decision 5): a bundle fails if its script reads `[data-field]`
+spans or `data-value` attributes for state. **Not shipped** in this
+change. Reasons:
+
+- The `[data-field]` pattern is explicit and greppable, so review
+  catches a violation as easily as a static check would — the
+  check would not catch a defect class review cannot.
+- A check for `[data-field]` reads would false-positive on the
+  documented no-bridge fallback: both ported bundles (Counter,
+  link-drop) read a `[data-field]` span only when `window.KodyBridge`
+  is absent, which is the allowed fallback (the spans stay as the
+  no-JS content and the fallback). Exempting the fallback would
+  require the check to understand code structure, which a static
+  scan cannot do reliably.
+- A broader check (flag any DOM text/attribute read as "state")
+  would false-positive on legitimate DOM reads (button
+  `data-delta`, form input values, aria attributes).
+
+The rule is enforced by the pre-`add_app` checklist (in the
+adding-an-app skill) plus review. Revisit if a defect class
+emerges that review misses. The Counter and link-drop ports were
+both verified to read state only from the bridge store on their
+primary path (their harnesses exercise the bridge subscription;
+neither reads a span for state when the bridge is present).

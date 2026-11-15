@@ -68,9 +68,9 @@ does is HTML/JS plus its own synced state.
 | `pkg/src/apps/definition.ts` | Definition validation, bundle assembly, capability sanitising, fingerprint | `add_app`, Store | Validation is the trust boundary for everything installed as data. A plugin must not be able to widen it. |
 | `pkg/src/apps/types.ts` | `AppDefinition`, `AppCapabilities`, state/action schema (versions 3–5) | Everything | The contract data apps and the shell agree on. |
 | `pkg/src/apps/forms.ts` | `actFromForm` (GET/POST form → `act()`) | Fetch handler | The action path. |
-| `pkg/src/apps/client.ts` | Server rendering: app panels, widgets, dashboard, Apps Edit, empty-help | Fetch handler | Page rendering. |
+| `pkg/src/apps/render.ts` | Server rendering: app panels, widgets, dashboard, Apps Edit, empty-help | Fetch handler | Page rendering. |
 | `pkg/src/shell-css.ts`, `shell-theme.ts`, `shell-pages.ts` | Page chrome CSS, theme override (`kody-os.shell.theme`), Help/About pages | Fetch handler | Shell-owned presentation and one shell-owned setting. |
-| `pkg/src/client/index.ts`, `pkg/src/bridge/bridge.js` | Browser enhancement, `window.KodyBridge` (state store, dispatch queue, rebase) | Bundles | The bridge owns state; no plugin replaces it. |
+| `pkg/src/client/index.ts`, `pkg/src/client/bridge.js` | Browser enhancement, `window.KodyBridge` (state store, dispatch queue, rebase) | Bundles | The bridge owns state; no plugin replaces it. |
 | `/manage/*` API (`GET /manage/rows|install|update|restore|remove`, gated by `capabilities.manageApps`) | App management for the Store | App Store only | The management machinery is core; the *flag* is a capability. A plugin must not gain its own management API. |
 | `/theme/:app` route (`GET`, gated by `capabilities.theme` view/set) | Shell theme read/set/reset | Settings app only | Shell-owned setting, one key, no upstream, no secret. Straddles the line (it is a capability like `feeds`) but stays core: it mutates shell state directly, and no plugin needs to own it. |
 

@@ -43,7 +43,7 @@ These come from the package and the Scribe ceiling, and they bind maintainer wor
 - **GET forms only in browser UI.** Kody's edge rejects mutating requests from package-app subdomains with a foreign or `null` Origin. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })` in shell or bundle UI. UI actions are GET forms; `POST /apps/:id` stays for API clients. Bundle action URLs resolve against the shell-stamped `data-action-base` with `credentials: 'same-origin'`.
 - **Styles are inlined.** `pkg/src/shell-css.ts` is generated from `pkg/public/styles.css`. Regenerate after any theme edit; do not add an external stylesheet.
 - **No root-export side effects** in the package entry: no jobs, file writes, or installs on import.
-- **Works without JavaScript** (form submit + redirect), except the App Store data app, which requires JavaScript by design and shows a no-JS note pointing at agent `add_app`.
+- **JavaScript is assumed** (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The App Store data app requires JavaScript by design and shows a note pointing at agent `add_app` when it is absent.
 
 ## Catalog rules
 
@@ -59,11 +59,13 @@ Run from `pkg/` only — the repository root fails (missing `kody.app.entry`). P
 
 ```sh
 cd pkg
-kody dev --target mock # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
-kody execute --target mock --file scripts/catalog.ts --params '{"op":"install","id":"app-store"}'
+kody dev --target mock --allow-private-network # → App ready at http://127.0.0.1:4302/, status at /__kody/dev/status
+kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"install","id":"app-store","base":"http://127.0.0.1:8901/"}'
 kody execute --target mock --file scripts/add-app.ts --params "$(cat myapp.json)"
 kody execute --target mock --file scripts/registry.ts --params '{"op":"list"}'
 ```
+
+The `app-store` install needs two things the bare command lacks: an explicit `"base"` (the catalog source — `install_from_catalog` has no source to fall back on when the App Store itself is not installed yet, and `KODY_CATALOG_BASE` does not reach package code in the mock), and `--allow-private-network` on both `kody dev` and `kody execute` (the mock's workerd blocks fetches to loopback by default, so without it the manifest fetch from `http://127.0.0.1:8901/catalog.json` fails and the install reports `unknown catalog app`). The `"base"` above is the local catalog served by `./scripts/dev-local-catalog.sh` on port 8901; installing from GitHub instead uses `"base":"https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/"` and needs no flag. Note `dev-local-catalog.sh` does not yet pass `--allow-private-network` to `kody dev` — start the mock manually with the flag (see `pkg/AGENTS.md`) until the script is fixed.
 
 **Mock writes need a stopped server.** `kody dev` reads its mock store once at startup and serves that snapshot from memory. A `kody execute` write made while the preview runs returns `{ ok: true }` and lands on disk, but the preview never shows it, and the preview's next write rewrites the file from its snapshot and silently deletes the CLI change. Stop the server, run the writes, start it again. "Write now, restart later" loses the write as soon as the running preview acts.
 
