@@ -71,7 +71,8 @@
  *
  * Kept outside pkg/ by direction: repo tooling, not shipped code.
  */
-import { absorb_from_catalog, act, add_app, assembleBundleFiles, capabilityAdditions, catalogGitHubRef, catalogTagLabel, createMemoryStore, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, summarizeCapabilities, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { absorb_from_catalog, act, add_app, assembleBundleFiles, backup, capabilityAdditions, catalogGitHubRef, catalogTagLabel, clear_dev_catalog_base, createMemoryStore, DEV_CATALOG_BASE_KEY, export_install, fingerprintDefinition, get_app, get_app_state, get_app_status, get_catalog_definition, get_catalog_entry, get_catalog_source, get_hidden, get_homepage, get_launcher_state, get_pinned, getRunningPackageVersion, get_store_rows, install_from_catalog, list_apps, list_catalog, listInstalledIds, manage_install, manage_remove, manage_restore, manage_rows, manage_update, MIN_SUPPORTED_SCHEMA_VERSION, normalizeCatalogBase, normalizeListResult, packageRefForHost, readCatalogManifest, readInstallSnapshot, remove_app, renderAllSection, renderAppPanel, renderAppSection, renderBundleContent, renderDashboard, renderEditSection, renderEmptyHelp, renderHomeTiles, restore, set_dev_catalog_base, set_hide, set_pin, store_install_from_catalog, store_update_from_catalog, summarizeCapabilities, SUPPORTED_SCHEMA_VERSIONS, update_from_catalog, validateCatalogDefinition } from '../pkg/src/apps/index.ts'
+import { readJson } from '../pkg/src/apps/storage.ts'
 import type { CapabilitySummary } from '../pkg/src/apps/definition.ts'
 import { cpSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
@@ -854,7 +855,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.5.0 in this tree', running === '4.5.0', running)
+	check('running package version is 4.6.0 in this tree', running === '4.6.0', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min
@@ -1278,6 +1279,98 @@ function installSteps(text: string): string[] {
   }
 }
 
+
+// storage-backed-catalog-override: the stored dev override
+// (kody-os.dev.catalogBase) sits between the explicit param / env
+// slot and the installed Store's declared base, for agent calls and
+// the browser management API alike. It never enters install
+// payloads and survives restore.
+{
+	var gdo = globalThis as unknown as Record<string, unknown>
+	var savedDo = gdo['KODY_CATALOG_BASE']
+	delete gdo['KODY_CATALOG_BASE']
+	// Own loopback server: the shared __server was closed by the
+	// cache-fallback block above, so BASE serves manifests from cache
+	// only — definition fetches need a live server (fresh base, so no
+	// cache entry is shared with BASE).
+	var doHttp = await import('node:http')
+	var doServer = doHttp.createServer(function (req, res) {
+		try {
+			var url = new URL(req.url || '/', 'http://127.0.0.1')
+			var pathname = decodeURIComponent(url.pathname)
+			if (pathname.indexOf('..') !== -1) { res.statusCode = 404; res.end('not found'); return }
+			var rel = pathname.replace(/^\//, '')
+			var full = join(__catalogDir, rel)
+			if (!statSync(full, { throwIfNoEntry: false }) || !statSync(full).isFile()) { res.statusCode = 404; res.end('not found'); return }
+			res.statusCode = 200
+			res.end(readFileSync(full, 'utf8'))
+		} catch (err) { res.statusCode = 500; res.end('error') }
+	})
+	await new Promise<void>(function (resolve) { doServer.listen(0, '127.0.0.1', function () { resolve() }) })
+	var doAddr = doServer.address() as unknown as { port: number }
+	var DOBASE = 'http://127.0.0.1:' + String(doAddr.port) + '/'
+	try { (doServer as unknown as { unref?: () => void }).unref?.() } catch (err) {}
+	try {
+		var catalogCount = (await list_catalog(DOBASE)).length
+		var doSetStore = createMemoryStore()
+		var doSet = await set_dev_catalog_base(DOBASE, doSetStore)
+		check('dev-base set stores the normalized base', doSet.ok === true && (doSet as { baseUrl?: string }).baseUrl === DOBASE, JSON.stringify(doSet))
+		check('dev-base stored value is the normalized base', (await readJson<unknown>(doSetStore, DEV_CATALOG_BASE_KEY)) === DOBASE, '')
+		var doBad = await set_dev_catalog_base('http://example.com/catalog/', doSetStore)
+		check('dev-base refused base reports the refusal', doBad.ok === false, JSON.stringify(doBad))
+		check('dev-base refused base writes nothing', (await readJson<unknown>(doSetStore, DEV_CATALOG_BASE_KEY)) === DOBASE, '')
+		var doExplicitStore = createMemoryStore()
+		await set_dev_catalog_base('http://127.0.0.1:9/', doExplicitStore)
+		var doExplicit = await install_from_catalog('counter', doExplicitStore, DOBASE)
+		check('explicit base wins over the stored override', doExplicit.ok === true, JSON.stringify(doExplicit))
+		function deadStoreDef(): unknown {			return get_catalog_definition('app-store', DOBASE).then(function (def) {
+			var decl = clone(def) as { capabilities: { proxy: { name: string; url: string }[] } }
+			decl.capabilities.proxy = [
+				{ name: 'catalog', url: 'https://example.com/catalog/' },
+				{ name: 'catalog-apps', url: 'https://example.com/catalog/' },
+			]
+			return decl
+		})
+		}
+		var doDeclStore = createMemoryStore()
+		await add_app((await deadStoreDef()) as never, doDeclStore)
+		var doNoOverride = await install_from_catalog('counter', doDeclStore)
+		check('declared dead base fails with no override', doNoOverride.ok === false, JSON.stringify(doNoOverride))
+		await set_dev_catalog_base(DOBASE, doDeclStore)
+		var doWithOverride = await install_from_catalog('counter', doDeclStore)
+		check('stored override beats the store declaration', doWithOverride.ok === true, JSON.stringify(doWithOverride))
+		var doRows = await manage_rows('app-store', doDeclStore) as unknown as { ok: boolean; rows: unknown[] }
+		check('management rows use the stored override over the declaration', doRows.ok === true && doRows.rows.length === catalogCount - 1, JSON.stringify(doRows.rows.length))
+		var doCorrupt = createMemoryStore()
+		await doCorrupt.set(DEV_CATALOG_BASE_KEY, JSON.stringify(42))
+		var doCorruptInstall = await install_from_catalog('counter', doCorrupt)
+		check('non-string stored value reads as no override', doCorruptInstall.ok === false && (doCorruptInstall as { error: string }).error.indexOf('no catalog source') !== -1, JSON.stringify(doCorruptInstall))
+		await doCorrupt.set(DEV_CATALOG_BASE_KEY, JSON.stringify('http://example.com/catalog/'))
+		var doRefusedInstall = await install_from_catalog('counter', doCorrupt)
+		check('refused stored value reads as no override', doRefusedInstall.ok === false && (doRefusedInstall as { error: string }).error.indexOf('no catalog source') !== -1, JSON.stringify(doRefusedInstall))
+		var doHygStore = createMemoryStore()
+		await store_install_from_catalog('app-store', doHygStore, DOBASE)
+		await set_dev_catalog_base(DOBASE, doHygStore)
+		var doExport = await export_install(doHygStore)
+		check('export_install holds no dev key', JSON.stringify(doExport).indexOf(DEV_CATALOG_BASE_KEY) === -1, '')
+		var doBackup = await backup('dev-base-hygiene', doHygStore)
+		check('dev-base backup ok', doBackup.ok === true, JSON.stringify(doBackup))
+		var doEntry = await readJson<unknown>(doHygStore, 'kody-os.backups.dev-base-hygiene')
+		check('backup entry holds no dev key', JSON.stringify(doEntry).indexOf(DEV_CATALOG_BASE_KEY) === -1, '')
+		await set_dev_catalog_base('http://127.0.0.1:9/', doHygStore)
+		var doRestore = await restore('dev-base-hygiene', doHygStore)
+		check('dev-base restore ok', doRestore.ok === true, JSON.stringify(doRestore))
+		check('override survives restore unchanged', (await readJson<unknown>(doHygStore, DEV_CATALOG_BASE_KEY)) === 'http://127.0.0.1:9/', '')
+		await clear_dev_catalog_base(doDeclStore)
+		check('clear removes the key', (await readJson<unknown>(doDeclStore, DEV_CATALOG_BASE_KEY)) === undefined, '')
+		await remove_app('counter', doDeclStore)
+		var doCleared = await install_from_catalog('counter', doDeclStore)
+		check('clear restores store-declared resolution', doCleared.ok === false, JSON.stringify(doCleared))
+	} finally {
+		if (savedDo !== undefined) gdo['KODY_CATALOG_BASE'] = savedDo
+		await new Promise<void>(function (resolve) { doServer.close(function () { resolve() }) })
+	}
+}
 
 if (failures.length === 0) {
 	console.log('\nALL STORE CHECKS PASSED')

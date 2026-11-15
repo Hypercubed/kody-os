@@ -237,11 +237,19 @@ The shell SHALL render an expand control in the titlebar of every app page (`GET
 - **THEN** the page scrolls normally with no forced viewport height or viewport-locked content region.
 
 ### Requirement: One route set for UI and synthetic traffic
-The shell SHALL route mount-tolerantly: it slices the request path from the first `/apps/` occurrence so mounted, synthetic (`packageAppFetch`), and stripped requests route identically. The HTTP method match SHALL be case-insensitive.
+The shell SHALL route mount-tolerantly: it first strips the platform mount/base prefix from the request path using the hosted `appBasePath` (an exact base match routes as the dashboard root; a base + `/` prefix strips to the shell-relative path, repeatedly, so a double-prefixed forward resolves the same as a single mount; an empty base, `/`, or a path outside the base passes through unchanged), then slices the stripped path from the first `/apps/` occurrence past position 0, so mounted, synthetic (`packageAppFetch`), and stripped requests route identically. The HTTP method match SHALL be case-insensitive.
 
 #### Scenario: Mounted and stripped paths route the same
 - **WHEN** the handler receives `/kody-os/apps/counter` or `/apps/counter`
 - **THEN** both render the same app page with the same state.
+
+#### Scenario: Hosted mount root routes as the dashboard
+- **WHEN** the handler receives the hosted base with or without a trailing slash
+- **THEN** it renders the same dashboard as `/`.
+
+#### Scenario: Mounted non-apps routes strip to their shell path
+- **WHEN** the handler receives `<base>/help` or `<base>/about`
+- **THEN** each renders the same page as its bare `/help` or `/about` path.
 
 ### Requirement: Single shared chrome
 

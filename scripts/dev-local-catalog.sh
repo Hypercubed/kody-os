@@ -4,21 +4,17 @@
 #         ./scripts/dev-local-catalog.sh stop
 #         ./scripts/dev-local-catalog.sh --help
 #   Serves catalog/ on http://127.0.0.1:8901 and starts
-#   `kody dev --target mock` with KODY_CATALOG_BASE pointing at it.
-#   KNOWN LIMITS (verified 2026-11-14): this does NOT yet make the
-#   mock read the local catalog. (1) KODY_CATALOG_BASE does not reach
-#   package code in the mock — the generated workerd config binds
-#   only KODY_RUN_SECRET — so the Store listing still reads GitHub.
-#   (2) This script does not pass --allow-private-network to
-#   `kody dev`, so the mock's workerd blocks the loopback fetch to
-#   http://127.0.0.1:8901/catalog.json. Until the script is fixed,
-#   install the App Store from the local catalog manually: stop just
-#   the mock (pkill -f '[k]ody dev --target mock'). From pkg/, run:
+#   `kody dev --target mock --allow-private-network` so the mock's
+#   workerd can fetch the loopback catalog. KODY_CATALOG_BASE is still
+#   exported (harmless; it does not reach package code in the mock —
+#   the generated workerd config binds only KODY_RUN_SECRET), but the
+#   override the mock actually reads is the stored dev base
+#   (kody-os.dev.catalogBase): with the mock STOPPED, set it from pkg/ with
 #   kody execute --target mock --allow-private-network --file scripts/catalog.ts
-#     --params '{"op":"install","id":"app-store","base":"http://127.0.0.1:8901/"}'
-#   then restart the mock with the flag (from pkg/: kody dev --target mock
-#   --allow-private-network, plus --host 0.0.0.0 for --lan) so it reads the
-#   updated store. Installing
+#     --params '{"op":"dev-base","base":"http://127.0.0.1:8901/"}'
+#   then (re)start this script so the mock picks up the stored value.
+#   Clear it the same way with '{"op":"dev-base"}' (no base) to go
+#   back to the Store's declared GitHub base. Installing
 #   from GitHub instead ("base":"https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/")
 #   needs no flag.
 #   With --lan, `kody dev` listens on 0.0.0.0:4302 directly (CLI flag
@@ -112,7 +108,7 @@ HOST_ARGS=()
 if [ "$LAN" = "1" ]; then
   HOST_ARGS=(--host 0.0.0.0)
 fi
-setsid nohup kody dev --target mock "${HOST_ARGS[@]}" > "$MOCK_LOG" 2>&1 < /dev/null &
+setsid nohup kody dev --target mock --allow-private-network "${HOST_ARGS[@]}" > "$MOCK_LOG" 2>&1 < /dev/null &
 sleep 8
 
 # 3. Verify and report.
