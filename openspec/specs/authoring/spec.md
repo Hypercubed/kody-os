@@ -166,10 +166,12 @@ The authoring docs SHALL document the concrete provided surface: the
 global name and version of the vendored Lit, per-section
 instantiation, the bridge-owned store and JSON seed, optimistic/rebase
 behavior, the `os-*` naming convention, the bridge-only state rule,
-and the `DOMContentLoaded` discipline. The docs SHALL state the
-fallback rules: per-app vendoring or per-app compilation only as a
-documented fallback with pinned version and update owner, never the
-default path; a fallback app owns its own update story.
+the `ui.help` definition field (plain-text, dialog behavior,
+absent-means-no-button, every app ships one), and the `DOMContentLoaded` discipline. The
+docs SHALL state the fallback rules: per-app vendoring or per-app
+compilation only as a documented fallback with pinned version and
+update owner, never the default path; a fallback app owns its own
+update story.
 
 #### Scenario: Agent finds the provided surface in the docs
 - **WHEN** an agent reads the adding-an-app skill before authoring a stateful bundle

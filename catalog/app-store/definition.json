@@ -3,7 +3,7 @@
   "name": "App Catalog",
   "label": "App Catalog",
   "schemaVersion": 5,
-  "catalogVersion": 33,
+  "catalogVersion": 34,
   "minPackageVersion": "4.4.0",
   "icon": "\u229e",
   "category": "utilities",
@@ -32,7 +32,8 @@
   "ui": {
     "title": "App Catalog",
     "openAs": "page",
-    "actions": []
+    "actions": [],
+    "help": "Pick an app to install it, or update it when a newer catalog version appears. Updates never run on their own."
   },
   "stateSchema": {
     "type": "object",

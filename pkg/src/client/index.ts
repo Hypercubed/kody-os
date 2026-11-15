@@ -779,6 +779,38 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 		} catch (err) {
 			// Never break navigation for a close-box sync failure.
 		}
+		// Sync the titlebar help box too. The swap replaces #os-main
+		// only, so without this the help box keeps the previous page's
+		// target while the fresh dialog (inside #os-main) belongs to
+		// the new page — or a stale box lingers where the destination
+		// has no help at all. The dialog itself swaps with the content;
+		// only the titlebar box (and the has-help class) needs syncing.
+		try {
+			var freshBar = freshDoc.querySelector('.os-titlebar')
+			var currentBar = document.querySelector('.os-titlebar')
+			if (!freshBar || !currentBar) return
+			var freshHelp = freshBar.querySelector('button.os-help')
+			var currentHelp = currentBar.querySelector('button.os-help')
+			if (freshHelp && currentHelp) {
+				var freshTarget = freshHelp.getAttribute('data-help-open') || ''
+				if (freshTarget !== '') currentHelp.setAttribute('data-help-open', freshTarget)
+			} else if (freshHelp && !currentHelp) {
+				// Destination has help, current does not: insert a
+				// copy immediately left of the expand box (or the
+				// title when there is none), mirroring server order.
+				var helpClone = freshHelp.cloneNode(true) as Element
+				var expandEl = currentBar.querySelector('.os-expand')
+				if (expandEl && expandEl.parentNode) expandEl.parentNode.insertBefore(helpClone, expandEl)
+				else currentBar.appendChild(helpClone)
+			} else if (!freshHelp && currentHelp) {
+				// Destination has no help: remove the stale box.
+				if (currentHelp.parentNode) currentHelp.parentNode.removeChild(currentHelp)
+			}
+			if (freshBar.classList.contains('has-help')) currentBar.classList.add('has-help')
+			else currentBar.classList.remove('has-help')
+		} catch (err) {
+			// Never break navigation for a help-box sync failure.
+		}
 	}
 
 	function swapNavMain(freshDoc: Document): boolean {
@@ -1008,5 +1040,129 @@ if (tickEls.length > 0 && typeof setInterval !== 'undefined') {
 		setInterval(ttick, 1000)
 	})(tickEls as unknown as NodeListOf<HTMLElement>)
 }
+
+/**
+ * Per-app help dialog (JS modal).
+ *
+ * The `[?]` titlebar box is a <button data-help-open> and the dialog is a
+ * server-rendered `[hidden]` div. Opening removes `hidden` in place: no
+ * fragment, no navigation, no page refresh — the overlay underneath and
+ * any expanded layout stay exactly as they were. Closing re-hides the
+ * dialog and returns focus to the opener. Escape closes the open dialog.
+ *
+ * ES2019 ceiling: no ?. and no ?? in this file.
+ */
+var helpLastFocus: Element | null = null
+
+function helpOpenDialog(id: string): void {
+	try {
+		var dialog = document.getElementById(id)
+		if (!dialog) return
+		try {
+			var active = document.activeElement
+			helpLastFocus = active instanceof Element ? active : null
+		} catch (focusErr) {
+			helpLastFocus = null
+		}
+		dialog.removeAttribute('hidden')
+		try {
+			var closeBtn = dialog.querySelector('[data-help-close]')
+			if (closeBtn instanceof HTMLElement) closeBtn.focus()
+		} catch (btnErr) {
+			// Showing the dialog is the job; focus is a nicety.
+		}
+	} catch (err) {
+		// Never break the page for a help open.
+	}
+}
+
+function helpCloseDialog(dialog: Element): void {
+	try {
+		dialog.setAttribute('hidden', '')
+		if (helpLastFocus && document.contains(helpLastFocus)) {
+			try {
+				;(helpLastFocus as HTMLElement).focus()
+			} catch (focusErr) {
+				// Focus restore is a nicety.
+			}
+		}
+		helpLastFocus = null
+	} catch (err) {
+		// Never break the page for a help close.
+	}
+}
+
+document.addEventListener('click', function (event: Event): void {
+	try {
+		var target = event.target as unknown as Node | null
+		if (!target) return
+		var node: Node | null = target
+		var opener: Element | null = null
+		var closer: Element | null = null
+		while (node) {
+			if (node instanceof Element) {
+				if (!opener && node.hasAttribute('data-help-open')) opener = node
+				if (!closer && node.hasAttribute('data-help-close')) closer = node
+				if (opener || closer) break
+			}
+			node = node.parentNode
+		}
+		if (opener) {
+			event.preventDefault()
+			var helpId = opener.getAttribute('data-help-open') || ''
+			if (helpId !== '') helpOpenDialog(helpId)
+			return
+		}
+		if (closer) {
+			event.preventDefault()
+			var cursor: Node | null = closer
+			while (cursor) {
+				if (cursor instanceof Element && cursor.classList.contains('os-help-dialog')) {
+					helpCloseDialog(cursor)
+					return
+				}
+				cursor = cursor.parentNode
+			}
+		}
+	} catch (err) {
+		// Never break navigation: on any error, let the browser proceed.
+	}
+})
+
+document.addEventListener('keydown', function (event: Event): void {
+	try {
+		var keyEvent = event as KeyboardEvent
+		var key = keyEvent.key || ''
+		var open = document.querySelector('.os-help-dialog:not([hidden])')
+		if (!open) return
+		if (key === 'Escape' || key === 'Esc') {
+			event.preventDefault()
+			helpCloseDialog(open)
+			return
+		}
+		// Keep Tab cycling inside the open dialog so background
+		// controls cannot receive focus while it is open.
+		if (key !== 'Tab') return
+		var focusables = open.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+		if (focusables.length === 0) {
+			event.preventDefault()
+			return
+		}
+		var first = focusables[0] as HTMLElement
+		var last = focusables[focusables.length - 1] as HTMLElement
+		var active = document.activeElement
+		if (keyEvent.shiftKey) {
+			if (active === first || !open.contains(active)) {
+				event.preventDefault()
+				last.focus()
+			}
+		} else if (active === last) {
+			event.preventDefault()
+			first.focus()
+		}
+	} catch (err) {
+		// Never break the page for a key press.
+	}
+})
 
 console.log('kody-os ready', pakConfig)

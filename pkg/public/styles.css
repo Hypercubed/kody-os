@@ -236,24 +236,38 @@ body {
 	text-decoration: none;
 }
 
-.os-box::before {
+/* Shared header-box square: the close, expand/collapse, help, widget-expand,
+   and modal-expand boxes draw one identical 0.75rem outlined square with no
+   shadow. One rule for every box, so a new box cannot drift from the rest.
+   Hover/active inverts the square; the `?` glyph and bracket icons invert
+   with their own rules below. */
+.os-box::before,
+.os-expand::before,
+.os-collapse::before,
+.os-help::before,
+.widget-expand::before,
+.modal-expand::before {
 	content: "";
 	display: block;
 	width: 0.75rem;
 	height: 0.75rem;
 	border: 2px solid #000;
 	background: #fff;
-	box-shadow: 1px 1px 0 #000;
 }
 
 .os-box:hover::before,
-.os-box:active::before {
+.os-box:active::before,
+.os-expand:hover::before,
+.os-expand:active::before,
+.os-collapse:hover::before,
+.os-collapse:active::before,
+.os-help:hover::before,
+.os-help:active::before,
+.widget-expand:hover::before,
+.widget-expand:active::before,
+.modal-expand:hover::before,
+.modal-expand:active::before {
 	background: #000;
-}
-
-.os-box:active::before {
-	box-shadow: none;
-	transform: translate(1px, 1px);
 }
 
 /* ---- App page full-window view ---- */
@@ -277,17 +291,6 @@ body {
 
 .os-collapse {
 	display: none;
-}
-
-.os-expand::before,
-.os-collapse::before {
-	content: "";
-	display: block;
-	width: 0.75rem;
-	height: 0.75rem;
-	border: 2px solid #000;
-	background: #fff;
-	box-shadow: 1px 1px 0 #000;
 }
 
 /* Expand: upward-outward corner bracket, matching widget/modal expand. */
@@ -314,13 +317,6 @@ body {
 	border-left: 2px solid #000;
 }
 
-.os-expand:hover::before,
-.os-expand:active::before,
-.os-collapse:hover::before,
-.os-collapse:active::before {
-	background: #000;
-}
-
 .os-expand:hover::after,
 .os-expand:active::after,
 .os-collapse:hover::after,
@@ -328,9 +324,142 @@ body {
 	border-color: #fff;
 }
 
-.os-expand:active::before,
-.os-collapse:active::before {
+/* ---- Per-app help: `[?]` box + JS-opened dialog ---- */
+
+/* 3rem hit slot in the titlebar slot immediately left of expand (expand
+   stays at right: 0). The drawn square is the shared header-box square
+   above; this rule only positions the slot and resets the <button> UA
+   styling so the box draws exactly like its link-based siblings. The `?`
+   is element text in a span (not a drawing), absolutely centered over the
+   square, so the glyph reads centered in the box on every font. */
+.os-help {
+	position: absolute;
+	top: 0;
+	right: 3rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 100%;
+	min-height: 3rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
 	box-shadow: none;
+	font: inherit;
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+	text-decoration: none;
+	color: #000;
+}
+
+.os-help-glyph {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	/* +1px optical correction: the ? curve carries the visual mass and the
+	   dot hangs below it, so geometric centering reads high; a one-pixel
+	   drop centers the curve on the square (verified against ink dumps at
+	   12px: curve lands within 1 device px of square center, dot clears the
+	   bottom border). Static offset, not an animation or transition. */
+	transform: translate(-50%, calc(-50% + 1px));
+	font-family: var(--os-font);
+	font-size: 0.75rem;
+	font-weight: bold;
+	line-height: 1;
+}
+
+/* Pin the slot itself transparent on hover/active: the base `button:hover`
+   (`var(--shade)`) and `button:active` (`#000` + press shift) rules below
+   beat the plain `.os-help` background on specificity, and links never
+   match them — without this the slot flashes while the siblings do not.
+   Only the square inverts (shared rule above) and the glyph with it. */
+.os-help:hover,
+.os-help:active {
+	background: transparent;
+	box-shadow: none;
+	transform: none;
+	color: #fff;
+}
+
+/* Two right-hand slots occupied: widen the clearance on BOTH sides to match.
+   Symmetric padding keeps the content box centered in the bar, so the title
+   stays centered whether or not help is present. */
+.os-titlebar.has-help {
+	padding-left: 6.5rem;
+	padding-right: 6.5rem;
+}
+
+/* ---- Standard modal UI (global) ---- */
+
+/* The centered double-bordered modal box is the standard modal UI: use
+   `.os-modal` with `.os-modal-heading` / `.os-modal-body` /
+   `.os-modal-close` for any modal. The per-app help dialog is the first
+   consumer and shares these rules via grouped selectors, so the standard
+   and the help box cannot drift apart. The dialog is present in the
+   server-rendered page (hidden) and opened in place: no fragment, no
+   route, no storage. Monochrome, system fonts, no animation, no
+   gradient. Centered box, double line border: header line, body text,
+   Close button. The header is a plain bold centered line with no
+   borders of its own. */
+.os-modal[hidden],
+.os-help-dialog[hidden] {
+	display: none;
+}
+
+.os-modal:not([hidden]),
+.os-help-dialog:not([hidden]) {
+	display: block;
+	position: fixed;
+	top: 15vh;
+	left: 1rem;
+	right: 1rem;
+	z-index: 30;
+	max-width: 32rem;
+	max-height: 70vh;
+	overflow-y: auto;
+	margin: 0 auto;
+	border: 6px double #000;
+	background: var(--paper);
+	box-shadow: var(--lift-lg);
+}
+
+.os-modal-heading,
+.os-help-heading {
+	margin: 0;
+	padding: 0.5rem 0.5rem 0;
+	background: var(--paper);
+	font-size: 0.875rem;
+	font-weight: bold;
+	text-align: center;
+}
+
+.os-modal-body,
+.os-help-body {
+	margin: 0;
+	padding: 0.5rem;
+	background: var(--paper);
+	font-size: 0.875rem;
+	text-align: center;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+/* Normal auto-width button in a padded, centered footer — the base `button`
+   theme rules (border, hard shadow, bold, hover shade, active invert) supply
+   the look, so this stays an ordinary button like everywhere else. */
+.os-modal-close,
+.os-help-close {
+	margin: 0;
+	padding: 0.5rem;
+	text-align: center;
+}
+
+.os-modal-close button,
+.os-help-close button {
+	min-height: 3rem;
+	padding: 0.65rem 1rem;
 }
 
 /* Expanded view: the app page drops the desktop gutter, the width cap, and the
@@ -831,6 +960,16 @@ button.tile:active .tile-icon {
 	padding-right: 3.5rem;
 }
 
+/* Help sits in the second right-hand slot (right: 3rem), so an overlay header
+   with help keeps its title plate clear of both boxes — and the left padding
+   matches, so the plate stays centered in the bar. Declared after has-close /
+   has-expand so it wins their side padding at equal specificity. */
+.app-titlebar.has-help {
+	position: relative;
+	padding-left: 6.5rem;
+	padding-right: 6.5rem;
+}
+
 .app-titlebar {
 	margin: 0;
 	padding: 0.3rem 0.5rem;
@@ -1216,16 +1355,6 @@ button.tile:active .tile-icon {
 	text-decoration: none;
 }
 
-.widget-expand::before {
-	content: "";
-	display: block;
-	width: 0.75rem;
-	height: 0.75rem;
-	border: 2px solid #000;
-	background: #fff;
-	box-shadow: 1px 1px 0 #000;
-}
-
 /* Expand arrow: an upward-outward corner bracket inside the box. */
 .widget-expand::after {
 	content: "";
@@ -1238,18 +1367,9 @@ button.tile:active .tile-icon {
 	border-right: 2px solid #000;
 }
 
-.widget-expand:hover::before,
-.widget-expand:active::before {
-	background: #000;
-}
-
 .widget-expand:hover::after,
 .widget-expand:active::after {
 	border-color: #fff;
-}
-
-.widget-expand:active::before {
-	box-shadow: none;
 }
 
 /* Modal expand box mirrors the widget expand box, upper right with an icon:
@@ -1268,16 +1388,6 @@ button.tile:active .tile-icon {
 	text-decoration: none;
 }
 
-.modal-expand::before {
-	content: "";
-	display: block;
-	width: 0.75rem;
-	height: 0.75rem;
-	border: 2px solid #000;
-	background: #fff;
-	box-shadow: 1px 1px 0 #000;
-}
-
 .modal-expand::after {
 	content: "";
 	position: absolute;
@@ -1289,18 +1399,9 @@ button.tile:active .tile-icon {
 	border-right: 2px solid #000;
 }
 
-.modal-expand:hover::before,
-.modal-expand:active::before {
-	background: #000;
-}
-
 .modal-expand:hover::after,
 .modal-expand:active::after {
 	border-color: #fff;
-}
-
-.modal-expand:active::before {
-	box-shadow: none;
 }
 
 .dashboard-empty h2 {
@@ -1735,6 +1836,7 @@ button:active {
 	.modal-expand::before,
 	.os-expand::before,
 	.os-collapse::before,
+	.os-help::before,
 	.category h2,
 	.tile,
 	.tile .tile-icon,

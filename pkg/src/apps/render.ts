@@ -112,6 +112,69 @@ export function renderBundleContent(def: AppDefinition, actionBase?: string, pac
 }
 
 /**
+ * The app's help text from `ui.help`, or undefined when the app defines
+ * none: absent, a non-string (only possible in a stored definition that
+ * predates validation), or empty / whitespace-only. Canonicalization
+ * already drops the empty forms at install time; this keeps rendering
+ * defensively correct for stored definitions.
+ */
+export function helpTextFor(def: AppDefinition): string | undefined {
+	if (!def || !def.ui) return undefined
+	var help = def.ui.help
+	if (typeof help !== 'string' || help.replace(/\s+/g, '') === '') return undefined
+	return help
+}
+
+/**
+ * The title-bar help box: the literal text `?` in the shared box look,
+ * opening the JS help dialog. Rendered immediately left of the expand
+ * box on an app header; the caller decides whether help exists.
+ * A <button> (not a link): opening help writes no fragment, changes no
+ * URL, and never navigates — the client toggles the dialog in place.
+ * The glyph rides in an .os-help-glyph span, absolutely centered over the
+ * shared square, so it reads centered on every font's metrics.
+ */
+export function renderHelpButton(id: string): string {
+	return '<button type="button" class="os-help" data-help-open="help-dialog-' + escapeHtml(id) + '" aria-label="Help" title="Help"><span class="os-help-glyph" aria-hidden="true">?</span></button>'
+}
+
+/**
+ * The per-app help dialog: server-rendered, hidden by default, opened by
+ * the shell client in place (no fragment, no navigation). Plain text
+ * only — the help string is escaped, never interpreted, and line breaks
+ * are preserved by CSS (`white-space: pre-wrap`). No route, no storage.
+ * The dialog carries `hidden` until the client opens it; closing restores
+ * the opener underneath with no URL change, so overlay and expanded state
+ * are untouched. The box holds a plain header line (`{app} - Help`),
+ * the help text, and a Close button, centered with a double border.
+ */
+export function renderHelpDialog(id: string, title: string, help: string): string {
+	// The `dialog-` / `heading-` infixes keep the two identifiers disjoint:
+	// the dialog for app `heading-foo` (`help-dialog-heading-foo`) can
+	// never equal the heading for app `foo` (`help-heading-foo`), which
+	// the old shared `help-` prefix allowed. Button and dialog agree.
+	var dialogId = 'help-dialog-' + escapeHtml(id)
+	var headingId = 'help-heading-' + escapeHtml(id)
+	return (
+		'<div class="os-help-dialog" id="' +
+		dialogId +
+		'" role="dialog" aria-modal="true" aria-labelledby="' +
+		headingId +
+		'" hidden>\n' +
+		'<h2 class="os-help-heading" id="' +
+		headingId +
+		'">' +
+		escapeHtml(title) +
+		' - Help</h2>\n' +
+		'<p class="os-help-body">' +
+		escapeHtml(help) +
+		'</p>\n' +
+		'<p class="os-help-close"><button type="button" data-help-close>Close</button></p>\n' +
+		'</div>'
+	)
+}
+
+/**
  * Render one app's bare content on the single render path: the bundle UI,
  * then every state field, then one plain form per UI action. No wrapper
  * element of its own — the shell's `<section class="app">` (see
@@ -213,10 +276,14 @@ export function renderAppPanel(
 		typeof expandHref === 'string' && expandHref !== ''
 			? '<a class="modal-expand" href="' + escapeHtml(expandHref) + '" aria-label="Open ' + title + ' full page"></a>'
 			: ''
+	// On an app page the shell titlebar is the only header (withHeader=false),
+	// so the shell chrome owns the help box and dialog; the panel renders the
+	// help box only when it draws a header itself (modal overlays).
+	var helpBtn = withHeader !== false && helpTextFor(def) !== undefined ? renderHelpButton(def.id) : ''
 	var header =
 		withHeader === false
 			? ''
-			: '<h2 class="app-titlebar' + (closeBtn !== '' ? ' has-close' : '') + (expandBtn !== '' ? ' has-expand' : '') + '">' + closeBtn + '<span class="app-title-plate">' + title + '</span>' + expandBtn + '</h2>\n'
+			: '<h2 class="app-titlebar' + (closeBtn !== '' ? ' has-close' : '') + (expandBtn !== '' ? ' has-expand' : '') + (helpBtn !== '' ? ' has-help' : '') + '">' + closeBtn + '<span class="app-title-plate">' + title + '</span>' + helpBtn + expandBtn + '</h2>\n'
 	return (
 		'<section class="app" data-app-id="' +
 		escapeHtml(def.id) +
@@ -240,10 +307,16 @@ export function renderAppPanel(
  * the widget expand box on the home screen). The outer element is a `div`
  * so the overlay markup contains exactly one `section.app`. Fully present
  * in server-rendered HTML.
+ *
+ * When the app defines help, the `[?]` box joins the panel titlebar and the
+ * help dialog is rendered as this section's second element, right after the
+ * overlay. The dialog opens via the shell client with no URL change, so
+ * opening help leaves the overlay (and any expanded layout) exactly as it
+ * was; closing help returns focus to the opener, never navigating.
  */
 export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string, packageRef?: string): string {
 	var panel = renderAppPanel(def, state, appBasePath, '', '', undefined, undefined, '#apps', appBasePath + '/apps/' + def.id, packageRef)
-	return (
+	var overlay =
 		'<div class="overlay" id="app-' +
 		escapeHtml(def.id) +
 		'" aria-label="' +
@@ -252,7 +325,9 @@ export function renderOverlaySection(def: AppDefinition, state: AppState, appBas
 		'<div class="overlay-panel">\n' +
 		panel +
 		'\n</div>\n</div>'
-	)
+	var help = helpTextFor(def)
+	if (help === undefined) return overlay
+	return overlay + '\n' + renderHelpDialog(def.id, def.ui.title || def.name, help)
 }
 
 /** True when the app's default open mode is the modal overlay (fragment link + inline section). */

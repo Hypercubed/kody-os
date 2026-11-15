@@ -132,6 +132,82 @@ The shell SHALL render one page per app at `GET /apps/:id` showing the app's tit
 - **WHEN** a modal overlay for the same app is rendered
 - **THEN** the overlay panel retains its own title header, since the underlying page chrome does not name the app.
 
+### Requirement: Per-app help button and dialog
+
+An app definition MAY carry `ui.help`, a plain-text string: the app's
+own how-to-use text. It is distinct from `description`, which is the
+what-it-is-for text shown on the app page body and as a tile tooltip.
+When the stored definition carries a non-empty `ui.help`, the shell
+SHALL render a help button in the app's header and a help dialog in
+the page; when it does not, the shell SHALL render neither. On an app
+page (`GET /apps/:id`) the shell window titlebar SHALL carry the help
+box immediately to the left of the expand box (in the slot at
+`right: 3rem`, with expand still at `right: 0`); a modal overlay's
+panel titlebar SHALL carry the same box immediately to the left of the
+modal-expand box, with a `has-help` class widening the bar's side
+padding to two 3rem slots on both sides so the title plate is never
+covered and stays centered. The
+box SHALL be a `<button type="button">` showing the literal text `?`
+in the same outlined-square box as the close and expand boxes, with
+the same 48px hit slot, `aria-label="Help"`, and `title="Help"`.
+On every other page (dashboard, Apps page, Help and About pages, 404)
+the titlebar SHALL show no help box; a home widget SHALL show none.
+An app page or overlay for an app without `ui.help` SHALL render a
+header byte-identical to the pre-change one. The dialog SHALL be
+server-rendered in the page HTML, hidden by default via the `hidden`
+attribute, and opened in place by the shell client with no fragment,
+no navigation, and no page refresh (the overlay help dialog is
+rendered by the overlay section right after the overlay element).The dialog SHALL show a header line reading `{app name} - Help`
+(bold, horizontally centered, no borders of its own), the help
+text HTML-escaped with line breaks preserved, and a normal auto-width
+Close button in a padded footer, in a centered box with a
+double line border. Escape SHALL also close
+it, returning focus to the opener. The help text SHALL NOT be
+interpreted as HTML or markdown. Opening or closing the dialog SHALL
+write no storage, change no state, change no URL, and call no route.
+Opening or closing help SHALL leave an open overlay open and an
+expanded layout expanded, with the app's stored state untouched.
+
+#### Scenario: Help box appears left of expand on an app page
+- **WHEN** an app page is fetched for an app whose definition carries `ui.help`
+- **THEN** its titlebar shows a `[?]` box immediately left of the expand box, and the close box, title, and expand box are otherwise unchanged.
+
+#### Scenario: No help defined means no help box
+- **WHEN** an app page is fetched for an app with no `ui.help`, or with an empty or whitespace-only `ui.help`
+- **THEN** its titlebar shows no help box and is byte-identical to the pre-change titlebar.
+
+#### Scenario: Help box appears in the overlay when help is defined
+- **WHEN** a modal-capable app with `ui.help` is opened as an overlay
+- **THEN** its panel titlebar shows a `[?]` box immediately left of the modal-expand box, and the title plate is fully visible.
+
+#### Scenario: Help box appears nowhere else in the chrome
+- **WHEN** the dashboard, the Apps page, the Help page, the About page, a home widget, or a 404 page is fetched
+- **THEN** no help box is present in the titlebar (an overlay section rendered on the Apps page carries the overlay's own header, not the Apps page's).
+
+#### Scenario: Help opens in a dialog
+- **WHEN** the help button on an app page is activated
+- **THEN** the dialog opens showing a `{app name} - Help` header line, the help text, and a Close button, and no navigation away from the app page occurs.
+
+#### Scenario: Help text is escaped, never interpreted
+- **WHEN** an app defines help containing markup (for example `<script>` or `<a href>`)
+- **THEN** the dialog shows that markup as visible text and creates no element from it.
+
+#### Scenario: Closing help returns to the app, not away from it
+- **WHEN** the dialog's Close button is activated (or Escape is pressed) on an app page
+- **THEN** the dialog closes, the app page underneath is unchanged, and the URL is unchanged; and when it is closed in a modal overlay, the overlay underneath is unchanged with its state intact.
+
+#### Scenario: Opening help from the expanded view keeps the layout
+- **WHEN** the help button is activated while the app page is expanded
+- **THEN** the help dialog opens over the expanded view, the window stays expanded, the URL is unchanged, and the app's stored state is unchanged.
+
+#### Scenario: Help leaves URL and overlay state untouched
+- **WHEN** a page carries an open modal overlay or an expanded app and the help dialog is opened and closed
+- **THEN** the URL is unchanged throughout, the overlay stays open, the expanded layout stays expanded, and no other app's dialog or overlay is affected.
+
+#### Scenario: Help writes nothing
+- **WHEN** the help dialog is opened and closed
+- **THEN** no storage key is written, no state field changes, the URL is unchanged, and no request beyond the page itself is made.
+
 ### Requirement: App page expands to fill the window
 
 The shell SHALL render an expand control in the titlebar of every app page (`GET /apps/:id`), at the far right opposite the close box, and SHALL NOT render it on the dashboard, Apps page, 404 page, modal overlay, home widget, Help page, or About page. Activating the control SHALL switch to a full-window view with no JavaScript and without the browser Fullscreen API: the window SHALL span `100%` of the viewport width with no side margin or border, its top SHALL be flush with the top of the viewport, the menubar and status bar SHALL be hidden, and the main-content gutter SHALL be removed so the app panel spans edge-to-edge. The expanded view SHALL NOT force a viewport height; content height and scrolling SHALL follow the app's content as on the normal page. The expanded state SHALL be carried entirely in the URL fragment, requiring no server, storage, or session state; a full navigation MAY drop it and return the normal page. In the expanded view the control SHALL become a collapse affordance that restores the normal centered chrome. Widget and modal expand boxes SHALL keep their current behavior. Help and About are built-in shell pages, not app pages, so they SHALL NOT carry the control.

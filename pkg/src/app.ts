@@ -3,6 +3,7 @@ import { isSvgIcon, sanitizeSvgIcon } from './apps/registry.ts'
 import { serveFeed, serveProxy } from './feeds.ts'
 import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
+import { helpTextFor, renderHelpButton, renderHelpDialog } from './apps/render.ts'
 import type { AppDefinition, AppState } from './apps/types.ts'
 
 // Re-export the MCP surface so `import { add_app } from 'kody:@hypercubed/kody-os'`
@@ -300,6 +301,8 @@ function shellChrome(opts: {
 	closeLabel?: string
 	/** App pages opt into the page-mode expand/collapse controls. */
 	expandable?: boolean
+	/** Per-app help (`ui.help`) on an app page: when present, the titlebar gains the `[?]` box left of expand and the page body the hidden `os-help-dialog`, opened in place by the shell client. Omitted on every other page. */
+	help?: { id: string, text: string }
 	/** Menu-bar entries, already filtered (hidden excluded) and sorted; built-in Help/About are appended. Omitted on 404 and transient pages. */
 	menuApps?: { id: string, label: string, builtin?: boolean }[]
 	/** Id of the menu app currently being viewed, for aria-current. */
@@ -332,6 +335,17 @@ function shellChrome(opts: {
 			? '\t\t\t<a class="os-expand" href="#os-full" aria-label="Expand app to fill window" title="Expand app to fill window"></a>\n' +
 				'\t\t\t<a class="os-collapse" href="#" aria-label="Collapse app" title="Collapse app"></a>\n'
 			: ''
+	// Per-app help: the box sits in the titlebar slot immediately left of
+	// expand, and the dialog is server-rendered in the page body, hidden
+	// until the shell client opens it in place (no fragment, no
+	// navigation). Absent help renders neither, so an app page without
+	// help keeps today's bytes.
+	var helpBox = ''
+	var helpDialog = ''
+	if (opts.help && typeof opts.help.text === 'string' && opts.help.text.replace(/\s+/g, '') !== '') {
+		helpBox = '\t\t\t' + renderHelpButton(opts.help.id) + '\n'
+		helpDialog = '\n' + renderHelpDialog(opts.help.id, opts.title, opts.help.text)
+	}
 
 	var clientScript = opts.clientModuleUrl
 		? '\n\t<script type="module" src="' + escapeAttribute(opts.clientModuleUrl) + '"></script>'
@@ -407,15 +421,17 @@ function shellChrome(opts: {
 		'</span>\n' +
 		'\t</header>\n' +
 		'\t<div class="os-window">\n' +
-		'\t\t<div class="os-titlebar">\n' +
+		'\t\t<div class="os-titlebar' + (helpBox !== '' ? ' has-help' : '') + '">\n' +
 		homeBox +
 		'\t\t\t<h1 class="os-title">' +
 		safeTitle +
 		'</h1>\n' +
+		helpBox +
 		expandBox +
 		'\t\t</div>\n' +
 		'\t\t<main id="os-main">\n' +
 		opts.body +
+		helpDialog +
 		'\n\t\t</main>\n' +			footerPath +
 			'\t</div>' +
 			litScript +
@@ -598,6 +614,12 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 
 				function renderAppPage(id: string, withError: string, definition: AppDefinition, state: AppState, menu?: { id: string, label: string }[]): Response {
 					var defName = (definition as unknown as { name: string }).name || id
+					// Per-app help is threaded into the shell chrome, which owns the
+					// titlebar box and the `:target` dialog on an app page (the panel
+					// renders no header here). Damaged stored definitions simply render
+					// no help.
+					var helpText = helpTextFor(definition)
+					var helpOpt = helpText !== undefined ? { id: id, text: helpText } : undefined
 					try {
 						var panel = renderAppPanel(definition, state, appBasePath, '', '', withError, false, '', undefined, packageRef)
 						var lines = panel.split('\n')
@@ -605,7 +627,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 						for (var i = 0; i < lines.length; i++) indented += '\t\t\t' + lines[i] + '\n'
 						var body = indented
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, expandable: true, menuApps: menu, currentApp: id, body: body }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, expandable: true, help: helpOpt, menuApps: menu, currentApp: id, body: body }),
 							{ status: withError ? 400 : 200, headers: pageHeaders() },
 						)
 					} catch (err) {
@@ -617,7 +639,7 @@ function dispatch(request: Request, chrome: Chrome, path: string, method: string
 							'\t\t\t\t</div>\n' +
 							'\t\t\t</section>\n'
 						return new Response(
-							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, expandable: true, menuApps: menu, currentApp: id, body: fallback }),
+							shellChrome({ appBasePath: appBasePath, assetBasePath: chrome.assetBasePath, clientModuleUrl: chrome.clientModuleUrl, theme: chrome.theme, title: defName, expandable: true, help: helpOpt, menuApps: menu, currentApp: id, body: fallback }),
 							{ status: 200, headers: pageHeaders() },
 						)
 					}

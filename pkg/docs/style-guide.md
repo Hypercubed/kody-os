@@ -268,6 +268,48 @@ the theme file.
   background-image: var(--os-dots);
   background-size: 4px 4px;
 }
+/* Standard modal UI. Any modal is `.os-modal` (hidden until opened) with
+   `.os-modal-heading` / `.os-modal-body` / `.os-modal-close`; the per-app
+   help dialog shares these rules, so new modals reuse them as-is. */
+.os-modal[hidden] { display: none; }
+.os-modal:not([hidden]) {
+  display: block;
+  position: fixed;
+  top: 15vh;
+  left: 1rem;
+  right: 1rem;
+  z-index: 30;
+  max-width: 32rem;
+  margin: 0 auto;
+  border: 6px double #000;
+  background: var(--os-paper);
+  box-shadow: var(--lift-lg);
+}
+.os-modal-heading {
+  margin: 0;
+  padding: 0.5rem 0.5rem 0;
+  background: var(--os-paper);
+  font-size: var(--os-text-sm);
+  font-weight: bold;
+  text-align: center;
+}
+.os-modal-body {
+  margin: 0;
+  padding: 0.5rem;
+  background: var(--os-paper);
+  font-size: var(--os-text-sm);
+  text-align: center;
+  white-space: pre-wrap;
+}
+.os-modal-close {
+  margin: 0;
+  padding: 0.5rem;
+  text-align: center;
+}
+.os-modal-close button {
+  min-height: var(--os-tap);
+  padding: 0.65rem 1rem;
+}
 ```
 
 Notes on the classes:
@@ -292,6 +334,14 @@ differences are labels and placement, not shape.
   alone is not enough on e-ink, so the shadow removal
   is the primary cue, and disabled controls must never
   be the only way to understand a page (see section 6).
+- **Modals.** `.os-modal` is the standard modal UI: a centered
+  double-bordered box with `.os-modal-heading` (plain bold centered
+  line), `.os-modal-body` (centered text, line breaks preserved),
+  and `.os-modal-close` (padded centered footer with a normal
+  button). Hidden via the `hidden` attribute until opened. Do not
+  invent a second modal box — reuse these classes, including for
+  shell modals; the per-app help dialog is the first consumer and
+  shares the same rules.
 - **Display.** `.os-display` is for readouts only
   (Calculator). It is right-aligned, white,
   bordered, and never used as a heading. Clock's time

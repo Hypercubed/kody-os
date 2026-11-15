@@ -3,10 +3,10 @@
   "name": "Cellular Playground",
   "label": "Cellular Playground",
   "schemaVersion": 5,
-  "catalogVersion": 5,
-  "icon": "▦",
+  "catalogVersion": 7,
+  "icon": "\u25a6",
   "category": "Games",
-  "description": "A playground for Life, Brian’s Brain, and Seeds on a 20 by 14 board. A kody-os rewrite of Hypercubed/CellularPlayground on GitHub.",
+  "description": "A playground for Life, Brian\u2019s Brain, and Seeds on a 20 by 14 board. A kody-os rewrite of Hypercubed/CellularPlayground on GitHub.",
   "bundle": {
     "entry": "index.html",
     "files": [
@@ -17,7 +17,8 @@
     "title": "Cellular Playground",
     "openAs": "page",
     "hideState": true,
-    "actions": []
+    "actions": [],
+    "help": "Choose a paint mode, then tap cells to paint them: Alive paints tapped cells alive, while Empty erases them. Press Play or Step to run. Pick Life, Brian\u2019s Brain, or Seeds; Random fills the board and Clear empties it."
   },
   "stateSchema": {
     "type": "object",

@@ -3,7 +3,7 @@
   "name": "Clock",
   "label": "Clock",
   "schemaVersion": 5,
-  "catalogVersion": 5,
+  "catalogVersion": 6,
   "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><path d=\"M12 7v5l3.5 2\" /></svg>",
   "category": "utilities",
   "description": "A live clock showing the current time and date.",
@@ -16,7 +16,8 @@
   "ui": {
     "title": "Clock",
     "actions": [],
-    "openAs": "modal"
+    "openAs": "modal",
+    "help": "Shows the current time and date. It updates on its own; there is nothing to press."
   },
   "stateSchema": {
     "type": "object",

@@ -43,18 +43,19 @@ opening an app. Where neither close nor expand exists (dashboard,
 Apps page, Help and About pages, home widgets, 404), no help button
 appears. The button is the literal text `?` in the same outlined-square
 box as close and expand, with the same 48px hit slot. Apps without
-`ui.help` render byte-identical headers to today.
-
-**Dialog — server-rendered, `:target`-revealed, no JavaScript.** The
-help button is a plain link to a fragment (`#help-<id>`) that reveals
-a dialog already present in the server-rendered page: the app title,
-the help text (HTML-escaped, line breaks preserved), and a close
-link that returns to the view that opened it. No new route, no
-storage write, no state change, no JavaScript — the same mechanism
-the modal overlay already uses (`:target`), and the same no-JS
-baseline the shell keeps everywhere else. A native `<dialog>` with
-`showModal()` was rejected: it needs JavaScript and would leave the
-dialog unusable without it.
+`ui.help` render byte-identical headers to today.**Dialog — server-rendered, JS-opened in place.**
+The
+help button is a `<button type="button">` that opens a dialog
+already present in the server-rendered page: the help
+text (HTML-escaped, line breaks preserved) and a Close button
+(Escape also closes), under a `{app name} - Help` header line — a centered box
+with a double line border, the app title as its accessible name.
+No fragment, no navigation, no page refresh —
+opening help leaves the overlay underneath open and the expanded
+layout expanded, with the URL untouched. No new route, no storage
+write, no state change. A native `<dialog>` with `showModal()` was
+rejected: the plain div + client toggle keeps the monochrome
+server-rendered box styling with no focus-trap behavior to verify.
 
 ## Capabilities
 
@@ -113,6 +114,6 @@ as "the same box as close/expand", not as a fixed drawing.
 - A help route, a help MCP export, or help in `list_apps()`
   summaries — the dialog reads the stored definition on the app
   page and in the overlay, which already have it.
-- A JavaScript dialog, a native `<dialog>` with `showModal()`, or
+- A native `<dialog>` with `showModal()` or
   the browser Fullscreen API.
 - Release or publish steps. The release decision stays the user's.
