@@ -1,6 +1,6 @@
 # @hypercubed/kody-os
 
-v4.5.0. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
+v4.5.1. Browser shell + data-driven apps in `packageStorage()`. Humans use forms; agents use MCP exports; both funnel into one `act()`.
 
 ## Version policy
 

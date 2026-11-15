@@ -103,6 +103,10 @@ sleep 2
 cd "$PKG_DIR"
 export NO_PROXY='*' no_proxy='*'
 export KODY_CATALOG_BASE="http://127.0.0.1:${CATALOG_PORT}/"
+# 3.35.x boots a local-Kody upstream by default, mounting the app at
+# /@<user>/packages/<kodyId>. KODY_DEV_STUB_RUNTIME=1 skips that and
+# restores direct-workerd behavior (empty appBasePath, bare /apps links).
+export KODY_DEV_STUB_RUNTIME="1"
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy || true
 HOST_ARGS=()
 if [ "$LAN" = "1" ]; then

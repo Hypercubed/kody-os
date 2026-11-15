@@ -501,6 +501,29 @@ function firstPathSegment(path: string, prefix: string): string {
 	}
 }
 
+/** Strip a platform mount/base prefix from a request path, ES2019-safe.
+ * An exact base match is the dashboard root; a base + '/' prefix
+ * strips to the shell-relative path. Strips repeatedly so a
+ * double-prefixed forward (3.35.x upstream mode) resolves the same
+ * as a single mount. Empty base, exact '/', or a path outside the
+ * base passes through unchanged, so direct-workerd behavior is
+ * byte-identical to today. */
+function stripBasePrefix(rawPath: string, appBasePath: string): string {
+	var base = typeof appBasePath === 'string' ? appBasePath : ''
+	if (base === '' || base === '/') return rawPath
+	if (base.charAt(0) !== '/') base = '/' + base
+	var path = rawPath
+	for (;;) {
+		if (path === base) return '/'
+		if (path.indexOf(base + '/') === 0) {
+			path = path.slice(base.length)
+			if (path === '') return '/'
+			continue
+		}
+		return path
+	}
+}
+
 /** Route dispatch for a request the platform admitted. */
 function dispatch(request: Request, chrome: Chrome, path: string, method: string): Promise<Response> {
 	var appBasePath = chrome.appBasePath
@@ -1241,8 +1264,13 @@ var app = {
 		}
 		var chrome: Chrome = { appBasePath: appBasePath, assetBasePath: assetBasePath, clientModuleUrl: clientModuleUrl, theme: theme, showHelp: showHelp, showAbout: showAbout }
 		var rawPath = new URL(request.url).pathname
-		var appsAt = rawPath.indexOf('/apps/')
-		var path = appsAt === -1 ? rawPath : rawPath.slice(appsAt)
+		// 3.35.x forwards upstream.origin + upstream.appPath + restPath
+		// while stripping only options.appBasePath (""). Strip the hosted
+		// mount here so /@.../apps, /@.../help, /@.../ fall through to the
+		// same dispatch as their bare paths. Empty base is a no-op.
+		var path = stripBasePrefix(rawPath, appBasePath)
+		var appsAt = path.indexOf('/apps/')
+		if (appsAt > 0) path = path.slice(appsAt)
 		var method = String(request.method || '').toUpperCase()
 		// No shell gate: every request that reaches fetch() was already
 		// admitted by Kody's platform gate, so it is served. Access is
