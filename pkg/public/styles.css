@@ -251,11 +251,12 @@ body {
 	text-overflow: ellipsis;
 }
 
-/* Close box doubles as back-to-home, so the chrome is honest. Buttons sit
-   2.5px high (top: -2.5px) so the drawn squares align with the 33px band. */
+/* Close box doubles as back-to-home, so the chrome is honest. Slots stay at
+   top: 0 for full-height 48px hit targets; the drawn squares shift up 2.5px
+   via the shared header-box square rule to align with the 33px band. */
 .os-box {
 	position: absolute;
-	top: -2.5px;
+	top: 0;
 	left: 0;
 	display: flex;
 	align-items: center;
@@ -272,7 +273,9 @@ body {
    white halo punched over the stripes (stripes run up to the halo, no white
    end columns). One rule for every box, so a new box cannot drift from the
    rest. Hover/active inverts the square; the X, `?`, and bracket glyphs
-   invert with their own rules below. Slots stay absolute 3rem full-height. */
+   invert with their own rules below. Slots stay absolute 3rem full-height.
+   Squares shift up 2.5px here so slots stay at top: 0; glyphs shift with
+   matching offsets in their own rules below. */
 .os-box::before,
 .os-expand::before,
 .os-collapse::before,
@@ -286,6 +289,7 @@ body {
 	border: 2px solid #000;
 	background: #fff;
 	box-shadow: 0 0 0 3px #fff;
+	transform: translateY(-2.5px);
 }
 
 .os-box:hover::before,
@@ -310,7 +314,7 @@ body {
 .os-expand,
 .os-collapse {
 	position: absolute;
-	top: -2.5px;
+	top: 0;
 	right: 0;
 	display: flex;
 	align-items: center;
@@ -336,7 +340,7 @@ body {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	transform: translate(-50%, -50%);
+	transform: translate(-50%, calc(-50% - 2.5px));
 	font-family: var(--os-font);
 	font-size: 1.1rem;
 	font-weight: bold;
@@ -354,7 +358,7 @@ body {
 .os-expand::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.55rem);
+	top: calc(50% - 0.55rem - 2.5px);
 	left: calc(50% - 0.05rem);
 	width: 0.625rem;
 	height: 0.625rem;
@@ -366,7 +370,7 @@ body {
 .os-collapse::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.075rem);
+	top: calc(50% - 0.075rem - 2.5px);
 	left: calc(50% - 0.575rem);
 	width: 0.625rem;
 	height: 0.625rem;
@@ -391,7 +395,7 @@ body {
    square, so the glyph reads centered in the box on every font. */
 .os-help {
 	position: absolute;
-	top: -2.5px;
+	top: 0;
 	right: 3rem;
 	display: flex;
 	align-items: center;
@@ -420,7 +424,7 @@ body {
 	   drop centers the curve on the square (verified against ink dumps at
 	   12px: curve lands within 1 device px of square center, dot clears the
 	   bottom border). Static offset, not an animation or transition. */
-	transform: translate(-50%, calc(-50% + 1px));
+	transform: translate(-50%, calc(-50% + 1px - 2.5px));
 	font-family: var(--os-font);
 	font-size: 1rem;
 	font-weight: bold;
@@ -1446,7 +1450,7 @@ button.tile:active .tile-icon {
 /* Expand box mirrors the os-box close control, upper right with an icon. */
 .widget-expand {
 	position: absolute;
-	top: -2.5px;
+	top: 0;
 	right: 0;
 	display: flex;
 	align-items: center;
@@ -1462,7 +1466,7 @@ button.tile:active .tile-icon {
 .widget-expand::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.55rem);
+	top: calc(50% - 0.55rem - 2.5px);
 	left: calc(50% - 0.05rem);
 	width: 0.625rem;
 	height: 0.625rem;
@@ -1479,7 +1483,7 @@ button.tile:active .tile-icon {
    same 3rem hit area, outlined square, upward-outward corner bracket. */
 .modal-expand {
 	position: absolute;
-	top: -2.5px;
+	top: 0;
 	right: 0;
 	display: flex;
 	align-items: center;
@@ -1494,7 +1498,7 @@ button.tile:active .tile-icon {
 .modal-expand::after {
 	content: "";
 	position: absolute;
-	top: calc(50% - 0.55rem);
+	top: calc(50% - 0.55rem - 2.5px);
 	left: calc(50% - 0.05rem);
 	width: 0.625rem;
 	height: 0.625rem;
