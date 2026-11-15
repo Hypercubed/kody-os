@@ -108,7 +108,7 @@ widgets; Home with widgets loads fully. This corrects the earlier
 claim that "Home/Apps carry no bundles" — Home widgets DO carry
 bundles.
 
-### Decision 9: Navigation ownership token (CodeRabbit review, Nov 14, 2026)
+### Decision 9: Navigation ownership token (CodeRabbit review, Nov 14, 2026; refined Nov 15, 2026)
 
 Overlapping navigations are discarded. Each navigation attempt
 (click, popstate) takes an incrementing sequence number, and a
@@ -118,6 +118,20 @@ sequence, cancelling any pending navigation — the user is staying
 here, so a stale response must not swap in another page afterwards.
 Without this, clicking Apps then Home before the Apps response
 arrives would leave the Apps content under the Home URL.
+
+Refinement (Nov 15, CodeRabbit follow-up): a same-page click is
+judged against the *rendered* page, not the URL. A Back navigation
+changes the URL immediately while the old page is still rendered,
+so during a pending Back to Home the URL already says Home while
+Apps is still displayed — a click on the Home link is then a click
+to the page being navigated to, not a same-page click, and cancelling
+the pending Home navigation would leave Apps displayed under the
+Home URL. The client therefore tracks the rendered page
+(`renderedUrl`) separately from the URL, and the in-flight
+navigation's target (`pendingUrl`). A click on a link to a URL that
+is already being navigated to does nothing (the pending navigation
+is allowed to finish); a click on the rendered page cancels any
+pending navigation; anything else starts a navigation.
 
 ### Decision 10: pushState failure falls back to native navigation (CodeRabbit review, Nov 14, 2026)
 

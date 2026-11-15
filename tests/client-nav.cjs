@@ -27,6 +27,11 @@
 //   8. pushState failure: if history.pushState throws after the
 //      swap, the code falls back to a native navigation instead of
 //      leaving the new content under the old URL.
+//   9. Pending Back navigation: after Back changes the URL to Home
+//      while Apps is still rendered and the Home fetch is pending,
+//      clicking the Home link lets the pending navigation finish
+//      instead of cancelling it — the Home content swaps in and
+//      Apps does not stay displayed under the Home URL.
 //
 // The client entry (pkg/src/client/index.ts) is TypeScript, so the
 // harness bundles it with bun (bun build, browser target) to a temp
@@ -281,6 +286,50 @@ async function main() {
   await flush();
   check('8. content swapped before pushState', doc8.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
   check('8. pushState failure fell back to native navigation', pushNavAttempts.length >= 1, pushNavAttempts.join('; '));
+
+  // Test 9: A click does not cancel a pending Back navigation.
+  // Go Home -> Apps, then Back to Home (the URL becomes Home while
+  // Apps is still rendered and the Home fetch is pending). Clicking
+  // the Home link then must let the pending Home navigation finish
+  // instead of cancelling it — otherwise Apps stays displayed under
+  // the Home URL.
+  var deferredHomeResolve = null;
+  var backFetchCalls = [];
+  var backNavAttempts = [];
+  var backFetch = function (url) {
+    backFetchCalls.push(url);
+    if (url === HOME_URL) {
+      return new Promise(function (resolve) {
+        deferredHomeResolve = function () {
+          resolve({ url: url, text: function () { return Promise.resolve(HOME_HTML); } });
+        };
+      });
+    }
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(APPS_HTML); } });
+  };
+  var ctx9 = makeWindow(HOME_HTML, backFetch, backNavAttempts);
+  var win9 = ctx9.win;
+  var doc9 = win9.document;
+  var appsLink9 = doc9.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  var homeLink9 = doc9.querySelector('nav[aria-label="Shell"] a[href="/"]');
+  appsLink9.dispatchEvent(new win9.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('9. navigated to Apps first', win9.location.pathname === '/apps', win9.location.pathname);
+  // Back: the URL becomes Home and the Home fetch starts (deferred).
+  win9.history.back();
+  await nextTick();
+  check('9. Back changed URL to Home', win9.location.pathname === '/', win9.location.pathname);
+  check('9. Apps still rendered while Home fetch pending', doc9.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  // Click Home while the Back fetch is pending: must not cancel it.
+  homeLink9.dispatchEvent(new win9.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await nextTick();
+  check('9. Home click did not fetch a duplicate', backFetchCalls.filter(function (u) { return u === HOME_URL; }).length === 1, backFetchCalls.join(','));
+  // The pending Home fetch resolves: it must swap in Home content.
+  if (deferredHomeResolve) deferredHomeResolve();
+  await flush();
+  check('9. pending Home navigation finished and swapped', doc9.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  check('9. URL is Home after pending navigation', win9.location.pathname === '/', win9.location.pathname);
+  check('9. no native navigation from the Home click', backNavAttempts.length === 0, backNavAttempts.join('; '));
 
   if (failures.length > 0) {
     console.log('FAILED: ' + failures.length + ' check(s): ' + failures.join(', '));

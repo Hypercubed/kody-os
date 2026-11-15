@@ -197,3 +197,19 @@
 - **Harness coverage.** `tests/client-nav.cjs` now has 25 checks
   (was 19): added widget fallback, stale-navigation discard, and
   pushState-failure fallback.
+
+### CodeRabbit follow-up (2026-11-15, discussion_r4576578965 — 1 comment, addressed)
+
+- **Pending Back navigation (Minor).** The token fix introduced an
+  edge case: after Back from Apps to Home, the URL becomes Home
+  immediately while Apps is still rendered and the Home fetch is
+  pending. Clicking the Home link then was judged a same-page click
+  by URL equality, cancelling the pending Home navigation and leaving
+  Apps displayed under the Home URL. Fixed: the client tracks the
+  rendered page (`renderedUrl`) separately from the URL and the
+  in-flight target (`pendingUrl`). A click on a URL already being
+  navigated to lets the pending navigation finish; a click on the
+  rendered page cancels any pending navigation. Design Decision 9
+  refined. Harness `tests/client-nav.cjs` now has 31 checks (was
+  25): added test 9, a deferred popstate fetch with a Home click
+  that must not cancel it.

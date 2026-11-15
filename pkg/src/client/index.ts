@@ -390,7 +390,13 @@ if (canFastPath && typeof DOMParser !== 'undefined') {
  * Overlapping navigations are discarded: each navigation takes a
  * sequence number, and a response (or failure) from an older
  * navigation is ignored once a newer one has started — including a
- * same-page click, which cancels any pending navigation.
+ * same-page click, which cancels any pending navigation. The
+ * rendered page is tracked separately from the URL: a Back
+ * navigation changes the URL immediately while the old page is
+ * still rendered, so a click on the link to the URL's page is not
+ * a same-page click while that navigation is pending — it is a
+ * click to the page being navigated to, and the pending navigation
+ * is allowed to finish instead of being cancelled.
  *
  * ES2019 ceiling: no ?. and no ?? in this file.
  */
@@ -415,6 +421,20 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 	// pending navigation. A fetch response or failure whose sequence
 	// no longer matches is stale and is ignored.
 	var navSeq = 0
+
+	// The page actually rendered, as a full URL. This is NOT the
+	// same as window.location.href: a Back navigation changes the
+	// URL immediately while the old page is still rendered, so the
+	// rendered page lags the URL until the swap happens. A click is
+	// a same-page click only when it points at the rendered page,
+	// not merely at the URL's page.
+	var renderedUrl = navPageOrigin() + (window.location.pathname || '/') + (window.location.search || '')
+
+	// The full URL of the in-flight navigation, or null when none
+	// is in flight. A click on a link to a URL that is already
+	// being navigated to does nothing — the pending navigation is
+	// allowed to finish instead of starting a duplicate fetch.
+	var pendingUrl: string | null = null
 
 	function isShellPagePath(path: string): boolean {
 		return path === homePath || path === appsPath
@@ -491,6 +511,7 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 
 	function navigateShellTo(url: string, push: boolean): void {
 		var mySeq = ++navSeq
+		pendingUrl = url
 		fetch(url, { headers: { Accept: 'text/html' }, credentials: 'same-origin', redirect: 'follow' })
 			.then(function (response: Response): Promise<{ url: string; text: string }> {
 				return response.text().then(function (text: string): { url: string; text: string } {
@@ -499,6 +520,7 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 			})
 			.then(function (pair: { url: string; text: string }): void {
 				if (mySeq !== navSeq) return
+				pendingUrl = null
 				var freshDoc: Document
 				try {
 					freshDoc = new DOMParser().parseFromString(pair.text, 'text/html')
@@ -510,6 +532,9 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 					window.location.href = url
 					return
 				}
+				// The swap succeeded: the rendered page is now the
+				// fetched page, at the fetch's final URL.
+				renderedUrl = pair.url
 				if (push) {
 					try {
 						history.pushState({}, '', pair.url)
@@ -525,6 +550,7 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 			})
 			.catch(function (): void {
 				if (mySeq !== navSeq) return
+				pendingUrl = null
 				window.location.href = url
 			})
 	}
@@ -554,18 +580,30 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 			if (!resolved) return
 			if (resolved.origin !== navPageOrigin()) return
 			if (!isShellPagePath(resolved.pathname)) return
-			var currentPath = window.location.pathname || '/'
-			var currentSearch = window.location.search || ''
-			if (resolved.pathname === currentPath && resolved.search === currentSearch) {
+			var fullUrl = resolved.origin + resolved.pathname + resolved.search
+			if (fullUrl === pendingUrl) {
+				// A navigation to this URL is already in flight
+				// (e.g. a Back navigation to Home whose fetch has
+				// not finished yet). Let it finish instead of
+				// starting a duplicate fetch — and do not cancel it.
+				event.preventDefault()
+				return
+			}
+			if (fullUrl === renderedUrl) {
 				// A same-page click cancels any pending navigation:
-				// the user is staying here, so a stale response must
-				// not swap in another page afterwards.
+				// the user is staying on the rendered page, so a
+				// stale response must not swap in another page
+				// afterwards. This compares against the rendered
+				// page, not the URL: during a pending Back
+				// navigation the URL has already changed while the
+				// old page is still rendered, so a click on the
+				// URL's page is not a same-page click then.
 				navSeq++
+				pendingUrl = null
 				event.preventDefault()
 				return
 			}
 			event.preventDefault()
-			var fullUrl = resolved.origin + resolved.pathname + resolved.search
 			navigateShellTo(fullUrl, true)
 		} catch (err) {
 			// Never break navigation: on any error, let the browser proceed.
@@ -582,7 +620,10 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 				window.location.reload()
 				return
 			}
-			navigateShellTo(href, false)
+			// Pass the normalized URL (origin + path + search, no
+			// hash) so pendingUrl matches the form the click
+			// handler computes for the same destination.
+			navigateShellTo(resolved.origin + resolved.pathname + resolved.search, false)
 		} catch (err) {
 			try {
 				window.location.reload()
