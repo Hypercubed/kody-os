@@ -213,3 +213,21 @@
   refined. Harness `tests/client-nav.cjs` now has 31 checks (was
   25): added test 9, a deferred popstate fetch with a Home click
   that must not cancel it.
+
+### Close-box sync fix (2026-11-14, user-reported bug — addressed)
+
+- **Stale chrome Close box after a swap.** The user reported that
+  after closing an app to the Apps page, the Close button on the
+  Apps page did nothing. Reproduced in jsdom: the swap replaces
+  `#os-main` only, so the chrome Close box (`.os-titlebar
+  a.os-box`) kept the app page's destination (`/apps`). After the
+  swap that destination is the current page, so the same-page
+  check swallowed the click. Fixed: the post-swap step
+  (`syncNavCurrent`) now syncs the chrome Close box from the
+  fetched page — copy `href`/`aria-label`/`title` when both pages
+  have one, insert it when only the destination does (Home ->
+  Apps), remove it when only the current page does (Apps -> Home).
+  Design Decision 11 added. Harness `tests/client-nav.cjs` now
+  has 44 checks (was 31): added test 10, Close an app to Apps
+  then Close the Apps page to Home, asserting the box syncs and
+  both closes navigate.

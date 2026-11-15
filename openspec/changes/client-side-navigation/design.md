@@ -141,6 +141,24 @@ content under the old URL. Reload and Back would otherwise operate
 on the wrong history entry. The documented fallback (a full load on
 any failure) requires it.
 
+### Decision 11: Chrome Close box syncs on a swap (user-reported bug, Nov 14, 2026)
+
+The swap replaces `#os-main` only, so the shell chrome outside it —
+including the titlebar Close box (`.os-titlebar a.os-box`) — keeps
+the previous page's destination. After closing an app to a shell
+page, the stale box points at the page just rendered, and the
+same-page check swallows the click: the Close button appears dead.
+(The panel Close box lives inside `#os-main`, so it is swapped with
+the content; only the chrome box needs syncing.)
+
+The post-swap step (`syncNavCurrent`) now also syncs the chrome
+Close box from the fetched page: it copies `href`, `aria-label`,
+and `title` when both pages have one; inserts a copy before the
+title when the destination has one and the current page does not
+(e.g. Home -> Apps); and removes it when the destination has none
+(e.g. Apps -> Home, where Home renders no Close box). A sync
+failure never breaks navigation, matching the nav sync.
+
 ### Decision 7: Post-swap step (research, Nov 14, 2026)
 
 After swapping `<main>`, the FE runs a post-swap step. It updates

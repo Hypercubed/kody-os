@@ -78,6 +78,24 @@ var HOME_WITH_WIDGET_HTML = '<!doctype html><html data-app-base="" data-client-m
   '<nav aria-label="Shell"><a href="/" aria-current="page">Home</a><a href="/apps">Apps</a><a href="/help">Help</a></nav>' +
   '<main id="os-main"><h1>Home</h1><section class="widget" data-app-id="counter"><h2>Counter</h2><p>Count: 5</p></section></main>' +
   '</body></html>';
+// Test 10 fixtures: an app page and the shell pages with their real
+// chrome titlebar Close boxes. The app page's box points at /apps
+// (from=/apps); the Apps page's box points at / (Home); Home has none.
+var APP_HTML = '<!doctype html><html data-app-base="" data-client-module="/_assets/client.js"><head><title>Link Drop - kody-os</title></head><body>' +
+  '<nav aria-label="Shell"><a href="/">Home</a><a href="/apps">Apps</a><a href="/help">Help</a></nav>' +
+  '<div class="os-titlebar"><a class="os-box" href="/apps" aria-label="Apps" title="Apps"></a><h1 class="os-title">Link Drop</h1></div>' +
+  '<main id="os-main"><section class="app-panel" data-app-id="link-drop"><h1>Link Drop</h1></section></main>' +
+  '</body></html>';
+var APPS_CLOSE_HTML = '<!doctype html><html data-app-base="" data-client-module="/_assets/client.js"><head><title>Apps - kody-os</title></head><body>' +
+  '<nav aria-label="Shell"><a href="/">Home</a><a href="/apps" aria-current="page">Apps</a><a href="/help">Help</a></nav>' +
+  '<div class="os-titlebar"><a class="os-box" href="/" aria-label="Home" title="Home"></a><h1 class="os-title">Apps</h1></div>' +
+  '<main id="os-main"><h1>Apps</h1><p>All apps listed here.</p></main>' +
+  '</body></html>';
+var HOME_TITLEBAR_HTML = '<!doctype html><html data-app-base="" data-client-module="/_assets/client.js"><head><title>Home - kody-os</title></head><body>' +
+  '<nav aria-label="Shell"><a href="/" aria-current="page">Home</a><a href="/apps">Apps</a><a href="/help">Help</a></nav>' +
+  '<div class="os-titlebar"><h1 class="os-title">Home</h1></div>' +
+  '<main id="os-main"><h1>Home</h1><p>Welcome home.</p></main>' +
+  '</body></html>';
 
 var failures = [];
 function check(name, ok, detail) {
@@ -330,6 +348,40 @@ async function main() {
   check('9. pending Home navigation finished and swapped', doc9.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
   check('9. URL is Home after pending navigation', win9.location.pathname === '/', win9.location.pathname);
   check('9. no native navigation from the Home click', backNavAttempts.length === 0, backNavAttempts.join('; '));
+
+  // Test 10: The chrome Close box syncs on a swap. The swap replaces
+  // #os-main only, so without syncing the Close box keeps the previous
+  // page's destination. Closing an app to Apps leaves a stale box
+  // pointing at /apps (the page just rendered), and the same-page check
+  // swallows the click — the Close button appears dead.
+  var closeFetchCalls = [];
+  var closeNavAttempts = [];
+  var closeFetch = function (url) {
+    closeFetchCalls.push(url);
+    var body = url === APPS_URL ? APPS_CLOSE_HTML : HOME_TITLEBAR_HTML;
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(body); } });
+  };
+  var ctx10 = makeWindow(APP_HTML, closeFetch, closeNavAttempts, BASE + '/apps/link-drop?from=/apps');
+  var win10 = ctx10.win;
+  var doc10 = win10.document;
+  var closeBox10 = doc10.querySelector('.os-titlebar a.os-box');
+  check('10. app page Close box points at Apps', closeBox10 && closeBox10.getAttribute('href') === '/apps', closeBox10 ? closeBox10.getAttribute('href') : 'missing');
+  closeBox10.dispatchEvent(new win10.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('10. swapped to Apps', doc10.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  check('10. URL is Apps after Close', win10.location.pathname === '/apps', win10.location.pathname);
+  var closeBox10b = doc10.querySelector('.os-titlebar a.os-box');
+  check('10. Close box synced to Home after swap', closeBox10b && closeBox10b.getAttribute('href') === '/', closeBox10b ? closeBox10b.getAttribute('href') : 'missing');
+  check('10. Close box label synced to Home', closeBox10b && closeBox10b.getAttribute('aria-label') === 'Home', closeBox10b ? closeBox10b.getAttribute('aria-label') : 'missing');
+  // Close the Apps page -> / (Home). Must fetch Home and swap; Home has
+  // no Close box, so it must be removed.
+  closeBox10b.dispatchEvent(new win10.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('10. Close on Apps fetched Home', closeFetchCalls.indexOf(HOME_URL) !== -1, closeFetchCalls.join(','));
+  check('10. swapped to Home', doc10.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  check('10. URL is Home after second Close', win10.location.pathname === '/', win10.location.pathname);
+  check('10. Close box removed on Home', doc10.querySelector('.os-titlebar a.os-box') === null);
+  check('10. no native navigation from either Close', closeNavAttempts.length === 0, closeNavAttempts.join('; '));
 
   if (failures.length > 0) {
     console.log('FAILED: ' + failures.length + ' check(s): ' + failures.join(', '));

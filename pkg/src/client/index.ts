@@ -483,6 +483,42 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 		} catch (err) {
 			// Never break navigation for a nav sync failure.
 		}
+		// Sync the chrome Close box too. The swap replaces #os-main only,
+		// so without this the Close box keeps the previous page's
+		// destination. After a swap from an app page to a shell page the
+		// stale box points at the page just rendered, and the same-page
+		// check swallows the click — the Close button appears dead.
+		// The panel Close box (inside #os-main) is swapped with the
+		// content; only the chrome box (in .os-titlebar) needs syncing.
+		try {
+			var freshTitlebar = freshDoc.querySelector('.os-titlebar')
+			var currentTitlebar = document.querySelector('.os-titlebar')
+			if (!freshTitlebar || !currentTitlebar) return
+			var freshBox = freshTitlebar.querySelector('a.os-box')
+			var currentBox = currentTitlebar.querySelector('a.os-box')
+			if (freshBox && currentBox) {
+				var freshHref = freshBox.getAttribute('href') || ''
+				if (freshHref !== '') currentBox.setAttribute('href', freshHref)
+				var freshLabel = freshBox.getAttribute('aria-label') || ''
+				if (freshLabel !== '') {
+					currentBox.setAttribute('aria-label', freshLabel)
+					currentBox.setAttribute('title', freshLabel)
+				}
+			} else if (freshBox && !currentBox) {
+				// Destination has a Close box, current does not (e.g.
+				// Home -> Apps): insert a copy before the title.
+				var titleEl = currentTitlebar.querySelector('h1.os-title')
+				var clone = freshBox.cloneNode(true) as Element
+				if (titleEl && titleEl.parentNode) titleEl.parentNode.insertBefore(clone, titleEl)
+				else currentTitlebar.appendChild(clone)
+			} else if (!freshBox && currentBox) {
+				// Destination has no Close box (e.g. Apps -> Home):
+				// remove it.
+				if (currentBox.parentNode) currentBox.parentNode.removeChild(currentBox)
+			}
+		} catch (err) {
+			// Never break navigation for a close-box sync failure.
+		}
 	}
 
 	function swapNavMain(freshDoc: Document): boolean {
