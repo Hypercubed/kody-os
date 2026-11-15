@@ -176,6 +176,266 @@ if (canFastPath) {
 }
 
 /**
+ * Return-to-opener via sessionStorage (sessionstorage-return).
+ *
+ * App links are plain `/apps/<id>`; the return address is browser state,
+ * not URL state. A delegated click listener stores the current page
+ * (`location.pathname + location.hash`) under the single sessionStorage
+ * key `kody-os:return` before any shell link to an app page navigates, and
+ * an app page reads it back to point the titlebar Close box at the opener.
+ * One write rule covers tiles, widget expand links, home tiles, overlay
+ * expand links, and menu links.
+ *
+ * Modal tiles keep their touch URL (`/apps/<id>?touch=1`) so the open still
+ * reaches the server without JavaScript. With JavaScript the click is
+ * intercepted, `?touch=1&format=json` is fetched to record the open, and
+ * the overlay is revealed by setting the fragment — no navigation. Any
+ * failure falls through to the native touch URL, which 303s to the
+ * overlay as before.
+ *
+ * Nothing here is required: without JavaScript the Close box goes Home and
+ * a native widget/action submit lands on the app page (the accepted no-JS
+ * scope). Every storage access is guarded; any failure behaves as "no
+ * stored value". ES2019 ceiling: no ?. and no ?? in this file.
+ */
+var returnStorageKey = 'kody-os:return'
+
+function returnReadStored(): string {
+	try {
+		if (typeof sessionStorage === 'undefined') return ''
+		var stored = sessionStorage.getItem(returnStorageKey)
+		return typeof stored === 'string' ? stored : ''
+	} catch (err) {
+		return ''
+	}
+}
+
+function returnWriteStored(value: string): void {
+	try {
+		if (typeof sessionStorage === 'undefined') return
+		sessionStorage.setItem(returnStorageKey, value)
+	} catch (err) {
+		// Disabled or throwing storage behaves as "no stored value".
+	}
+}
+
+/** The shell mount base: `data-app-base`, else the path prefix up to `/apps`. */
+function returnPathBase(): string {
+	var base = ''
+	try {
+		base = document.documentElement.getAttribute('data-app-base') || ''
+	} catch (err) {
+		base = ''
+	}
+	if (base === '') {
+		var pathname = window.location.pathname || '/'
+		var lower = pathname.toLowerCase()
+		var at = lower.indexOf('/apps/')
+		if (at === -1 && lower.length >= 5 && lower.slice(lower.length - 5) === '/apps') at = lower.length - 5
+		if (at > 0) base = pathname.slice(0, at)
+	}
+	if (base.length > 1 && base.charAt(base.length - 1) === '/') base = base.slice(0, -1)
+	if (base === '/') base = ''
+	return base
+}
+
+function returnJoin(base: string, path: string): string {
+	return base === '' ? path : base + path
+}
+
+/**
+ * Resolve one href, rejecting anything cross-origin or outside
+ * `<base>/apps/<id>`. Returns the app id or ''.
+ */
+function returnResolveAppLink(href: string, base: string): { id: string; url: string; search: string } | null {
+	try {
+		var probe = document.createElement('a')
+		probe.href = href
+		var origin = String(probe.protocol + '//' + probe.host)
+		if (origin !== String(window.location.protocol + '//' + window.location.host)) return null
+		var pathname = probe.pathname || '/'
+		var prefix = base + '/apps/'
+		if (pathname.indexOf(prefix) !== 0) return null
+		var rest = pathname.slice(prefix.length)
+		if (rest === '' || rest.indexOf('/') !== -1) return null
+		var id = ''
+		try {
+			id = decodeURIComponent(rest)
+		} catch (decodeErr) {
+			id = ''
+		}
+		if (id === '') return null
+		return { id: id, url: origin + pathname + (probe.search || ''), search: probe.search || '' }
+	} catch (err) {
+		return null
+	}
+}
+
+/**
+ * Validate a stored/legacy return path. Mirrors the server's former
+ * `safeNextPath` rules (leading `/`, no `//`, no `\`, no `://`, no CR/LF,
+ * under the mount base) plus a fragment guard and a traversal guard. A
+ * `#app-<id>` fragment survives only for the current app; otherwise the
+ * bare path is used when valid. Returns '' when the value is unusable.
+ */
+function returnValidate(value: string, base: string, appId: string): string {
+	if (typeof value !== 'string' || value === '') return ''
+	if (value.charAt(0) !== '/') return ''
+	if (value.indexOf('//') === 0) return ''
+	if (value.indexOf('\\') !== -1) return ''
+	if (value.indexOf('://') !== -1) return ''
+	if (value.indexOf('\n') !== -1 || value.indexOf('\r') !== -1) return ''
+	var home = returnJoin(base, '/')
+	var path = value
+	var hashAt = value.indexOf('#')
+	if (hashAt !== -1) path = value.slice(0, hashAt)
+	if (path !== home && path.indexOf(home) !== 0) return ''
+	if (path.indexOf('/../') !== -1 || path.slice(path.length - 3) === '/..') return ''
+	if (hashAt !== -1) {
+		var fragment = value.slice(hashAt)
+		if (fragment !== '#app-' + appId) return path
+	}
+	return value
+}
+
+function returnCloseLabel(value: string, base: string): string {
+	if (value === returnJoin(base, '/apps')) return 'Apps'
+	if (value === returnJoin(base, '/')) return 'Home'
+	return 'Back'
+}
+
+/** Apply a validated return path to the titlebar Close box. */
+function returnApply(value: string, base: string): void {
+	var box = document.querySelector('.os-titlebar a.os-box')
+	if (!box) return
+	var label = returnCloseLabel(value, base)
+	box.setAttribute('href', value)
+	box.setAttribute('aria-label', label)
+	box.setAttribute('title', label)
+}
+
+/** The app page section, or null on the dashboard, Apps page, or elsewhere. */
+function returnAppPageSection(): Element | null {
+	try {
+		return document.querySelector('#os-main > section.app[data-app-id]')
+	} catch (err) {
+		return null
+	}
+}
+
+document.addEventListener('click', function (event: Event): void {
+	try {
+		var mouseEvent = event as MouseEvent
+		if (mouseEvent.button !== 0) return
+		if (mouseEvent.ctrlKey || mouseEvent.metaKey || mouseEvent.shiftKey || mouseEvent.altKey) return
+		var target = event.target as unknown as Node | null
+		if (!target) return
+		var anchor: HTMLAnchorElement | null = null
+		var node: Node | null = target
+		while (node) {
+			if (node instanceof Element && node.tagName === 'A') {
+				anchor = node as unknown as HTMLAnchorElement
+				break
+			}
+			node = node.parentNode
+		}
+		if (!anchor) return
+		if (anchor.getAttribute('target')) return
+		if (anchor.hasAttribute('download')) return
+		var href = anchor.getAttribute('href') || ''
+		if (href === '') return
+		var base = returnPathBase()
+		var link = returnResolveAppLink(href, base)
+		if (!link) return
+		// Store synchronously, before any navigation can proceed.
+		returnWriteStored(window.location.pathname + window.location.hash)
+		// Plain app tiles navigate normally: the write above is the whole job.
+		if (link.search.indexOf('touch=1') === -1) return
+		// Modal tile: record the open via JSON and reveal the overlay in place.
+		var linkUrl = link.url
+		var linkId = link.id
+		event.preventDefault()
+		var sep = linkUrl.indexOf('?') === -1 ? '?' : '&'
+		var fetchUrl = linkUrl + sep + 'format=json'
+		var fallback = function (): void {
+			window.location.href = linkUrl
+		}
+		if (typeof fetch === 'undefined') {
+			fallback()
+			return
+		}
+		fetch(fetchUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin', redirect: 'follow' })
+			.then(function (response: Response): Promise<string> {
+				return response.text()
+			})
+			.then(function (text: string): void {
+				var data: unknown
+				try {
+					data = JSON.parse(text)
+				} catch (parseErr) {
+					fallback()
+					return
+				}
+				if (data === null || typeof data !== 'object') {
+					fallback()
+					return
+				}
+				var rec = data as Record<string, unknown>
+				if (rec['ok'] !== true) {
+					fallback()
+					return
+				}
+				window.location.hash = 'app-' + linkId
+			})
+			.catch(function (): void {
+				fallback()
+			})
+	} catch (err) {
+		// Never break navigation: on any error, let the browser proceed.
+	}
+})
+
+// App-page load: legacy `?from=` migration, then the stored return.
+var returnPageSection = returnAppPageSection()
+if (returnPageSection) {
+	try {
+		var returnAppId = returnPageSection.getAttribute('data-app-id') || ''
+		var returnBase = returnPathBase()
+		var returnTarget = ''
+		var legacyFrom = ''
+		try {
+			var returnParams = new URLSearchParams(window.location.search)
+			legacyFrom = returnParams.get('from') || ''
+			if (returnParams.get('from') !== null) {
+				returnParams.delete('from')
+				var cleanedQuery = returnParams.toString()
+				var cleanedUrl = window.location.pathname + (cleanedQuery === '' ? '' : '?' + cleanedQuery) + window.location.hash
+				try {
+					history.replaceState({}, '', cleanedUrl)
+				} catch (replaceErr) {
+					// A failed strip leaves the URL as-is; the value still applies.
+				}
+			}
+		} catch (queryErr) {
+			legacyFrom = ''
+		}
+		if (legacyFrom !== '') {
+			var migrated = returnValidate(legacyFrom, returnBase, returnAppId)
+			if (migrated !== '') {
+				returnWriteStored(migrated)
+				returnTarget = migrated
+			}
+		}
+		if (returnTarget === '') {
+			returnTarget = returnValidate(returnReadStored(), returnBase, returnAppId)
+		}
+		if (returnTarget !== '') returnApply(returnTarget, returnBase)
+	} catch (err) {
+		// Never break the app page for a return failure: the Close box stays Home.
+	}
+}
+
+/**
  * App Store controls (enhancement layer).
  *
  * Store rows stay plain GET forms, so every control works with no JavaScript
@@ -669,6 +929,12 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 			var resolved = resolveNavUrl(href)
 			if (!resolved) return
 			if (resolved.origin !== navPageOrigin()) return
+			// A same-document fragment change (the modal tile intercept sets
+			// the overlay fragment, and Back/Forward across fragment entries
+			// lands here) has already been applied by the browser. The URL
+			// differs only by hash, so there is no page to fetch: fetching
+			// would replace #os-main and wipe the revealed overlay.
+			if (resolved.origin + resolved.pathname + resolved.search === renderedUrl) return
 			if (!isShellPagePath(resolved.pathname)) {
 				window.location.reload()
 				return

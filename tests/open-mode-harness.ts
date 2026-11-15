@@ -68,7 +68,7 @@ function tileHtml(apps: { openAs: string }[]): string {
 	check('omitted field -> openAs page', r.summary !== null && r.summary.openAs === 'page', r.summary ? r.summary.openAs : 'no summary')
 	if (r.summary !== null) {
 		check('omitted field -> not modal tile', isModalApp(r.summary as never) === false)
-		check('omitted field -> page tile link', tileHtml([r.summary]).indexOf('/apps/counter?from=') !== -1 && tileHtml([r.summary]).indexOf('touch=1') === -1)
+		check('omitted field -> page tile link', tileHtml([r.summary]).indexOf('/apps/counter"') !== -1 && tileHtml([r.summary]).indexOf('touch=1') === -1)
 	}
 }
 

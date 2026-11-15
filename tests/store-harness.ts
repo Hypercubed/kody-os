@@ -325,9 +325,9 @@ function installSteps(text: string): string[] {
 	check('bundle container carries the shell-provided package ref', bundleWithRef.indexOf('data-package-ref="@hypercubed/kody-os"') !== -1 && bundleWithRef.indexOf('data-action-base="/kody-os/apps/counter"') !== -1, bundleWithRef)
 	var bundleWithoutRef = renderBundleContent(bundleDef, '/kody-os/apps/counter')
 	check('bundle container omits data-package-ref when none is given', bundleWithoutRef.indexOf('data-package-ref') === -1, bundleWithoutRef)
-	var sectionWithRef = renderAppSection(bundleDef, {}, '/kody-os', '', '@hypercubed/kody-os')
+	var sectionWithRef = renderAppSection(bundleDef, {}, '/kody-os', '@hypercubed/kody-os')
 	check('app section passes the package ref to the bundle container', sectionWithRef.indexOf('data-package-ref="@hypercubed/kody-os"') !== -1, '')
-	var panelWithRef = renderAppPanel(bundleDef, {}, '/kody-os', '', '', undefined, undefined, '', undefined, undefined, '@hypercubed/kody-os')
+	var panelWithRef = renderAppPanel(bundleDef, {}, '/kody-os', '', '', undefined, undefined, '', undefined, '@hypercubed/kody-os')
 	check('app panel passes the package ref through', panelWithRef.indexOf('data-package-ref="@hypercubed/kody-os"') !== -1, '')
 	var dashNoApps = renderDashboard([], '', false)
 	check('Home with no apps shows the shared help', dashNoApps.indexOf('No apps installed yet.') !== -1 && dashNoApps.indexOf('Install the App Catalog') !== -1, '')
@@ -854,7 +854,7 @@ function installSteps(text: string): string[] {
 // fingerprint covers the minimum.
 {
 	var running = await getRunningPackageVersion()
-	check('running package version is 4.4.0 in this tree', running === '4.4.0', running)
+	check('running package version is 4.5.0 in this tree', running === '4.5.0', running)
 	function minDef(id: string, min: unknown): unknown {
 		var def: Record<string, unknown> = { id: id, name: id, schemaVersion: 5, bundle: { entry: 'index.html', files: { 'index.html': '<div>' + id + '</div>' } }, stateSchema: { type: 'object', initial: {}, fields: {} }, actions: {}, ui: { title: id, openAs: 'page', actions: [] as unknown[] } }
 		if (min !== undefined) def['minPackageVersion'] = min

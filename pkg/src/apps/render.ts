@@ -143,7 +143,7 @@ export function renderStateSeed(def: AppDefinition, state: AppState): string {
 	return '<script type="application/json" data-kody-state-seed="1" data-app-id="' + escapeHtml(def.id) + '">' + json + '</script>'
 }
 
-export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, fromPath?: string, packageRef?: string): string {
+export function renderAppSection(def: AppDefinition, state: AppState, appBasePath: string, packageRef?: string): string {
 	var bundleHtml: string
 	try {
 		bundleHtml = renderBundleContent(def, appBasePath + '/apps/' + def.id, packageRef)
@@ -160,10 +160,6 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 			return '<p data-field="' + escapeHtml(field) + '"' + hiddenAttr + '>' + escapeHtml(field) + ': ' + '<span>' + escapeHtml(value) + '</span></p>'
 		})
 		.join('\n')
-	var fromField =
-		typeof fromPath === 'string' && fromPath !== ''
-			? '<input type="hidden" name="from" value="' + escapeHtml(fromPath) + '" />'
-			: ''
 	var actions = def.ui.actions || []
 	var forms = actions
 		.map(function (entry): string {
@@ -171,7 +167,6 @@ export function renderAppSection(def: AppDefinition, state: AppState, appBasePat
 				'<form class="app-action" method="GET" action="' +
 				escapeHtml(appBasePath + '/apps/' + def.id) +
 				'">' +
-				fromField +
 				'<input type="hidden" name="action" value="' +
 				escapeHtml(entry.action) +
 				'" />' +
@@ -199,13 +194,12 @@ export function renderAppPanel(
 	backLabel: string,
 	error?: string,
 	withHeader?: boolean,
-	fromPath?: string,
 	closeHref?: string,
 	expandHref?: string,
 	packageRef?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
-	var content = renderAppSection(def, state, appBasePath, fromPath, packageRef)
+	var content = renderAppSection(def, state, appBasePath, packageRef)
 	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
 	var back =
 		backHref !== '' && backLabel !== ''
@@ -248,8 +242,7 @@ export function renderAppPanel(
  * in server-rendered HTML.
  */
 export function renderOverlaySection(def: AppDefinition, state: AppState, appBasePath: string, packageRef?: string): string {
-	var fromPath = appBasePath + '/apps#app-' + def.id
-	var panel = renderAppPanel(def, state, appBasePath, '', '', undefined, undefined, fromPath, '#apps', appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/apps'), packageRef)
+	var panel = renderAppPanel(def, state, appBasePath, '', '', undefined, undefined, '#apps', appBasePath + '/apps/' + def.id, packageRef)
 	return (
 		'<div class="overlay" id="app-' +
 		escapeHtml(def.id) +
@@ -278,8 +271,6 @@ function tileItem(app: AppSummary, appBasePath: string, wide?: boolean): string 
 	var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
 	var description = typeof app.description === 'string' ? app.description : ''
 	var titleAttr = ' title="' + escapeHtml(description) + '"'
-	// Tiles live on the Apps page, so the app's close box returns there.
-	var fromApps = encodeURIComponent(appBasePath + '/apps')
 	var iconHtml = '<span class="tile-icon" aria-hidden="true">' + icon + '</span>'
 	var textHtml =
 		wide === true
@@ -291,7 +282,7 @@ function tileItem(app: AppSummary, appBasePath: string, wide?: boolean): string 
 			: '<span class="tile-label">' + label + '</span>'
 	return (
 		'<li' + (wide === true ? ' class="tile-wide"' : '') + '><a class="tile" href="' +
-		escapeHtml(isModalApp(app) ? appBasePath + '/apps/' + app.id + '?touch=1&from=' + fromApps : appBasePath + '/apps/' + app.id + '?from=' + fromApps) +
+		escapeHtml(isModalApp(app) ? appBasePath + '/apps/' + app.id + '?touch=1' : appBasePath + '/apps/' + app.id) +
 		'"' + titleAttr + '>' +
 		iconHtml +
 		textHtml +
@@ -493,7 +484,7 @@ export function renderHomeTiles(apps: AppSummary[], appBasePath: string): string
 				var mark = app.icon ? app.icon + ' ' : ''
 				return (
 					'<li><a href="' +
-					escapeHtml(appBasePath + '/apps/' + app.id + '?from=' + encodeURIComponent(appBasePath + '/')) +
+					escapeHtml(appBasePath + '/apps/' + app.id) +
 					'">' +
 					escapeHtml(mark + app.label) +
 					'</a></li>'
@@ -522,7 +513,7 @@ export function renderWidgetSection(
 	packageRef?: string,
 ): string {
 	var title = escapeHtml(def.ui.title || def.name)
-	var content = renderAppSection(def, state, appBasePath, appBasePath + '/', packageRef)
+	var content = renderAppSection(def, state, appBasePath, packageRef)
 	var errHtml = error ? '<p role="alert">Error: ' + escapeHtml(error) + '</p>\n' : ''
 	var upDisabled = index <= 0 ? ' disabled' : ''
 	var downDisabled = index >= total - 1 ? ' disabled' : ''
@@ -535,7 +526,7 @@ export function renderWidgetSection(
 		'<h2 class="app-titlebar"><span class="app-title-plate">' +
 		title +
 		'</span><a class="widget-expand" href="' +
-		escapeHtml(appBasePath + '/apps/' + def.id + '?from=' + encodeURIComponent(appBasePath + '/')) +
+		escapeHtml(appBasePath + '/apps/' + def.id) +
 		'" aria-label="Expand ' +
 		title +
 		'" title="Expand"></a></h2>\n' +
