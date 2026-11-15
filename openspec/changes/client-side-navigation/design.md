@@ -142,7 +142,11 @@ Without the restore, the old page stays displayed under the
 destination URL — the state this design says must not occur. The
 cancel branch therefore calls `history.replaceState` with the
 rendered page URL when the current URL differs from it; when the
-URLs already match, the call does nothing.
+URLs already match, the call does nothing. If the restore itself
+throws (history updates can fail, including under browser frequency
+limits), the catch falls back to a native full load of the rendered
+page rather than leaving the old page displayed under the
+destination URL.
 
 ### Decision 10: pushState failure falls back to native navigation (CodeRabbit review, Nov 14, 2026)
 

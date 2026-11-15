@@ -428,6 +428,44 @@ async function main() {
   check('11. URL still Apps after stale fetch resolves', win11.location.pathname === '/apps', win11.location.pathname);
   check('11. no native navigation from the cancel', cancelNavAttempts.length === 0, cancelNavAttempts.join('; '));
 
+  // Test 12: A same-page cancel whose URL restore fails falls back to a
+  // native full load of the rendered page. Same setup as Test 11, but
+  // history.replaceState throws, so the catch must navigate natively
+  // to the rendered Apps URL instead of leaving Apps displayed under
+  // the Home URL.
+  var failFetchCalls = [];
+  var failNavAttempts = [];
+  var failDeferredHomeResolve = null;
+  var failFetch = function (url) {
+    failFetchCalls.push(url);
+    if (url === HOME_URL) {
+      return new Promise(function (resolve) {
+        failDeferredHomeResolve = function () {
+          resolve({ url: url, text: function () { return Promise.resolve(HOME_HTML); } });
+        };
+      });
+    }
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(APPS_HTML); } });
+  };
+  var ctx12 = makeWindow(HOME_HTML, failFetch, failNavAttempts);
+  var win12 = ctx12.win;
+  var doc12 = win12.document;
+  var appsLink12 = doc12.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  appsLink12.dispatchEvent(new win12.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('12. navigated to Apps first', win12.location.pathname === '/apps', win12.location.pathname);
+  // Back: URL becomes Home, Apps still rendered, Home fetch pending (deferred).
+  win12.history.back();
+  await nextTick();
+  check('12. Back changed URL to Home', win12.location.pathname === '/', win12.location.pathname);
+  // Make the URL restore fail.
+  win12.history.replaceState = function () { throw new Error('replaceState failed'); };
+  // Click the Apps link (the rendered page): a same-page click. The
+  // restore throws, so the catch must fall back to a native load of /apps.
+  appsLink12.dispatchEvent(new win12.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('12. failed restore fell back to a native navigation', failNavAttempts.length >= 1, failNavAttempts.join('; '));
+
   if (failures.length > 0) {
     console.log('FAILED: ' + failures.length + ' check(s): ' + failures.join(', '));
     process.exit(1);

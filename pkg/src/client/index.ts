@@ -648,8 +648,10 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 						history.replaceState({}, '', renderedUrl)
 					}
 				} catch (replaceErr) {
-					// A failed restore leaves the URL mismatched;
-					// the next navigation corrects it.
+					// If the restore fails, fall back to a native full load of
+					// the rendered page: leaving the old page displayed under
+					// the destination URL would be worse than a reload.
+					window.location.href = renderedUrl
 				}
 				event.preventDefault()
 				return

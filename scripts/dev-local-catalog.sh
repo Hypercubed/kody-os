@@ -13,12 +13,12 @@
 #   `kody dev`, so the mock's workerd blocks the loopback fetch to
 #   http://127.0.0.1:8901/catalog.json. Until the script is fixed,
 #   install the App Store from the local catalog manually: stop just
-#   the mock (pkill -f '[k]ody dev --target mock'), restart it with
-#   the flag (from pkg/: kody dev --target mock --allow-private-network,
-#   plus --host 0.0.0.0 for --lan), then from pkg/ run:
+#   the mock (pkill -f '[k]ody dev --target mock'). From pkg/, run:
 #   kody execute --target mock --allow-private-network --file scripts/catalog.ts
 #     --params '{"op":"install","id":"app-store","base":"http://127.0.0.1:8901/"}'
-#   then restart the mock so it reads the updated store. Installing
+#   then restart the mock with the flag (from pkg/: kody dev --target mock
+#   --allow-private-network, plus --host 0.0.0.0 for --lan) so it reads the
+#   updated store. Installing
 #   from GitHub instead ("base":"https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/")
 #   needs no flag.
 #   With --lan, `kody dev` listens on 0.0.0.0:4302 directly (CLI flag
