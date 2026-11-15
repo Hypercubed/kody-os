@@ -74,9 +74,11 @@ All shell work happens in `pkg/`. The repository root has no build step of its o
 Preferred local-dev command (catalog + `kody dev`, LAN only when asked):
 
 ```sh
-./scripts/dev-local-catalog.sh          # catalog + kody dev, no LAN
-./scripts/dev-local-catalog.sh --lan    # catalog + kody dev on 0.0.0.0:4302
-./scripts/dev-local-catalog.sh stop     # stop both
+./scripts/dev-mock.sh                  # catalog + kody dev, no LAN
+./scripts/dev-mock.sh --lan            # catalog + kody dev on 0.0.0.0:4302
+./scripts/dev-mock.sh --no-catalog     # kody dev only (declared GitHub base)
+./scripts/dev-mock.sh --no-stub        # ... without KODY_DEV_STUB_RUNTIME=1
+./scripts/dev-mock.sh stop             # stop both
 ```
 
 LAN is opt-in and trusted-LAN only: `--lan` runs `kody dev --host 0.0.0.0`
