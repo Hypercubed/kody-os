@@ -1238,6 +1238,11 @@ export interface StoreSelfUpdate {
 	error?: string
 }
 
+function catalogErrorDetail(err: unknown): string {
+	var message = err instanceof Error ? err.message : String(err)
+	return message === '' ? 'unknown error' : message
+}
+
 function getStoreSelfUpdate(active: KeyStore, actingId: string, discovery: string | null, listing: string | null): Promise<StoreSelfUpdate> {
 	return Promise.all([
 		readJson<AppDefinition>(active, defKey(actingId)),
@@ -1275,8 +1280,8 @@ function getStoreSelfUpdate(active: KeyStore, actingId: string, discovery: strin
 			self.needsNewerShell = gated
 			self.hasUpdate = latestVersion > installedVersion && !gated
 			return self
-		}, function () {
-			self.error = 'Could not read the App Catalog from the discovery base.'
+		}, function (err) {
+			self.error = 'Could not read the App Catalog from the discovery base. (' + catalogErrorDetail(err) + ')'
 			return self
 		})
 	})
@@ -1300,10 +1305,10 @@ export function manage_rows(actingId: string, store?: KeyStore): Promise<ManageR
 						return readCatalogManifest(useBase).then(function (manifest) {
 							var tag = catalogTagLabel(useBase)
 							return { ok: true as const, rows: rows, storeSelf: self, catalogRelease: tag !== null ? tag : manifest.releaseLabel, catalogCached: manifest.cached }
-						}, function () {
+						}, function (err) {
 							var src = get_catalog_source(useBase)
 							var tag = catalogTagLabel(useBase)
-							return { ok: true as const, rows: rows, storeSelf: self, catalogRelease: tag !== null ? tag : src.releaseLabel, catalogCached: true, catalogError: 'Catalog could not be refreshed. Showing installed apps. Retry to refresh.' }
+							return { ok: true as const, rows: rows, storeSelf: self, catalogRelease: tag !== null ? tag : src.releaseLabel, catalogCached: true, catalogError: 'Catalog could not be refreshed. Showing installed apps. Retry to refresh. (' + catalogErrorDetail(err) + ')' }
 						})
 					})
 				})
