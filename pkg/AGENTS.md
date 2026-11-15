@@ -69,7 +69,11 @@ BE that honors the same contract (fe-be-separation, 2026-11-14).
   different BE could serve the same FE as long as it honors
   that contract. The BE still renders the shell + seed +
   section skeleton (the islands model). JavaScript is assumed —
-  the no-JS requirement was dropped Oct 29–30, 2026.
+  working without JavaScript is NOT a requirement (the no-JS
+  requirement was dropped Oct 29–30, 2026). Do not design a
+  feature to work without JavaScript or add no-JS fallbacks; the
+  server-rendered skeleton is a rendering choice, not a no-JS
+  constraint to preserve.
 - **Client-side navigation.** The FE navigates Home (`/`) and
   Apps (`/apps`) client-side: it intercepts same-origin clicks
   to those pages, fetches the target as HTML, swaps the
@@ -160,7 +164,7 @@ Install the `app-store` catalog app with the server stopped (see above): `catalo
 
 - No root-export side effects: no jobs, file writes, or installs.
 - Missing runtime context falls back to shared in-memory storage, starting empty with an honest "no apps yet" tile.
-- JavaScript is assumed (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The client enhances `form.app-action` with `?format=json` in-place patching. The App Store requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`. Return-to-opener is a JavaScript enhancement backed by `sessionStorage` (`kody-os:return`): with scripting the app-page Close box points at the opener, and without it the Close box goes Home while a native widget submit lands on the app page. The rest of the no-JS baseline is unchanged: plain action submit + redirect, fragment expand/collapse, and `:target` overlays.
+- JavaScript is assumed (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). Working without JavaScript is NOT a requirement: do not design a feature to work without JavaScript, and do not add no-JS fallbacks. The client enhances `form.app-action` with `?format=json` in-place patching. The App Store requires JavaScript, because it is a data app that loads its rows through the management API; without JavaScript it shows a note pointing at agent `add_app`. Return-to-opener is a JavaScript enhancement backed by `sessionStorage` (`kody-os:return`): with scripting the app-page Close box points at the opener, and without it the Close box goes Home while a native widget submit lands on the app page. Plain action submit + redirect, fragment expand/collapse, and `:target` overlays are unchanged behavior.
 - Browser ceiling: the canonical ES2019 statement in `pkg/docs/scribe-limitations.md` binds bundle scripts and the shell client (ES2019 and earlier; Chromium 80 on-device probe, 2026-10-25). Do not restate the ceiling here. No flexbox gap (grid gap OK), system fonts only, zero emojis, 48px minimum tap targets.
 - Styles inlined (`src/shell-css.ts` generated from `public/styles.css`) — no external stylesheets. Regen after any theme edit.
 - App styles live in the app, never in the shell theme: never put app-specific rules in `public/styles.css` (or the generated `src/shell-css.ts`). A rule that targets one app — for example one scoped by that app's panel label (`aria-label`) — belongs in that app's own bundle CSS, as a `<style>` block in its `index.html` or a `.css` file in its `files` map.

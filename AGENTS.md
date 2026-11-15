@@ -43,7 +43,7 @@ These come from the package and the Scribe ceiling, and they bind maintainer wor
 - **GET forms only in browser UI.** Kody's edge rejects mutating requests from package-app subdomains with a foreign or `null` Origin. Never render `<form method="POST">` or `fetch(..., { method: 'POST' })` in shell or bundle UI. UI actions are GET forms; `POST /apps/:id` stays for API clients. Bundle action URLs resolve against the shell-stamped `data-action-base` with `credentials: 'same-origin'`.
 - **Styles are inlined.** `pkg/src/shell-css.ts` is generated from `pkg/public/styles.css`. Regenerate after any theme edit; do not add an external stylesheet.
 - **No root-export side effects** in the package entry: no jobs, file writes, or installs on import.
-- **JavaScript is assumed** (Chromium 80 on the Scribe; the no-JS requirement was dropped Oct 29–30, 2026). The App Store data app requires JavaScript by design and shows a note pointing at agent `add_app` when it is absent.
+- **JavaScript is assumed — working without JavaScript is NOT a requirement.** The Scribe runs Chromium 80 (fetch, timers, events, ES2019 proven on-device Oct 25, 2026); the no-JS requirement was dropped Oct 29–30, 2026. Do not design a feature to work without JavaScript, and do not add no-JS fallbacks. Plain GET forms and server-rendered HTML are current behavior, not a no-JS constraint to preserve. The App Store data app requires JavaScript by design and shows a note pointing at agent `add_app` when it is absent.
 
 ## Catalog rules
 
