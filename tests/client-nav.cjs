@@ -18,6 +18,15 @@
 //      fetch and does not swap #os-main.
 //   5. Same-page click is a no-op: clicking the link to the page
 //      already shown does not fetch.
+//   6. Widget fallback: a page whose #os-main contains a bundle
+//      section (a Home widget) is never swapped in — it falls back
+//      to a native full load so the widget's script runs.
+//   7. Stale navigation: a response that arrives after a newer
+//      navigation (or a same-page click) is discarded and does not
+//      swap or push.
+//   8. pushState failure: if history.pushState throws after the
+//      swap, the code falls back to a native navigation instead of
+//      leaving the new content under the old URL.
 //
 // The client entry (pkg/src/client/index.ts) is TypeScript, so the
 // harness bundles it with bun (bun build, browser target) to a temp
@@ -33,11 +42,14 @@ var fs = require('fs');
 var path = require('path');
 var childProcess = require('child_process');
 var JSDOM;
+var jsdomModule;
 try {
   var jsdomPath = process.env.JSDOM_PATH || '/tmp/jsdom-test/node_modules/jsdom';
-  JSDOM = require(jsdomPath).JSDOM;
+  jsdomModule = require(jsdomPath);
+  JSDOM = jsdomModule.JSDOM;
 } catch (err) {
-  JSDOM = require('jsdom').JSDOM;
+  jsdomModule = require('jsdom');
+  JSDOM = jsdomModule.JSDOM;
 }
 
 var ROOT = path.join(__dirname, '..');
@@ -57,6 +69,10 @@ var APPS_HTML = '<!doctype html><html data-app-base="" data-client-module="/_ass
   '<nav aria-label="Shell"><a href="/">Home</a><a href="/apps" aria-current="page">Apps</a><a href="/help">Help</a></nav>' +
   '<main id="os-main"><h1>Apps</h1><p>All apps listed here.</p></main>' +
   '</body></html>';
+var HOME_WITH_WIDGET_HTML = '<!doctype html><html data-app-base="" data-client-module="/_assets/client.js"><head><title>Home - kody-os</title></head><body>' +
+  '<nav aria-label="Shell"><a href="/" aria-current="page">Home</a><a href="/apps">Apps</a><a href="/help">Help</a></nav>' +
+  '<main id="os-main"><h1>Home</h1><section class="widget" data-app-id="counter"><h2>Counter</h2><p>Count: 5</p></section></main>' +
+  '</body></html>';
 
 var failures = [];
 function check(name, ok, detail) {
@@ -73,10 +89,10 @@ function buildClientBundle() {
   return fs.readFileSync(BUNDLE_PATH, 'utf8');
 }
 
-function makeWindow(html, fetchStub, navAttempts) {
+function makeWindow(html, fetchStub, navAttempts, startUrl) {
   var virtualConsole;
   try {
-    var VirtualConsole = require(jsdomPath).VirtualConsole;
+    var VirtualConsole = jsdomModule.VirtualConsole;
     virtualConsole = new VirtualConsole();
   } catch (err) {
     virtualConsole = undefined;
@@ -89,7 +105,7 @@ function makeWindow(html, fetchStub, navAttempts) {
     });
   }
   var dom = new JSDOM(html, {
-    url: HOME_URL,
+    url: startUrl || HOME_URL,
     runScripts: 'outside-only',
     virtualConsole: virtualConsole,
     pretendToBeVisual: true
@@ -196,6 +212,75 @@ async function main() {
   await flush();
   check('5. same-page click did not fetch', sameFetchCalls.length === 0, sameFetchCalls.join(','));
   check('5. same-page click did not navigate', sameNavAttempts.length === 0, sameNavAttempts.join('; '));
+
+  // Test 6: A page with a bundle section (Home widget) is never
+  // swapped in — it falls back to a native full load so the
+  // widget's script runs and mounts the bundle.
+  var widgetFetchCalls = [];
+  var widgetNavAttempts = [];
+  var widgetFetch = function (url) {
+    widgetFetchCalls.push(url);
+    var body = url === HOME_URL ? HOME_WITH_WIDGET_HTML : APPS_HTML;
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(body); } });
+  };
+  var ctx6 = makeWindow(APPS_HTML, widgetFetch, widgetNavAttempts, APPS_URL);
+  var win6 = ctx6.win;
+  var doc6 = win6.document;
+  var homeLink6 = doc6.querySelector('nav[aria-label="Shell"] a[href="/"]');
+  homeLink6.dispatchEvent(new win6.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('6. fetch attempted for Home', widgetFetchCalls.length === 1 && widgetFetchCalls[0] === HOME_URL, widgetFetchCalls.join(','));
+  check('6. #os-main NOT swapped for widget page', doc6.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  check('6. native navigation attempted for widget page', widgetNavAttempts.length >= 1, widgetNavAttempts.join('; '));
+
+  // Test 7: A stale navigation is discarded. Click Apps, then click
+  // Home (same page) before the Apps response arrives. The Apps
+  // response must not swap in afterwards.
+  var deferredResolve = null;
+  var staleFetchCalls = [];
+  var staleNavAttempts = [];
+  var staleFetch = function (url) {
+    staleFetchCalls.push(url);
+    return new Promise(function (resolve) {
+      deferredResolve = function () {
+        resolve({ url: url, text: function () { return Promise.resolve(APPS_HTML); } });
+      };
+    });
+  };
+  var ctx7 = makeWindow(HOME_HTML, staleFetch, staleNavAttempts);
+  var win7 = ctx7.win;
+  var doc7 = win7.document;
+  var appsLink7 = doc7.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  var homeLink7 = doc7.querySelector('nav[aria-label="Shell"] a[href="/"]');
+  appsLink7.dispatchEvent(new win7.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await nextTick();
+  // The Apps fetch is still pending; the user clicks Home (same page).
+  homeLink7.dispatchEvent(new win7.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await nextTick();
+  // Now the Apps response arrives — it must be ignored.
+  if (deferredResolve) deferredResolve();
+  await flush();
+  check('7. stale Apps response did not swap', doc7.getElementById('os-main').textContent.indexOf('Welcome home.') !== -1);
+  check('7. URL stayed on Home after stale response', win7.location.pathname === '/', win7.location.pathname);
+  check('7. stale response did not navigate', staleNavAttempts.length === 0, staleNavAttempts.join('; '));
+
+  // Test 8: A pushState failure falls back to a native navigation
+  // instead of leaving the new content under the old URL.
+  var pushFetchCalls = [];
+  var pushNavAttempts = [];
+  var pushFetch = function (url) {
+    pushFetchCalls.push(url);
+    return Promise.resolve({ url: url, text: function () { return Promise.resolve(APPS_HTML); } });
+  };
+  var ctx8 = makeWindow(HOME_HTML, pushFetch, pushNavAttempts);
+  var win8 = ctx8.win;
+  var doc8 = win8.document;
+  win8.history.pushState = function () { throw new Error('pushState failed'); };
+  var appsLink8 = doc8.querySelector('nav[aria-label="Shell"] a[href="/apps"]');
+  appsLink8.dispatchEvent(new win8.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  await flush();
+  check('8. content swapped before pushState', doc8.getElementById('os-main').textContent.indexOf('All apps listed here.') !== -1);
+  check('8. pushState failure fell back to native navigation', pushNavAttempts.length >= 1, pushNavAttempts.join('; '));
 
   if (failures.length > 0) {
     console.log('FAILED: ' + failures.length + ' check(s): ' + failures.join(', '));

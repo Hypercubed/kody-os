@@ -501,7 +501,7 @@ submission as the fallback. Islands SHALL load at `DOMContentLoaded`.
 
 #### Scenario: Island mounts from the seed
 - **WHEN** an app section renders with a JSON seed
-- **THEN** the island's bundle reads its initial state from the seed without waiting for `DOMContentLoaded` and without scraping a span, and renders its interactive UI over the server-rendered skeleton.
+- **THEN** the island's bundle reads its initial state from the seed at mount (`DOMContentLoaded`), without scraping a span, and renders its interactive UI over the server-rendered skeleton. (The seed is rendered before bundle scripts run, so it is available from script time; the span-based readout, by contrast, is only present by `DOMContentLoaded`.)
 
 #### Scenario: Island failure is contained
 - **WHEN** one island's bundle throws during mount or update

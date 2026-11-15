@@ -78,7 +78,13 @@ BE that honors the same contract (fe-be-separation, 2026-11-14).
   `history.pushState`; back/forward (`popstate`) fetches and
   swaps the same way. Any failure falls back to a native
   navigation (a full page load). App pages, Help, and About
-  stay full-load. The BE's only part is stamping `id="os-main"`
+  stay full-load. A page whose `#os-main` contains a bundle
+  section (a Home widget, `section[data-app-id]`) is never
+  swapped in — it falls back to a native full load so the
+  widget's script runs and mounts the bundle. Overlapping
+  navigations are discarded by a sequence token, and a
+  `pushState` failure falls back to a native navigation. The
+  BE's only part is stamping `id="os-main"`
   on the `<main>` in `shellChrome`. Scripts in swapped HTML do
   not execute, so all behaviour stays in the persistent bundle;
   the post-swap step (title, `aria-current`, scroll) is the hook

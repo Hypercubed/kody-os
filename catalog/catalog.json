@@ -298,8 +298,8 @@
     {
       "id": "link-drop",
       "label": "Link Drop",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:4104822484-1666053862-13624",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:1258827308-4257821989-14401",
       "installMode": "json",
       "definitionPath": "link-drop/definition.json",
       "recipePath": "link-drop/RECIPE.md",

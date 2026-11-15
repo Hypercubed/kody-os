@@ -118,7 +118,23 @@ if (typeof document !== "undefined" && document.getElementById) {
     var markEl = document.getElementById("ld-bookmarklet");
     var clearForm = document.getElementById("ld-clear-form");
     var ldStore = null;
+    // The owning section, captured during script evaluation while
+    // document.currentScript is still this script. init() runs at
+    // DOMContentLoaded, when currentScript is null, so ldSection()
+    // cannot rely on it then — and falling back to the first
+    // section[data-app-id] on the page would pick another app's
+    // section when Home orders Counter before Link Drop.
+    var ldOwnSection = null;
+    try {
+      var ownScript = document.currentScript;
+      var ownEl = ownScript;
+      while (ownEl) {
+        if (ownEl.getAttribute && ownEl.getAttribute("data-app-id")) { ldOwnSection = ownEl; break; }
+        ownEl = ownEl.parentNode;
+      }
+    } catch (err) { ldOwnSection = null; }
     function ldSection() {
+      if (ldOwnSection) { return ldOwnSection; }
       var scriptEl = null;
       try { scriptEl = document.currentScript; } catch (err) { scriptEl = null; }
       var el = scriptEl;

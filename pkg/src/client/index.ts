@@ -382,6 +382,16 @@ if (canFastPath && typeof DOMParser !== 'undefined') {
  * adoption is implemented here. Scripts in swapped HTML do not
  * execute, so all behaviour stays in the persistent bundle.
  *
+ * A page whose #os-main contains a bundle section (a Home widget,
+ * `section[data-app-id]`) is never swapped in: the widget's script
+ * must run to mount the bundle, and scripts in swapped HTML do not
+ * execute, so such a page falls back to a native full load.
+ *
+ * Overlapping navigations are discarded: each navigation takes a
+ * sequence number, and a response (or failure) from an older
+ * navigation is ignored once a newer one has started — including a
+ * same-page click, which cancels any pending navigation.
+ *
  * ES2019 ceiling: no ?. and no ?? in this file.
  */
 if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undefined' && typeof history.pushState === 'function') {
@@ -399,6 +409,12 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 
 	var homePath = shellNavPath('/')
 	var appsPath = shellNavPath('/apps')
+
+	// Navigation ownership: incremented on every navigation attempt
+	// (click, popstate) and on a same-page click, which cancels any
+	// pending navigation. A fetch response or failure whose sequence
+	// no longer matches is stale and is ignored.
+	var navSeq = 0
 
 	function isShellPagePath(path: string): boolean {
 		return path === homePath || path === appsPath
@@ -454,6 +470,11 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 		var currentMain = document.getElementById('os-main')
 		if (!freshMain || !currentMain) return false
 		if (!freshMain.innerHTML) return false
+		// A bundle section (a Home widget) carries a script that must
+		// run to mount the bundle. Scripts in swapped HTML do not
+		// execute, so a page with a bundle section is never swapped
+		// in — the caller falls back to a native full load.
+		if (freshMain.querySelector('section[data-app-id]')) return false
 		var freshTitle = freshDoc.querySelector('title')
 		var titleText = freshTitle ? freshTitle.textContent : null
 		if (!titleText) return false
@@ -469,6 +490,7 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 	}
 
 	function navigateShellTo(url: string, push: boolean): void {
+		var mySeq = ++navSeq
 		fetch(url, { headers: { Accept: 'text/html' }, credentials: 'same-origin', redirect: 'follow' })
 			.then(function (response: Response): Promise<{ url: string; text: string }> {
 				return response.text().then(function (text: string): { url: string; text: string } {
@@ -476,6 +498,7 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 				})
 			})
 			.then(function (pair: { url: string; text: string }): void {
+				if (mySeq !== navSeq) return
 				var freshDoc: Document
 				try {
 					freshDoc = new DOMParser().parseFromString(pair.text, 'text/html')
@@ -491,12 +514,17 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 					try {
 						history.pushState({}, '', pair.url)
 					} catch (pushErr) {
-						// The content already swapped; a pushState failure
-						// leaves the URL stale but the page correct.
+						// The swap already happened but the URL is
+						// stale, so the content and the URL no longer
+						// match. A full load to the requested URL
+						// restores them; Reload and Back then operate
+						// on the right history entry.
+						window.location.href = pair.url
 					}
 				}
 			})
 			.catch(function (): void {
+				if (mySeq !== navSeq) return
 				window.location.href = url
 			})
 	}
@@ -529,6 +557,10 @@ if (canFastPath && typeof DOMParser !== 'undefined' && typeof history !== 'undef
 			var currentPath = window.location.pathname || '/'
 			var currentSearch = window.location.search || ''
 			if (resolved.pathname === currentPath && resolved.search === currentSearch) {
+				// A same-page click cancels any pending navigation:
+				// the user is staying here, so a stale response must
+				// not swap in another page afterwards.
+				navSeq++
 				event.preventDefault()
 				return
 			}

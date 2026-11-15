@@ -93,6 +93,40 @@ Client-side navigation is a new feature and nothing existing breaks
 MINOR. Target 4.4.0, assuming fe-be-separation (4.3.1) lands first.
 The exact number depends on merge order. Build +1 on publish.
 
+### Decision 8: Widget fallback (CodeRabbit review, Nov 14, 2026)
+
+A page whose `#os-main` contains a bundle section
+(`section[data-app-id]`, i.e. a Home widget) is never swapped in.
+The widget's bundle script must run to mount the bundle, and scripts
+in swapped HTML do not execute, so swapping such a page would leave
+the widget showing static markup with dead controls. The navigation
+code checks the fresh `#os-main` for a bundle section before
+swapping; if one is present, it falls back to a native full load so
+the bundle mounts. The Apps page carries no bundle sections (it is a
+list of tiles), so it swaps normally. Home swaps only when it has no
+widgets; Home with widgets loads fully. This corrects the earlier
+claim that "Home/Apps carry no bundles" — Home widgets DO carry
+bundles.
+
+### Decision 9: Navigation ownership token (CodeRabbit review, Nov 14, 2026)
+
+Overlapping navigations are discarded. Each navigation attempt
+(click, popstate) takes an incrementing sequence number, and a
+response (or failure) from an older navigation is ignored once a
+newer one has started. A same-page click also increments the
+sequence, cancelling any pending navigation — the user is staying
+here, so a stale response must not swap in another page afterwards.
+Without this, clicking Apps then Home before the Apps response
+arrives would leave the Apps content under the Home URL.
+
+### Decision 10: pushState failure falls back to native navigation (CodeRabbit review, Nov 14, 2026)
+
+If `history.pushState` throws after the swap, the handler does a
+native navigation to the requested URL instead of leaving the new
+content under the old URL. Reload and Back would otherwise operate
+on the wrong history entry. The documented fallback (a full load on
+any failure) requires it.
+
 ### Decision 7: Post-swap step (research, Nov 14, 2026)
 
 After swapping `<main>`, the FE runs a post-swap step. It updates

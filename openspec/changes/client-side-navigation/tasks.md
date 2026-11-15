@@ -151,3 +151,49 @@
   (5880a4d). Whether it merges into fe-be-separation or
   shell-islands depends on whether PR #3 has merged when this
   is ready.
+
+### CodeRabbit review fixes (2026-11-14, PR #4, 7 comments — all addressed)
+
+- **Home widgets (Major).** The claim "Home/Apps carry no bundles"
+  was wrong — Home widgets DO render app bundles, and a swap would
+  leave them unmounted (scripts in swapped HTML do not execute).
+  Fixed: the navigation code now falls back to a native full load
+  when the fresh `#os-main` contains a bundle section
+  (`section[data-app-id]`) — design Decision 8. The SKILL.md
+  statement is corrected. The Apps page carries no bundle sections,
+  so it still swaps.
+- **Stale navigation race (Major).** Clicking Apps then Home before
+  the Apps response arrived would swap in the Apps content under
+  the Home URL. Fixed: a navigation ownership token — each attempt
+  takes an incrementing sequence number, stale responses/failures
+  are ignored, and a same-page click cancels any pending navigation
+  — design Decision 9.
+- **pushState failure (Minor).** A `pushState` throw after the swap
+  left the new content under the old URL. Fixed: the handler now
+  does a native navigation to the requested URL — design
+  Decision 10.
+- **Harness VirtualConsole (Major).** The harness retried the
+  (possibly absent) `jsdomPath` for `VirtualConsole` instead of
+  using the resolved module, disabling navigation capture when
+  jsdom fell back to `require('jsdom')`. Fixed: retain the resolved
+  jsdom module and get both `JSDOM` and `VirtualConsole` from it.
+- **Link-drop section (Minor, in shell-islands).** `ldSection()`
+  ran at `DOMContentLoaded` when `document.currentScript` is null
+  and fell back to the first `section[data-app-id]` on the page —
+  Counter's section when Home orders Counter before Link Drop.
+  Fixed: the owning section is captured during script evaluation
+  (when `currentScript` is available) and `ldSection()` returns it.
+  Link-drop `catalogVersion` 4 → 5, `catalog.json` regenerated.
+- **Spec mount timing (Minor).** The canonical shell spec said
+  both "Islands SHALL load at `DOMContentLoaded`" and that a bundle
+  "reads its initial state from the seed without waiting for
+  `DOMContentLoaded`". Fixed: the scenario now says the bundle reads
+  the seed at mount (`DOMContentLoaded`), without scraping a span,
+  and notes the seed is available from script time.
+- **Lit fallback contradiction (Minor).** The SKILL.md said both
+  that the shell provides `window.KodyLit` and that "Svelte and Lit
+  are not provided by the shell as shipped". Fixed: Lit IS provided
+  (`window.KodyLit`); Svelte is not.
+- **Harness coverage.** `tests/client-nav.cjs` now has 25 checks
+  (was 19): added widget fallback, stale-navigation discard, and
+  pushState-failure fallback.
