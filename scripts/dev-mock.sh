@@ -7,23 +7,21 @@
 #   starts `kody dev --target mock --allow-private-network` so the
 #   mock's workerd can fetch the loopback catalog. KODY_CATALOG_BASE
 #   is still exported (harmless; it does not reach package code in the
-#   mock — the generated workerd config binds only KODY_RUN_SECRET),
-#   but the override the mock actually reads is the stored dev base
-#   (kody-os.dev.catalogBase): with the mock STOPPED, set it from pkg/ with
-#   kody execute --target mock --allow-private-network --file scripts/catalog.ts
-#     --params '{"op":"dev-base","base":"http://127.0.0.1:8901/"}'
-#   then (re)start this script so the mock picks up the stored value.
-#   Clear it the same way with '{"op":"dev-base"}' (no base) to go
-#   back to the Store's declared GitHub base. Installing
+#   mock — the generated workerd config binds only KODY_RUN_SECRET).
+#   The override the mock actually reads is the stored dev base
+#   (kody-os.dev.catalogBase), and this script manages it while the
+#   mock is stopped: default sets it to http://127.0.0.1:8901/,
+#   --no-catalog clears it back to the Store's declared GitHub base.
+#   Installing
 #   from GitHub instead ("base":"https://raw.githubusercontent.com/Hypercubed/kody-os/main/catalog/")
 #   needs no flag.
 #   With --lan, `kody dev` listens on 0.0.0.0:4302 directly (CLI flag
 #   --host), so devices on the trusted local network can open the preview.
 #   LAN is opt-in only: the dev server is plain HTTP with no TLS, so never
 #   start it with --lan on public Wi-Fi or beyond the local network.
-#   With --no-catalog, the catalog server is not started: the mock
-#   reads the Store's declared GitHub base (unless a stale stored dev
-#   base is still set — clear it while stopped, see above). With
+#   With --no-catalog, the catalog server is not started and the stored
+#   dev base is cleared: the mock reads the Store's declared GitHub
+#   base. With
 #   --no-stub, KODY_DEV_STUB_RUNTIME is left unset and 3.35.x boots
 #   its default local-Kody upstream (app mounted at
 #   /@<user>/packages/<kodyId> instead of bare /apps links).
@@ -97,14 +95,33 @@ fi
 stop_all_quiet
 sleep 2
 
-# 1. Serve the local catalog over HTTP (unless opted out).
+# 1. Point the stopped mock at the right catalog source before it boots:
+# default pins the stored dev base at the local catalog, --no-catalog
+# clears it so the mock falls back to the Store's declared GitHub base.
+# Must run while kody dev is stopped: the mock reads its store once at
+# startup, so a write while running would not show until restart.
+cd "$PKG_DIR"
+export NO_PROXY='*' no_proxy='*'
+unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy || true
+DEV_BASE_LOG="$(mktemp /tmp/kody-dev-base.XXXXXX.log)"
+if [ "$NO_CATALOG" = "0" ]; then
+  if ! kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"dev-base","base":"http://127.0.0.1:8901/"}' > "$DEV_BASE_LOG" 2>&1; then
+    echo "warning: could not set stored dev catalog base; see $DEV_BASE_LOG" >&2
+  fi
+else
+  if ! kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"dev-base"}' > "$DEV_BASE_LOG" 2>&1; then
+    echo "warning: could not clear stored dev catalog base; see $DEV_BASE_LOG" >&2
+  fi
+fi
+
+# 2. Serve the local catalog over HTTP (unless opted out).
 if [ "$NO_CATALOG" = "0" ]; then
   cd "$CATALOG_DIR"
   setsid nohup python3 -m http.server "$CATALOG_PORT" --bind 127.0.0.1 > "$CATALOG_LOG" 2>&1 < /dev/null &
   sleep 2
 fi
 
-# 2. Start the mock server. With --lan it listens on 0.0.0.0 directly;
+# 3. Start the mock server. With --lan it listens on 0.0.0.0 directly;
 # otherwise loopback only (CLI default).
 cd "$PKG_DIR"
 export NO_PROXY='*' no_proxy='*'
@@ -125,7 +142,7 @@ fi
 setsid nohup kody dev --target mock --allow-private-network "${HOST_ARGS[@]}" > "$MOCK_LOG" 2>&1 < /dev/null &
 sleep 8
 
-# 3. Verify and report.
+# 4. Verify and report.
 if [ "$NO_CATALOG" = "0" ]; then
   echo "catalog: $(curl --noproxy '*' -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${CATALOG_PORT}/catalog.json" || echo down)  http://127.0.0.1:${CATALOG_PORT}/catalog.json"
 else

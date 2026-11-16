@@ -103,10 +103,12 @@ Full local-dev instructions, including installing the App Store, are in `pkg/REA
 Two device gotchas when opening the preview from a phone, tablet, or Kindle:
 
 - **Missing images on a Kindle is usually the browser setting, not the app.**
-  Kindle browser: three-dot menu → Browser Settings → **Disable Images**. When
-  on, every `<img>` fails, including ordinary HTTP PNGs and `data:` URIs,
-  while inline SVG still renders. The hosted app fails the same way, which is
-  the tell.
+  Kindle browser: three-dot menu → Browser Settings → **Disable Images** is an
+  unsupported mode (like disabled JavaScript). When on, every `<img>` fails,
+  including ordinary HTTP PNGs, `data:` URIs, and `/icons/<name>.svg`, while
+  inline SVG still renders. The shell still uses `<img>` tags and on-demand
+  CDN icon fetches behind `<os-icon>` — both are valid. The hosted app fails
+  the same way, which is the tell.
 - **Device times out while the host works: Wi-Fi client isolation.** Guest/IoT
   SSIDs (or a host firewall on the port) block device-to-host traffic. Put both
   on the same SSID, or open the port.

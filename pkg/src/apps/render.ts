@@ -340,10 +340,26 @@ function looksLikeSvg(value: string): boolean {
 	return value.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0
 }
 
+// Mirrors definition.ts ICON_REFERENCE_RE (kept local: this file allows zero
+// runtime imports). If the canonical regex changes, update both.
+var ICON_REFERENCE_RE = /^(kody|lucide):[a-z0-9-]+$/
+
+function isIconReference(value: string): boolean {
+	return ICON_REFERENCE_RE.test(value.trim())
+}
+
+function renderTileIcon(rawIcon: string): string {
+	if (looksLikeSvg(rawIcon)) return rawIcon
+	if (isIconReference(rawIcon)) {
+		return '<os-icon name="' + escapeHtml(rawIcon.trim()) + '"></os-icon>'
+	}
+	return escapeHtml(rawIcon)
+}
+
 function tileItem(app: AppSummary, appBasePath: string, wide?: boolean): string {
 	var label = escapeHtml(app.label)
 	var rawIcon = app.icon || '#'
-	var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
+	var icon = renderTileIcon(rawIcon)
 	var description = typeof app.description === 'string' ? app.description : ''
 	var titleAttr = ' title="' + escapeHtml(description) + '"'
 	var iconHtml = '<span class="tile-icon" aria-hidden="true">' + icon + '</span>'
@@ -432,28 +448,18 @@ export function renderAllSection(
 	)
 }
 
-/** Monochrome line icon for one Edit toggle. Strokes follow the button's
- * text color, so the icon inverts with the pressed state. */
+/** Edit toggle icon from the shared kody registry. Zero network calls:
+ * `<os-icon name="kody:…">` resolves synchronously from the bundled
+ * `pkg/icons/` map. Strokes follow the button's text color via
+ * `currentColor`, so the icon inverts with the pressed state. */
 function editToggleIcon(param: string): string {
 	if (param === 'pin') {
-		return (
-			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-			'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"/>' +
-			'</svg>'
-		)
+		return '<os-icon name="kody:pin"></os-icon>'
 	}
 	if (param === 'hide') {
-		return (
-			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-			'<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>' +
-			'</svg>'
-		)
+		return '<os-icon name="kody:eye-off"></os-icon>'
 	}
-	return (
-		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-		'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' +
-		'</svg>'
-	)
+	return '<os-icon name="kody:home"></os-icon>'
 }
 
 /** One state toggle for an Edit row: an icon-only submit button. Its
@@ -514,7 +520,7 @@ export function renderEditSection(
 	for (var i = 0; i < sorted.length; i++) {
 		var app = sorted[i]
 		var rawIcon = app.icon || '#'
-		var icon = looksLikeSvg(rawIcon) ? rawIcon : escapeHtml(rawIcon)
+		var icon = renderTileIcon(rawIcon)
 		var isPinned = pinnedIds.indexOf(app.id) !== -1
 		var isHidden = hiddenIds.indexOf(app.id) !== -1
 		var isHome = homepageIds.indexOf(app.id) !== -1

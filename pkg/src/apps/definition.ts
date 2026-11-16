@@ -119,6 +119,13 @@ export function isSvgIcon(value: string): boolean {
 	return value.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0
 }
 
+export var ICON_REFERENCE_RE = /^(kody|lucide):[a-z0-9-]+$/
+
+/** True when a string icon is an <os-icon> reference matching (kody|lucide):<kebab-name>. */
+export function isIconReference(value: string): boolean {
+	return ICON_REFERENCE_RE.test(value.trim())
+}
+
 function svgIconProblem(message: string): { ok: false; error: string } {
 	return { ok: false as const, error: 'definition.icon ' + message }
 }
@@ -753,6 +760,10 @@ export function validateDefinition(def: unknown): string | null {
 		if (isSvgIcon(icon)) {
 			var iconResult = sanitizeSvgIcon(icon)
 			if (!iconResult.ok) return iconResult.error
+		} else if (icon.trim().toLowerCase().indexOf('kody:') === 0 || icon.trim().toLowerCase().indexOf('lucide:') === 0) {
+			if (!isIconReference(icon)) {
+				return 'definition.icon reference must match (kody|lucide):<kebab-name>'
+			}
 		}
 	}
 	if (def['category'] !== undefined && typeof def['category'] !== 'string') {
@@ -890,9 +901,13 @@ export function canonicalizeDefinition(definition: AppDefinition): AppDefinition
 	var files: Record<string, string> = {}
 	for (var fk of Object.keys(rawFiles)) files[fk] = String(rawFiles[fk])
 	var icon = definition.icon
-	if (typeof icon === 'string' && isSvgIcon(icon)) {
-		var cleanIcon = sanitizeSvgIcon(icon)
-		icon = cleanIcon.ok ? cleanIcon.icon : undefined
+	if (typeof icon === 'string') {
+		if (isSvgIcon(icon)) {
+			var cleanIcon = sanitizeSvgIcon(icon)
+			icon = cleanIcon.ok ? cleanIcon.icon : undefined
+		} else if (isIconReference(icon)) {
+			icon = icon.trim()
+		}
 	}
 	var canonicalActions: Record<string, unknown> = {}
 	var inputActions = definition.actions as unknown as Record<string, unknown>

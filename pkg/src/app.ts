@@ -4,6 +4,7 @@ import { serveFeed, serveProxy } from './feeds.ts'
 import { renderAboutContent } from './shell-pages.ts'
 import { fileThemeToValues, get_shell_theme, reset_shell_theme, set_shell_theme } from './shell-theme.ts'
 import { helpTextFor, renderHelpButton, renderHelpDialog } from './apps/render.ts'
+import { getIcon } from './icons-registry.ts'
 import type { AppDefinition, AppState } from './apps/types.ts'
 
 // Re-export the MCP surface so `import { add_app } from 'kody:@hypercubed/kody-os'`
@@ -483,7 +484,9 @@ function themeGridValue(raw: string): unknown {
  * set on the response. */
 function finishResponse(response: Response, request: Request): Promise<Response> {
 	var headers = new Headers(response.headers)
-	headers.set('Cache-Control', 'no-store')
+	if (!headers.has('Cache-Control')) {
+		headers.set('Cache-Control', 'no-store')
+	}
 	headers.set('Referrer-Policy', 'no-referrer')
 	headers.set('X-Content-Type-Options', 'nosniff')
 	headers.set('Content-Security-Policy', "frame-ancestors 'none'")
@@ -526,6 +529,39 @@ function stripBasePrefix(rawPath: string, appBasePath: string): string {
 
 /** Route dispatch for a request the platform admitted. */
 function dispatch(request: Request, chrome: Chrome, path: string, method: string): Promise<Response> {
+	// GET /icons/<name>.svg — static route serving custom icons from pkg/icons/
+	if (method === 'GET' && path.indexOf('/icons/') === 0) {
+		var iconFile = path.slice('/icons/'.length)
+		if (iconFile.slice(-4) === '.svg') {
+			var iconName = iconFile.slice(0, -4)
+			if (/^[a-z0-9-]+$/.test(iconName)) {
+				var svg = getIcon(iconName)
+				if (svg !== undefined) {
+					return Promise.resolve(
+						new Response(svg, {
+							status: 200,
+							headers: {
+								'Content-Type': 'image/svg+xml; charset=utf-8',
+								'Cache-Control': 'public, max-age=86400',
+								'X-Content-Type-Options': 'nosniff',
+							},
+						}),
+					)
+				}
+			}
+		}
+		return Promise.resolve(
+			new Response('icon not found', {
+				status: 404,
+				headers: {
+					'Content-Type': 'text/plain; charset=utf-8',
+					'Cache-Control': 'no-store',
+					'X-Content-Type-Options': 'nosniff',
+				},
+			}),
+		)
+	}
+
 	var appBasePath = chrome.appBasePath
 	return import('./apps/index.ts').then(function (m): Promise<Response> {			var actFromForm = m.actFromForm
 			var clear_recent = m.clear_recent

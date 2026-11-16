@@ -38,6 +38,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { add_app, assembleBundleFiles, createMemoryStore, fingerprintDefinition, get_app_state, get_catalog_definition, list_apps, list_catalog, summarizeCapabilities, validateCatalogDefinition, validateDefinition } from '../pkg/src/apps/index.ts'
+import { sanitizeSvgIcon } from '../pkg/src/apps/registry.ts'
+import { ICONS } from '../pkg/src/icons-registry.ts'
 import type { AppDefinition } from '../pkg/src/apps/types.ts'
 import type { CapabilitySummary } from '../pkg/src/apps/definition.ts'
 
@@ -311,6 +313,84 @@ var deadFiles = JSON.parse(JSON.stringify((deadBase as unknown as Record<string,
 deadFiles.files['dead-fixture.js'] = 'var deadFixture = 1;'
 ;(deadBase as unknown as Record<string, unknown>)['bundle'] = deadFiles
 check('an unreferenced .js file fails validation', validateDefinition(deadBase) !== null, String(validateDefinition(deadBase)))
+
+// Folder validation: pkg/icons/ files meet the spec and match pkg/src/icons-registry.ts
+var iconsDir = join(__dirname, '..', 'pkg', 'icons')
+var iconEntries = readdirSync(iconsDir).filter(function (f) { return f !== 'README.md' })
+var svgIconNames: string[] = []
+
+for (var iconFile of iconEntries) {
+  check(iconFile + ' is an .svg file', iconFile.slice(-4) === '.svg', iconFile)
+  if (iconFile.slice(-4) !== '.svg') continue
+  var baseName = iconFile.slice(0, -4)
+  check(iconFile + ' has kebab-case name', /^[a-z0-9-]+$/.test(baseName), baseName)
+  svgIconNames.push(baseName)
+  var iconContent = readFileSync(join(iconsDir, iconFile), 'utf8').trim()
+  var sanitized = sanitizeSvgIcon(iconContent)
+  check(iconFile + ' passes tile-icon sanitizer', sanitized.ok === true, sanitized.ok === false ? sanitized.error : undefined)
+  check(iconFile + ' has viewBox="0 0 24 24"', /viewBox=["']0 0 24 24["']/.test(iconContent), iconContent)
+  check(iconFile + ' has no fixed width', !/<svg\b[^>]*\swidth\s*=["'][^"']*["']/i.test(iconContent), iconContent)
+  check(iconFile + ' has no fixed height', !/<svg\b[^>]*\sheight\s*=["'][^"']*["']/i.test(iconContent), iconContent)
+  check(iconFile + ' has <title>', /<title\b[^>]*>[^<]+<\/title>/i.test(iconContent), iconContent)
+  check(iconFile + ' has <title> as first child', /<svg\b[^>]*>\s*<title\b/i.test(iconContent), iconContent)
+  var readmeText = ''
+  try { readmeText = readFileSync(join(iconsDir, 'README.md'), 'utf8') } catch (e) { readmeText = '' }
+  var hasStandardStroke = /stroke-width=["']1\.6["']/.test(iconContent)
+  var isDocumentedException = readmeText.indexOf(baseName) !== -1 && readmeText.indexOf('stroke-width') !== -1
+  check(iconFile + ' has stroke-width="1.6" or a README-documented exception', hasStandardStroke || isDocumentedException, iconContent.slice(0, 200))
+  check(iconFile + ' has round caps', /stroke-linecap=["']round["']/.test(iconContent), iconContent)
+  check(iconFile + ' has round joins', /stroke-linejoin=["']round["']/.test(iconContent), iconContent)
+}
+
+var registryKeys = Object.keys(ICONS).sort()
+svgIconNames.sort()
+check('pkg/src/icons-registry.ts keys match pkg/icons/', JSON.stringify(registryKeys) === JSON.stringify(svgIconNames), 'registry=' + JSON.stringify(registryKeys) + ' files=' + JSON.stringify(svgIconNames))
+for (var sName of svgIconNames) {
+  var fileSvg = readFileSync(join(iconsDir, sName + '.svg'), 'utf8').trim()
+  check(sName + ' in icons-registry matches file on disk', ICONS[sName] === fileSvg)
+}
+// Client mirror for the FE/BE boundary: same generator writes both.
+var clientIconsMod = await import('../pkg/src/client/icons-data.ts')
+var clientKeys = Object.keys(clientIconsMod.ICONS).sort()
+check('pkg/src/client/icons-data.ts keys match pkg/icons/', JSON.stringify(clientKeys) === JSON.stringify(svgIconNames))
+for (var cName of svgIconNames) {
+  var cFileSvg = readFileSync(join(iconsDir, cName + '.svg'), 'utf8').trim()
+  check(cName + ' in client icons-data matches file on disk', clientIconsMod.ICONS[cName] === cFileSvg)
+}
+// ES2019 ceiling for new client code (os-icon, sanitizer, generated data).
+var clientCeilingHits: string[] = []
+for (var clientFile of ['os-icon.ts', 'icon-sanitize.ts', 'icons-data.ts', 'os-elements.ts']) {
+  try {
+    var clientRaw = readFileSync(join(root, 'pkg', 'src', 'client', clientFile), 'utf8')
+    var clientJs = clientRaw.replace(/`[^`]*`/g, function (m: string): string { var parts = m.match(/\$\{[^{}]*\}/g); return parts !== null ? parts.join(' ') : ' '; }).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+    if (clientJs.indexOf('?.') !== -1 || clientJs.indexOf('??') !== -1 || clientJs.indexOf('replaceAll') !== -1 || clientJs.indexOf('.at(') !== -1) {
+      clientCeilingHits.push(clientFile)
+    }
+  } catch (e) { clientCeilingHits.push(clientFile + ':missing') }
+}
+check('client icon files meet the ES2019 ceiling (no ?. / ?? / replaceAll / .at())', clientCeilingHits.length === 0, clientCeilingHits.join(','))
+
+// Catalog sync: the 11 migrated SVG bundles match pkg/icons/<app-id>.svg
+// after whitespace normalization (shared-svg-icons 3.3).
+function normalizeSvgWhitespace(svg: string): string {
+  return svg.trim().replace(/\s+/g, ' ')
+}
+var migratedIconIds = ['calculator', 'calendar', 'clock', 'counter', 'daily-feed', 'eight-ball', 'hoodie-weather', 'link-drop', 'mac-puzzle', 'news', 'probe']
+for (var migratedId of migratedIconIds) {
+  var migratedDef = readDefinition(migratedId)
+  var migratedIcon = typeof migratedDef.icon === 'string' ? migratedDef.icon : ''
+  var migratedFile = readFileSync(join(iconsDir, migratedId + '.svg'), 'utf8')
+  var migratedOk = migratedIcon === 'kody:' + migratedId || normalizeSvgWhitespace(migratedIcon) === normalizeSvgWhitespace(migratedFile)
+  check(migratedId + ' bundle icon matches pkg/icons/' + migratedId + '.svg or kody:' + migratedId + ' reference', migratedOk)
+}
+
+// Fixture checks: out-of-spec files fail validation
+var badWidth = '<svg viewBox="0 0 24 24" width="24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><title>Test</title></svg>'
+check('out-of-spec file with width fails validation', /<svg\b[^>]*\swidth\s*=["'][^"']*["']/i.test(badWidth))
+var badViewBox = '<svg viewBox="0 0 32 32" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><title>Test</title></svg>'
+check('out-of-spec file with bad viewBox fails validation', !/viewBox=["']0 0 24 24["']/.test(badViewBox))
+var badScript = '<svg viewBox="0 0 24 24"><script>alert(1)</script></svg>'
+check('out-of-spec file with script fails sanitizer', sanitizeSvgIcon(badScript).ok === false)
 
 if (failures.length > 0) {
   console.log('\n' + failures.length + ' check(s) FAILED')

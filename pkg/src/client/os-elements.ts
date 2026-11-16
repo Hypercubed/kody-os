@@ -49,11 +49,13 @@
  */
 
 import { defineOsStepper } from './os-stepper'
+import { defineOsIcon } from './os-icon'
 
 type KodyLitGlobal = {
 	LitElement: any
 	html: any
 	css: any
+	nothing: any
 }
 
 function getKodyLit(): KodyLitGlobal | null {
@@ -76,4 +78,5 @@ export function defineOsElements(): void {
 	var KodyLit = getKodyLit()
 	if (KodyLit === null) return
 	defineOsStepper(KodyLit)
+	defineOsIcon(KodyLit)
 }

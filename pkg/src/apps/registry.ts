@@ -97,6 +97,7 @@ export {
 	validateCatalogDefinition,
 	validateDefinition,
 	sanitizeSvgIcon,
+	isIconReference,
 } from './definition.ts'
 export type { CapabilitySummary } from './definition.ts'
 import type { CapabilitySummary } from './definition.ts'

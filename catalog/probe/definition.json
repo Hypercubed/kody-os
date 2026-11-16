@@ -3,8 +3,8 @@
   "name": "Scribe Probe",
   "label": "Probe",
   "schemaVersion": 5,
-  "catalogVersion": 10,
-  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>",
+  "catalogVersion": 11,
+  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Probe</title><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>",
   "category": "diagnostics",
   "description": "Check this browser's JavaScript, storage, and display features, and send the results back.",
   "bundle": {
@@ -21,7 +21,7 @@
         "label": "Clear reports"
       }
     ],
-    "help": "Tap Probe to check this browser\u2019s features, Perf for a speed test, and Send Results to report back."
+    "help": "Tap Probe to check this browser’s features, Perf for a speed test, and Send Results to report back."
   },
   "stateSchema": {
     "type": "object",
