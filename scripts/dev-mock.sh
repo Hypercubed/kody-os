@@ -103,13 +103,14 @@ sleep 2
 cd "$PKG_DIR"
 export NO_PROXY='*' no_proxy='*'
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy || true
+DEV_BASE_LOG="$(mktemp /tmp/kody-dev-base.XXXXXX.log)"
 if [ "$NO_CATALOG" = "0" ]; then
-  if ! kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"dev-base","base":"http://127.0.0.1:8901/"}' > /tmp/kody-dev-base.log 2>&1; then
-    echo "warning: could not set stored dev catalog base; see /tmp/kody-dev-base.log" >&2
+  if ! kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"dev-base","base":"http://127.0.0.1:8901/"}' > "$DEV_BASE_LOG" 2>&1; then
+    echo "warning: could not set stored dev catalog base; see $DEV_BASE_LOG" >&2
   fi
 else
-  if ! kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"dev-base"}' > /tmp/kody-dev-base.log 2>&1; then
-    echo "warning: could not clear stored dev catalog base; see /tmp/kody-dev-base.log" >&2
+  if ! kody execute --target mock --allow-private-network --file scripts/catalog.ts --params '{"op":"dev-base"}' > "$DEV_BASE_LOG" 2>&1; then
+    echo "warning: could not clear stored dev catalog base; see $DEV_BASE_LOG" >&2
   fi
 fi
 

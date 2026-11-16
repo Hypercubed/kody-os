@@ -193,20 +193,18 @@ export function defineOsIcon(KodyLit: KodyLitGlobal): void {
 			if (!inFlight) {
 				inFlight = fetchIconFromCdn(prefix, iconName)
 				inFlightFetches.set(cacheKey, inFlight)
-			}
-
-			inFlight.then(function (result: string | null): void {
+			}			inFlight.then(function (result: string | null): void {
 				inFlightFetches.delete(cacheKey)
 				if (result !== null) {
 					iconMemoryCache.set(cacheKey, result)
 					setInStorage(cacheKey, result)
-					if (self.name === currentName || self.getAttribute('name') === currentName) {
+					if ((self.name || self.getAttribute('name') || '').trim() === currentName) {
 						self._svg = result
 						self._loading = false
 						self.requestUpdate()
 					}
 				} else {
-					if (self.name === currentName || self.getAttribute('name') === currentName) {
+					if ((self.name || self.getAttribute('name') || '').trim() === currentName) {
 						self._svg = ''
 						self._loading = false
 						self.requestUpdate()
@@ -214,11 +212,11 @@ export function defineOsIcon(KodyLit: KodyLitGlobal): void {
 				}
 			}).catch(function (): void {
 				inFlightFetches.delete(cacheKey)
-				if (self.name === currentName || self.getAttribute('name') === currentName) {
+				if ((self.name || self.getAttribute('name') || '').trim() === currentName) {
 					self._svg = ''
 					self._loading = false
 					self.requestUpdate()
-				}
+					}
 			})
 		}
 

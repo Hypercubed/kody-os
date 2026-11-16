@@ -61,6 +61,26 @@ var doc = parser.parseFromString(source, 'image/svg+xml')
 var root = doc.documentElement
 if (!root || root.nodeName.toLowerCase() !== 'svg') return clientProblem('must be a single <svg> root')
 if (root.getElementsByTagName('parsererror').length > 0) return clientProblem('has malformed markup')
+for (var r = root.attributes.length - 1; r >= 0; r--) {
+var rattr = root.attributes[r]
+var rname = rattr.name.toLowerCase()
+if (rname.indexOf('on') === 0) return clientProblem('has an event handler attribute "' + rname + '"')
+if (rname === 'style') return clientProblem('has a style attribute')
+if (rname === 'href' || rname === 'xlink:href' || rname === 'src') return clientProblem('has an external reference attribute "' + rname + '"')
+if (CLIENT_ATTRS.indexOf(rname) === -1) {
+root.removeAttribute(rattr.name)
+continue
+}
+var rv = rattr.value || ''
+var rlv = rv.toLowerCase()
+if (rlv.indexOf('url(') !== -1 || rlv.indexOf('javascript:') !== -1 || rlv.indexOf('data:') !== -1 || rlv.indexOf('expression(') !== -1) {
+return clientProblem('has an external or script reference in "' + rname + '"')
+}
+if (rname === 'xmlns' && rv !== 'http://www.w3.org/2000/svg') return clientProblem('has a non-SVG xmlns')
+if ((rname === 'fill' || rname === 'stroke') && CLIENT_MONO.indexOf(rlv) === -1) {
+return clientProblem('uses non-monochrome ' + rname + ' "' + rv + '"')
+}
+}
 var all = root.getElementsByTagName('*')
 for (var i = all.length - 1; i >= 0; i--) {
 var el = all[i] as Element

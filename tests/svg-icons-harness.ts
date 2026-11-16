@@ -279,6 +279,8 @@ var parityFixtures: Array<{ name: string; svg: string; expectOk: boolean }> = [
 	{ name: 'script rejected', svg: '<svg viewBox="0 0 24 24"><script>alert(1)</script></svg>', expectOk: false },
 	{ name: 'use rejected', svg: '<svg viewBox="0 0 24 24"><use href="#x"/></svg>', expectOk: false },
 	{ name: 'onload rejected', svg: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" onload="alert(1)"/></svg>', expectOk: false },
+	{ name: 'root onload rejected', svg: '<svg viewBox="0 0 24 24" onload="alert(1)"><circle cx="12" cy="12" r="9"/></svg>', expectOk: false },
+	{ name: 'root style rejected', svg: '<svg viewBox="0 0 24 24" style="fill:red"><circle cx="12" cy="12" r="9"/></svg>', expectOk: false },
 	{ name: 'color fill rejected', svg: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="red"/></svg>', expectOk: false },
 	{ name: 'comment rejected', svg: '<svg viewBox="0 0 24 24"><!-- hi --><circle cx="12" cy="12" r="9"/></svg>', expectOk: false },
 ]

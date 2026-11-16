@@ -362,7 +362,7 @@ var clientCeilingHits: string[] = []
 for (var clientFile of ['os-icon.ts', 'icon-sanitize.ts', 'icons-data.ts', 'os-elements.ts']) {
   try {
     var clientRaw = readFileSync(join(root, 'pkg', 'src', 'client', clientFile), 'utf8')
-    var clientJs = clientRaw.replace(/`[^`]*`/g, '').replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+    var clientJs = clientRaw.replace(/`[^`]*`/g, function (m: string): string { var parts = m.match(/\$\{[^{}]*\}/g); return parts !== null ? parts.join(' ') : ' '; }).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
     if (clientJs.indexOf('?.') !== -1 || clientJs.indexOf('??') !== -1 || clientJs.indexOf('replaceAll') !== -1 || clientJs.indexOf('.at(') !== -1) {
       clientCeilingHits.push(clientFile)
     }
