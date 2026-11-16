@@ -3,8 +3,8 @@
   "name": "Eight Ball",
   "label": "Eight Ball",
   "schemaVersion": 5,
-  "catalogVersion": 6,
-  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><circle cx=\"12\" cy=\"9.4\" r=\"2.4\" /><circle cx=\"12\" cy=\"15\" r=\"2.8\" /></svg>",
+  "catalogVersion": 7,
+  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Magic 8-Ball</title><circle cx=\"12\" cy=\"12\" r=\"9\" /><circle cx=\"12\" cy=\"9.4\" r=\"2.4\" /><circle cx=\"12\" cy=\"15\" r=\"2.8\" /></svg>",
   "category": "toys",
   "description": "A Magic 8-Ball for yes-or-no questions.",
   "bundle": {
@@ -16,7 +16,7 @@
   "ui": {
     "title": "Eight Ball",
     "actions": [],
-    "help": "Think of a yes-or-no question, then tap Shake for the 8-Ball\u2019s answer."
+    "help": "Think of a yes-or-no question, then tap Shake for the 8-Ball’s answer."
   },
   "stateSchema": {
     "type": "object",

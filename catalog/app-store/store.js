@@ -259,6 +259,10 @@ function storeInit() {
         iconSpan.setAttribute('aria-hidden', 'true');
         if (row.icon && row.icon.replace(/^\s+/, '').toLowerCase().indexOf('<svg') === 0) {
           iconSpan.innerHTML = row.icon;
+        } else if (row.icon && /^(kody|lucide):[a-z0-9-]+$/.test(row.icon.trim())) {
+          var osIcon = document.createElement('os-icon');
+          osIcon.setAttribute('name', row.icon.trim());
+          iconSpan.appendChild(osIcon);
         } else {
           iconSpan.textContent = row.icon || '#';
         }

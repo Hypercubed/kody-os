@@ -27,8 +27,8 @@
     {
       "id": "app-store",
       "label": "App Catalog",
-      "catalogVersion": 34,
-      "fingerprint": "fnv:1581334477-4112154405-26756",
+      "catalogVersion": 35,
+      "fingerprint": "fnv:532560765-1749650909-27020",
       "installMode": "json",
       "definitionPath": "app-store/definition.json",
       "recipePath": "app-store/RECIPE.md",
@@ -80,8 +80,8 @@
     {
       "id": "calculator",
       "label": "Calculator",
-      "catalogVersion": 5,
-      "fingerprint": "fnv:620866200-1484561092-6214",
+      "catalogVersion": 6,
+      "fingerprint": "fnv:3309408967-2992442300-6265",
       "installMode": "json",
       "definitionPath": "calculator/definition.json",
       "recipePath": "calculator/RECIPE.md",
@@ -89,7 +89,7 @@
         "index.html"
       ],
       "name": "Calculator",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"5.5\" y=\"3.5\" width=\"13\" height=\"17\" rx=\"1.5\" /><path d=\"M8.5 7.5h7\" /><path d=\"M8.5 12h1.5M11.2 12h1.5M14 12h1.5M8.5 15.5h1.5M11.2 15.5h1.5M14 15.5h1.5\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Calculator</title><rect x=\"5.5\" y=\"3.5\" width=\"13\" height=\"17\" rx=\"1.5\" /><path d=\"M8.5 7.5h7\" /><path d=\"M8.5 12h1.5M11.2 12h1.5M14 12h1.5M8.5 15.5h1.5M11.2 15.5h1.5M14 15.5h1.5\" /></svg>",
       "category": "utilities",
       "description": "A recreation of the original Macintosh calculator with its classic button layout.",
       "schemaVersion": 5,
@@ -104,8 +104,8 @@
     {
       "id": "calendar",
       "label": "Calendar",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:1168765803-1231862144-4573",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:1184621164-479974720-4622",
       "installMode": "json",
       "definitionPath": "calendar/definition.json",
       "recipePath": "calendar/RECIPE.md",
@@ -113,7 +113,7 @@
         "index.html"
       ],
       "name": "Calendar",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\" /><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\" /><line x1=\"8\" y1=\"3\" x2=\"8\" y2=\"7\" /><line x1=\"16\" y1=\"3\" x2=\"16\" y2=\"7\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Calendar</title><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\" /><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\" /><line x1=\"8\" y1=\"3\" x2=\"8\" y2=\"7\" /><line x1=\"16\" y1=\"3\" x2=\"16\" y2=\"7\" /></svg>",
       "category": "utilities",
       "description": "A month calendar that always opens on the current month, with today highlighted.",
       "schemaVersion": 5,
@@ -152,8 +152,8 @@
     {
       "id": "clock",
       "label": "Clock",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:4197428308-3884655203-2835",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:1537403675-3320905688-2881",
       "installMode": "json",
       "definitionPath": "clock/definition.json",
       "recipePath": "clock/RECIPE.md",
@@ -161,7 +161,7 @@
         "index.html"
       ],
       "name": "Clock",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><path d=\"M12 7v5l3.5 2\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Clock</title><circle cx=\"12\" cy=\"12\" r=\"9\" /><path d=\"M12 7v5l3.5 2\" /></svg>",
       "category": "utilities",
       "description": "A live clock showing the current time and date.",
       "schemaVersion": 5,
@@ -176,8 +176,8 @@
     {
       "id": "counter",
       "label": "Counter",
-      "catalogVersion": 8,
-      "fingerprint": "fnv:3384525975-2779297202-7755",
+      "catalogVersion": 9,
+      "fingerprint": "fnv:2605131295-1589556379-7520",
       "installMode": "json",
       "definitionPath": "counter/definition.json",
       "recipePath": "counter/RECIPE.md",
@@ -185,7 +185,7 @@
         "index.html"
       ],
       "name": "Counter",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M12 8v8M8 12h8\" /></svg>",
+      "icon": "kody:counter",
       "category": "utilities",
       "description": "A simple counter that adds and subtracts, with a saved count.",
       "schemaVersion": 5,
@@ -200,8 +200,8 @@
     {
       "id": "daily-feed",
       "label": "Daily Feed",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:1765397401-3391339394-13413",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:2023521289-2030219959-13438",
       "installMode": "json",
       "definitionPath": "daily-feed/definition.json",
       "recipePath": "daily-feed/RECIPE.md",
@@ -209,7 +209,7 @@
         "index.html"
       ],
       "name": "Daily Feed",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"12\" y2=\"15\" /><circle cx=\"16.5\" cy=\"15\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Daily Feed</title><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"12\" y2=\"15\" /><circle cx=\"16.5\" cy=\"15\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\" /></svg>",
       "category": "reading",
       "description": "A daily feed, updated by your agent, showing one entry at a time.",
       "schemaVersion": 5,
@@ -224,8 +224,8 @@
     {
       "id": "eight-ball",
       "label": "Eight Ball",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:4063887630-2659915576-3204",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:3562987998-1377771106-3282",
       "installMode": "json",
       "definitionPath": "eight-ball/definition.json",
       "recipePath": "eight-ball/RECIPE.md",
@@ -233,7 +233,7 @@
         "index.html"
       ],
       "name": "Eight Ball",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><circle cx=\"12\" cy=\"12\" r=\"9\" /><circle cx=\"12\" cy=\"9.4\" r=\"2.4\" /><circle cx=\"12\" cy=\"15\" r=\"2.8\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Magic 8-Ball</title><circle cx=\"12\" cy=\"12\" r=\"9\" /><circle cx=\"12\" cy=\"9.4\" r=\"2.4\" /><circle cx=\"12\" cy=\"15\" r=\"2.8\" /></svg>",
       "category": "toys",
       "description": "A Magic 8-Ball for yes-or-no questions.",
       "schemaVersion": 5,
@@ -272,8 +272,8 @@
     {
       "id": "hoodie-weather",
       "label": "Hoodie Weather",
-      "catalogVersion": 11,
-      "fingerprint": "fnv:1043777476-1630703061-43637",
+      "catalogVersion": 12,
+      "fingerprint": "fnv:3832788719-3661968161-43666",
       "installMode": "json",
       "definitionPath": "hoodie-weather/definition.json",
       "recipePath": "hoodie-weather/RECIPE.md",
@@ -281,7 +281,7 @@
         "index.html"
       ],
       "name": "Hoodie Weather",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 5 3 8l2.5 4L8 10.5V19h8v-8.5l2.5 1.5L21 8l-5-3\" /><path d=\"M9 5c1-2 5-2 6 0\" /><path d=\"M10 14h4v3h-4z\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Hoodie Weather</title><path d=\"M8 5 3 8l2.5 4L8 10.5V19h8v-8.5l2.5 1.5L21 8l-5-3\" /><path d=\"M9 5c1-2 5-2 6 0\" /><path d=\"M10 14h4v3h-4z\" /></svg>",
       "category": "weather",
       "description": "A next-hour clothing forecast for your saved place: raincoat, jacket, hoodie, or t-shirt. A kody-os rewrite of Hypercubed/HoodieWeather on GitHub.",
       "schemaVersion": 5,
@@ -298,8 +298,8 @@
     {
       "id": "link-drop",
       "label": "Link Drop",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:3898586506-2990373372-14532",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:795224387-415821267-14556",
       "installMode": "json",
       "definitionPath": "link-drop/definition.json",
       "recipePath": "link-drop/RECIPE.md",
@@ -307,7 +307,7 @@
         "index.html"
       ],
       "name": "Link Drop",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 14a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7\" /><path d=\"M14 10a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Link Drop</title><path d=\"M10 14a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7\" /><path d=\"M14 10a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7\" /></svg>",
       "category": "utilities",
       "description": "Save links from any browser with a bookmarklet, and open them later, including on the Scribe. Newest first; you can clear the whole list at once.",
       "schemaVersion": 5,
@@ -322,8 +322,8 @@
     {
       "id": "mac-puzzle",
       "label": "Puzzle",
-      "catalogVersion": 4,
-      "fingerprint": "fnv:3108862173-2825188427-11586",
+      "catalogVersion": 5,
+      "fingerprint": "fnv:4144323145-4282607638-11637",
       "installMode": "json",
       "definitionPath": "mac-puzzle/definition.json",
       "recipePath": "mac-puzzle/RECIPE.md",
@@ -331,7 +331,7 @@
         "index.html"
       ],
       "name": "Puzzle",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M3.5 9.2h17M3.5 14.8h17M9.2 3.5v5.7M14.8 3.5v5.7M9.2 14.8v5.7M14.8 14.8v5.7\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Mac Puzzle</title><rect x=\"3.5\" y=\"3.5\" width=\"17\" height=\"17\" rx=\"2\" /><path d=\"M3.5 9.2h17M3.5 14.8h17M9.2 3.5v5.7M14.8 3.5v5.7M9.2 14.8v5.7M14.8 14.8v5.7\" /></svg>",
       "category": "toys",
       "description": "The original Macintosh Puzzle: 15 numbered tiles in a 4x4 grid.",
       "schemaVersion": 5,
@@ -346,8 +346,8 @@
     {
       "id": "news",
       "label": "News",
-      "catalogVersion": 6,
-      "fingerprint": "fnv:3382494120-2126542729-17989",
+      "catalogVersion": 7,
+      "fingerprint": "fnv:4151199798-655258780-18008",
       "installMode": "json",
       "definitionPath": "news/definition.json",
       "recipePath": "news/RECIPE.md",
@@ -355,7 +355,7 @@
         "index.html"
       ],
       "name": "News",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"13\" y2=\"9\" /><line x1=\"15\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"17.5\" y2=\"15\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>News</title><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"1.5\" /><line x1=\"6.5\" y1=\"9\" x2=\"13\" y2=\"9\" /><line x1=\"15\" y1=\"9\" x2=\"17.5\" y2=\"9\" /><line x1=\"6.5\" y1=\"12\" x2=\"17.5\" y2=\"12\" /><line x1=\"6.5\" y1=\"15\" x2=\"17.5\" y2=\"15\" /></svg>",
       "category": "reading",
       "description": "Six news sections (World, Technology, Business, Science, Arts, and Finance) with headlines and summaries.",
       "schemaVersion": 5,
@@ -373,8 +373,8 @@
     {
       "id": "probe",
       "label": "Probe",
-      "catalogVersion": 10,
-      "fingerprint": "fnv:1208396652-3079448084-43682",
+      "catalogVersion": 11,
+      "fingerprint": "fnv:127588556-3071607386-43728",
       "installMode": "json",
       "definitionPath": "probe/definition.json",
       "recipePath": "probe/RECIPE.md",
@@ -382,7 +382,7 @@
         "index.html"
       ],
       "name": "Scribe Probe",
-      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><title>Probe</title><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\" /><path d=\"M15.1 15.1 20.5 20.5\" /></svg>",
       "category": "diagnostics",
       "description": "Check this browser's JavaScript, storage, and display features, and send the results back.",
       "schemaVersion": 5,

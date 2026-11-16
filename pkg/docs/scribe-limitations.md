@@ -159,6 +159,12 @@ This section is the single place that states the JavaScript ceiling. Other docs 
    `/probe/probe-report`, a dead route). Build URLs in JS from
    `window.location.pathname` up to the last `/`. Server-rendered links
    and forms are unaffected (the shell emits absolute paths).
+8. **Kindle "Disable Images" is unsupported, like disabled JavaScript.**
+   With Disable Images on, every `<img>` fails (including `/icons/<name>.svg`)
+   while inline SVG still renders. The shell still uses `<img>` tags and
+   on-demand CDN icon fetches (Iconify JSON behind `<os-icon>`) — both are
+   valid, and a missing-image report with that setting on is user
+   configuration, not an app bug.
 
 ## Verification: CLOSED on-device 2026-10-25
 
